@@ -1,0 +1,46 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# ── Environnement ─────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+!.env.example
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+docker/ssl/
+
+# ── Uploads & fichiers générés ───────────────────────────────────────────────
+backend/uploads/
+*.pdf
+!docker/nginx-spa.conf
+!docker/nginx-site.conf

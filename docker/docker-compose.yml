@@ -1,0 +1,76 @@
+version: "3.9"
+
+# ── Développement local ───────────────────────────────────────────────────────
+# Usage : docker compose -f docker/docker-compose.yml up -d
+
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: locataire_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-locataire_cloud}
+      POSTGRES_USER: ${POSTGRES_USER:-locataire_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-locataire_user} -d ${POSTGRES_DB:-locataire_cloud}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - locataire_net
+
+  # ── Backend FastAPI ───────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: locataire_backend
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    environment:
+      POSTGRES_HOST: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app              # Hot-reload en dev
+      - uploads_data:/app/uploads
+    networks:
+      - locataire_net
+
+  # ── Frontend React (dev server) ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+      target: dev
+    container_name: locataire_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    networks:
+      - locataire_net
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  locataire_net:
+    driver: bridge
