@@ -4,6 +4,9 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
+import TenantList from '@/pages/tenants/TenantList'
+import TenantDetail from '@/pages/tenants/TenantDetail'
+import PropertyList from '@/pages/properties/PropertyList'
 
 // Layout principal avec sidebar
 function AppLayout() {
@@ -31,6 +34,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <Dashboard /> },
+      { path: 'tenants', element: <TenantList /> },
+      { path: 'tenants/:id', element: <TenantDetail /> },
+      { path: 'properties', element: <PropertyList /> },
       // Les autres routes seront ajoutées par phase
       {
         path: 'unauthorized',
