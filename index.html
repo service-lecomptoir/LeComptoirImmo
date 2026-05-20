@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ImmoGest — Gestion Locative</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0f172a;--sidebar:#1e293b;--card:#1e293b;--card2:#273348;
+  --accent:#6366f1;--accent2:#818cf8;--green:#10b981;--red:#ef4444;
+  --yellow:#f59e0b;--blue:#3b82f6;--text:#e2e8f0;--muted:#94a3b8;
+  --border:#334155;--radius:12px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  display:flex;min-height:100vh;font-size:14px;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:220px;min-height:100vh;background:var(--sidebar);
+  display:flex;flex-direction:column;border-right:1px solid var(--border);
+  position:fixed;top:0;left:0;bottom:0;z-index:50;}
+.logo{padding:24px 20px;font-size:1.1rem;font-weight:700;color:#fff;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.logo span{color:var(--accent2);}
+nav{flex:1;padding:16px 10px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:8px;cursor:pointer;color:var(--muted);margin-bottom:4px;
+  transition:all .2s;font-size:.9rem;}
+.nav-item:hover{background:var(--card2);color:var(--text);}
+.nav-item.active{background:rgba(99,102,241,.18);color:var(--accent2);font-weight:600;}
+.nav-icon{font-size:1.1rem;width:20px;text-align:center;}
+.sidebar-footer{padding:16px;border-top:1px solid var(--border);
+  color:var(--muted);font-size:.78rem;text-align:center;}
+
+/* ── MAIN ── */
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;}
+.topbar{background:var(--sidebar);border-bottom:1px solid var(--border);
+  padding:14px 28px;display:flex;align-items:center;justify-content:space-between;}
+.topbar h2{font-size:1rem;font-weight:600;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;}
+.badge-notif{background:var(--red);color:#fff;border-radius:50%;
+  width:18px;height:18px;font-size:.65rem;display:flex;align-items:center;justify-content:center;}
+
+/* ── CONTENT ── */
+.content{padding:28px;flex:1;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* ── CARDS ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--c);}
+.stat-card .label{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.stat-card .value{font-size:1.8rem;font-weight:700;}
+.stat-card .sub{font-size:.75rem;color:var(--muted);margin-top:4px;}
+.stat-card .icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);
+  font-size:2rem;opacity:.15;}
+
+/* ── TABLES ── */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.section-header h3{font-size:.95rem;font-weight:600;}
+.btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;
+  font-size:.82rem;font-weight:600;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-sm{padding:5px 10px;font-size:.75rem;}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--card2);color:var(--text);}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);}
+.btn-danger:hover{background:rgba(239,68,68,.25);}
+.btn-success{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3);}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+thead{background:var(--card2);}
+th{padding:11px 14px;text-align:left;font-size:.75rem;text-transform:uppercase;
+   letter-spacing:.5px;color:var(--muted);font-weight:600;}
+td{padding:12px 14px;border-top:1px solid var(--border);vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,.02);}
+.empty-row td{text-align:center;color:var(--muted);padding:40px;}
+
+/* ── BADGES ── */
+.chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;
+  font-size:.72rem;font-weight:600;}
+.chip-green{background:rgba(16,185,129,.15);color:var(--green);}
+.chip-red{background:rgba(239,68,68,.15);color:var(--red);}
+.chip-yellow{background:rgba(245,158,11,.15);color:var(--yellow);}
+.chip-blue{background:rgba(59,130,246,.15);color:var(--blue);}
+.chip-gray{background:rgba(148,163,184,.1);color:var(--muted);}
+
+/* ── MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:200;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--sidebar);border:1px solid var(--border);border-radius:16px;
+  width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:slideUp .25s ease;}
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;}
+.modal-header h3{font-size:.95rem;font-weight:700;}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;}
+.modal-body{padding:20px 24px;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);
+  display:flex;gap:10px;justify-content:flex-end;}
+
+/* ── FORM ── */
+.form-group{margin-bottom:16px;}
+.form-group label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px;font-weight:500;}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;background:var(--card2);border:1px solid var(--border);
+  border-radius:8px;padding:9px 12px;color:var(--text);font-size:.88rem;
+  outline:none;transition:border .15s;font-family:inherit;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);}
+.form-group select option{background:var(--sidebar);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+textarea{resize:vertical;min-height:70px;}
+
+/* ── DASHBOARD EXTRAS ── */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.activity-item{display:flex;align-items:center;gap:12px;padding:12px 0;
+  border-bottom:1px solid var(--border);}
+.activity-item:last-child{border-bottom:none;}
+.act-icon{width:36px;height:36px;border-radius:10px;display:flex;
+  align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.act-info{flex:1;}
+.act-info .act-title{font-size:.85rem;font-weight:500;}
+.act-info .act-sub{font-size:.75rem;color:var(--muted);margin-top:2px;}
+.act-amount{font-size:.88rem;font-weight:600;}
+
+/* ── PROGRESS ── */
+.progress-bar{background:var(--border);border-radius:4px;height:6px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:4px;transition:width .4s;}
+
+/* ── KPI ROW ── */
+.kpi-list{padding:4px 0;}
+.kpi-item{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 0;border-bottom:1px solid var(--border);}
+.kpi-item:last-child{border-bottom:none;}
+
+@keyframes slideUp{from{transform:translateY(20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+/* ── SEARCH ── */
+.search-bar{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.search-bar input{flex:1;background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:8px 14px;color:var(--text);font-size:.85rem;outline:none;}
+.search-bar input:focus{border-color:var(--accent);}
+
+/* ── ALERTS ── */
+.alert{position:fixed;bottom:24px;right:24px;z-index:300;
+  padding:12px 20px;border-radius:10px;font-size:.85rem;font-weight:500;
+  display:flex;align-items:center;gap:10px;animation:slideUp .3s ease;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.alert-success{background:#064e3b;border:1px solid var(--green);color:var(--green);}
+.alert-error{background:#450a0a;border:1px solid var(--red);color:var(--red);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .dash-grid{grid-template-columns:1fr;}
+}
+@media(max-width:640px){
+  .sidebar{width:60px;}
+  .nav-item span,.logo .logo-txt,.sidebar-footer{display:none;}
+  .main{margin-left:60px;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ════ SIDEBAR ════ -->
+<aside class="sidebar">
+  <div class="logo">🏠 <span class="logo-txt">ImmoGest</span></div>
+  <nav>
+    <div class="nav-item active" onclick="goPage('dashboard')"><span class="nav-icon">📊</span><span>Tableau de bord</span></div>
+    <div class="nav-item" onclick="goPage('properties')"><span class="nav-icon">🏢</span><span>Biens</span></div>
+    <div class="nav-item" onclick="goPage('tenants')"><span class="nav-icon">👥</span><span>Locataires</span></div>
+    <div class="nav-item" onclick="goPage('payments')"><span class="nav-icon">💶</span><span>Paiements</span></div>
+    <div class="nav-item" onclick="goPage('maintenance')"><span class="nav-icon">🔧</span><span>Maintenance</span></div>
+  </nav>
+  <div class="sidebar-footer">v1.0 · ImmoGest</div>
+</aside>
+
+<!-- ════ MAIN ════ -->
+<div class="main">
+  <div class="topbar">
+    <h2 id="pageTitle">Tableau de bord</h2>
+    <div class="topbar-right">
+      <span id="today" style="color:var(--muted);font-size:.8rem;"></span>
+      <div class="avatar">GE</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="dash-grid">
+        <div class="card" style="padding:20px;">
+          <div class="section-header"><h3>Loyers à encaisser ce mois</h3></div>
+          <div id="rentKpi" class="kpi-list"></div>
+        </div>
+        <div class="card" style="padding:20px;">
+          <div class="section-header"><h3>Activité récente</h3></div>
+          <div id="activityList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BIENS ── -->
+    <div class="page" id="page-properties">
+      <div class="search-bar">
+        <input type="text" id="searchProp" placeholder="🔍  Rechercher un bien…" oninput="renderProperties()"/>
+        <button class="btn btn-primary" onclick="openModal('modalProperty')">＋ Ajouter un bien</button>
+      </div>
+      <div class="card"><table>
+        <thead><tr><th>Référence</th><th>Adresse</th><th>Type</th><th>Surface</th><th>Loyer CC</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody id="propTable"></tbody>
+      </table></div>
+    </div>
+
+    <!-- ── LOCATAIRES ── -->
+    <div class="page" id="page-tenants">
+      <div class="search-bar">
+        <input type="text" id="searchTenant" placeholder="🔍  Rechercher un locataire…" oninput="renderTenants()"/>
+        <button class="btn btn-primary" onclick="openModal('modalTenant')">＋ Ajouter un locataire</button>
+      </div>
+      <div class="card"><table>
+        <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Bien loué</th><th>Bail depuis</th><th>Fin bail</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody id="tenantTable"></tbody>
+      </table></div>
+    </div>
+
+    <!-- ── PAIEMENTS ── -->
+    <div class="page" id="page-payments">
+      <div class="search-bar">
+        <input type="text" id="searchPay" placeholder="🔍  Rechercher…" oninput="renderPayments()"/>
+        <button class="btn btn-primary" onclick="openModal('modalPayment')">＋ Enregistrer un paiement</button>
+      </div>
+      <div class="card"><table>
+        <thead><tr><th>Date</th><th>Locataire</th><th>Bien</th><th>Montant</th><th>Type</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody id="payTable"></tbody>
+      </table></div>
+    </div>
+
+    <!-- ── MAINTENANCE ── -->
+    <div class="page" id="page-maintenance">
+      <div class="search-bar">
+        <input type="text" id="searchMaint" placeholder="🔍  Rechercher…" oninput="renderMaintenance()"/>
+        <button class="btn btn-primary" onclick="openModal('modalMaint')">＋ Nouvelle demande</button>
+      </div>
+      <div class="card"><table>
+        <thead><tr><th>Date</th><th>Bien</th><th>Description</th><th>Priorité</th><th>Statut</th><th>Coût</th><th>Actions</th></tr></thead>
+        <tbody id="maintTable"></tbody>
+      </table></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ════ MODALS ════ -->
+
+<!-- Bien -->
+<div class="overlay" id="modalProperty" onclick="bgClose(event,'modalProperty')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalPropertyTitle">Nouveau bien</h3>
+      <button class="modal-close" onclick="closeModal('modalProperty')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="propId"/>
+      <div class="form-row">
+        <div class="form-group"><label>Référence *</label><input id="propRef" placeholder="APT-001"/></div>
+        <div class="form-group"><label>Type</label>
+          <select id="propType"><option>Appartement</option><option>Maison</option><option>Studio</option><option>Local commercial</option><option>Parking</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Adresse complète *</label><input id="propAddr" placeholder="12 rue de la Paix, 75001 Paris"/></div>
+      <div class="form-row">
+        <div class="form-group"><label>Surface (m²)</label><input id="propSurface" type="number" placeholder="45"/></div>
+        <div class="form-group"><label>Nb pièces</label><input id="propRooms" type="number" placeholder="3"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Loyer hors charges (€)</label><input id="propRent" type="number" placeholder="800"/></div>
+        <div class="form-group"><label>Charges (€/mois)</label><input id="propCharges" type="number" placeholder="80"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Dépôt de garantie (€)</label><input id="propDeposit" type="number" placeholder="800"/></div>
+        <div class="form-group"><label>Statut</label>
+          <select id="propStatus"><option value="Libre">Libre</option><option value="Loué">Loué</option><option value="Travaux">En travaux</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea id="propNotes" placeholder="Informations complémentaires…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalProperty')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveProperty()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Locataire -->
+<div class="overlay" id="modalTenant" onclick="bgClose(event,'modalTenant')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTenantTitle">Nouveau locataire</h3>
+      <button class="modal-close" onclick="closeModal('modalTenant')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="tenantId"/>
+      <div class="form-row">
+        <div class="form-group"><label>Prénom *</label><input id="tenantFirst" placeholder="Marie"/></div>
+        <div class="form-group"><label>Nom *</label><input id="tenantLast" placeholder="Dupont"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input id="tenantEmail" type="email" placeholder="marie@example.com"/></div>
+        <div class="form-group"><label>Téléphone</label><input id="tenantPhone" placeholder="06 12 34 56 78"/></div>
+      </div>
+      <div class="form-group"><label>Bien loué</label>
+        <select id="tenantProp"><option value="">— Aucun —</option></select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Début du bail</label><input id="tenantStart" type="date"/></div>
+        <div class="form-group"><label>Fin du bail</label><input id="tenantEnd" type="date"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Garant</label><input id="tenantGarant" placeholder="Nom du garant"/></div>
+        <div class="form-group"><label>Statut</label>
+          <select id="tenantStatus"><option value="Actif">Actif</option><option value="Préavis">En préavis</option><option value="Parti">Parti</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalTenant')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveTenant()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Paiement -->
+<div class="overlay" id="modalPayment" onclick="bgClose(event,'modalPayment')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Enregistrer un paiement</h3>
+      <button class="modal-close" onclick="closeModal('modalPayment')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="payId"/>
+      <div class="form-row">
+        <div class="form-group"><label>Locataire *</label>
+          <select id="payTenant"><option value="">— Choisir —</option></select>
+        </div>
+        <div class="form-group"><label>Date *</label><input id="payDate" type="date"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Montant (€) *</label><input id="payAmount" type="number" placeholder="880"/></div>
+        <div class="form-group"><label>Type</label>
+          <select id="payType"><option>Loyer</option><option>Charges</option><option>Dépôt de garantie</option><option>Régularisation</option><option>Autre</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Mode de paiement</label>
+          <select id="payMode"><option>Virement</option><option>Prélèvement</option><option>Chèque</option><option>Espèces</option></select>
+        </div>
+        <div class="form-group"><label>Statut</label>
+          <select id="payStatus"><option value="Payé">Payé</option><option value="En attente">En attente</option><option value="En retard">En retard</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Note</label><input id="payNote" placeholder="Référence, remarque…"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalPayment')">Annuler</button>
+      <button class="btn btn-primary" onclick="savePayment()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Maintenance -->
+<div class="overlay" id="modalMaint" onclick="bgClose(event,'modalMaint')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Demande de maintenance</h3>
+      <button class="modal-close" onclick="closeModal('modalMaint')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="maintId"/>
+      <div class="form-row">
+        <div class="form-group"><label>Bien *</label>
+          <select id="maintProp"><option value="">— Choisir —</option></select>
+        </div>
+        <div class="form-group"><label>Date</label><input id="maintDate" type="date"/></div>
+      </div>
+      <div class="form-group"><label>Description *</label><textarea id="maintDesc" placeholder="Décrivez le problème…"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Priorité</label>
+          <select id="maintPriority"><option>Faible</option><option>Normale</option><option>Haute</option><option>Urgente</option></select>
+        </div>
+        <div class="form-group"><label>Statut</label>
+          <select id="maintStatus"><option>En attente</option><option>En cours</option><option>Résolu</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Coût estimé (€)</label><input id="maintCost" type="number" placeholder="0"/></div>
+        <div class="form-group"><label>Intervenant</label><input id="maintWorker" placeholder="Plombier Martin…"/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalMaint')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveMaintenance()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  ÉTAT & PERSISTANCE
+// ═══════════════════════════════════════════════
+let db = {properties:[], tenants:[], payments:[], maintenance:[], activity:[]};
+
+function save(){localStorage.setItem('immogest',JSON.stringify(db));}
+function load(){
+  const d = localStorage.getItem('immogest');
+  if(d) db = JSON.parse(d);
+  else seedData();
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+
+// ═══════════════════════════════════════════════
+//  DONNÉES DE DÉMO
+// ═══════════════════════════════════════════════
+function seedData(){
+  db.properties = [
+    {id:'p1',ref:'APT-001',type:'Appartement',addr:'12 rue des Lilas, 75011 Paris',surface:52,rooms:3,rent:950,charges:90,deposit:950,status:'Loué',notes:'Étage 3, vue dégagée'},
+    {id:'p2',ref:'APT-002',type:'Studio',addr:'8 avenue Foch, 69002 Lyon',surface:28,rooms:1,rent:580,charges:50,deposit:580,status:'Libre',notes:''},
+    {id:'p3',ref:'MAS-001',type:'Maison',addr:'3 chemin des Roses, 33000 Bordeaux',surface:110,rooms:5,rent:1400,charges:120,deposit:2800,status:'Loué',notes:'Jardin 200m²'},
+    {id:'p4',ref:'APT-003',type:'Appartement',addr:'22 bd Gambetta, 13001 Marseille',surface:65,rooms:4,rent:820,charges:80,deposit:820,status:'Travaux',notes:'Rénovation cuisine'},
+  ];
+  db.tenants = [
+    {id:'t1',first:'Sophie',last:'Bernard',email:'sophie.bernard@email.fr',phone:'06 11 22 33 44',propId:'p1',start:'2023-03-01',end:'2024-02-28',garant:'Pierre Bernard',status:'Actif'},
+    {id:'t2',first:'Lucas',last:'Martin',email:'lucas.m@email.fr',phone:'07 98 76 54 32',propId:'p3',start:'2022-09-01',end:'2025-08-31',garant:'',status:'Actif'},
+    {id:'t3',first:'Amira',last:'Benali',email:'a.benali@email.fr',phone:'06 55 44 33 22',propId:'',start:'',end:'',garant:'',status:'Parti'},
+  ];
+  const now = new Date();
+  const m = (now.getMonth()+1).toString().padStart(2,'0');
+  const y = now.getFullYear();
+  db.payments = [
+    {id:'pay1',tenantId:'t1',date:`${y}-${m}-05`,amount:1040,type:'Loyer',mode:'Virement',status:'Payé',note:'Loyer+charges mai'},
+    {id:'pay2',tenantId:'t2',date:`${y}-${m}-03`,amount:1520,type:'Loyer',mode:'Prélèvement',status:'Payé',note:''},
+    {id:'pay3',tenantId:'t1',date:`${y}-${m}-01`,amount:1040,type:'Loyer',mode:'Virement',status:'En attente',note:'Loyer juin'},
+    {id:'pay4',tenantId:'t2',date:`${y}-04-01`,amount:1520,type:'Loyer',mode:'Prélèvement',status:'En retard',note:'Relance envoyée'},
+  ];
+  db.maintenance = [
+    {id:'m1',propId:'p1',date:'2025-04-10',desc:'Fuite robinet cuisine',priority:'Haute',status:'Résolu',cost:150,worker:'Plombier Dubois'},
+    {id:'m2',propId:'p3',date:'2025-05-02',desc:'Volet roulant bloqué',priority:'Normale',status:'En cours',cost:200,worker:'Handyman Services'},
+    {id:'m3',propId:'p4',date:'2025-05-01',desc:'Rénovation cuisine complète',priority:'Faible',status:'En attente',cost:4500,worker:''},
+  ];
+  db.activity = [
+    {icon:'💶',color:'#064e3b',title:'Loyer reçu — Sophie Bernard',sub:'APT-001 · 1 040 €',amount:'+1 040 €',green:true},
+    {icon:'🔧',color:'#422006',title:'Maintenance — Fuite cuisine',sub:'APT-001 · Résolu',amount:'−150 €',green:false},
+    {icon:'💶',color:'#064e3b',title:'Loyer reçu — Lucas Martin',sub:'MAS-001 · 1 520 €',amount:'+1 520 €',green:true},
+    {icon:'⚠️',color:'#422006',title:'Retard de paiement',sub:'Lucas Martin · Avril',amount:'−1 520 €',green:false},
+  ];
+  save();
+}
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+const pageTitles = {dashboard:'Tableau de bord',properties:'Mes Biens',tenants:'Locataires',payments:'Paiements',maintenance:'Maintenance'};
+
+function goPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item')[Object.keys(pageTitles).indexOf(id)].classList.add('active');
+  document.getElementById('pageTitle').textContent = pageTitles[id];
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════
+//  RENDU — DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDashboard(){
+  const props   = db.properties;
+  const tenants = db.tenants.filter(t=>t.status==='Actif');
+  const paidM   = db.payments.filter(p=>p.status==='Payé' && p.date.startsWith(thisMonth()));
+  const late    = db.payments.filter(p=>p.status==='En retard');
+  const revenue = paidM.reduce((a,p)=>a+Number(p.amount),0);
+  const mCosts  = db.maintenance.filter(m=>m.status!=='Résolu').reduce((a,m)=>a+Number(m.cost||0),0);
+  const loued   = props.filter(p=>p.status==='Loué').length;
+
+  const stats = [
+    {label:'Biens gérés',value:props.length,sub:`${loued} loués · ${props.filter(p=>p.status==='Libre').length} libres`,icon:'🏢',c:'var(--accent)'},
+    {label:'Locataires actifs',value:tenants.length,sub:`${late.length} retard${late.length>1?'s':''}`,icon:'👥',c:'var(--blue)'},
+    {label:'Revenus du mois',value:fmt(revenue)+' €',sub:`${paidM.length} paiements`,icon:'💶',c:'var(--green)'},
+    {label:'Maintenance en cours',value:db.maintenance.filter(m=>m.status!=='Résolu').length,sub:`Coût estimé ${fmt(mCosts)} €`,icon:'🔧',c:'var(--yellow)'},
+  ];
+  document.getElementById('statGrid').innerHTML = stats.map(s=>`
+    <div class="stat-card" style="--c:${s.c}">
+      <div class="label">${s.label}</div>
+      <div class="value">${s.value}</div>
+      <div class="sub">${s.sub}</div>
+      <div class="icon">${s.icon}</div>
+    </div>`).join('');
+
+  // KPI loyers
+  const kpi = document.getElementById('rentKpi');
+  const expected = db.tenants.filter(t=>t.status==='Actif' && t.propId);
+  if(!expected.length){kpi.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px">Aucun locataire actif</div>';return;}
+  kpi.innerHTML = expected.map(t=>{
+    const prop = db.properties.find(p=>p.id===t.propId);
+    const loyer = prop ? Number(prop.rent)+Number(prop.charges) : 0;
+    const paid  = db.payments.find(p=>p.tenantId===t.id && p.date.startsWith(thisMonth()) && p.status==='Payé');
+    const pct   = paid ? 100 : 0;
+    return `<div class="kpi-item">
+      <div><div style="font-size:.85rem;font-weight:500">${t.first} ${t.last}</div>
+        <div style="font-size:.72rem;color:var(--muted)">${prop?prop.ref:'—'} · ${fmt(loyer)} €</div></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:80px"><div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${paid?'var(--green)':'var(--red)'}"></div></div></div>
+        <span class="chip ${paid?'chip-green':'chip-red'}">${paid?'Payé':'Dû'}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Activité
+  document.getElementById('activityList').innerHTML = db.activity.slice(0,5).map(a=>`
+    <div class="activity-item">
+      <div class="act-icon" style="background:${a.color}">${a.icon}</div>
+      <div class="act-info">
+        <div class="act-title">${a.title}</div>
+        <div class="act-sub">${a.sub}</div>
+      </div>
+      <div class="act-amount" style="color:${a.green?'var(--green)':'var(--red)'}">${a.amount}</div>
+    </div>`).join('') || '<div style="color:var(--muted);text-align:center;padding:20px">Aucune activité</div>';
+}
+
+// ═══════════════════════════════════════════════
+//  RENDU — BIENS
+// ═══════════════════════════════════════════════
+function renderProperties(){
+  const q = (document.getElementById('searchProp')?.value||'').toLowerCase();
+  const rows = db.properties.filter(p=>
+    p.ref.toLowerCase().includes(q) || p.addr.toLowerCase().includes(q) || p.type.toLowerCase().includes(q)
+  );
+  const t = document.getElementById('propTable');
+  if(!rows.length){t.innerHTML='<tr class="empty-row"><td colspan="7">Aucun bien trouvé</td></tr>';return;}
+  t.innerHTML = rows.map(p=>{
+    const cc = Number(p.rent)+Number(p.charges);
+    const sc = p.status==='Loué'?'chip-green':p.status==='Libre'?'chip-blue':'chip-yellow';
+    return `<tr>
+      <td><strong>${p.ref}</strong></td>
+      <td>${p.addr}</td>
+      <td><span class="chip chip-gray">${p.type}</span></td>
+      <td>${p.surface} m²</td>
+      <td><strong>${fmt(cc)} €</strong> <span style="color:var(--muted);font-size:.75rem">(HC ${fmt(p.rent)})</span></td>
+      <td><span class="chip ${sc}">${p.status}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="editProperty('${p.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteItem('properties','${p.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDU — LOCATAIRES
+// ═══════════════════════════════════════════════
+function renderTenants(){
+  const q = (document.getElementById('searchTenant')?.value||'').toLowerCase();
+  const rows = db.tenants.filter(t=>
+    (t.first+' '+t.last).toLowerCase().includes(q) || (t.email||'').toLowerCase().includes(q)
+  );
+  const tb = document.getElementById('tenantTable');
+  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">Aucun locataire trouvé</td></tr>';return;}
+  tb.innerHTML = rows.map(t=>{
+    const prop = db.properties.find(p=>p.id===t.propId);
+    const sc   = t.status==='Actif'?'chip-green':t.status==='Préavis'?'chip-yellow':'chip-gray';
+    return `<tr>
+      <td><strong>${t.first} ${t.last}</strong></td>
+      <td style="color:var(--muted)">${t.email||'—'}</td>
+      <td>${t.phone||'—'}</td>
+      <td>${prop?`<span class="chip chip-blue">${prop.ref}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${t.start||'—'}</td>
+      <td>${t.end||'—'}</td>
+      <td><span class="chip ${sc}">${t.status}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="editTenant('${t.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteItem('tenants','${t.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDU — PAIEMENTS
+// ═══════════════════════════════════════════════
+function renderPayments(){
+  const q = (document.getElementById('searchPay')?.value||'').toLowerCase();
+  const rows = db.payments.filter(p=>{
+    const t = db.tenants.find(t=>t.id===p.tenantId);
+    return !q || (t&&(t.first+' '+t.last).toLowerCase().includes(q)) || p.type.toLowerCase().includes(q);
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+  const tb = document.getElementById('payTable');
+  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="7">Aucun paiement trouvé</td></tr>';return;}
+  tb.innerHTML = rows.map(p=>{
+    const t    = db.tenants.find(t=>t.id===p.tenantId);
+    const prop = t ? db.properties.find(pr=>pr.id===t.propId) : null;
+    const sc   = p.status==='Payé'?'chip-green':p.status==='En attente'?'chip-yellow':'chip-red';
+    return `<tr>
+      <td>${p.date}</td>
+      <td>${t?t.first+' '+t.last:'—'}</td>
+      <td>${prop?prop.ref:'—'}</td>
+      <td><strong>${fmt(p.amount)} €</strong></td>
+      <td><span class="chip chip-gray">${p.type}</span></td>
+      <td><span class="chip ${sc}">${p.status}</span></td>
+      <td style="display:flex;gap:6px">
+        ${p.status!=='Payé'?`<button class="btn btn-success btn-sm" onclick="markPaid('${p.id}')">✓ Payé</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="deleteItem('payments','${p.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDU — MAINTENANCE
+// ═══════════════════════════════════════════════
+function renderMaintenance(){
+  const q = (document.getElementById('searchMaint')?.value||'').toLowerCase();
+  const rows = db.maintenance.filter(m=>{
+    const p = db.properties.find(p=>p.id===m.propId);
+    return !q || (p&&p.ref.toLowerCase().includes(q)) || m.desc.toLowerCase().includes(q);
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+  const tb = document.getElementById('maintTable');
+  if(!rows.length){tb.innerHTML='<tr class="empty-row"><td colspan="7">Aucune maintenance trouvée</td></tr>';return;}
+  tb.innerHTML = rows.map(m=>{
+    const prop = db.properties.find(p=>p.id===m.propId);
+    const pc   = m.priority==='Urgente'?'chip-red':m.priority==='Haute'?'chip-yellow':m.priority==='Normale'?'chip-blue':'chip-gray';
+    const sc   = m.status==='Résolu'?'chip-green':m.status==='En cours'?'chip-yellow':'chip-gray';
+    return `<tr>
+      <td>${m.date}</td>
+      <td>${prop?`<strong>${prop.ref}</strong>`:'—'}</td>
+      <td>${m.desc}</td>
+      <td><span class="chip ${pc}">${m.priority}</span></td>
+      <td><span class="chip ${sc}">${m.status}</span></td>
+      <td>${m.cost?fmt(m.cost)+' €':'—'}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="editMaint('${m.id}')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteItem('maintenance','${m.id}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAll(){
+  renderDashboard();
+  renderProperties();
+  renderTenants();
+  renderPayments();
+  renderMaintenance();
+}
+
+// ═══════════════════════════════════════════════
+//  MODALS helpers
+// ═══════════════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function bgClose(e,id){if(e.target===e.currentTarget)closeModal(id);}
+
+function populatePropSelect(selId, current=''){
+  const sel = document.getElementById(selId);
+  sel.innerHTML = '<option value="">— Aucun —</option>' +
+    db.properties.map(p=>`<option value="${p.id}" ${p.id===current?'selected':''}>${p.ref} — ${p.addr.split(',')[0]}</option>`).join('');
+}
+function populateTenantSelect(selId, current=''){
+  const sel = document.getElementById(selId);
+  sel.innerHTML = '<option value="">— Choisir —</option>' +
+    db.tenants.filter(t=>t.status==='Actif').map(t=>`<option value="${t.id}" ${t.id===current?'selected':''}>${t.first} ${t.last}</option>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  BIENS CRUD
+// ═══════════════════════════════════════════════
+function saveProperty(){
+  const ref  = v('propRef'), addr = v('propAddr');
+  if(!ref||!addr){alert('Référence et adresse obligatoires');return;}
+  const id   = v('propId') || uid();
+  const obj  = {id,ref,type:v('propType'),addr,surface:v('propSurface'),rooms:v('propRooms'),
+    rent:v('propRent'),charges:v('propCharges'),deposit:v('propDeposit'),status:v('propStatus'),notes:v('propNotes')};
+  const idx  = db.properties.findIndex(p=>p.id===id);
+  if(idx>=0) db.properties[idx]=obj; else db.properties.push(obj);
+  addActivity('🏢','#1e1b4b',`Bien ${v('propId')?'modifié':'ajouté'} — ${ref}`,addr,'');
+  save(); closeModal('modalProperty'); clearForm(['propId','propRef','propType','propAddr','propSurface','propRooms','propRent','propCharges','propDeposit','propStatus','propNotes']);
+  renderAll(); toast('Bien enregistré ✓');
+}
+
+function editProperty(id){
+  const p = db.properties.find(p=>p.id===id); if(!p) return;
+  set('propId',p.id);set('propRef',p.ref);set('propType',p.type);set('propAddr',p.addr);
+  set('propSurface',p.surface);set('propRooms',p.rooms);set('propRent',p.rent);
+  set('propCharges',p.charges);set('propDeposit',p.deposit);set('propStatus',p.status);set('propNotes',p.notes);
+  document.getElementById('modalPropertyTitle').textContent='Modifier le bien';
+  openModal('modalProperty');
+}
+
+// ═══════════════════════════════════════════════
+//  LOCATAIRES CRUD
+// ═══════════════════════════════════════════════
+function saveTenant(){
+  const first=v('tenantFirst'),last=v('tenantLast');
+  if(!first||!last){alert('Prénom et nom obligatoires');return;}
+  const id=v('tenantId')||uid();
+  const obj={id,first,last,email:v('tenantEmail'),phone:v('tenantPhone'),propId:v('tenantProp'),
+    start:v('tenantStart'),end:v('tenantEnd'),garant:v('tenantGarant'),status:v('tenantStatus')};
+  const idx=db.tenants.findIndex(t=>t.id===id);
+  if(idx>=0) db.tenants[idx]=obj; else db.tenants.push(obj);
+  // Mettre à jour statut bien
+  if(obj.propId){
+    const pi=db.properties.findIndex(p=>p.id===obj.propId);
+    if(pi>=0) db.properties[pi].status='Loué';
+  }
+  addActivity('👤','#1e3a5f',`Locataire ${v('tenantId')?'modifié':'ajouté'} — ${first} ${last}`,'','');
+  save(); closeModal('modalTenant');
+  clearForm(['tenantId','tenantFirst','tenantLast','tenantEmail','tenantPhone','tenantProp','tenantStart','tenantEnd','tenantGarant','tenantStatus']);
+  renderAll(); toast('Locataire enregistré ✓');
+}
+
+function editTenant(id){
+  const t=db.tenants.find(t=>t.id===id); if(!t) return;
+  populatePropSelect('tenantProp',t.propId);
+  set('tenantId',t.id);set('tenantFirst',t.first);set('tenantLast',t.last);
+  set('tenantEmail',t.email);set('tenantPhone',t.phone);set('tenantProp',t.propId);
+  set('tenantStart',t.start);set('tenantEnd',t.end);set('tenantGarant',t.garant);set('tenantStatus',t.status);
+  document.getElementById('modalTenantTitle').textContent='Modifier le locataire';
+  openModal('modalTenant');
+}
+
+// Ouvrir modal locataire → pré-remplir select
+document.getElementById('modalTenant').addEventListener('click',()=>{});
+const origOpenTenant = ()=>{populatePropSelect('tenantProp');openModal('modalTenant');};
+document.querySelector('[onclick="openModal(\'modalTenant\')"]').onclick = origOpenTenant;
+
+// ═══════════════════════════════════════════════
+//  PAIEMENTS CRUD
+// ═══════════════════════════════════════════════
+function savePayment(){
+  const tid=v('payTenant'),amt=v('payAmount'),date=v('payDate');
+  if(!tid||!amt||!date){alert('Locataire, montant et date obligatoires');return;}
+  const id=v('payId')||uid();
+  const obj={id,tenantId:tid,date,amount:Number(amt),type:v('payType'),mode:v('payMode'),status:v('payStatus'),note:v('payNote')};
+  const idx=db.payments.findIndex(p=>p.id===id);
+  if(idx>=0) db.payments[idx]=obj; else db.payments.push(obj);
+  const t=db.tenants.find(t=>t.id===tid);
+  addActivity('💶',obj.status==='Payé'?'#064e3b':'#422006',
+    `${obj.type} — ${t?t.first+' '+t.last:'?'}`,date,
+    (obj.status==='Payé'?'+':'')+fmt(amt)+' €',obj.status==='Payé');
+  save(); closeModal('modalPayment');
+  clearForm(['payId','payTenant','payDate','payAmount','payType','payMode','payStatus','payNote']);
+  renderAll(); toast('Paiement enregistré ✓');
+}
+
+function markPaid(id){
+  const idx=db.payments.findIndex(p=>p.id===id);
+  if(idx<0) return;
+  db.payments[idx].status='Payé';
+  const t=db.tenants.find(t=>t.id===db.payments[idx].tenantId);
+  addActivity('💶','#064e3b',`Loyer encaissé — ${t?t.first+' '+t.last:'?'}`,db.payments[idx].date,'+'+fmt(db.payments[idx].amount)+' €',true);
+  save(); renderAll(); toast('Marqué comme payé ✓');
+}
+
+document.querySelector('[onclick="openModal(\'modalPayment\')"]').onclick = ()=>{
+  populateTenantSelect('payTenant');
+  document.getElementById('payDate').value = today();
+  openModal('modalPayment');
+};
+
+// ═══════════════════════════════════════════════
+//  MAINTENANCE CRUD
+// ═══════════════════════════════════════════════
+function saveMaintenance(){
+  const pid=v('maintProp'),desc=v('maintDesc');
+  if(!pid||!desc){alert('Bien et description obligatoires');return;}
+  const id=v('maintId')||uid();
+  const obj={id,propId:pid,date:v('maintDate')||today(),desc,priority:v('maintPriority'),
+    status:v('maintStatus'),cost:Number(v('maintCost')||0),worker:v('maintWorker')};
+  const idx=db.maintenance.findIndex(m=>m.id===id);
+  if(idx>=0) db.maintenance[idx]=obj; else db.maintenance.push(obj);
+  const prop=db.properties.find(p=>p.id===pid);
+  addActivity('🔧','#422006',`Maintenance — ${prop?prop.ref:'?'}`,desc,obj.cost?'−'+fmt(obj.cost)+' €':'',false);
+  save(); closeModal('modalMaint');
+  clearForm(['maintId','maintProp','maintDate','maintDesc','maintPriority','maintStatus','maintCost','maintWorker']);
+  renderAll(); toast('Demande enregistrée ✓');
+}
+
+function editMaint(id){
+  const m=db.maintenance.find(m=>m.id===id); if(!m) return;
+  populatePropSelect('maintProp',m.propId);
+  set('maintId',m.id);set('maintProp',m.propId);set('maintDate',m.date);set('maintDesc',m.desc);
+  set('maintPriority',m.priority);set('maintStatus',m.status);set('maintCost',m.cost);set('maintWorker',m.worker);
+  openModal('modalMaint');
+}
+
+document.querySelector('[onclick="openModal(\'modalMaint\')"]').onclick = ()=>{
+  populatePropSelect('maintProp');
+  document.getElementById('maintDate').value = today();
+  openModal('modalMaint');
+};
+
+// ═══════════════════════════════════════════════
+//  DELETE générique
+// ═══════════════════════════════════════════════
+function deleteItem(col, id){
+  if(!confirm('Confirmer la suppression ?')) return;
+  db[col] = db[col].filter(x=>x.id!==id);
+  save(); renderAll(); toast('Élément supprimé','error');
+}
+
+// ═══════════════════════════════════════════════
+//  UTILITAIRES
+// ═══════════════════════════════════════════════
+function v(id){const el=document.getElementById(id);return el?el.value:'';}
+function set(id,val){const el=document.getElementById(id);if(el)el.value=val??'';}
+function clearForm(ids){ids.forEach(id=>set(id,''));}
+function fmt(n){return Number(n||0).toLocaleString('fr-FR');}
+function today(){return new Date().toISOString().slice(0,10);}
+function thisMonth(){return new Date().toISOString().slice(0,7);}
+function addActivity(icon,color,title,sub,amount,green=false){
+  db.activity.unshift({icon,color,title,sub,amount,green});
+  if(db.activity.length>20) db.activity.pop();
+}
+function toast(msg,type='success'){
+  const el=document.createElement('div');
+  el.className=`alert alert-${type}`;
+  el.innerHTML=`${type==='success'?'✅':'🗑'} ${msg}`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),3000);
+}
+
+// Date dans topbar
+document.getElementById('today').textContent = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+load();
+renderAll();
+</script>
+</body>
+</html>
