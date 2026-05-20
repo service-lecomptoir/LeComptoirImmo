@@ -1,6 +1,8 @@
 import { Modal } from './Modal'
 import { AlertTriangle } from 'lucide-react'
 
+type ConfirmVariant = 'red' | 'blue'
+
 interface ConfirmDialogProps {
   isOpen: boolean
   onClose: () => void
@@ -8,12 +10,18 @@ interface ConfirmDialogProps {
   title: string
   message: string
   confirmLabel?: string
+  confirmVariant?: ConfirmVariant
   isLoading?: boolean
+}
+
+const VARIANT_CLASSES: Record<ConfirmVariant, string> = {
+  red: 'bg-red-600 hover:bg-red-700',
+  blue: 'bg-blue-600 hover:bg-blue-700',
 }
 
 export function ConfirmDialog({
   isOpen, onClose, onConfirm, title, message,
-  confirmLabel = 'Supprimer', isLoading = false,
+  confirmLabel = 'Supprimer', confirmVariant = 'red', isLoading = false,
 }: ConfirmDialogProps) {
   return (
     <Modal
@@ -32,7 +40,7 @@ export function ConfirmDialog({
           <button
             onClick={onConfirm}
             disabled={isLoading}
-            className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+            className={`px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50 ${VARIANT_CLASSES[confirmVariant]}`}
           >
             {isLoading ? 'En cours...' : confirmLabel}
           </button>

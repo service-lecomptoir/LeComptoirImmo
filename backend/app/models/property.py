@@ -9,6 +9,7 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.unit import Unit
+    from app.models.lease import Lease
 
 
 class PropertyType(str, Enum):
@@ -59,7 +60,10 @@ class Property(Base, TimestampMixin):
 
     # ── Relations ─────────────────────────────────────────────────────────────
     units: Mapped[list["Unit"]] = relationship(
-        "Unit", back_populates="property", cascade="all, delete-orphan", lazy="select"
+        "Unit", back_populates="parent_property", cascade="all, delete-orphan", lazy="select"
+    )
+    leases: Mapped[list["Lease"]] = relationship(
+        "Lease", back_populates="parent_property", lazy="select"
     )
 
     @property
