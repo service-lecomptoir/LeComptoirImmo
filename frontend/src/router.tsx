@@ -10,6 +10,7 @@ import PropertyList from '@/pages/properties/PropertyList'
 import PropertyDetail from '@/pages/properties/PropertyDetail'
 import LeaseList from '@/pages/leases/LeaseList'
 import LeaseDetail from '@/pages/leases/LeaseDetail'
+import PaymentList from '@/pages/payments/PaymentList'
 
 // Layout principal avec sidebar
 function AppLayout() {
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: 'properties/:id', element: <PropertyDetail /> },
       { path: 'leases', element: <LeaseList /> },
       { path: 'leases/:id', element: <LeaseDetail /> },
+      { path: 'payments', element: <PaymentList /> },
       // Les autres routes seront ajoutées par phase
       {
         path: 'unauthorized',

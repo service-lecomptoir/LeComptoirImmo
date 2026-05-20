@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4; margin: 2.5cm 2.5cm; }
+    body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.8; }
+    .from-block { margin-bottom: 30px; }
+    .to-block { margin-bottom: 40px; }
+    .city-date { text-align: right; margin-bottom: 30px; font-style: italic; }
+    .subject { font-weight: bold; text-decoration: underline; margin-bottom: 24px; }
+    .body-text { margin-bottom: 16px; text-align: justify; }
+    .amount-highlight { font-weight: bold; font-size: 12pt; color: #b91c1c; }
+    .signature { margin-top: 50px; }
+    .legal { font-size: 8pt; color: #888; margin-top: 40px; border-top: 1px solid #ddd; padding-top: 8px; }
+  </style>
+</head>
+<body>
+
+  <div class="from-block">
+    <strong>{{ property_name }}</strong><br>
+    {{ property_address }}
+  </div>
+
+  <div class="to-block">
+    {{ tenant_name }}<br>
+    {{ property_address }}
+  </div>
+
+  <div class="city-date">{{ city }}, le {{ today }}</div>
+
+  <div class="subject">
+    Objet : Rappel de loyer impayé — {{ period_label }}
+  </div>
+
+  <p class="body-text">Madame, Monsieur,</p>
+
+  <p class="body-text">
+    Sauf erreur ou omission de notre part, nous n'avons pas reçu le règlement du loyer
+    correspondant à la période de <strong>{{ period_label }}</strong>,
+    dont l'échéance était fixée au <strong>{{ due_date }}</strong>.
+  </p>
+
+  <p class="body-text">
+    Le montant restant dû s'élève à :
+    <span class="amount-highlight"> {{ amount_due }} €</span>
+  </p>
+
+  {% if apl_info %}
+  <p class="body-text">
+    Rappel : une aide au logement (APL) de <strong>{{ apl_amount }} €</strong>
+    est versée directement par la CAF. Le solde locataire à régler est donc de
+    <strong>{{ amount_due }} €</strong>.
+  </p>
+  {% endif %}
+
+  <p class="body-text">
+    Nous vous demandons de bien vouloir régulariser cette situation dans les
+    <strong>8 jours</strong> suivant la réception de ce courrier, par le mode de paiement
+    habituel.
+  </p>
+
+  <p class="body-text">
+    Sans réaction de votre part dans ce délai, nous nous verrons dans l'obligation
+    d'engager les procédures nécessaires au recouvrement de cette créance.
+  </p>
+
+  <p class="body-text">
+    Restant à votre disposition pour tout renseignement, nous vous prions d'agréer,
+    Madame, Monsieur, l'expression de nos salutations distinguées.
+  </p>
+
+  <div class="signature">
+    <p>Le bailleur</p>
+    <br><br>
+    <p>______________________________</p>
+    <p>{{ property_name }}</p>
+  </div>
+
+  <div class="legal">
+    Conformément à l'article 7 de la loi n°89-462 du 6 juillet 1989, le locataire est tenu de payer le loyer et les charges récupérables aux termes convenus.
+  </div>
+
+</body>
+</html>

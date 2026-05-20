@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page {
+      size: A4;
+      margin: 2.5cm 2.5cm;
+    }
+    body {
+      font-family: "DejaVu Sans", Arial, sans-serif;
+      font-size: 10pt;
+      color: #1a1a1a;
+      line-height: 1.7;
+    }
+    .header-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 30px;
+    }
+    .brand { font-size: 9pt; color: #555; }
+    .doc-ref { font-size: 9pt; color: #888; text-align: right; }
+    h1 {
+      font-size: 18pt;
+      text-align: center;
+      color: #1e3a5f;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin: 0 0 4px 0;
+    }
+    .doc-subtitle {
+      text-align: center;
+      font-size: 10pt;
+      color: #555;
+      margin-bottom: 28px;
+    }
+    hr { border: none; border-top: 2px solid #1e3a5f; margin: 16px 0; }
+    .parties {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 24px;
+    }
+    .party-box {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 12px 14px;
+      border-radius: 4px;
+    }
+    .party-label {
+      font-size: 8pt;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .party-name { font-weight: bold; font-size: 11pt; }
+    .party-detail { font-size: 9pt; color: #444; }
+    .section-title {
+      font-size: 10pt;
+      font-weight: bold;
+      color: #1e3a5f;
+      border-left: 4px solid #1e3a5f;
+      padding-left: 8px;
+      margin: 20px 0 10px 0;
+    }
+    .amounts-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .amounts-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 10pt;
+    }
+    .amounts-table .label-col { color: #555; }
+    .amounts-table .amount-col {
+      text-align: right;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .amounts-table .total-row td {
+      font-weight: bold;
+      font-size: 11pt;
+      background: #f0f4f8;
+      color: #1e3a5f;
+      border-top: 2px solid #1e3a5f;
+    }
+    .badge-paid {
+      display: inline-block;
+      background: #166534;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 10pt;
+      font-weight: bold;
+      margin: 16px 0;
+    }
+    .badge-partial {
+      display: inline-block;
+      background: #b45309;
+      color: white;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 10pt;
+      font-weight: bold;
+      margin: 16px 0;
+    }
+    .legal-mention {
+      font-size: 8pt;
+      color: #888;
+      margin-top: 30px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .signature-area {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 30px;
+    }
+    .sign-box {
+      width: 220px;
+      border: 1px solid #ddd;
+      padding: 12px;
+      min-height: 80px;
+      font-size: 9pt;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-line">
+    <div class="brand">Locataire Cloud</div>
+    <div class="doc-ref">
+      Réf. {{ payment.id | string | truncate(8, end='') }}<br>
+      Émis le {{ payment.updated_at.strftime('%d/%m/%Y') }}
+    </div>
+  </div>
+
+  <h1>Quittance de loyer</h1>
+  <p class="doc-subtitle">{{ payment.period_label }}</p>
+  <hr>
+
+  <!-- Parties -->
+  <div class="parties">
+    <div class="party-box">
+      <div class="party-label">Bailleur</div>
+      {% if payment.lease and payment.lease.parent_property %}
+      <div class="party-name">{{ payment.lease.parent_property.name }}</div>
+      <div class="party-detail">{{ payment.lease.parent_property.full_address }}</div>
+      {% else %}
+      <div class="party-name">—</div>
+      {% endif %}
+    </div>
+    <div class="party-box">
+      <div class="party-label">Locataire</div>
+      <div class="party-name">{{ payment.tenant.full_name if payment.tenant else '—' }}</div>
+      {% if payment.lease and payment.lease.parent_property %}
+      <div class="party-detail">
+        Logement : {{ payment.unit.unit_ref if payment.unit else '—' }}<br>
+        {{ payment.lease.parent_property.full_address }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Détail des sommes -->
+  <div class="section-title">Détail du loyer</div>
+
+  <table class="amounts-table">
+    <tr>
+      <td class="label-col">Loyer hors charges</td>
+      <td class="amount-col">{{ "%.2f" | format(payment.amount_rent | float) }} €</td>
+    </tr>
+    <tr>
+      <td class="label-col">Charges récupérables</td>
+      <td class="amount-col">{{ "%.2f" | format(payment.amount_charges | float) }} €</td>
+    </tr>
+    {% if payment.amount_apl %}
+    <tr>
+      <td class="label-col">Déduction APL (tiers-payant CAF)</td>
+      <td class="amount-col">- {{ "%.2f" | format(payment.amount_apl | float) }} €</td>
+    </tr>
+    {% endif %}
+    <tr class="total-row">
+      <td>Total dû par le locataire</td>
+      <td class="amount-col">{{ "%.2f" | format(payment.amount_due | float) }} €</td>
+    </tr>
+  </table>
+
+  <!-- Paiement reçu -->
+  <div class="section-title">Paiement reçu</div>
+
+  <table class="amounts-table">
+    <tr>
+      <td class="label-col">Montant encaissé</td>
+      <td class="amount-col">{{ "%.2f" | format(payment.amount_paid | float) }} €</td>
+    </tr>
+    {% if payment.payment_date %}
+    <tr>
+      <td class="label-col">Date de réception</td>
+      <td class="amount-col">{{ payment.payment_date.strftime('%d/%m/%Y') }}</td>
+    </tr>
+    {% endif %}
+    {% if payment.payment_method %}
+    <tr>
+      <td class="label-col">Mode de paiement</td>
+      <td class="amount-col">
+        {% if payment.payment_method == 'virement' %}Virement bancaire
+        {% elif payment.payment_method == 'cheque' %}Chèque
+        {% elif payment.payment_method == 'prelevement' %}Prélèvement automatique
+        {% else %}Espèces{% endif %}
+      </td>
+    </tr>
+    {% endif %}
+    {% if payment.balance > 0 %}
+    <tr>
+      <td class="label-col" style="color: #b45309;">Solde restant dû</td>
+      <td class="amount-col" style="color: #b45309;">{{ "%.2f" | format(payment.balance) }} €</td>
+    </tr>
+    {% endif %}
+  </table>
+
+  <!-- Statut -->
+  {% if payment.status == 'paid' %}
+    <div class="badge-paid">&#10003; Loyer intégralement payé</div>
+  {% elif payment.status == 'partial' %}
+    <div class="badge-partial">&#9888; Paiement partiel</div>
+  {% endif %}
+
+  <!-- Signature -->
+  <div class="signature-area">
+    <div class="sign-box">
+      <div style="margin-bottom: 8px; font-weight: bold; font-size: 9pt;">Le bailleur</div>
+      Date : _______________<br><br>
+      Signature :
+    </div>
+  </div>
+
+  <!-- Mention légale -->
+  <div class="legal-mention">
+    Quittance délivrée conformément à l'article 21 de la loi n°89-462 du 6 juillet 1989 tendant à améliorer les rapports locatifs.
+    La présente quittance annule tous les reçus qui auraient pu être établis précédemment pour la même période.
+    Document généré par Locataire Cloud.
+  </div>
+
+</body>
+</html>

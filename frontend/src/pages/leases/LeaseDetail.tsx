@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import { inspectionsApi } from '@/api/inspections'
+import { lettersApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LeaseForm } from './LeaseForm'
@@ -118,6 +119,16 @@ export default function LeaseDetail() {
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
           >
             <FileDown size={15} /> PDF bail
+          </button>
+          <button
+            onClick={() => {
+              if (!id || !lease) return
+              const name = lease.tenant?.full_name.replace(/ /g, '_') ?? id
+              lettersApi.downloadAttestationCaf(id, `attestation_caf_${name}_${new Date().getFullYear()}.pdf`)
+            }}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            <FileDown size={15} /> Attestation CAF
           </button>
           {lease.is_active && (
             <button

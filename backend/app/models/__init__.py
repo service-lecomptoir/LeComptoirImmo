@@ -5,5 +5,6 @@ from app.models.unit import Unit
 from app.models.document import Document
 from app.models.lease import Lease
 from app.models.inspection import Inspection
+from app.models.payment import Payment
 
-__all__ = ["User", "Tenant", "Property", "Unit", "Document", "Lease", "Inspection"]
+__all__ = ["User", "Tenant", "Property", "Unit", "Document", "Lease", "Inspection", "Payment"]
