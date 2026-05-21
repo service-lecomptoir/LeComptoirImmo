@@ -45,7 +45,8 @@ class Document(Base, TimestampMixin):
 
     # ── Relation polymorphique ─────────────────────────────────────────────────
     entity_type: Mapped[str] = mapped_column(
-        SAEnum(EntityType, name="entity_type_enum", create_type=True),
+        SAEnum(EntityType, name="entity_type_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         index=True,
     )
@@ -55,7 +56,8 @@ class Document(Base, TimestampMixin):
 
     # ── Type de document ──────────────────────────────────────────────────────
     document_type: Mapped[str] = mapped_column(
-        SAEnum(DocumentType, name="document_type_enum", create_type=True),
+        SAEnum(DocumentType, name="document_type_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=DocumentType.AUTRE,
     )

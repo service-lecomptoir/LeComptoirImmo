@@ -42,7 +42,8 @@ class Unit(Base, TimestampMixin):
     # ── Identification ────────────────────────────────────────────────────────
     unit_ref: Mapped[str] = mapped_column(String(50), nullable=False)
     unit_type: Mapped[str] = mapped_column(
-        SAEnum(UnitType, name="unit_type_enum", create_type=True),
+        SAEnum(UnitType, name="unit_type_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=UnitType.T2,
     )

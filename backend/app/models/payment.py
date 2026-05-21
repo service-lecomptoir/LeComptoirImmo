@@ -76,7 +76,8 @@ class Payment(Base, TimestampMixin):
 
     # ── Statut ────────────────────────────────────────────────────────────────
     status: Mapped[str] = mapped_column(
-        SAEnum(PaymentStatus, name="payment_status_enum", create_type=True),
+        SAEnum(PaymentStatus, name="payment_status_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=PaymentStatus.PENDING,
         index=True,

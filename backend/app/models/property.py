@@ -40,7 +40,8 @@ class Property(Base, TimestampMixin):
 
     # ── Type & propriétaire ───────────────────────────────────────────────────
     property_type: Mapped[str] = mapped_column(
-        SAEnum(PropertyType, name="property_type_enum", create_type=True),
+        SAEnum(PropertyType, name="property_type_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=PropertyType.IMMEUBLE,
     )

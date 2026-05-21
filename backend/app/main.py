@@ -21,17 +21,22 @@ async def lifespan(app: FastAPI):
     """Initialisation au démarrage et nettoyage à l'arrêt."""
     logger.info(f"Démarrage de {settings.APP_NAME} v{settings.APP_VERSION} [{settings.APP_ENV}]")
 
-    # Crée les tables si elles n'existent pas (dev uniquement — en prod, utiliser Alembic)
-    if not settings.is_production:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    # Vérifie la connexion DB (ping)
+    logger.info("Vérification de la connexion PostgreSQL...")
+    from sqlalchemy import text
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+    logger.info("PostgreSQL OK")
 
     # Crée le premier admin si la BDD est vide
+    logger.info("Vérification compte admin...")
     await _create_first_admin()
 
     # Démarre le scheduler de tâches automatiques
+    logger.info("Démarrage du scheduler...")
     start_scheduler()
 
+    logger.info("Application prête ✓")
     yield
 
     stop_scheduler()

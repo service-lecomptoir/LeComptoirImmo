@@ -19,7 +19,8 @@ class User(Base, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     role: Mapped[str] = mapped_column(
-        SAEnum(Role, name="user_role", create_type=True),
+        SAEnum(Role, name="user_role", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=Role.LECTURE,
     )

@@ -50,7 +50,8 @@ class Inspection(Base, TimestampMixin):
 
     # ── Type & date ───────────────────────────────────────────────────────────
     inspection_type: Mapped[str] = mapped_column(
-        SAEnum(InspectionType, name="inspection_type_enum", create_type=True),
+        SAEnum(InspectionType, name="inspection_type_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
     )
     inspection_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -59,7 +60,8 @@ class Inspection(Base, TimestampMixin):
 
     # ── Résultat ──────────────────────────────────────────────────────────────
     overall_condition: Mapped[Optional[str]] = mapped_column(
-        SAEnum(OverallCondition, name="overall_condition_enum", create_type=True),
+        SAEnum(OverallCondition, name="overall_condition_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=True,
     )
     notes: Mapped[Optional[str]] = mapped_column(String(3000), nullable=True)

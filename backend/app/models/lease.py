@@ -58,7 +58,8 @@ class Lease(Base, TimestampMixin):
 
     # ── Type de contrat ───────────────────────────────────────────────────────
     lease_type: Mapped[str] = mapped_column(
-        SAEnum(LeaseType, name="lease_type_enum", create_type=True),
+        SAEnum(LeaseType, name="lease_type_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=LeaseType.VIDE,
     )
@@ -74,7 +75,8 @@ class Lease(Base, TimestampMixin):
     deposit_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
     payment_day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     payment_method: Mapped[str] = mapped_column(
-        SAEnum(PaymentMethod, name="payment_method_enum", create_type=True),
+        SAEnum(PaymentMethod, name="payment_method_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=PaymentMethod.VIREMENT,
     )

@@ -28,7 +28,8 @@ class Tenant(Base, TimestampMixin):
 
     # ── Identité ──────────────────────────────────────────────────────────────
     civility: Mapped[Optional[str]] = mapped_column(
-        SAEnum(Civility, name="civility_enum", create_type=True), nullable=True
+        SAEnum(Civility, name="civility_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]), nullable=True
     )
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)

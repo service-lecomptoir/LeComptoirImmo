@@ -33,12 +33,14 @@ class Notification(Base, TimestampMixin):
 
     # ── Type & contenu ────────────────────────────────────────────────────────
     notification_type: Mapped[str] = mapped_column(
-        SAEnum(NotificationType, name="notification_type_enum", create_type=True),
+        SAEnum(NotificationType, name="notification_type_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         index=True,
     )
     priority: Mapped[str] = mapped_column(
-        SAEnum(NotificationPriority, name="notification_priority_enum", create_type=True),
+        SAEnum(NotificationPriority, name="notification_priority_enum", create_type=False,
+               values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=NotificationPriority.NORMAL,
     )
