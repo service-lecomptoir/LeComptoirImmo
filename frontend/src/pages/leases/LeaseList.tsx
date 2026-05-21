@@ -156,14 +156,13 @@ export default function LeaseList() {
           </tbody>
         </table>
       </div>
-    </div>
 
-    {showForm && (
-      <LeaseForm
-        onClose={() => setShowForm(false)}
-        onSaved={() => { setShowForm(false); fetchLeases(search, filterActive) }}
-      />
-    )}
-  </div>
+      {showForm && (
+        <LeaseForm
+          onClose={() => setShowForm(false)}
+          onSaved={() => { setShowForm(false); fetchLeases(search, filterActive) }}
+        />
+      )}
+    </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal } from '@/components/common/Modal'
@@ -62,7 +62,6 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
     handleSubmit,
     watch,
     setValue,
-    control,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -99,7 +98,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
 
   const selectedPropertyId = watch('property_id')
   const hasGuarantor = watch('has_guarantor')
-  const aplTiersPayant = watch('apl_tiers_payant')
+  watch('apl_tiers_payant')
 
   // Charger biens et locataires
   useEffect(() => {

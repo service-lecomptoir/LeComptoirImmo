@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { CreditCard, Search, Filter, FileDown, Send, RefreshCw } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -7,7 +6,6 @@ import { Modal } from '@/components/common/Modal'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_VARIANTS } from '@/types/payment'
 import type { PaymentListItem, PaymentStatus } from '@/types/payment'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { useForm } from 'react-hook-form'
 
 interface RecordForm {
@@ -18,7 +16,6 @@ interface RecordForm {
 }
 
 export default function PaymentList() {
-  const navigate = useNavigate()
   const today = new Date()
   const [payments, setPayments] = useState<PaymentListItem[]>([])
   const [total, setTotal] = useState(0)

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Users, Building2, CreditCard, AlertTriangle,
-  TrendingUp, Home, FileText, ArrowRight,
+  Users, CreditCard, AlertTriangle,
+  Home, FileText, ArrowRight,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { paymentsApi } from '@/api/payments'
@@ -10,7 +10,6 @@ import { leasesApi } from '@/api/leases'
 import type { DashboardStats } from '@/types/payment'
 import type { LeaseListItem } from '@/types/lease'
 import { StatusBadge } from '@/components/common/StatusBadge'
-import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_VARIANTS } from '@/types/payment'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
