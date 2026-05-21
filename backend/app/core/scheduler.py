@@ -68,6 +68,26 @@ async def _job_generate_monthly_payments() -> None:
             logger.error(f"[Scheduler] generate_monthly_payments error: {exc}")
 
 
+async def _job_generate_monthly_avis() -> None:
+    """1er de chaque mois à 7h30 : génère les avis d'échéances automatiques."""
+    from app.database import AsyncSessionLocal
+    from app.services.avis_echeance_service import AvisEcheanceService
+
+    today = date.today()
+    async with AsyncSessionLocal() as db:
+        try:
+            count = await AvisEcheanceService.generate_monthly_all(
+                db, today.year, today.month
+            )
+            await db.commit()
+            logger.info(
+                f"[Scheduler] {count} avis d'échéance(s) généré(s) pour "
+                f"{today.month}/{today.year}"
+            )
+        except Exception as exc:
+            logger.error(f"[Scheduler] generate_monthly_avis error: {exc}")
+
+
 def start_scheduler() -> None:
     scheduler = get_scheduler()
 
@@ -92,9 +112,16 @@ def start_scheduler() -> None:
         replace_existing=True,
         misfire_grace_time=3600,
     )
+    scheduler.add_job(
+        _job_generate_monthly_avis,
+        CronTrigger(day=1, hour=7, minute=30),
+        id="generate_monthly_avis",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
 
     scheduler.start()
-    logger.info("[Scheduler] Démarré — 3 tâches planifiées")
+    logger.info("[Scheduler] Démarré — 4 tâches planifiées")
 
 
 def stop_scheduler() -> None:

@@ -21,6 +21,7 @@ class User(Base, TimestampMixin):
     role: Mapped[str] = mapped_column(
         SAEnum(Role, name="user_role", create_type=False,
                values_callable=lambda obj: [e.value for e in obj]),
+        # Valeurs actives : admin, gestionnaire, proprietaire, locataire
         nullable=False,
         default=Role.LECTURE,
     )

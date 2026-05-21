@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User } from '@/types/auth'
+import type { User, Role } from '@/types/auth'
 import { authApi } from '@/api/auth'
 
 interface AuthState {
@@ -10,9 +10,15 @@ interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
 
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<string>  // returns redirect path
   logout: () => void
   fetchMe: () => Promise<void>
+}
+
+export function roleHomePath(role: Role | undefined): string {
+  if (role === 'locataire') return '/locataire'
+  if (role === 'proprietaire') return '/proprietaire'
+  return '/dashboard'
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -43,6 +49,8 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           })
+
+          return roleHomePath(user.role)
         } catch (error) {
           set({ isLoading: false })
           throw error
@@ -70,7 +78,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'locataire-auth',
+      name: 'lecomptoirimmo-auth',
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

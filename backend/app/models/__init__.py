@@ -7,5 +7,9 @@ from app.models.lease import Lease
 from app.models.inspection import Inspection
 from app.models.payment import Payment
 from app.models.notification import Notification
+from app.models.avis_echeance import AvisEcheance
 
-__all__ = ["User", "Tenant", "Property", "Unit", "Document", "Lease", "Inspection", "Payment", "Notification"]
+__all__ = [
+    "User", "Tenant", "Property", "Unit", "Document",
+    "Lease", "Inspection", "Payment", "Notification", "AvisEcheance",
+]

@@ -14,19 +14,35 @@ from fastapi import HTTPException, status
 
 
 class Role(str, Enum):
+    ADMIN = "admin"
+    GESTIONNAIRE = "gestionnaire"
+    PROPRIETAIRE = "proprietaire"
+    LOCATAIRE = "locataire"
+    # Legacy (gardés pour compatibilité DB, non utilisés dans la nouvelle archi)
     LECTURE = "lecture"
     COMPTABLE = "comptable"
-    GESTIONNAIRE = "gestionnaire"
-    ADMIN = "admin"
 
 
-# Hiérarchie : chaque rôle inclut les permissions des rôles inférieurs
+# Hiérarchie : admin et gestionnaire ont accès à tout en gestion
+# propriétaire et locataire ont accès limité à leurs propres données
 ROLE_HIERARCHY: dict[Role, Set[Role]] = {
+    Role.ADMIN:        {Role.ADMIN, Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LOCATAIRE,
+                        Role.LECTURE, Role.COMPTABLE},
+    Role.GESTIONNAIRE: {Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LOCATAIRE,
+                        Role.LECTURE, Role.COMPTABLE},
+    Role.PROPRIETAIRE: {Role.PROPRIETAIRE},
+    Role.LOCATAIRE:    {Role.LOCATAIRE},
     Role.LECTURE:      {Role.LECTURE},
     Role.COMPTABLE:    {Role.LECTURE, Role.COMPTABLE},
-    Role.GESTIONNAIRE: {Role.LECTURE, Role.COMPTABLE, Role.GESTIONNAIRE},
-    Role.ADMIN:        {Role.LECTURE, Role.COMPTABLE, Role.GESTIONNAIRE, Role.ADMIN},
 }
+
+def is_manager(role: "Role") -> bool:
+    """Retourne True si le rôle a accès au panneau de gestion complet."""
+    return role in (Role.ADMIN, Role.GESTIONNAIRE)
+
+def is_owner_or_manager(role: "Role") -> bool:
+    """Retourne True si le rôle peut voir des biens immobiliers."""
+    return role in (Role.ADMIN, Role.GESTIONNAIRE, Role.PROPRIETAIRE)
 
 
 def role_has_permission(user_role: Role, required_role: Role) -> bool:

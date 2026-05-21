@@ -1,11 +1,14 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
+from app.core.permissions import Role
 from app.models.user import User
+from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertyUpdate, PropertyResponse, PropertyListItem
 from app.schemas.unit import UnitResponse, UnitListItem
 from app.services.property_service import PropertyService
@@ -14,16 +17,8 @@ from app.services.unit_service import UnitService
 router = APIRouter(prefix="/properties", tags=["Biens immobiliers"])
 
 
-@router.get("", response_model=dict, summary="Liste des biens")
-async def list_properties(
-    search: Optional[str] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
-):
-    properties, total = await PropertyService.list_all(db, search=search, skip=skip, limit=limit)
-
+async def _enrich_properties(db, properties):
+    """Ajoute unit_count et occupied_count à chaque bien."""
     items = []
     for prop in properties:
         units = await UnitService.list_by_property(db, prop.id)
@@ -33,7 +28,34 @@ async def list_properties(
         item_dict["unit_count"] = len(units)
         item_dict["occupied_count"] = occupied
         items.append(item_dict)
+    return items
 
+
+@router.get("", response_model=dict, summary="Liste des biens")
+async def list_properties(
+    search: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    role = Role(current_user.role)
+
+    # Propriétaire : uniquement ses biens
+    if role == Role.PROPRIETAIRE:
+        props = (await db.execute(
+            select(Property).where(Property.owner_user_id == current_user.id)
+        )).scalars().all()
+        items = await _enrich_properties(db, props)
+        return {"items": items, "total": len(items), "skip": 0, "limit": limit}
+
+    # Locataire : aucun bien à afficher directement
+    if role == Role.LOCATAIRE:
+        return {"items": [], "total": 0, "skip": skip, "limit": limit}
+
+    # Gestionnaire / Admin / autres
+    properties, total = await PropertyService.list_all(db, search=search, skip=skip, limit=limit)
+    items = await _enrich_properties(db, properties)
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 

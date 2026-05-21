@@ -7,10 +7,12 @@ interface ProtectedRouteProps {
 }
 
 const ROLE_HIERARCHY: Record<Role, number> = {
-  lecture: 1,
-  comptable: 2,
-  gestionnaire: 3,
-  admin: 4,
+  locataire: 1,
+  proprietaire: 2,
+  lecture: 3,
+  comptable: 4,
+  gestionnaire: 5,
+  admin: 6,
 }
 
 export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {

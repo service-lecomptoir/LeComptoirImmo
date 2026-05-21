@@ -17,14 +17,14 @@ const createUserSchema = z.object({
   full_name: z.string().min(2, 'Nom requis (min 2 caractères)'),
   email: z.string().email('Email invalide'),
   password: z.string().min(8, 'Mot de passe min 8 caractères'),
-  role: z.enum(['lecture', 'comptable', 'gestionnaire', 'admin']),
+  role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'admin', 'lecture', 'comptable']),
 })
 
 const editUserSchema = z.object({
   full_name: z.string().min(2, 'Nom requis'),
   email: z.string().email('Email invalide'),
   is_active: z.boolean(),
-  role: z.enum(['lecture', 'comptable', 'gestionnaire', 'admin']),
+  role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'admin', 'lecture', 'comptable']),
 })
 
 type CreateUserForm = z.infer<typeof createUserSchema>
@@ -33,17 +33,21 @@ type EditUserForm = z.infer<typeof editUserSchema>
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const ROLE_LABELS: Record<Role, string> = {
-  lecture: 'Lecture seule',
-  comptable: 'Comptable',
+  locataire: 'Locataire',
+  proprietaire: 'Propriétaire',
   gestionnaire: 'Gestionnaire',
   admin: 'Administrateur',
+  lecture: 'Lecture seule',
+  comptable: 'Comptable',
 }
 
 const ROLE_COLORS: Record<Role, string> = {
-  lecture: 'bg-gray-100 text-gray-600',
-  comptable: 'bg-blue-100 text-blue-700',
+  locataire: 'bg-teal-100 text-teal-700',
+  proprietaire: 'bg-orange-100 text-orange-700',
   gestionnaire: 'bg-purple-100 text-purple-700',
   admin: 'bg-red-100 text-red-700',
+  lecture: 'bg-gray-100 text-gray-600',
+  comptable: 'bg-blue-100 text-blue-700',
 }
 
 function formatDate(iso: string) {
@@ -93,7 +97,7 @@ export default function AdminUsers() {
   // ── Create form ──
   const createForm = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
-    defaultValues: { role: 'lecture' },
+    defaultValues: { role: 'gestionnaire' },
   })
 
   const handleCreate = async (values: CreateUserForm) => {
@@ -171,7 +175,7 @@ export default function AdminUsers() {
           </div>
         </div>
         <button
-          onClick={() => { setShowCreate(true); setFormError(null); createForm.reset({ role: 'lecture' }) }}
+          onClick={() => { setShowCreate(true); setFormError(null); createForm.reset({ role: 'gestionnaire' }) }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
         >
           <Plus size={16} />

@@ -18,7 +18,7 @@ export default function Login() {
   const { login, isLoading } = useAuthStore()
   const [error, setError] = useState<string | null>(null)
 
-  const from = (location.state as any)?.from?.pathname || '/dashboard'
+  const locationFrom = (location.state as any)?.from?.pathname
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -27,8 +27,10 @@ export default function Login() {
   const onSubmit = async (data: LoginForm) => {
     setError(null)
     try {
-      await login(data.email, data.password)
-      navigate(from, { replace: true })
+      const rolePath = await login(data.email, data.password)
+      // Si l'utilisateur était redirigé depuis une route protégée, on y revient.
+      // Sinon on utilise la page d'accueil selon son rôle.
+      navigate(locationFrom ?? rolePath, { replace: true })
     } catch (err: any) {
       const msg = err?.response?.data?.detail || 'Erreur de connexion'
       setError(msg)

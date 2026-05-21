@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
+import { useAuthStore } from '@/store/authStore'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import TenantList from '@/pages/tenants/TenantList'
@@ -13,6 +14,25 @@ import LeaseDetail from '@/pages/leases/LeaseDetail'
 import PaymentList from '@/pages/payments/PaymentList'
 import NotificationList from '@/pages/notifications/NotificationList'
 import AdminUsers from '@/pages/admin/AdminUsers'
+import AvisEcheanceList from '@/pages/avis-echeances/AvisEcheanceList'
+// Portail Propriétaire
+import ProprietaireDashboard from '@/pages/proprietaire/ProprietaireDashboard'
+import ProprietaireBiens from '@/pages/proprietaire/ProprietaireBiens'
+import ProprietaireLocataires from '@/pages/proprietaire/ProprietaireLocataires'
+import ProprietaireRevenus from '@/pages/proprietaire/ProprietaireRevenus'
+// Portail Locataire
+import LocataireDashboard from '@/pages/locataire/LocataireDashboard'
+import LocataireAvis from '@/pages/locataire/LocataireAvis'
+import LocatairePaiements from '@/pages/locataire/LocatairePaiements'
+import LocataireDocuments from '@/pages/locataire/LocataireDocuments'
+
+// Redirection selon le rôle
+function RoleBasedRedirect() {
+  const { user } = useAuthStore()
+  if (user?.role === 'locataire') return <Navigate to="/locataire" replace />
+  if (user?.role === 'proprietaire') return <Navigate to="/proprietaire" replace />
+  return <Navigate to="/dashboard" replace />
+}
 
 // Layout principal avec sidebar
 function AppLayout() {
@@ -38,7 +58,10 @@ export const router = createBrowserRouter([
     path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      // Redirection intelligente à la racine
+      { index: true, element: <RoleBasedRedirect /> },
+
+      // ── Gestionnaire / Admin ─────────────────────────────────────
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'tenants', element: <TenantList /> },
       { path: 'tenants/:id', element: <TenantDetail /> },
@@ -47,8 +70,23 @@ export const router = createBrowserRouter([
       { path: 'leases', element: <LeaseList /> },
       { path: 'leases/:id', element: <LeaseDetail /> },
       { path: 'payments', element: <PaymentList /> },
+      { path: 'avis-echeances', element: <AvisEcheanceList /> },
       { path: 'notifications', element: <NotificationList /> },
       { path: 'admin', element: <AdminUsers /> },
+
+      // ── Portail Propriétaire ──────────────────────────────────────
+      { path: 'proprietaire', element: <ProprietaireDashboard /> },
+      { path: 'proprietaire/biens', element: <ProprietaireBiens /> },
+      { path: 'proprietaire/locataires', element: <ProprietaireLocataires /> },
+      { path: 'proprietaire/revenus', element: <ProprietaireRevenus /> },
+
+      // ── Portail Locataire ─────────────────────────────────────────
+      { path: 'locataire', element: <LocataireDashboard /> },
+      { path: 'locataire/avis-echeances', element: <LocataireAvis /> },
+      { path: 'locataire/paiements', element: <LocatairePaiements /> },
+      { path: 'locataire/documents', element: <LocataireDocuments /> },
+
+      // ── Pages communes ────────────────────────────────────────────
       {
         path: 'unauthorized',
         element: (
@@ -62,5 +100,5 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  { path: '*', element: <Navigate to="/dashboard" replace /> },
+  { path: '*', element: <RoleBasedRedirect /> },
 ])

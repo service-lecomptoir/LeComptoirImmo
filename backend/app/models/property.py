@@ -54,6 +54,13 @@ class Property(Base, TimestampMixin):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     year_built: Mapped[Optional[int]] = mapped_column(nullable=True)
 
+    # ── Propriétaire connecté ─────────────────────────────────────────────────
+    # Lien vers le compte utilisateur du propriétaire (rôle "proprietaire")
+    owner_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True, index=True
+    )
+
     # ── Audit ─────────────────────────────────────────────────────────────────
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True

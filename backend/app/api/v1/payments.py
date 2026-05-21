@@ -22,7 +22,9 @@ from app.schemas.payment import (
 )
 from app.services.payment_service import PaymentService
 from app.services.pdf_service import render_template, html_to_pdf
-from app.api.v1.auth import get_current_user
+from app.api.deps import get_current_user as _get_current_user
+# Allow import from auth for backward compatibility
+get_current_user = _get_current_user
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
@@ -67,8 +69,60 @@ async def list_payments(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(get_current_user),
 ):
+    """
+    Liste les paiements.
+    - Gestionnaire/Admin : tous les paiements
+    - Propriétaire : paiements de ses biens
+    - Locataire : uniquement ses paiements
+    """
+    from sqlalchemy import select
+    from app.models.tenant import Tenant
+    from app.models.property import Property
+    from app.models.unit import Unit
+    from app.models.lease import Lease
+
+    role = Role(current_user.role)
+
+    # ── Locataire ─────────────────────────────────────────────────────────────
+    if role == Role.LOCATAIRE:
+        t = (await db.execute(
+            select(Tenant).where(Tenant.user_id == current_user.id)
+        )).scalar_one_or_none()
+        if not t:
+            return PaymentListResponse(items=[], total=0, skip=skip, limit=limit)
+        tenant_id = t.id
+
+    # ── Propriétaire ──────────────────────────────────────────────────────────
+    elif role == Role.PROPRIETAIRE:
+        props = (await db.execute(
+            select(Property).where(Property.owner_user_id == current_user.id)
+        )).scalars().all()
+        prop_ids = [p.id for p in props]
+        if not prop_ids:
+            return PaymentListResponse(items=[], total=0, skip=skip, limit=limit)
+        units = (await db.execute(
+            select(Unit).where(Unit.property_id.in_(prop_ids))
+        )).scalars().all()
+        unit_ids = [u.id for u in units]
+        leases = (await db.execute(
+            select(Lease).where(Lease.unit_id.in_(unit_ids))
+        )).scalars().all()
+        lease_ids = [l.id for l in leases]
+        if not lease_ids:
+            return PaymentListResponse(items=[], total=0, skip=skip, limit=limit)
+        # Pour chaque bail du proprio, récupérer les paiements
+        all_items = []
+        for lid in lease_ids:
+            page, _ = await PaymentService.list_all(
+                db, lease_id=lid, status=status, year=year, month=month,
+                skip=0, limit=200
+            )
+            all_items.extend(page)
+        list_items = [PaymentService.to_list_item(p) for p in all_items]
+        return PaymentListResponse(items=list_items, total=len(list_items), skip=0, limit=limit)
+
     items, total = await PaymentService.list_all(
         db,
         search=search,
