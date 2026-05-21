@@ -73,7 +73,7 @@ async def _create_first_admin() -> None:
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="API de gestion locative — Locataire Cloud",
+    description="API de gestion locative — LeComptoirImmo",
     docs_url="/api/docs" if not settings.is_production else None,
     redoc_url="/api/redoc" if not settings.is_production else None,
     openapi_url="/api/openapi.json" if not settings.is_production else None,

@@ -29,10 +29,10 @@ export function Sidebar() {
       <div className="px-6 py-5 border-b border-gray-700">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">L</span>
+            <span className="text-white font-bold text-xs">LC</span>
           </div>
           <div>
-            <p className="text-white font-semibold text-sm">Locataire Cloud</p>
+            <p className="text-white font-semibold text-sm">LeComptoirImmo</p>
             <p className="text-gray-400 text-xs">Gestion locative</p>
           </div>
         </div>

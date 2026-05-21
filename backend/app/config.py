@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     # ── Application ──────────────────────────────────────────────────────────
     APP_ENV: str = "development"
-    APP_NAME: str = "Locataire Cloud"
+    APP_NAME: str = "LeComptoirImmo"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
@@ -38,9 +38,9 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     # ── First Admin ──────────────────────────────────────────────────────────
-    FIRST_ADMIN_EMAIL: str = "admin@locataire-cloud.fr"
+    FIRST_ADMIN_EMAIL: str = "admin@lecomptoirimmo.fr"
     FIRST_ADMIN_PASSWORD: str = "changeme"
-    FIRST_ADMIN_NAME: str = "Administrateur"
+    FIRST_ADMIN_NAME: str = "Administrateur LeComptoirImmo"
 
     @property
     def is_production(self) -> bool:

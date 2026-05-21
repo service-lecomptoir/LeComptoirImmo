@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════════════════
-# deploy.sh — Script de déploiement Locataire Cloud sur VPS
+# deploy.sh — Script de déploiement LeComptoirImmo sur VPS
 #
 # Usage (sur le VPS) :
 #   chmod +x deploy.sh
@@ -55,7 +55,7 @@ setup_ssl() {
 
 # ── Premier déploiement ───────────────────────────────────────────────────────
 first_deploy() {
-    info "=== Premier déploiement Locataire Cloud ==="
+    info "=== Premier déploiement LeComptoirImmo ==="
 
     check_requirements
 
@@ -83,7 +83,7 @@ first_deploy() {
 
 # ── Mise à jour ───────────────────────────────────────────────────────────────
 update_deploy() {
-    info "=== Mise à jour Locataire Cloud ==="
+    info "=== Mise à jour LeComptoirImmo ==="
 
     check_requirements
 
@@ -104,7 +104,7 @@ update_deploy() {
 
 # ── Statut ────────────────────────────────────────────────────────────────────
 show_status() {
-    info "=== Statut Locataire Cloud ==="
+    info "=== Statut LeComptoirImmo ==="
     ${COMPOSE} ps
     echo ""
     info "Health check backend :"

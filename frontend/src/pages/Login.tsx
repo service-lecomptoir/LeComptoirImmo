@@ -41,9 +41,9 @@ export default function Login() {
         {/* Logo / Titre */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
-            <span className="text-white text-2xl font-bold">L</span>
+            <span className="text-white text-xl font-bold">LC</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Locataire Cloud</h1>
+          <h1 className="text-2xl font-bold text-gray-900">LeComptoirImmo</h1>
           <p className="text-gray-500 text-sm mt-1">Gestion locative professionnelle</p>
         </div>
 
@@ -67,7 +67,7 @@ export default function Login() {
                 type="email"
                 autoComplete="email"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="admin@locataire-cloud.fr"
+                placeholder="admin@lecomptoirimmo.fr"
               />
               {errors.email && (
                 <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
