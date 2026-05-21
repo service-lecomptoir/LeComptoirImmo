@@ -1,0 +1,104 @@
+"""
+Scheduler APScheduler — tâches planifiées automatiques.
+"""
+import logging
+from datetime import date
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+logger = logging.getLogger(__name__)
+_scheduler: AsyncIOScheduler | None = None
+
+
+def get_scheduler() -> AsyncIOScheduler:
+    global _scheduler
+    if _scheduler is None:
+        _scheduler = AsyncIOScheduler(timezone="Europe/Paris")
+    return _scheduler
+
+
+async def _job_update_late_payments() -> None:
+    """Chaque jour à 8h : passe les paiements en retard."""
+    from app.database import AsyncSessionLocal
+    from app.services.payment_service import PaymentService
+
+    async with AsyncSessionLocal() as db:
+        try:
+            count = await PaymentService.update_late_statuses(db)
+            await db.commit()
+            if count:
+                logger.info(f"[Scheduler] {count} paiement(s) passé(s) en retard")
+        except Exception as exc:
+            logger.error(f"[Scheduler] update_late_payments error: {exc}")
+
+
+async def _job_generate_alerts() -> None:
+    """Chaque jour à 9h : génère alertes loyers retard + baux expirant."""
+    from app.database import AsyncSessionLocal
+    from app.services.notification_service import NotificationService
+
+    async with AsyncSessionLocal() as db:
+        try:
+            late = await NotificationService.generate_late_payment_alerts(db)
+            expiring = await NotificationService.generate_expiring_lease_alerts(db)
+            await db.commit()
+            if late or expiring:
+                logger.info(
+                    f"[Scheduler] Alertes générées — retard:{late} expiration:{expiring}"
+                )
+        except Exception as exc:
+            logger.error(f"[Scheduler] generate_alerts error: {exc}")
+
+
+async def _job_generate_monthly_payments() -> None:
+    """1er de chaque mois à 7h : génère les loyers du mois."""
+    from app.database import AsyncSessionLocal
+    from app.services.payment_service import PaymentService
+
+    today = date.today()
+    async with AsyncSessionLocal() as db:
+        try:
+            count = await PaymentService.generate_monthly(db, today.year, today.month)
+            await db.commit()
+            logger.info(
+                f"[Scheduler] {count} loyer(s) généré(s) pour {today.month}/{today.year}"
+            )
+        except Exception as exc:
+            logger.error(f"[Scheduler] generate_monthly_payments error: {exc}")
+
+
+def start_scheduler() -> None:
+    scheduler = get_scheduler()
+
+    scheduler.add_job(
+        _job_update_late_payments,
+        CronTrigger(hour=8, minute=0),
+        id="update_late_payments",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        _job_generate_alerts,
+        CronTrigger(hour=9, minute=0),
+        id="generate_alerts",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        _job_generate_monthly_payments,
+        CronTrigger(day=1, hour=7, minute=0),
+        id="generate_monthly_payments",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
+    scheduler.start()
+    logger.info("[Scheduler] Démarré — 3 tâches planifiées")
+
+
+def stop_scheduler() -> None:
+    scheduler = get_scheduler()
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        logger.info("[Scheduler] Arrêté")

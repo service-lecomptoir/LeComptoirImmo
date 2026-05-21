@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, users, tenants, properties, units, documents, leases, inspections, payments, letters
+from app.api.v1 import auth, users, tenants, properties, units, documents, leases, inspections, payments, letters, notifications
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -13,3 +13,4 @@ api_router.include_router(leases.router)
 api_router.include_router(inspections.router)
 api_router.include_router(payments.router)
 api_router.include_router(letters.router)
+api_router.include_router(notifications.router)

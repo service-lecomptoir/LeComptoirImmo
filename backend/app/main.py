@@ -9,6 +9,7 @@ from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
 from app.api.v1.router import api_router
 from app.core.exceptions import AppException, app_exception_handler, unhandled_exception_handler
+from app.core.scheduler import start_scheduler, stop_scheduler
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -28,8 +29,12 @@ async def lifespan(app: FastAPI):
     # Crée le premier admin si la BDD est vide
     await _create_first_admin()
 
+    # Démarre le scheduler de tâches automatiques
+    start_scheduler()
+
     yield
 
+    stop_scheduler()
     logger.info("Arrêt de l'application")
     await engine.dispose()
 

@@ -11,6 +11,8 @@ import PropertyDetail from '@/pages/properties/PropertyDetail'
 import LeaseList from '@/pages/leases/LeaseList'
 import LeaseDetail from '@/pages/leases/LeaseDetail'
 import PaymentList from '@/pages/payments/PaymentList'
+import NotificationList from '@/pages/notifications/NotificationList'
+import AdminUsers from '@/pages/admin/AdminUsers'
 
 // Layout principal avec sidebar
 function AppLayout() {
@@ -45,7 +47,8 @@ export const router = createBrowserRouter([
       { path: 'leases', element: <LeaseList /> },
       { path: 'leases/:id', element: <LeaseDetail /> },
       { path: 'payments', element: <PaymentList /> },
-      // Les autres routes seront ajoutées par phase
+      { path: 'notifications', element: <NotificationList /> },
+      { path: 'admin', element: <AdminUsers /> },
       {
         path: 'unauthorized',
         element: (
