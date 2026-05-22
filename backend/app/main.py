@@ -46,6 +46,8 @@ async def lifespan(app: FastAPI):
 
 async def _seed_default_users() -> None:
     """Crée ou resynchronise les mots de passe des comptes de démonstration."""
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
     from sqlalchemy import select
     from app.models.user import User
     from app.services.user_service import UserService
@@ -80,6 +82,9 @@ async def _seed_default_users() -> None:
         ),
     ]
 
+    loop = asyncio.get_event_loop()
+    executor = ThreadPoolExecutor(max_workers=1)
+
     async with AsyncSessionLocal() as db:
         created, updated = [], []
         for user_data in default_users:
@@ -88,10 +93,20 @@ async def _seed_default_users() -> None:
             if existing is None:
                 await UserService.create(db, user_data)
                 created.append(user_data.email)
-            elif not verify_password(user_data.password, existing.hashed_password):
-                existing.hashed_password = hash_password(user_data.password)
-                updated.append(user_data.email)
+            else:
+                # Bcrypt est synchrone et CPU-intensif — exécuter dans un thread
+                # pour ne pas bloquer l'event loop et éviter le timeout asyncpg
+                pwd_ok = await loop.run_in_executor(
+                    executor, verify_password, user_data.password, existing.hashed_password
+                )
+                if not pwd_ok:
+                    new_hash = await loop.run_in_executor(
+                        executor, hash_password, user_data.password
+                    )
+                    existing.hashed_password = new_hash
+                    updated.append(user_data.email)
         await db.commit()
+        executor.shutdown(wait=False)
         for email in created:
             logger.info(f"Compte créé : {email}")
         for email in updated:
