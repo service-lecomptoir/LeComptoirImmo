@@ -28,9 +28,9 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("SELECT 1"))
     logger.info("PostgreSQL OK")
 
-    # Crée le premier admin si la BDD est vide
-    logger.info("Vérification compte admin...")
-    await _create_first_admin()
+    # Crée les comptes de démonstration s'ils sont absents
+    logger.info("Vérification des comptes par défaut...")
+    await _seed_default_users()
 
     # Démarre le scheduler de tâches automatiques
     logger.info("Démarrage du scheduler...")
@@ -44,29 +44,52 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
-async def _create_first_admin() -> None:
-    """Crée un compte admin par défaut si aucun utilisateur n'existe."""
+async def _seed_default_users() -> None:
+    """Crée les comptes de démonstration s'ils n'existent pas encore."""
     from sqlalchemy import select
     from app.models.user import User
     from app.services.user_service import UserService
     from app.schemas.user import UserCreate
     from app.core.permissions import Role
 
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(select(User))
-        if result.first() is not None:
-            return  # Des utilisateurs existent déjà
-
-        logger.info("Création du compte administrateur par défaut...")
-        user_data = UserCreate(
+    default_users = [
+        UserCreate(
             email=settings.FIRST_ADMIN_EMAIL,
             password=settings.FIRST_ADMIN_PASSWORD,
             full_name=settings.FIRST_ADMIN_NAME,
             role=Role.ADMIN,
-        )
-        await UserService.create(db, user_data)
-        await db.commit()
-        logger.info(f"Admin créé : {settings.FIRST_ADMIN_EMAIL}")
+        ),
+        UserCreate(
+            email="gestionnaire@cabinet.fr",
+            password="Gestionnaire1!",
+            full_name="Gestionnaire Demo",
+            role=Role.GESTIONNAIRE,
+        ),
+        UserCreate(
+            email="proprietaire@email.fr",
+            password="Proprietaire1!",
+            full_name="Propriétaire Demo",
+            role=Role.PROPRIETAIRE,
+        ),
+        UserCreate(
+            email="locataire@email.fr",
+            password="Locataire1!",
+            full_name="Locataire Demo",
+            role=Role.LOCATAIRE,
+        ),
+    ]
+
+    async with AsyncSessionLocal() as db:
+        created = []
+        for user_data in default_users:
+            result = await db.execute(select(User).where(User.email == user_data.email))
+            if result.scalar_one_or_none() is None:
+                await UserService.create(db, user_data)
+                created.append(user_data.email)
+        if created:
+            await db.commit()
+            for email in created:
+                logger.info(f"Compte créé : {email}")
 
 
 # ── Application ───────────────────────────────────────────────────────────────
