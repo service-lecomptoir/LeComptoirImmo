@@ -9,10 +9,12 @@ interface AuthState {
   refreshToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
+  isInitializing: boolean
 
   login: (email: string, password: string) => Promise<string>  // returns redirect path
   logout: () => void
   fetchMe: () => Promise<void>
+  initialize: () => Promise<void>
 }
 
 export function roleHomePath(role: Role | undefined): string {
@@ -29,6 +31,7 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
+      isInitializing: true,
 
       login: async (email, password) => {
         set({ isLoading: true })
@@ -75,6 +78,14 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           get().logout()
         }
+      },
+
+      initialize: async () => {
+        const { accessToken, fetchMe } = get()
+        if (accessToken) {
+          await fetchMe()
+        }
+        set({ isInitializing: false })
       },
     }),
     {
