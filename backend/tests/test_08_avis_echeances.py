@@ -21,7 +21,7 @@ async def _setup_active_lease(db):
 
     unit = Unit(
         property_id=prop.id, unit_ref="AV-01",
-        unit_type="appartement", rent_amount=700.00, charges_amount=90.00,
+        unit_type="T2", base_rent=700.00, charges_amount=90.00,
     )
     db.add(unit)
     await db.flush()
@@ -156,7 +156,7 @@ class TestAvisAccessControl:
 
         unit = Unit(
             property_id=prop.id, unit_ref="LA-01",
-            unit_type="appartement", rent_amount=900.00, charges_amount=100.00,
+            unit_type="T2", base_rent=900.00, charges_amount=100.00,
         )
         db.add(unit)
         await db.flush()

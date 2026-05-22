@@ -166,6 +166,83 @@ async def get_payment(
     return await PaymentService.get_by_id(db, payment_id, load_relations=True)
 
 
+@router.get("/locataire/current", summary="Paiement du mois courant (locataire)")
+async def locataire_current_payment(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from datetime import date
+    from sqlalchemy import select
+    from app.models.tenant import Tenant
+    from app.models.payment import Payment as PaymentModel
+
+    tenant_res = await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    tenant = tenant_res.scalar_one_or_none()
+    if not tenant:
+        return {"payment": None, "tenant": None}
+
+    from sqlalchemy.orm import selectinload
+    from app.models.lease import Lease
+    result = await db.execute(
+        select(PaymentModel)
+        .options(
+            selectinload(PaymentModel.tenant),
+            selectinload(PaymentModel.unit),
+            selectinload(PaymentModel.lease).selectinload(Lease.parent_property),
+        )
+        .where(PaymentModel.tenant_id == tenant.id)
+        .where(PaymentModel.status.in_(["pending", "partial", "late"]))
+        .order_by(PaymentModel.period_year.desc(), PaymentModel.period_month.desc())
+        .limit(1)
+    )
+    payment = result.scalar_one_or_none()
+    return {
+        "payment": PaymentService.to_list_item(payment).__dict__ if payment else None,
+        "tenant_name": tenant.full_name,
+    }
+
+
+@router.post("/locataire/declare", status_code=201, summary="Déclarer un paiement (locataire)")
+async def locataire_declare_payment(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from sqlalchemy import select
+    from app.models.tenant import Tenant
+    from app.models.notification import Notification, NotificationType, NotificationPriority
+    from app.schemas.notification import NotificationCreate
+    from app.services.notification_service import NotificationService
+
+    tenant_res = await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    tenant = tenant_res.scalar_one_or_none()
+    if not tenant:
+        from app.core.exceptions import BadRequestException
+        raise BadRequestException("Profil locataire introuvable")
+
+    method_labels = {
+        "carte": "Carte bancaire",
+        "virement": "Virement bancaire",
+        "prelevement": "Prélèvement automatique",
+        "cheque": "Chèque",
+        "especes": "Espèces",
+    }
+    method = data.get("method", "virement")
+    amount = data.get("amount", 0)
+    label = method_labels.get(method, method)
+
+    notif = NotificationCreate(
+        title=f"Déclaration de paiement — {tenant.full_name}",
+        message=f"{tenant.full_name} a déclaré un paiement de {amount} € par {label}. Veuillez valider le règlement.",
+        notification_type=NotificationType.PAIEMENT_RECU,
+        priority=NotificationPriority.HIGH,
+        user_id=None,
+    )
+    await NotificationService.create(db, notif)
+    await db.commit()
+    return {"status": "declared", "method": method}
+
+
 @router.post("/{payment_id}/record", response_model=PaymentResponse)
 async def record_payment(
     payment_id: uuid.UUID,

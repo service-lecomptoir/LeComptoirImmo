@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff, Mail, Lock, ChevronRight } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, roleHomePath } from '@/store/authStore'
 
 type AccountType = 'gestionnaire' | 'proprietaire' | 'locataire'
 
@@ -56,6 +56,12 @@ const loginSchema = z.object({
 })
 
 type LoginForm = z.infer<typeof loginSchema>
+
+// Hauteurs des colonnes du bâtiment + états fenêtres — calculés une seule fois au module load
+const BUILDING_HEIGHTS = [32, 48, 40, 56, 36, 44, 28]
+const BUILDING_WINDOWS = BUILDING_HEIGHTS.map(h =>
+  Array.from({ length: Math.floor(h / 16) * 2 }, () => Math.random() > 0.4)
+)
 
 // ── Panneau gauche — branding ─────────────────────────────────────────────────
 const BRAND_CONTENT: Record<AccountType, { title: string; desc: string; features: string[] }> = {
@@ -113,7 +119,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
       <div className="relative z-10 px-12 py-8">
         {/* Illustration immeuble stylisée */}
         <div className="mb-10 flex items-end gap-1.5" aria-hidden="true">
-          {[32, 48, 40, 56, 36, 44, 28].map((h, i) => (
+          {BUILDING_HEIGHTS.map((h, i) => (
             <div
               key={i}
               className="rounded-t flex-1 opacity-80"
@@ -124,11 +130,10 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
                   : 'rgba(255,255,255,0.15)',
               }}
             >
-              {/* Fenêtres */}
               <div className="grid grid-cols-2 gap-0.5 p-1 mt-1">
-                {Array.from({ length: Math.floor(h / 16) * 2 }).map((_, j) => (
+                {BUILDING_WINDOWS[i].map((lit, j) => (
                   <div key={j} className="h-1.5 rounded-sm"
-                       style={{ background: Math.random() > 0.4 ? 'rgba(255,220,100,0.6)' : 'rgba(255,255,255,0.1)' }} />
+                       style={{ background: lit ? 'rgba(255,220,100,0.6)' : 'rgba(255,255,255,0.1)' }} />
                 ))}
               </div>
             </div>
@@ -173,17 +178,19 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
 // ── Panneau droit — formulaire ────────────────────────────────────────────────
 export default function Login() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const { login, isLoading } = useAuthStore()
+  const { login, isLoading, isAuthenticated, user } = useAuthStore()
+
+  // Déjà connecté → redirect immédiat vers la page d'accueil du rôle
+  if (isAuthenticated && user) {
+    return <Navigate to={roleHomePath(user.role)} replace />
+  }
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [accountType, setAccountType] = useState<AccountType>('gestionnaire')
 
   const activeType = ACCOUNT_TYPES.find(t => t.id === accountType)!
 
-  const locationFrom = (location.state as any)?.from?.pathname
-
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   })
 
@@ -191,7 +198,7 @@ export default function Login() {
     setError(null)
     try {
       const rolePath = await login(data.email, data.password)
-      navigate(locationFrom ?? rolePath, { replace: true })
+      navigate(rolePath, { replace: true })
     } catch (err: any) {
       const msg = err?.response?.data?.detail || 'Email ou mot de passe incorrect'
       setError(msg)
@@ -243,7 +250,7 @@ export default function Login() {
                   <button
                     key={type.id}
                     type="button"
-                    onClick={() => { setAccountType(type.id); setError(null) }}
+                    onClick={() => { setAccountType(type.id); setError(null); reset({ email: '', password: '' }) }}
                     className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl transition-all text-center"
                     style={{
                       border: isActive

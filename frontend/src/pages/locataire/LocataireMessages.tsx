@@ -1,0 +1,298 @@
+import { useState, useEffect } from 'react'
+import { MessageSquare, Plus, Clock, CheckCircle, AlertCircle, XCircle, Send } from 'lucide-react'
+import { ticketsApi, type Ticket } from '@/api/tickets'
+import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
+  open:        { label: 'Ouvert',       color: '#D97706', bg: '#FEF3C7', icon: Clock },
+  in_progress: { label: 'En cours',     color: '#2563EB', bg: '#DBEAFE', icon: AlertCircle },
+  resolved:    { label: 'Résolu',       color: '#059669', bg: '#D1FAE5', icon: CheckCircle },
+  closed:      { label: 'Clôturé',      color: '#6B7280', bg: '#F3F4F6', icon: XCircle },
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  incident: 'Incident',
+  question: 'Question',
+  demande:  'Demande',
+  autre:    'Autre',
+}
+
+const PRIORITY_LABELS: Record<string, { label: string; color: string }> = {
+  low:    { label: 'Basse',   color: '#6B7280' },
+  medium: { label: 'Normale', color: '#2563EB' },
+  high:   { label: 'Haute',   color: '#D97706' },
+  urgent: { label: 'Urgent',  color: '#DC2626' },
+}
+
+export default function LocataireMessages() {
+  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [selected, setSelected] = useState<Ticket | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [reply, setReply] = useState('')
+  const [isSending, setIsSending] = useState(false)
+
+  // Nouveau ticket
+  const [form, setForm] = useState({ title: '', description: '', category: 'incident', priority: 'medium' })
+  const [isCreating, setIsCreating] = useState(false)
+
+  const load = async () => {
+    setIsLoading(true)
+    try {
+      const res = await ticketsApi.mine()
+      setTickets(res.data)
+    } catch { /* */ }
+    finally { setIsLoading(false) }
+  }
+
+  useEffect(() => { load() }, [])
+
+  const loadDetail = async (id: string) => {
+    try {
+      const res = await ticketsApi.get(id)
+      setSelected(res.data)
+    } catch { /* */ }
+  }
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.title || !form.description) return
+    setIsCreating(true)
+    try {
+      await ticketsApi.create(form)
+      setShowForm(false)
+      setForm({ title: '', description: '', category: 'incident', priority: 'medium' })
+      await load()
+    } finally { setIsCreating(false) }
+  }
+
+  const handleReply = async () => {
+    if (!reply.trim() || !selected) return
+    setIsSending(true)
+    try {
+      await ticketsApi.addMessage(selected.id, reply)
+      setReply('')
+      await loadDetail(selected.id)
+    } finally { setIsSending(false) }
+  }
+
+  return (
+    <div className="p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Mes messages</h1>
+          <p className="text-gray-500 text-sm mt-1">Communiquez avec votre gestionnaire</p>
+        </div>
+        <button
+          onClick={() => { setShowForm(true); setSelected(null) }}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
+          style={{ background: '#0D2F5C' }}
+        >
+          <Plus size={16} />
+          Nouveau message
+        </button>
+      </div>
+
+      {/* Formulaire nouveau ticket */}
+      {showForm && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Nouveau message</h2>
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                <select
+                  value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="incident">Incident</option>
+                  <option value="question">Question</option>
+                  <option value="demande">Demande</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priorité</label>
+                <select
+                  value={form.priority}
+                  onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="low">Basse</option>
+                  <option value="medium">Normale</option>
+                  <option value="high">Haute</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sujet</label>
+              <input
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="Résumez votre demande en quelques mots…"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Décrivez votre problème ou demande en détail…"
+                rows={4}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none"
+                required
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button type="button" onClick={() => setShowForm(false)}
+                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={isCreating}
+                className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60"
+                style={{ background: '#0D2F5C' }}>
+                {isCreating ? 'Envoi…' : 'Envoyer'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Liste des tickets */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {isLoading ? (
+              <div className="py-12 text-center text-gray-400 text-sm">Chargement…</div>
+            ) : tickets.length === 0 ? (
+              <div className="py-12 text-center">
+                <MessageSquare size={32} className="mx-auto mb-2 text-gray-300" />
+                <p className="text-sm text-gray-400">Aucun message</p>
+                <p className="text-xs text-gray-400 mt-1">Cliquez sur "Nouveau message" pour en créer un</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {tickets.map(ticket => {
+                  const sc = STATUS_CONFIG[ticket.status] ?? STATUS_CONFIG.open
+                  const Icon = sc.icon
+                  return (
+                    <li key={ticket.id}>
+                      <button
+                        onClick={() => loadDetail(ticket.id)}
+                        className={`w-full text-left px-4 py-3.5 hover:bg-gray-50 transition-colors ${selected?.id === ticket.id ? 'bg-blue-50' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-900 truncate flex-1">{ticket.title}</p>
+                          <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
+                            style={{ color: sc.color, background: sc.bg }}>
+                            <Icon size={10} />
+                            {sc.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-400">{CATEGORY_LABELS[ticket.category]}</span>
+                          <span className="text-gray-300">·</span>
+                          <span className="text-xs text-gray-400">
+                            {format(new Date(ticket.created_at), 'd MMM yyyy', { locale: fr })}
+                          </span>
+                        </div>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Détail / Conversation */}
+        <div className="lg:col-span-2">
+          {!selected ? (
+            <div className="bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center h-64">
+              <MessageSquare size={36} className="text-gray-200 mb-3" />
+              <p className="text-sm text-gray-400">Sélectionnez un message pour lire la conversation</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 flex flex-col" style={{ minHeight: '400px' }}>
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-gray-100">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{selected.title}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-gray-500">{CATEGORY_LABELS[selected.category]}</span>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-xs font-medium" style={{ color: PRIORITY_LABELS[selected.priority]?.color }}>
+                        {PRIORITY_LABELS[selected.priority]?.label}
+                      </span>
+                    </div>
+                  </div>
+                  {(() => {
+                    const sc = STATUS_CONFIG[selected.status] ?? STATUS_CONFIG.open
+                    const Icon = sc.icon
+                    return (
+                      <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full"
+                        style={{ color: sc.color, background: sc.bg }}>
+                        <Icon size={11} />
+                        {sc.label}
+                      </span>
+                    )
+                  })()}
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                {(selected.messages ?? []).map(msg => {
+                  const isMe = msg.author_role === 'locataire'
+                  return (
+                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] rounded-xl px-4 py-3 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
+                        {!isMe && (
+                          <p className="text-xs font-semibold mb-1 text-gray-500">{msg.author_name ?? 'Gestionnaire'}</p>
+                        )}
+                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        <p className={`text-xs mt-1.5 ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
+                          {format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm')}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Réponse (seulement si ticket pas clôturé) */}
+              {selected.status !== 'closed' && (
+                <div className="px-5 py-4 border-t border-gray-100">
+                  <div className="flex gap-3">
+                    <textarea
+                      value={reply}
+                      onChange={e => setReply(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply() } }}
+                      placeholder="Votre réponse… (Entrée pour envoyer)"
+                      rows={2}
+                      className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-blue-400"
+                    />
+                    <button
+                      onClick={handleReply}
+                      disabled={isSending || !reply.trim()}
+                      className="px-4 rounded-xl text-white disabled:opacity-40 flex items-center"
+                      style={{ background: '#0D2F5C' }}
+                    >
+                      <Send size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

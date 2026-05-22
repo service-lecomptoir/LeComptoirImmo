@@ -1,8 +1,7 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, roleHomePath } from '@/store/authStore'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import TenantList from '@/pages/tenants/TenantList'
@@ -27,22 +26,35 @@ import LocataireDashboard from '@/pages/locataire/LocataireDashboard'
 import LocataireAvis from '@/pages/locataire/LocataireAvis'
 import LocatairePaiements from '@/pages/locataire/LocatairePaiements'
 import LocataireDocuments from '@/pages/locataire/LocataireDocuments'
+import LocataireMessages from '@/pages/locataire/LocataireMessages'
+import LocatairePayer from '@/pages/locataire/LocatairePayer'
+import IncidentList from '@/pages/incidents/IncidentList'
+import EntretienList from '@/pages/entretien/EntretienList'
+import ProprietaireEntretien from '@/pages/proprietaire/ProprietaireEntretien'
+import ProprietaireIncidents from '@/pages/proprietaire/ProprietaireIncidents'
 
 function RoleBasedRedirect() {
-  const { user } = useAuthStore()
-  if (user?.role === 'locataire') return <Navigate to="/locataire" replace />
-  if (user?.role === 'proprietaire') return <Navigate to="/proprietaire" replace />
-  return <Navigate to="/dashboard" replace />
+  const { user, isAuthenticated } = useAuthStore()
+  if (!isAuthenticated || !user) return <Navigate to="/login" replace />
+  return <Navigate to={roleHomePath(user.role)} replace />
 }
 
 function AppLayout() {
+  const { isAuthenticated, user } = useAuthStore()
+  const location = useLocation()
+
+  // Vérification auth AVANT tout rendu de layout — élimine le flash de la sidebar
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
         <main className="flex-1 overflow-auto">
-          <ProtectedRoute />
+          <Outlet />
         </main>
       </div>
     </div>
@@ -78,7 +90,13 @@ export const router = createBrowserRouter([
       { path: 'locataire', element: <LocataireDashboard /> },
       { path: 'locataire/avis-echeances', element: <LocataireAvis /> },
       { path: 'locataire/paiements', element: <LocatairePaiements /> },
+      { path: 'locataire/payer', element: <LocatairePayer /> },
+      { path: 'locataire/messages', element: <LocataireMessages /> },
       { path: 'locataire/documents', element: <LocataireDocuments /> },
+      { path: 'incidents', element: <IncidentList /> },
+      { path: 'entretiens', element: <EntretienList /> },
+      { path: 'proprietaire/entretiens', element: <ProprietaireEntretien /> },
+      { path: 'proprietaire/incidents', element: <ProprietaireIncidents /> },
       {
         path: 'unauthorized',
         element: (

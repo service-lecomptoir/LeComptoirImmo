@@ -70,7 +70,7 @@ class TestUserCreate:
     async def test_create_duplicate_email(self, client, admin_token, gestionnaire_user):
         resp = await client.post("/api/v1/users", headers=auth(admin_token), json={
             "email": gestionnaire_user.email,
-            "password": "Pass1!",
+            "password": "ValidPass1!",
             "full_name": "Dupliquer",
             "role": "locataire",
         })

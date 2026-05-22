@@ -138,7 +138,7 @@ class TestRBACCrossData:
 
         unit = Unit(
             property_id=prop.id, unit_ref="X99",
-            unit_type="appartement", rent_amount=500.00, charges_amount=50.00,
+            unit_type="T2", base_rent=500.00, charges_amount=50.00,
         )
         db.add(unit)
         await db.flush()

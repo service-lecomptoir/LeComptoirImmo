@@ -70,6 +70,7 @@ class PropertyService:
         for field, value in update_data.items():
             setattr(prop, field, value)
         await db.flush()
+        await db.refresh(prop)
         return prop
 
     @staticmethod

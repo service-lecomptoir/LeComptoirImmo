@@ -45,11 +45,12 @@ async def lifespan(app: FastAPI):
 
 
 async def _seed_default_users() -> None:
-    """Crée les comptes de démonstration s'ils n'existent pas encore."""
+    """Crée ou resynchronise les mots de passe des comptes de démonstration."""
     from sqlalchemy import select
     from app.models.user import User
     from app.services.user_service import UserService
     from app.schemas.user import UserCreate
+    from app.core.security import hash_password, verify_password
     from app.core.permissions import Role
 
     default_users = [
@@ -80,16 +81,21 @@ async def _seed_default_users() -> None:
     ]
 
     async with AsyncSessionLocal() as db:
-        created = []
+        created, updated = [], []
         for user_data in default_users:
             result = await db.execute(select(User).where(User.email == user_data.email))
-            if result.scalar_one_or_none() is None:
+            existing = result.scalar_one_or_none()
+            if existing is None:
                 await UserService.create(db, user_data)
                 created.append(user_data.email)
-        if created:
-            await db.commit()
-            for email in created:
-                logger.info(f"Compte créé : {email}")
+            elif not verify_password(user_data.password, existing.hashed_password):
+                existing.hashed_password = hash_password(user_data.password)
+                updated.append(user_data.email)
+        await db.commit()
+        for email in created:
+            logger.info(f"Compte créé : {email}")
+        for email in updated:
+            logger.info(f"Mot de passe resynchronisé : {email}")
 
 
 # ── Application ───────────────────────────────────────────────────────────────

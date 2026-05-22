@@ -11,9 +11,12 @@ from app.models.avis_echeance import AvisEcheance
 from app.models.contact import Contact
 from app.models.automation import AutomationRule, CommunicationLog
 from app.models.document_template import DocumentTemplate
+from app.models.ticket import Ticket, TicketMessage
+from app.models.entretien import Prestataire, Entretien
 
 __all__ = [
     "User", "Tenant", "Property", "Unit", "Document",
     "Lease", "Inspection", "Payment", "Notification", "AvisEcheance",
     "Contact", "AutomationRule", "CommunicationLog", "DocumentTemplate",
+    "Ticket", "TicketMessage", "Prestataire", "Entretien",
 ]

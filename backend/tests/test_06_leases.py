@@ -28,10 +28,10 @@ async def _setup_lease_chain(db, gestionnaire_user):
     unit = Unit(
         property_id=prop.id,
         unit_ref="T2-03",
-        unit_type="appartement",
+        unit_type="T2",
         area_sqm=48.5,
         floor=2,
-        rent_amount=750.00,
+        base_rent=750.00,
         charges_amount=80.00,
     )
     db.add(unit)
@@ -125,7 +125,7 @@ class TestLeaseRead:
 
         unit = Unit(
             property_id=prop.id, unit_ref="L1",
-            unit_type="appartement", rent_amount=600.00, charges_amount=50.00,
+            unit_type="T2", base_rent=600.00, charges_amount=50.00,
         )
         db.add(unit)
         await db.flush()

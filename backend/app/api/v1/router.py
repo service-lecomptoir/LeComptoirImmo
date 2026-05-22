@@ -3,6 +3,7 @@ from app.api.v1 import (
     auth, users, tenants, properties, units, documents,
     leases, inspections, payments, letters, notifications,
     avis_echeances, contacts, automation, templates, dashboard,
+    tickets, entretiens,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -23,3 +24,5 @@ api_router.include_router(contacts.router)
 api_router.include_router(automation.router)
 api_router.include_router(templates.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(tickets.router)
+api_router.include_router(entretiens.router)

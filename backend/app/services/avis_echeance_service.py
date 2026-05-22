@@ -164,10 +164,10 @@ class AvisEcheanceService:
 
     @staticmethod
     async def mark_sent(db: AsyncSession, avis_id: uuid.UUID) -> AvisEcheance:
-        from datetime import datetime, timezone
+        from datetime import datetime
         avis = await AvisEcheanceService.get_by_id(db, avis_id)
         avis.status = AvisEcheanceStatus.ENVOYE
-        avis.sent_at = datetime.now(timezone.utc)
+        avis.sent_at = datetime.utcnow()
         await db.flush()
         return avis
 

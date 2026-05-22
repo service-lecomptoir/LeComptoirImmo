@@ -21,7 +21,7 @@ async def _setup_lease(db, gestionnaire_user):
 
     unit = Unit(
         property_id=prop.id, unit_ref="U1",
-        unit_type="appartement", rent_amount=800.00, charges_amount=100.00,
+        unit_type="T2", base_rent=800.00, charges_amount=100.00,
     )
     db.add(unit)
     await db.flush()
@@ -89,7 +89,7 @@ class TestPaymentList:
 
         unit = Unit(
             property_id=prop.id, unit_ref="U-LOC",
-            unit_type="appartement", rent_amount=600.00, charges_amount=50.00,
+            unit_type="T2", base_rent=600.00, charges_amount=50.00,
         )
         db.add(unit)
         await db.flush()
@@ -116,6 +116,9 @@ class TestPaymentList:
             unit_id=unit.id,
             period_year=2026,
             period_month=5,
+            due_date=date.today(),
+            amount_rent=600.00,
+            amount_charges=50.00,
             amount_due=650.00,
             status=PaymentStatus.PENDING,
         )

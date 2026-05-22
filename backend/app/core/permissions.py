@@ -30,7 +30,7 @@ ROLE_HIERARCHY: dict[Role, Set[Role]] = {
                         Role.LECTURE, Role.COMPTABLE},
     Role.GESTIONNAIRE: {Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LOCATAIRE,
                         Role.LECTURE, Role.COMPTABLE},
-    Role.PROPRIETAIRE: {Role.PROPRIETAIRE},
+    Role.PROPRIETAIRE: {Role.PROPRIETAIRE, Role.LECTURE},
     Role.LOCATAIRE:    {Role.LOCATAIRE},
     Role.LECTURE:      {Role.LECTURE},
     Role.COMPTABLE:    {Role.LECTURE, Role.COMPTABLE},

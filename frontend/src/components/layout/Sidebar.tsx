@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Building2, FileText,
   CreditCard, Bell, Settings, LogOut, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
-  Calculator
+  Calculator, MessageSquare, Wrench, Wallet
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import type { Role } from '@/types/auth'
@@ -24,6 +24,8 @@ const navGestionnaire: NavItem[] = [
   { to: '/leases', icon: FileText, label: 'Contrats' },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
+  { to: '/incidents', icon: MessageSquare, label: 'Incidents & messages' },
+  { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
   { to: '/contacts', icon: BookUser, label: 'Carnet d\'adresses' },
@@ -37,6 +39,8 @@ const navProprietaire: NavItem[] = [
   { to: '/proprietaire/biens', icon: Building2, label: 'Mes biens' },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
   { to: '/proprietaire/locataires', icon: Users, label: 'Mes locataires' },
+  { to: '/proprietaire/incidents', icon: MessageSquare, label: 'Incidents' },
+  { to: '/proprietaire/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]
@@ -45,7 +49,9 @@ const navProprietaire: NavItem[] = [
 const navLocataire: NavItem[] = [
   { to: '/locataire', icon: Home, label: 'Mon espace' },
   { to: '/locataire/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
+  { to: '/locataire/payer', icon: Wallet, label: 'Payer mon loyer' },
   { to: '/locataire/paiements', icon: CreditCard, label: 'Mes paiements' },
+  { to: '/locataire/messages', icon: MessageSquare, label: 'Mes messages' },
   { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]

@@ -175,7 +175,7 @@ async def generate_one(
             generated_by=current_user.id,
         )
         await db.commit()
-        await db.refresh(avis)
+        avis = await AvisEcheanceService.get_by_id(db, avis.id)
         return _avis_to_summary(avis)
     except ConflictException as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -238,6 +238,7 @@ async def mark_sent(
     try:
         avis = await AvisEcheanceService.mark_sent(db, avis_id)
         await db.commit()
+        avis = await AvisEcheanceService.get_by_id(db, avis.id)
         return _avis_to_summary(avis)
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -254,6 +255,7 @@ async def mark_acquitte(
     try:
         avis = await AvisEcheanceService.mark_acquitte(db, avis_id)
         await db.commit()
+        avis = await AvisEcheanceService.get_by_id(db, avis.id)
         return _avis_to_summary(avis)
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
