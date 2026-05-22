@@ -8,7 +8,8 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.core.permissions import require_role, Role
+from app.core.permissions import Role
+from app.api.deps import require_role
 from app.models.user import User
 from app.models.lease import LeaseType
 from app.services.lease_service import LeaseService

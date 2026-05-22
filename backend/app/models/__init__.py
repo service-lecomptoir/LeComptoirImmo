@@ -8,8 +8,12 @@ from app.models.inspection import Inspection
 from app.models.payment import Payment
 from app.models.notification import Notification
 from app.models.avis_echeance import AvisEcheance
+from app.models.contact import Contact
+from app.models.automation import AutomationRule, CommunicationLog
+from app.models.document_template import DocumentTemplate
 
 __all__ = [
     "User", "Tenant", "Property", "Unit", "Document",
     "Lease", "Inspection", "Payment", "Notification", "AvisEcheance",
+    "Contact", "AutomationRule", "CommunicationLog", "DocumentTemplate",
 ]

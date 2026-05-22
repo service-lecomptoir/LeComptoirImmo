@@ -1,223 +1,286 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
-  Users, CreditCard, AlertTriangle,
-  Home, FileText, ArrowRight,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+} from 'recharts'
+import axios from 'axios'
+import {
+  Building2, Users, TrendingUp, AlertTriangle, Home,
+  CreditCard, CheckCircle, ArrowUpRight, ArrowDownRight,
+  Activity, Euro
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { paymentsApi } from '@/api/payments'
-import { leasesApi } from '@/api/leases'
-import type { DashboardStats } from '@/types/payment'
-import type { LeaseListItem } from '@/types/lease'
-import { StatusBadge } from '@/components/common/StatusBadge'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  color,
-  onClick,
-}: {
-  icon: React.ElementType
-  label: string
-  value: string | number
-  sub?: string
-  color: 'blue' | 'green' | 'purple' | 'red' | 'orange'
-  onClick?: () => void
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+const MONTH_LABELS: Record<string, string> = {
+  '01': 'Jan', '02': 'Fév', '03': 'Mar', '04': 'Avr',
+  '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Aoû',
+  '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Déc',
+}
+
+function fmt(n: number) {
+  return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n)
+}
+
+function fmtEur(n: number) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
+}
+
+interface Stats {
+  occupancy: { total_units: number; occupied_units: number; vacant_units: number; occupancy_rate: number }
+  financial: { total_rent_expected: number; total_rent_received: number; total_outstanding: number; collection_rate: number; total_deposits: number }
+  monthly_revenues: Array<{ month: string; expected: number; received: number; outstanding: number }>
+  top_properties: Array<{ property_id: string; property_name: string; units_count: number; occupied_count: number; monthly_revenue: number; outstanding: number }>
+  alerts: { leases_expiring_30d: number; leases_expiring_90d: number; overdue_payments: number; overdue_amount: number; tenants_no_insurance: number }
+  total_tenants: number
+  total_properties: number
+  total_leases_active: number
+}
+
+function KPICard({ title, value, sub, icon: Icon, color, trend }: {
+  title: string; value: string; sub?: string
+  icon: React.ElementType; color: string; trend?: number
 }) {
-  const colorMap = {
+  const colors: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-600',
     green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    red: 'bg-red-50 text-red-600',
     orange: 'bg-orange-50 text-orange-600',
+    red: 'bg-red-50 text-red-600',
+    purple: 'bg-purple-50 text-purple-600',
   }
   return (
-    <div
-      onClick={onClick}
-      className={`bg-white rounded-xl border border-gray-200 p-5 shadow-sm ${onClick ? 'cursor-pointer hover:shadow-md hover:border-blue-200 transition-all' : ''}`}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorMap[color]}`}>
+    <div className="bg-white rounded-xl border p-5 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
           <Icon size={20} />
         </div>
-        {onClick && <ArrowRight size={14} className="text-gray-300" />}
+        {trend !== undefined && (
+          <div className={`flex items-center gap-0.5 text-xs font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+            {trend >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            {Math.abs(trend)}%
+          </div>
+        )}
       </div>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-sm text-gray-500 mt-0.5">{label}</p>
+      <p className="text-sm font-medium text-gray-600 mt-0.5">{title}</p>
       {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </div>
   )
 }
 
-const fmtEuro = (n: number) =>
-  n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
-
 export default function Dashboard() {
-  const { user } = useAuthStore()
-  const navigate = useNavigate()
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [latestLeases, setLatestLeases] = useState<LeaseListItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { accessToken: token } = useAuthStore()
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [statsRes, leasesRes] = await Promise.all([
-          paymentsApi.dashboardStats(),
-          leasesApi.list({ is_active: true, limit: 5 }),
-        ])
-        setStats(statsRes.data)
-        setLatestLeases(leasesRes.data.items)
-      } catch {
-        // silently fail — backend might not be running
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    load()
+    axios.get(`${API}/api/v1/dashboard/stats`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => setStats(r.data))
+      .catch(() => setStats(null))
+      .finally(() => setLoading(false))
   }, [])
 
-  const today = new Date()
-  const month = format(today, 'MMMM yyyy', { locale: fr })
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full" />
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        <Activity size={48} className="mx-auto mb-3 text-gray-300" />
+        <p>Impossible de charger les statistiques</p>
+      </div>
+    )
+  }
+
+  const monthlyData = stats.monthly_revenues.map(m => ({
+    name: MONTH_LABELS[m.month.split('-')[1]] || m.month,
+    Encaissé: m.received,
+    Attendu: m.expected,
+    Impayé: m.outstanding,
+  }))
+
+  const occupancyData = [
+    { name: 'Occupé', value: stats.occupancy.occupied_units },
+    { name: 'Vacant', value: stats.occupancy.vacant_units },
+  ]
+
+  const hasAlerts = stats.alerts.leases_expiring_30d > 0 ||
+    stats.alerts.overdue_payments > 0 || stats.alerts.leases_expiring_90d > 0
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Bienvenue, <span className="font-medium text-gray-700">{user?.full_name}</span>
-          {' '}— {format(today, 'd MMMM yyyy', { locale: fr })}
-        </p>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
+          <p className="text-sm text-gray-500 mt-1">Vue d'ensemble de votre portefeuille</p>
+        </div>
+        <div className="text-sm text-gray-400">
+          {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          icon={Users}
-          label="Locataires"
-          value={isLoading ? '…' : stats?.total_tenants ?? '—'}
-          color="blue"
-          onClick={() => navigate('/tenants')}
-        />
-        <StatCard
-          icon={Home}
-          label="Taux d'occupation"
-          value={isLoading ? '…' : stats ? `${Math.round(stats.occupancy_rate * 100)} %` : '—'}
-          sub={stats ? `${stats.occupied_units} / ${stats.total_units} logements` : undefined}
-          color="green"
-          onClick={() => navigate('/properties')}
-        />
-        <StatCard
-          icon={CreditCard}
-          label={`Loyers ${month}`}
-          value={isLoading ? '…' : stats ? fmtEuro(stats.monthly.total_paid) : '—'}
-          sub={stats ? `sur ${fmtEuro(stats.monthly.total_due)} attendus` : undefined}
-          color="purple"
-          onClick={() => navigate('/payments')}
-        />
-        <StatCard
-          icon={AlertTriangle}
-          label="Impayés / En retard"
-          value={isLoading ? '…' : stats ? String(stats.monthly.late_count + stats.monthly.pending_count) : '—'}
-          sub={stats && stats.monthly.total_balance > 0 ? `${fmtEuro(stats.monthly.total_balance)} à encaisser` : undefined}
-          color={stats && (stats.monthly.late_count > 0) ? 'red' : 'orange'}
-          onClick={() => navigate('/payments')}
-        />
+      {/* Alertes */}
+      {hasAlerts && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={18} className="text-amber-600" />
+            <h3 className="font-semibold text-amber-800">Points d'attention</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {stats.alerts.leases_expiring_30d > 0 && (
+              <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-medium">
+                {stats.alerts.leases_expiring_30d} bail(s) expirent dans 30 jours
+              </span>
+            )}
+            {stats.alerts.leases_expiring_90d > 0 && (
+              <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">
+                {stats.alerts.leases_expiring_90d} bail(s) expirent dans 90 jours
+              </span>
+            )}
+            {stats.alerts.overdue_payments > 0 && (
+              <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">
+                {stats.alerts.overdue_payments} paiement(s) en retard — {fmtEur(stats.alerts.overdue_amount)}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard title="Biens immobiliers" value={fmt(stats.total_properties)}
+          sub={`${stats.occupancy.total_units} unités`} icon={Building2} color="blue" />
+        <KPICard title="Locataires actifs" value={fmt(stats.total_tenants)}
+          sub={`${stats.total_leases_active} contrat(s) actifs`} icon={Users} color="green" />
+        <KPICard title="Taux d'occupation" value={`${stats.occupancy.occupancy_rate}%`}
+          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} unités`}
+          icon={Home} color="purple" />
+        <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
+          sub={`${stats.alerts.overdue_payments} paiement(s)`} icon={AlertTriangle}
+          color={stats.financial.total_outstanding > 0 ? 'red' : 'green'} />
       </div>
 
-      {/* Row 2 : stats mensuelles + baux actifs */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPICard title="Loyers attendus / mois" value={fmtEur(stats.financial.total_rent_expected)}
+          icon={Euro} color="blue" />
+        <KPICard title="Loyers encaissés / mois" value={fmtEur(stats.financial.total_rent_received)}
+          sub={`Recouvrement : ${stats.financial.collection_rate}%`} icon={CheckCircle} color="green" />
+        <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
+          sub="Cautions détenues" icon={CreditCard} color="purple" />
+        <KPICard title="Taux de recouvrement" value={`${stats.financial.collection_rate}%`}
+          icon={TrendingUp}
+          color={stats.financial.collection_rate >= 95 ? 'green' : stats.financial.collection_rate >= 80 ? 'orange' : 'red'} />
+      </div>
 
-        {/* Stats mois */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">
-            Paiements — {stats?.monthly.period_label ?? month}
-          </h2>
-          {isLoading ? (
-            <p className="text-sm text-gray-400 text-center py-6">Chargement…</p>
-          ) : stats ? (
-            <div className="space-y-3">
-              {[
-                { label: 'Payés', count: stats.monthly.paid_count, variant: 'green', amount: null },
-                { label: 'Partiels', count: stats.monthly.partial_count, variant: 'yellow', amount: null },
-                { label: 'En attente', count: stats.monthly.pending_count, variant: 'blue', amount: null },
-                { label: 'En retard', count: stats.monthly.late_count, variant: 'red', amount: null },
-              ]
-                .filter(r => r.count > 0)
-                .map(r => (
-                  <div key={r.label} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <StatusBadge label={r.label} variant={r.variant as any} dot />
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {r.count} bail{r.count > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                ))}
-              <div className="pt-3 border-t border-gray-100 flex justify-between">
-                <span className="text-sm text-gray-600">Solde à encaisser</span>
-                <span className={`text-sm font-bold ${stats.monthly.total_balance > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                  {fmtEuro(stats.monthly.total_balance)}
-                </span>
-              </div>
+      {/* Graphiques */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-xl border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-900">Revenus — 12 derniers mois</h2>
+            <div className="flex gap-3 text-xs text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-3 h-2 bg-blue-500 inline-block rounded-sm" /> Encaissé</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 bg-blue-200 inline-block rounded-sm" /> Attendu</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-2 bg-red-300 inline-block rounded-sm" /> Impayé</span>
             </div>
-          ) : (
-            <p className="text-sm text-gray-400 text-center py-6">
-              Données non disponibles (backend démarré ?)
-            </p>
-          )}
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${fmt(v)}€`} width={70} />
+              <Tooltip formatter={(v: unknown) => fmtEur(v as number)} />
+              <Area type="monotone" dataKey="Attendu" stroke="#BFDBFE" fill="#DBEAFE" strokeWidth={1.5} />
+              <Area type="monotone" dataKey="Encaissé" stroke="#3B82F6" fill="#93C5FD" strokeWidth={2} />
+              <Area type="monotone" dataKey="Impayé" stroke="#EF4444" fill="#FCA5A5" strokeWidth={1.5} />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* Baux actifs récents */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-900">Derniers baux actifs</h2>
-            <button
-              onClick={() => navigate('/leases')}
-              className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-            >
-              Voir tous <ArrowRight size={11} />
-            </button>
+        <div className="bg-white rounded-xl border p-5">
+          <h2 className="font-semibold text-gray-900 mb-4">Occupation du parc</h2>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart>
+              <Pie data={occupancyData} cx="50%" cy="50%" innerRadius={45} outerRadius={70}
+                dataKey="value" startAngle={90} endAngle={-270}>
+                <Cell fill="#3B82F6" />
+                <Cell fill="#E5E7EB" />
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="text-center -mt-2">
+            <p className="text-3xl font-bold text-gray-900">{stats.occupancy.occupancy_rate}%</p>
+            <p className="text-sm text-gray-500">Occupation</p>
           </div>
-          {isLoading ? (
-            <p className="text-sm text-gray-400 text-center py-6">Chargement…</p>
-          ) : latestLeases.length === 0 ? (
-            <div className="text-center py-6 text-gray-400">
-              <FileText size={28} className="mx-auto mb-2 text-gray-300" />
-              <p className="text-sm">Aucun bail actif</p>
+          <div className="flex justify-around mt-3 text-center">
+            <div>
+              <p className="text-lg font-bold text-blue-600">{stats.occupancy.occupied_units}</p>
+              <p className="text-xs text-gray-400">Occupées</p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {latestLeases.map(lease => (
-                <div
-                  key={lease.id}
-                  onClick={() => navigate(`/leases/${lease.id}`)}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{lease.tenant_full_name}</p>
-                    <p className="text-xs text-gray-500">
-                      {lease.property_name} — {lease.unit_ref}
-                    </p>
+            <div>
+              <p className="text-lg font-bold text-gray-400">{stats.occupancy.vacant_units}</p>
+              <p className="text-xs text-gray-400">Vacantes</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Comparaison bar chart */}
+      <div className="bg-white rounded-xl border p-5">
+        <h2 className="font-semibold text-gray-900 mb-4">Encaissé vs Attendu — comparaison mensuelle</h2>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={monthlyData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${fmt(v)}€`} width={70} />
+            <Tooltip formatter={(v: unknown) => fmtEur(v as number)} />
+            <Bar dataKey="Attendu" fill="#DBEAFE" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Encaissé" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Top propriétés */}
+      {stats.top_properties.length > 0 && (
+        <div className="bg-white rounded-xl border p-5">
+          <h2 className="font-semibold text-gray-900 mb-4">Performance par bien</h2>
+          <div className="space-y-3">
+            {stats.top_properties.map(p => {
+              const occ = p.units_count > 0 ? Math.round(p.occupied_count / p.units_count * 100) : 0
+              return (
+                <div key={p.property_id} className="flex items-center gap-4">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                    <Home size={14} className="text-blue-600" />
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {fmtEuro(lease.rent_amount + lease.charges_amount)} / mois
-                    </p>
-                    {lease.apl_tiers_payant && (
-                      <p className="text-xs text-green-600">Tiers-payant CAF</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{p.property_name}</p>
+                      <span className="text-sm font-semibold text-gray-900 ml-2 shrink-0">{fmtEur(p.monthly_revenue)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                        <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${occ}%` }} />
+                      </div>
+                      <span className="text-xs text-gray-400 shrink-0">{occ}% · {p.occupied_count}/{p.units_count}</span>
+                    </div>
+                    {p.outstanding > 0 && (
+                      <p className="text-xs text-red-500 mt-0.5">Impayés : {fmtEur(p.outstanding)}</p>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

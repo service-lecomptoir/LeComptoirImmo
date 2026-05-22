@@ -15,18 +15,19 @@ import PaymentList from '@/pages/payments/PaymentList'
 import NotificationList from '@/pages/notifications/NotificationList'
 import AdminUsers from '@/pages/admin/AdminUsers'
 import AvisEcheanceList from '@/pages/avis-echeances/AvisEcheanceList'
-// Portail Propriétaire
+import ContactList from '@/pages/contacts/ContactList'
+import Automatisation from '@/pages/automatisation/Automatisation'
+import TemplateEditor from '@/pages/templates/TemplateEditor'
 import ProprietaireDashboard from '@/pages/proprietaire/ProprietaireDashboard'
 import ProprietaireBiens from '@/pages/proprietaire/ProprietaireBiens'
 import ProprietaireLocataires from '@/pages/proprietaire/ProprietaireLocataires'
 import ProprietaireRevenus from '@/pages/proprietaire/ProprietaireRevenus'
-// Portail Locataire
+import ProprietaireFiscal from '@/pages/proprietaire/ProprietaireFiscal'
 import LocataireDashboard from '@/pages/locataire/LocataireDashboard'
 import LocataireAvis from '@/pages/locataire/LocataireAvis'
 import LocatairePaiements from '@/pages/locataire/LocatairePaiements'
 import LocataireDocuments from '@/pages/locataire/LocataireDocuments'
 
-// Redirection selon le rôle
 function RoleBasedRedirect() {
   const { user } = useAuthStore()
   if (user?.role === 'locataire') return <Navigate to="/locataire" replace />
@@ -34,7 +35,6 @@ function RoleBasedRedirect() {
   return <Navigate to="/dashboard" replace />
 }
 
-// Layout principal avec sidebar
 function AppLayout() {
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -50,18 +50,12 @@ function AppLayout() {
 }
 
 export const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: <Login />,
-  },
+  { path: '/login', element: <Login /> },
   {
     path: '/',
     element: <AppLayout />,
     children: [
-      // Redirection intelligente à la racine
       { index: true, element: <RoleBasedRedirect /> },
-
-      // ── Gestionnaire / Admin ─────────────────────────────────────
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'tenants', element: <TenantList /> },
       { path: 'tenants/:id', element: <TenantDetail /> },
@@ -71,22 +65,20 @@ export const router = createBrowserRouter([
       { path: 'leases/:id', element: <LeaseDetail /> },
       { path: 'payments', element: <PaymentList /> },
       { path: 'avis-echeances', element: <AvisEcheanceList /> },
+      { path: 'contacts', element: <ContactList /> },
+      { path: 'automatisation', element: <Automatisation /> },
+      { path: 'templates', element: <TemplateEditor /> },
       { path: 'notifications', element: <NotificationList /> },
       { path: 'admin', element: <AdminUsers /> },
-
-      // ── Portail Propriétaire ──────────────────────────────────────
       { path: 'proprietaire', element: <ProprietaireDashboard /> },
       { path: 'proprietaire/biens', element: <ProprietaireBiens /> },
-      { path: 'proprietaire/locataires', element: <ProprietaireLocataires /> },
       { path: 'proprietaire/revenus', element: <ProprietaireRevenus /> },
-
-      // ── Portail Locataire ─────────────────────────────────────────
+      { path: 'proprietaire/locataires', element: <ProprietaireLocataires /> },
+      { path: 'proprietaire/fiscal', element: <ProprietaireFiscal /> },
       { path: 'locataire', element: <LocataireDashboard /> },
       { path: 'locataire/avis-echeances', element: <LocataireAvis /> },
       { path: 'locataire/paiements', element: <LocatairePaiements /> },
       { path: 'locataire/documents', element: <LocataireDocuments /> },
-
-      // ── Pages communes ────────────────────────────────────────────
       {
         path: 'unauthorized',
         element: (

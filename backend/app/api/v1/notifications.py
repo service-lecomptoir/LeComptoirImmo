@@ -1,9 +1,9 @@
 import uuid
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.core.permissions import require_role, Role
+from app.core.permissions import Role
 from app.models.user import User
 from app.schemas.notification import (
     NotificationResponse,
@@ -11,7 +11,7 @@ from app.schemas.notification import (
     UnreadCountResponse,
 )
 from app.services.notification_service import NotificationService
-from app.api.v1.auth import get_current_user
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 @router.get("/count", response_model=UnreadCountResponse)
 async def get_unread_count(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(get_current_user),
 ):
     count = await NotificationService.get_unread_count(db, current_user.id)
     return UnreadCountResponse(count=count)
@@ -30,7 +30,7 @@ async def list_notifications(
     unread_only: bool = Query(False),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(get_current_user),
 ):
     items, total, unread_count = await NotificationService.list_for_user(
         db, current_user.id, unread_only=unread_only, limit=limit
@@ -42,7 +42,7 @@ async def list_notifications(
 async def mark_read(
     notification_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.LECTURE)),
+    _: User = Depends(get_current_user),
 ):
     notif = await NotificationService.mark_read(db, notification_id)
     await db.commit()
@@ -52,7 +52,7 @@ async def mark_read(
 @router.post("/read-all")
 async def mark_all_read(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(get_current_user),
 ):
     count = await NotificationService.mark_all_read(db, current_user.id)
     await db.commit()
@@ -62,9 +62,11 @@ async def mark_all_read(
 @router.post("/generate-alerts")
 async def generate_alerts(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.ADMIN)),
+    current_user: User = Depends(get_current_user),
 ):
     """Déclenche manuellement la génération d'alertes (admin uniquement)."""
+    if Role(current_user.role) != Role.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux administrateurs")
     late = await NotificationService.generate_late_payment_alerts(db)
     expiring = await NotificationService.generate_expiring_lease_alerts(db)
     await db.commit()

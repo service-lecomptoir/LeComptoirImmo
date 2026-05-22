@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import UploadFile
@@ -40,6 +40,37 @@ class DocumentService:
         db.add(doc)
         await db.flush()
         return doc
+
+    @staticmethod
+    async def list_for_entities(
+        db: AsyncSession,
+        entity_ids: List[uuid.UUID],
+        entity_type: Optional[EntityType] = None,
+        limit: int = 50,
+        skip: int = 0,
+    ) -> List[Document]:
+        """Retourne les documents liés à une liste d'entités (tenant, lease, etc.)."""
+        q = select(Document).where(Document.entity_id.in_(entity_ids))
+        if entity_type:
+            q = q.where(Document.entity_type == entity_type)
+        q = q.order_by(Document.created_at.desc()).offset(skip).limit(limit)
+        result = await db.execute(q)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def list_all(
+        db: AsyncSession,
+        entity_type: Optional[EntityType] = None,
+        limit: int = 50,
+        skip: int = 0,
+    ) -> List[Document]:
+        """Retourne tous les documents (gestionnaire/admin)."""
+        q = select(Document)
+        if entity_type:
+            q = q.where(Document.entity_type == entity_type)
+        q = q.order_by(Document.created_at.desc()).offset(skip).limit(limit)
+        result = await db.execute(q)
+        return list(result.scalars().all())
 
     @staticmethod
     async def list_by_entity(

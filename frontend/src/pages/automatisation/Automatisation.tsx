@@ -1,0 +1,542 @@
+import { useState, useEffect } from 'react'
+import axios from 'axios'
+import {
+  Zap, Plus, Trash2, Edit2, ToggleLeft, ToggleRight,
+  Mail, MessageSquare, Bell, Calendar, Send,
+  CheckCircle, Clock, AlertTriangle, Users
+} from 'lucide-react'
+import { useAuthStore } from '@/store/authStore'
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+const RULE_TYPES = [
+  { value: 'avis_echeance', label: "Avis d'échéance", icon: Calendar, color: 'blue' },
+  { value: 'quittance', label: 'Quittance', icon: CheckCircle, color: 'green' },
+  { value: 'rappel_impaye', label: 'Rappel impayé', icon: AlertTriangle, color: 'red' },
+  { value: 'relance_1', label: 'Relance 1', icon: Bell, color: 'orange' },
+  { value: 'relance_2', label: 'Relance 2 (mise en demeure)', icon: Bell, color: 'red' },
+  { value: 'communication_groupee', label: 'Communication groupée', icon: Users, color: 'purple' },
+]
+
+const CHANNELS = [
+  { value: 'email', label: 'Email', icon: Mail },
+  { value: 'sms', label: 'SMS', icon: MessageSquare },
+  { value: 'email_sms', label: 'Email + SMS', icon: Mail },
+]
+
+const RULE_COLORS: Record<string, string> = {
+  blue: 'bg-blue-50 text-blue-700 border-blue-200',
+  green: 'bg-green-50 text-green-700 border-green-200',
+  red: 'bg-red-50 text-red-700 border-red-200',
+  orange: 'bg-orange-50 text-orange-700 border-orange-200',
+  purple: 'bg-purple-50 text-purple-700 border-purple-200',
+}
+
+interface Rule {
+  id: string
+  name: string
+  rule_type: string
+  trigger_days: number
+  channel: string
+  subject?: string
+  body_template?: string
+  is_active: boolean
+}
+
+interface Log {
+  id: string
+  channel: string
+  recipient?: string
+  subject?: string
+  status: string
+  sent_at: string
+}
+
+function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: () => void, onSaved: () => void }) {
+  const { accessToken: token } = useAuthStore()
+  const [form, setForm] = useState({
+    name: rule?.name || '',
+    rule_type: rule?.rule_type || 'avis_echeance',
+    trigger_days: rule?.trigger_days ?? 5,
+    channel: rule?.channel || 'email',
+    subject: rule?.subject || '',
+    body_template: rule?.body_template || '',
+    is_active: rule?.is_active ?? true,
+  })
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      if (rule?.id) {
+        await axios.patch(`${API}/api/v1/automation/rules/${rule.id}`, form, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      } else {
+        await axios.post(`${API}/api/v1/automation/rules`, form, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      }
+      onSaved()
+      onClose()
+    } catch {
+      alert('Erreur lors de la sauvegarde')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900">
+            {rule ? 'Modifier la règle' : 'Nouvelle règle d\'automatisation'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la règle *</label>
+            <input required className="w-full border rounded-lg px-3 py-2 text-sm" value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type d'automatisation</label>
+            <div className="grid grid-cols-2 gap-2">
+              {RULE_TYPES.map(t => {
+                const Icon = t.icon
+                return (
+                  <button key={t.value} type="button"
+                    onClick={() => setForm({ ...form, rule_type: t.value })}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs transition-all ${
+                      form.rule_type === t.value
+                        ? `${RULE_COLORS[t.color]} font-medium`
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {t.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Déclenchement (jours avant l'échéance)
+            </label>
+            <div className="flex items-center gap-3">
+              <input type="number" min={-30} max={30}
+                className="w-24 border rounded-lg px-3 py-2 text-sm text-center"
+                value={form.trigger_days}
+                onChange={e => setForm({ ...form, trigger_days: parseInt(e.target.value) || 0 })} />
+              <span className="text-sm text-gray-500">
+                {form.trigger_days > 0 ? `${form.trigger_days} jour(s) avant` :
+                 form.trigger_days < 0 ? `${Math.abs(form.trigger_days)} jour(s) après` :
+                 'Le jour J'}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Canal d'envoi</label>
+            <div className="flex gap-2">
+              {CHANNELS.map(ch => {
+                const Icon = ch.icon
+                return (
+                  <button key={ch.value} type="button"
+                    onClick={() => setForm({ ...form, channel: ch.value })}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                      form.channel === ch.value
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {ch.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Objet du message</label>
+            <input className="w-full border rounded-lg px-3 py-2 text-sm"
+              placeholder="ex: Avis d'échéance - {{month}}"
+              value={form.subject}
+              onChange={e => setForm({ ...form, subject: e.target.value })} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Corps du message</label>
+            <p className="text-xs text-gray-400 mb-1">Variables disponibles : {'{{'} tenant_name {'}}'}, {'{{'} amount {'}}'}, {'{{'} due_date {'}}'}, {'{{'} month {'}}'}</p>
+            <textarea rows={5} className="w-full border rounded-lg px-3 py-2 text-sm font-mono text-xs"
+              value={form.body_template}
+              onChange={e => setForm({ ...form, body_template: e.target.value })} />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="active" checked={form.is_active}
+              onChange={e => setForm({ ...form, is_active: e.target.checked })} />
+            <label htmlFor="active" className="text-sm text-gray-700">Règle active</label>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose}
+              className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+              Annuler
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+              {saving ? 'Sauvegarde...' : 'Enregistrer'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
+  const { accessToken: token } = useAuthStore()
+  const [form, setForm] = useState({
+    subject: '',
+    body: '',
+    channel: 'email',
+    all_tenants: true,
+  })
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<any>(null)
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSending(true)
+    try {
+      const r = await axios.post(`${API}/api/v1/automation/send-group`, form, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setResult(r.data)
+    } catch {
+      alert('Erreur lors de l\'envoi')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+        <div className="border-b px-6 py-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-900">Communication groupée</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+        </div>
+        {result ? (
+          <div className="p-6 text-center">
+            <CheckCircle size={48} className="mx-auto text-green-500 mb-3" />
+            <p className="text-lg font-semibold text-gray-900">{result.message}</p>
+            <p className="text-sm text-gray-500 mt-1">{result.sent_count} / {result.total_targets} destinataires</p>
+            <button onClick={onClose}
+              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+              Fermer
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSend} className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Canal</label>
+              <div className="flex gap-2">
+                {CHANNELS.map(ch => (
+                  <button key={ch.value} type="button"
+                    onClick={() => setForm({ ...form, channel: ch.value })}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
+                      form.channel === ch.value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600'
+                    }`}
+                  >
+                    {ch.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Objet *</label>
+              <input required className="w-full border rounded-lg px-3 py-2 text-sm" value={form.subject}
+                onChange={e => setForm({ ...form, subject: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Message *</label>
+              <textarea required rows={6} className="w-full border rounded-lg px-3 py-2 text-sm" value={form.body}
+                onChange={e => setForm({ ...form, body: e.target.value })} />
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
+              ⚠️ Ce message sera envoyé à tous les locataires actifs. Vérifiez le contenu avant d'envoyer.
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={onClose}
+                className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                Annuler
+              </button>
+              <button type="submit" disabled={sending}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                <Send size={14} />
+                {sending ? 'Envoi...' : 'Envoyer'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default function Automatisation() {
+  const { accessToken: token } = useAuthStore()
+  const [rules, setRules] = useState<Rule[]>([])
+  const [logs, setLogs] = useState<Log[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'rules' | 'logs'>('rules')
+  const [showRuleModal, setShowRuleModal] = useState(false)
+  const [showGroupModal, setShowGroupModal] = useState(false)
+  const [editRule, setEditRule] = useState<Rule | null>(null)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const [rulesRes, logsRes] = await Promise.all([
+        axios.get(`${API}/api/v1/automation/rules`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/api/v1/automation/logs`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+      setRules(rulesRes.data)
+      setLogs(logsRes.data)
+    } catch { }
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [])
+
+  const toggleRule = async (id: string) => {
+    await axios.post(`${API}/api/v1/automation/rules/${id}/toggle`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    load()
+  }
+
+  const deleteRule = async (id: string) => {
+    if (!confirm('Supprimer cette règle ?')) return
+    await axios.delete(`${API}/api/v1/automation/rules/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    load()
+  }
+
+  const getRuleInfo = (type: string) => RULE_TYPES.find(t => t.value === type)
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Automatisation</h1>
+          <p className="text-sm text-gray-500 mt-1">Avis d'échéance, quittances, rappels, communications</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowGroupModal(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50"
+          >
+            <Send size={16} />
+            Communication groupée
+          </button>
+          <button
+            onClick={() => { setEditRule(null); setShowRuleModal(true) }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
+            <Plus size={16} />
+            Nouvelle règle
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+              <Zap size={20} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{rules.filter(r => r.is_active).length}</p>
+              <p className="text-xs text-gray-500">Règles actives</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+              <Clock size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{rules.length}</p>
+              <p className="text-xs text-gray-500">Règles totales</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+              <Mail size={20} className="text-purple-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{logs.length}</p>
+              <p className="text-xs text-gray-500">Messages envoyés</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b mb-6">
+        {(['rules', 'logs'] as const).map(tab => (
+          <button key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab === 'rules' ? 'Règles d\'automatisation' : 'Historique des envois'}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'rules' && (
+        <div className="space-y-3">
+          {loading ? (
+            <div className="text-center py-8 text-gray-400">Chargement…</div>
+          ) : rules.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl border">
+              <Zap size={48} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-500 mb-2">Aucune règle d'automatisation configurée</p>
+              <button
+                onClick={() => { setEditRule(null); setShowRuleModal(true) }}
+                className="text-blue-600 text-sm hover:underline"
+              >
+                Créer votre première règle
+              </button>
+            </div>
+          ) : (
+            rules.map(rule => {
+              const info = getRuleInfo(rule.rule_type)
+              const Icon = info?.icon || Bell
+              return (
+                <div key={rule.id}
+                  className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${!rule.is_active ? 'opacity-60' : ''}`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                    info ? RULE_COLORS[info.color].replace('border-', '').replace('text-', 'text-') : 'bg-gray-100'
+                  }`}>
+                    <Icon size={18} />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-900 text-sm">{rule.name}</p>
+                      {!rule.is_active && (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {info?.label} · {
+                        rule.trigger_days > 0 ? `${rule.trigger_days}j avant` :
+                        rule.trigger_days < 0 ? `${Math.abs(rule.trigger_days)}j après` : 'Le jour J'
+                      } · {CHANNELS.find(c => c.value === rule.channel)?.label}
+                    </p>
+                    {rule.subject && (
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">"{rule.subject}"</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => toggleRule(rule.id)} title={rule.is_active ? 'Désactiver' : 'Activer'}>
+                      {rule.is_active
+                        ? <ToggleRight size={24} className="text-green-500" />
+                        : <ToggleLeft size={24} className="text-gray-400" />
+                      }
+                    </button>
+                    <button onClick={() => { setEditRule(rule); setShowRuleModal(true) }}
+                      className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg">
+                      <Edit2 size={14} />
+                    </button>
+                    <button onClick={() => deleteRule(rule.id)}
+                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+
+      {activeTab === 'logs' && (
+        <div className="bg-white rounded-xl border overflow-hidden">
+          {logs.length === 0 ? (
+            <div className="text-center py-12 text-gray-400">Aucun envoi enregistré</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Canal</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Destinataire</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Objet</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Statut</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {logs.map(log => (
+                  <tr key={log.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {new Date(log.sent_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="flex items-center gap-1 text-xs">
+                        {log.channel === 'email' ? <Mail size={12} /> : <MessageSquare size={12} />}
+                        {log.channel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-600">{log.recipient}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600 max-w-xs truncate">{log.subject}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                        log.status === 'sent' ? 'bg-green-100 text-green-700' :
+                        log.status === 'simulated' ? 'bg-blue-100 text-blue-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {log.status === 'sent' ? <CheckCircle size={10} /> : <Clock size={10} />}
+                        {log.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {showRuleModal && (
+        <RuleModal rule={editRule} onClose={() => setShowRuleModal(false)} onSaved={load} />
+      )}
+      {showGroupModal && (
+        <GroupCommunicationModal onClose={() => { setShowGroupModal(false); load() }} />
+      )}
+    </div>
+  )
+}

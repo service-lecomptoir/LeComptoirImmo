@@ -1,11 +1,11 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.user import User
 from app.services.auth_service import AuthService
-from app.core.permissions import Role, require_role
+from app.core.permissions import Role, role_has_permission
 
 # ── Bearer token extractor ─────────────────────────────────────────────────────
 bearer_scheme = HTTPBearer(auto_error=True)
@@ -19,26 +19,43 @@ async def get_current_user(
     return await AuthService.get_current_user(db, credentials.credentials)
 
 
+def require_role(required_role: Role):
+    """
+    Crée une dependency FastAPI qui vérifie le rôle de l'utilisateur connecté.
+    Usage: current_user: User = Depends(require_role(Role.GESTIONNAIRE))
+    """
+    async def _checker(current_user: User = Depends(get_current_user)) -> User:
+        if not role_has_permission(Role(current_user.role), required_role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission insuffisante. Rôle requis : {required_role.value}",
+            )
+        return current_user
+    return _checker
+
+
 async def get_current_active_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """Dependency — réservé aux administrateurs."""
-    from fastapi import HTTPException, status
-    checker = require_role(Role.ADMIN)
-    return checker(current_user)
+    if not role_has_permission(Role(current_user.role), Role.ADMIN):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux administrateurs")
+    return current_user
 
 
 async def get_current_gestionnaire(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """Dependency — gestionnaire ou supérieur."""
-    checker = require_role(Role.GESTIONNAIRE)
-    return checker(current_user)
+    if not role_has_permission(Role(current_user.role), Role.GESTIONNAIRE):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux gestionnaires")
+    return current_user
 
 
 async def get_current_comptable(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """Dependency — comptable ou supérieur."""
-    checker = require_role(Role.COMPTABLE)
-    return checker(current_user)
+    if not role_has_permission(Role(current_user.role), Role.COMPTABLE):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux comptables")
+    return current_user

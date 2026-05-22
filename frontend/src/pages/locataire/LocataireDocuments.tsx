@@ -17,7 +17,10 @@ export default function LocataireDocuments() {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.json())
-      .then(data => setDocuments(data.items ?? data))
+      .then(data => {
+        const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : []
+        setDocuments(list)
+      })
       .catch(() => { })
       .finally(() => setIsLoading(false))
   }, [])

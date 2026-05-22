@@ -2,7 +2,8 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, FileText,
   CreditCard, Bell, Settings, LogOut, Calendar,
-  Home, Receipt,
+  Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
+  Calculator
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import type { Role } from '@/types/auth'
@@ -12,17 +13,20 @@ interface NavItem {
   to: string
   icon: React.ElementType
   label: string
-  roles?: Role[]   // undefined = tous les rôles
+  roles?: Role[]
 }
 
 // Navigation Gestionnaire / Admin
 const navGestionnaire: NavItem[] = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
+  { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/properties', icon: Building2, label: 'Biens immobiliers' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
-  { to: '/avis-echeances', icon: Calendar, label: 'Avis d\'échéances' },
+  { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
+  { to: '/automatisation', icon: Zap, label: 'Automatisation' },
+  { to: '/templates', icon: PenSquare, label: 'Templates docs' },
+  { to: '/contacts', icon: BookUser, label: 'Carnet d\'adresses' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/admin', icon: Settings, label: 'Administration', roles: ['admin'] },
 ]
@@ -33,13 +37,14 @@ const navProprietaire: NavItem[] = [
   { to: '/proprietaire/biens', icon: Building2, label: 'Mes biens' },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
   { to: '/proprietaire/locataires', icon: Users, label: 'Mes locataires' },
+  { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]
 
 // Navigation Locataire
 const navLocataire: NavItem[] = [
   { to: '/locataire', icon: Home, label: 'Mon espace' },
-  { to: '/locataire/avis-echeances', icon: Calendar, label: 'Avis d\'échéances' },
+  { to: '/locataire/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/locataire/paiements', icon: CreditCard, label: 'Mes paiements' },
   { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
@@ -84,7 +89,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {filteredItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}

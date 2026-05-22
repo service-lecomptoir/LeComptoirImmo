@@ -188,10 +188,10 @@ export default function LeaseDetail() {
           <InfoRow label="Mode" value={PAYMENT_METHOD_LABELS[lease.payment_method]} />
           {lease.apl_tiers_payant && lease.apl_amount && (
             <>
-              <InfoRow label="APL (tiers-payant)" value={
+              <InfoRow label="Aide personnelle au logement" value={
                 <span className="text-green-700">- {fmtEuro(lease.apl_amount)}</span>
               } />
-              <InfoRow label="Solde locataire" value={
+              <InfoRow label="Reste à payer (locataire)" value={
                 <span className="font-bold text-green-700">{fmtEuro(lease.net_rent + lease.charges_amount)}</span>
               } />
             </>

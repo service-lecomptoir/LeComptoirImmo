@@ -279,15 +279,12 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        {/* APL */}
+        {/* Aide personnelle au logement */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">APL</h3>
-          <div className="grid grid-cols-2 gap-3 items-end">
-            <div>
-              <label className={labelCls}>Montant APL mensuel (€)</label>
-              <input type="number" step="0.01" min="0" {...register('apl_amount')} className={inputCls} placeholder="0.00" />
-            </div>
-            <div className="flex items-center gap-2 pb-1">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Aide personnelle au logement</h3>
+          <div className="space-y-3">
+            {/* Tiers payant checkbox en premier */}
+            <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="apl_tiers_payant"
@@ -295,8 +292,26 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
                 className="w-4 h-4 rounded border-gray-300 text-blue-600"
               />
               <label htmlFor="apl_tiers_payant" className="text-sm text-gray-700 cursor-pointer">
-                Tiers-payant (versement CAF direct au bailleur)
+                Tiers payant (versement CAF direct au bailleur)
               </label>
+            </div>
+            {/* Montant grisé si tiers payant non coché */}
+            <div>
+              <label className={`${labelCls} ${!watch('apl_tiers_payant') ? 'opacity-40' : ''}`}>
+                Montant aide personnelle au logement mensuel (€)
+              </label>
+              <input
+                type="number" step="0.01" min="0"
+                {...register('apl_amount')}
+                disabled={!watch('apl_tiers_payant')}
+                className={`${inputCls} ${!watch('apl_tiers_payant') ? 'opacity-40 bg-gray-50 cursor-not-allowed' : ''}`}
+                placeholder="0.00"
+              />
+              {watch('apl_tiers_payant') && (
+                <p className="text-xs text-blue-600 mt-1">
+                  Ce montant sera déduit du loyer pour calculer le reste à payer.
+                </p>
+              )}
             </div>
           </div>
         </div>
