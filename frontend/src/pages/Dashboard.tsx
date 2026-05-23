@@ -3,15 +3,12 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts'
-import axios from 'axios'
 import {
   Building2, Users, TrendingUp, AlertTriangle, Home,
   CreditCard, CheckCircle, ArrowUpRight, ArrowDownRight,
-  Activity, Euro
+  Activity, Euro, RefreshCw
 } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { apiClient } from '@/api/client'
 
 const MONTH_LABELS: Record<string, string> = {
   '01': 'Jan', '02': 'Fév', '03': 'Mar', '04': 'Avr',
@@ -70,18 +67,27 @@ function KPICard({ title, value, sub, icon: Icon, color, trend }: {
 }
 
 export default function Dashboard() {
-  const { accessToken: token } = useAuthStore()
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    axios.get(`${API}/api/v1/dashboard/stats`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => setStats(r.data))
-      .catch(() => setStats(null))
+  const load = () => {
+    setLoading(true)
+    setError(null)
+    apiClient.get<Stats>('/dashboard/stats')
+      .then(r => { setStats(r.data); setError(null) })
+      .catch(e => {
+        setStats(null)
+        const detail = e?.response?.data?.detail
+        const status = e?.response?.status
+        if (status === 403) setError('Accès refusé — rôle gestionnaire requis')
+        else if (detail) setError(String(detail))
+        else setError(`Erreur ${status ?? 'réseau'} — vérifiez que le serveur est démarré`)
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { load() }, [])
 
   if (loading) {
     return (
@@ -95,7 +101,14 @@ export default function Dashboard() {
     return (
       <div className="p-6 text-center text-gray-500">
         <Activity size={48} className="mx-auto mb-3 text-gray-300" />
-        <p>Impossible de charger les statistiques</p>
+        <p className="font-medium">Impossible de charger les statistiques</p>
+        {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+        <button
+          onClick={load}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+        >
+          <RefreshCw size={14} /> Réessayer
+        </button>
       </div>
     )
   }

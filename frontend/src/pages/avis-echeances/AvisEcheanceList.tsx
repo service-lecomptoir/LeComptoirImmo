@@ -3,12 +3,13 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   Calendar, Plus, Download, Send, CheckCircle,
-  Trash2, RefreshCw, Filter,
+  Trash2, RefreshCw, Filter, Pencil, X,
 } from 'lucide-react'
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { leasesApi } from '@/api/leases'
 import { useAuthStore } from '@/store/authStore'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import type { Lease } from '@/types/lease'
 
 const MONTHS = [
   '', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -29,6 +30,77 @@ function statusLabel(s: string): string {
   return 'Brouillon'
 }
 
+// ── Modale édition APL ────────────────────────────────────────────────────────
+function EditAplModal({
+  avis,
+  onClose,
+  onSaved,
+}: {
+  avis: AvisEcheanceSummary
+  onClose: () => void
+  onSaved: (updated: AvisEcheanceSummary) => void
+}) {
+  const [aplValue, setAplValue] = useState(
+    avis.amount_apl != null ? String(avis.amount_apl) : ''
+  )
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handle = async () => {
+    setLoading(true); setError('')
+    try {
+      const apl = aplValue.trim() !== '' ? parseFloat(aplValue) : null
+      if (apl !== null && isNaN(apl)) { setError('Montant invalide'); setLoading(false); return }
+      const { data } = await avisEcheancesApi.updateApl(avis.id, apl)
+      onSaved(data)
+      onClose()
+    } catch (e: any) {
+      setError(e?.response?.data?.detail ?? 'Erreur')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl p-5 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-900">Modifier le montant APL</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">
+          Avis : <span className="font-medium text-gray-700">{avis.period_label} — {avis.tenant_full_name}</span>
+        </p>
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Montant APL pour ce mois (€) — laisser vide pour supprimer
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            value={aplValue}
+            onChange={e => setAplValue(e.target.value)}
+            placeholder="0.00"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+        </div>
+        {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+            Annuler
+          </button>
+          <button onClick={handle} disabled={loading}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            {loading ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Modale génération manuelle ────────────────────────────────────────────────
 function GenerateModal({
   onClose,
@@ -41,6 +113,9 @@ function GenerateModal({
   const [leaseId, setLeaseId] = useState('')
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
+  const [aplOverride, setAplOverride] = useState('')
+  const [defaultApl, setDefaultApl] = useState<number | null>(null)
+  const [aplTiersPayant, setAplTiersPayant] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [leases, setLeases] = useState<{ id: string; label: string }[]>([])
@@ -56,11 +131,34 @@ function GenerateModal({
     })
   }, [])
 
+  // Charger les détails du bail sélectionné pour pré-remplir l'APL
+  useEffect(() => {
+    if (!leaseId) { setDefaultApl(null); setAplTiersPayant(false); setAplOverride(''); return }
+    leasesApi.get(leaseId).then(r => {
+      const lease: Lease = r.data
+      if (lease.apl_tiers_payant && lease.apl_amount) {
+        setDefaultApl(lease.apl_amount)
+        setAplOverride(String(lease.apl_amount))
+        setAplTiersPayant(true)
+      } else {
+        setDefaultApl(null)
+        setAplOverride('')
+        setAplTiersPayant(false)
+      }
+    }).catch(() => {})
+  }, [leaseId])
+
   const handleSubmit = async () => {
     if (!leaseId) { setError('Sélectionnez un bail'); return }
     setLoading(true); setError('')
     try {
-      await avisEcheancesApi.generate({ lease_id: leaseId, period_year: year, period_month: month })
+      const aplNum = aplOverride.trim() !== '' ? parseFloat(aplOverride) : undefined
+      await avisEcheancesApi.generate({
+        lease_id: leaseId,
+        period_year: year,
+        period_month: month,
+        apl_amount_override: aplNum,
+      })
       onGenerated()
       onClose()
     } catch (e: any) {
@@ -69,6 +167,8 @@ function GenerateModal({
       setLoading(false)
     }
   }
+
+  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -81,11 +181,7 @@ function GenerateModal({
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Bail</label>
-            <select
-              value={leaseId}
-              onChange={e => setLeaseId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <select value={leaseId} onChange={e => setLeaseId(e.target.value)} className={inp}>
               <option value="">— Sélectionner un bail —</option>
               {leases.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
             </select>
@@ -94,11 +190,7 @@ function GenerateModal({
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">Mois</label>
-              <select
-                value={month}
-                onChange={e => setMonth(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={month} onChange={e => setMonth(Number(e.target.value))} className={inp}>
                 {MONTHS.slice(1).map((m, i) => (
                   <option key={i + 1} value={i + 1}>{m}</option>
                 ))}
@@ -106,32 +198,46 @@ function GenerateModal({
             </div>
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">Année</label>
-              <input
-                type="number"
-                value={year}
-                onChange={e => setYear(Number(e.target.value))}
-                min={2020}
-                max={2035}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="number" value={year} onChange={e => setYear(Number(e.target.value))}
+                min={2020} max={2035} className={inp} />
             </div>
           </div>
+
+          {/* APL — affiché si bail avec tiers-payant OU saisie manuelle */}
+          {leaseId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <label className="block text-xs font-semibold text-blue-700 mb-1">
+                Montant APL ce mois (€)
+                {defaultApl != null && (
+                  <span className="ml-1 font-normal text-blue-500">
+                    — défaut du bail : {defaultApl.toFixed(2)} €
+                  </span>
+                )}
+              </label>
+              <input
+                type="number" step="0.01" min="0"
+                value={aplOverride}
+                onChange={e => setAplOverride(e.target.value)}
+                placeholder={aplTiersPayant ? `${defaultApl ?? 0} (défaut bail)` : 'laisser vide si aucun'}
+                className="w-full border border-blue-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-blue-500 mt-1">
+                {aplTiersPayant
+                  ? 'Modifiable mois par mois. Laissez vide pour utiliser le montant du bail.'
+                  : 'Vous pouvez indiquer un montant APL spécifique à ce mois.'}
+              </p>
+            </div>
+          )}
 
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
         </div>
 
         <div className="flex justify-end gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
-          >
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
             Annuler
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button onClick={handleSubmit} disabled={loading}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
             {loading ? 'Génération…' : 'Générer'}
           </button>
         </div>
@@ -238,6 +344,9 @@ export default function AvisEcheanceList() {
 
   const [showGenerate, setShowGenerate] = useState(false)
   const [showBulk, setShowBulk] = useState(false)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState('')
+  const [editAplAvis, setEditAplAvis] = useState<AvisEcheanceSummary | null>(null)
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -276,17 +385,32 @@ export default function AvisEcheanceList() {
     load()
   }
 
-  const downloadPdf = (id: string, label: string) => {
+  const downloadPdf = async (id: string, label: string) => {
     const token = localStorage.getItem('access_token')
     const url = avisEcheancesApi.pdfUrl(id)
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.blob())
-      .then(blob => {
-        const a = document.createElement('a')
-        a.href = URL.createObjectURL(blob)
-        a.download = `avis-${label}.pdf`
-        a.click()
-      })
+    setDownloadingId(id)
+    setErrorMsg('')
+    try {
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!response.ok) {
+        let detail = `Erreur ${response.status}`
+        try { const body = await response.json(); detail = body.detail || detail } catch {}
+        throw new Error(detail)
+      }
+      const blob = await response.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = `avis-${label}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(a.href)
+    } catch (e: any) {
+      setErrorMsg(`Impossible de télécharger le PDF : ${e.message}`)
+      setTimeout(() => setErrorMsg(''), 5000)
+    } finally {
+      setDownloadingId(null)
+    }
   }
 
   const years = Array.from({ length: 6 }, (_, i) => now.getFullYear() - 2 + i)
@@ -322,6 +446,11 @@ export default function AvisEcheanceList() {
       {successMsg && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 text-green-800 text-sm border border-green-200">
           {successMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 text-red-800 text-sm border border-red-200">
+          {errorMsg}
         </div>
       )}
 
@@ -420,13 +549,25 @@ export default function AvisEcheanceList() {
                       <button
                         onClick={() => downloadPdf(a.id, `${a.period_label}-${a.tenant_full_name}`)}
                         title="Télécharger PDF"
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                        disabled={downloadingId === a.id}
+                        className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Download size={14} />
+                        {downloadingId === a.id
+                          ? <RefreshCw size={14} className="animate-spin" />
+                          : <Download size={14} />
+                        }
                       </button>
 
                       {isManager && (
                         <>
+                          {/* Modifier le montant APL */}
+                          <button
+                            onClick={() => setEditAplAvis(a)}
+                            title="Modifier le montant APL"
+                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                          >
+                            <Pencil size={14} />
+                          </button>
                           {a.status === 'brouillon' && (
                             <button
                               onClick={() => handleMarkSent(a.id)}
@@ -476,6 +617,18 @@ export default function AvisEcheanceList() {
         <BulkGenerateModal
           onClose={() => setShowBulk(false)}
           onGenerated={(msg) => { load(); setSuccessMsg(msg) }}
+        />
+      )}
+      {editAplAvis && (
+        <EditAplModal
+          avis={editAplAvis}
+          onClose={() => setEditAplAvis(null)}
+          onSaved={(updated) => {
+            setAvis(prev => prev.map(a => a.id === updated.id ? updated : a))
+            setEditAplAvis(null)
+            setSuccessMsg('Montant APL mis à jour')
+            setTimeout(() => setSuccessMsg(''), 3000)
+          }}
         />
       )}
     </div>

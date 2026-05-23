@@ -55,7 +55,7 @@ async def get_dashboard_stats(
     rent_received_res = await db.execute(
         select(func.sum(Payment.amount_paid))
         .where(
-            Payment.status == PaymentStatus.PAYE,
+            Payment.status == PaymentStatus.PAID,
             Payment.payment_date >= start_month,
         )
     )
@@ -65,7 +65,7 @@ async def get_dashboard_stats(
     outstanding_res = await db.execute(
         select(func.sum(Payment.amount_due - Payment.amount_paid))
         .where(
-            Payment.status.in_([PaymentStatus.EN_ATTENTE, PaymentStatus.RETARD]),
+            Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
             Payment.due_date < today,
         )
     )
@@ -100,7 +100,7 @@ async def get_dashboard_stats(
         rec_res = await db.execute(
             select(func.sum(Payment.amount_paid))
             .where(
-                Payment.status == PaymentStatus.PAYE,
+                Payment.status == PaymentStatus.PAID,
                 Payment.payment_date >= month_start,
                 Payment.payment_date < month_end,
             )
@@ -110,7 +110,7 @@ async def get_dashboard_stats(
         out_res = await db.execute(
             select(func.sum(Payment.amount_due - Payment.amount_paid))
             .where(
-                Payment.status.in_([PaymentStatus.EN_ATTENTE, PaymentStatus.RETARD]),
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
                 Payment.due_date >= month_start,
                 Payment.due_date < month_end,
             )
@@ -152,7 +152,7 @@ async def get_dashboard_stats(
             .join(Lease, Payment.lease_id == Lease.id)
             .where(
                 Lease.property_id == prop.id,
-                Payment.status.in_([PaymentStatus.EN_ATTENTE, PaymentStatus.RETARD]),
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
                 Payment.due_date < today,
             )
         )
@@ -188,7 +188,7 @@ async def get_dashboard_stats(
 
     overdue_count_res = await db.execute(
         select(func.count(Payment.id)).where(
-            Payment.status.in_([PaymentStatus.EN_ATTENTE, PaymentStatus.RETARD]),
+            Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
             Payment.due_date < today,
         )
     )
@@ -196,7 +196,7 @@ async def get_dashboard_stats(
 
     overdue_amount_res = await db.execute(
         select(func.sum(Payment.amount_due - Payment.amount_paid)).where(
-            Payment.status.in_([PaymentStatus.EN_ATTENTE, PaymentStatus.RETARD]),
+            Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
             Payment.due_date < today,
         )
     )
@@ -295,7 +295,7 @@ async def get_fiscal_revenues(
         .join(Lease, Payment.lease_id == Lease.id)
         .where(
             Lease.property_id.in_(prop_ids),
-            Payment.status == PaymentStatus.PAYE,
+            Payment.status == PaymentStatus.PAID,
             Payment.payment_date >= start_date,
             Payment.payment_date <= end_date,
         )
@@ -323,7 +323,7 @@ async def get_fiscal_revenues(
             .join(Lease, Payment.lease_id == Lease.id)
             .where(
                 Lease.property_id == prop.id,
-                Payment.status == PaymentStatus.PAYE,
+                Payment.status == PaymentStatus.PAID,
                 Payment.payment_date >= start_date,
                 Payment.payment_date <= end_date,
             )

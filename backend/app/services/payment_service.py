@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,9 +58,24 @@ class PaymentService:
         amount_rent = float(lease.rent_amount)
         amount_charges = float(lease.charges_amount)
         amount_apl = float(lease.apl_amount) if lease.apl_tiers_payant and lease.apl_amount else None
-        amount_due = amount_rent + amount_charges - (amount_apl or 0.0)
+        # amount_due = montant brut total (loyer + charges), avant déduction APL
+        amount_due = amount_rent + amount_charges
 
         due_date = PaymentService._compute_due_date(year, month, lease.payment_day)
+
+        # Si tiers-payant CAF : la CAF verse sa part dès la génération de l'avis
+        if amount_apl and amount_apl > 0:
+            initial_paid = min(amount_apl, amount_due)
+            initial_status = PaymentStatus.PAID if initial_paid >= amount_due else PaymentStatus.PARTIAL
+            initial_payment_date = due_date
+            initial_method = "virement"
+            initial_notes = "Tiers-payant CAF – versement automatique"
+        else:
+            initial_paid = 0.0
+            initial_status = PaymentStatus.PENDING
+            initial_payment_date = None
+            initial_method = None
+            initial_notes = None
 
         payment = Payment(
             lease_id=lease.id,
@@ -72,9 +87,12 @@ class PaymentService:
             amount_rent=amount_rent,
             amount_charges=amount_charges,
             amount_apl=amount_apl,
-            amount_due=max(0.0, amount_due),
-            amount_paid=0.0,
-            status=PaymentStatus.PENDING,
+            amount_due=amount_due,
+            amount_paid=initial_paid,
+            status=initial_status,
+            payment_date=initial_payment_date,
+            payment_method=initial_method,
+            notes=initial_notes,
             created_by=created_by,
         )
         db.add(payment)
@@ -130,6 +148,9 @@ class PaymentService:
 
         if payment.amount_paid >= amount_due:
             payment.status = PaymentStatus.PAID
+            # Quittance auto-générée dès que le loyer est intégralement payé
+            if not payment.quittance_generated_at:
+                payment.quittance_generated_at = datetime.now(timezone.utc)
         else:
             payment.status = PaymentStatus.PARTIAL
 
@@ -255,6 +276,8 @@ class PaymentService:
             amount_paid=float(p.amount_paid),
             balance=p.balance,
             status=p.status,
+            quittance_generated_at=p.quittance_generated_at,
+            quittance_sent_at=p.quittance_sent_at,
         )
 
     @staticmethod
@@ -325,6 +348,20 @@ class PaymentService:
         )
 
     @staticmethod
+    async def send_quittance(db: AsyncSession, payment_id: uuid.UUID) -> Payment:
+        """Marque la quittance comme envoyée et enregistre l'horodatage."""
+        payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+        if payment.status not in (PaymentStatus.PAID, PaymentStatus.PARTIAL):
+            raise BadRequestException("Impossible de générer une quittance pour un loyer non payé")
+        now = datetime.now(timezone.utc)
+        if not payment.quittance_generated_at:
+            payment.quittance_generated_at = now
+        payment.quittance_sent_at = now
+        await db.flush()
+        await db.refresh(payment)
+        return payment
+
+    @staticmethod
     async def cancel_payment(db: AsyncSession, payment_id: uuid.UUID) -> Payment:
         payment = await PaymentService.get_by_id(db, payment_id)
         if payment.status == PaymentStatus.PAID:
@@ -333,3 +370,9 @@ class PaymentService:
         await db.flush()
         await db.refresh(payment)
         return payment
+
+    @staticmethod
+    async def delete_payment(db: AsyncSession, payment_id: uuid.UUID) -> None:
+        payment = await PaymentService.get_by_id(db, payment_id)
+        await db.delete(payment)
+        await db.flush()

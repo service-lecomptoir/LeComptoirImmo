@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CreditCard, Search, Filter, FileDown, Send, RefreshCw } from 'lucide-react'
+import { CreditCard, Search, Filter, FileDown, Send, RefreshCw, CheckCircle2, Mail, Trash2 } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Modal } from '@/components/common/Modal'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_VARIANTS } from '@/types/payment'
 import type { PaymentListItem, PaymentStatus } from '@/types/payment'
 import { format } from 'date-fns'
+import { fr } from 'date-fns/locale'
 import { useForm } from 'react-hook-form'
 
 interface RecordForm {
@@ -26,6 +27,9 @@ export default function PaymentList() {
   const [isLoading, setIsLoading] = useState(true)
   const [recordingId, setRecordingId] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [sendingQuittanceId, setSendingQuittanceId] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState('')
 
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<RecordForm>({
     defaultValues: {
@@ -86,6 +90,32 @@ export default function PaymentList() {
     fetchPayments(search, filterStatus, filterYear, filterMonth)
   }
 
+  const handleDownloadQuittance = async (p: PaymentListItem) => {
+    setDownloadingId(p.id)
+    try {
+      await paymentsApi.downloadQuittance(
+        p.id,
+        `quittance_${p.tenant_full_name.replace(/ /g, '_')}_${p.period_year}_${String(p.period_month).padStart(2, '0')}.pdf`
+      )
+      // Rafraîchir pour mettre à jour quittance_generated_at
+      fetchPayments(search, filterStatus, filterYear, filterMonth)
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  const handleSendQuittance = async (p: PaymentListItem) => {
+    setSendingQuittanceId(p.id)
+    try {
+      await paymentsApi.sendQuittance(p.id)
+      setSuccessMsg(`Quittance marquée comme envoyée — ${p.tenant_full_name} (${p.period_label})`)
+      setTimeout(() => setSuccessMsg(''), 4000)
+      fetchPayments(search, filterStatus, filterYear, filterMonth)
+    } finally {
+      setSendingQuittanceId(null)
+    }
+  }
+
   const fmtEuro = (n: number) =>
     n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
 
@@ -112,6 +142,13 @@ export default function PaymentList() {
           Générer loyers {months[filterMonth]} {filterYear}
         </button>
       </div>
+
+      {successMsg && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-green-50 text-green-800 text-sm border border-green-200 flex items-center gap-2">
+          <CheckCircle2 size={15} className="text-green-600 shrink-0" />
+          {successMsg}
+        </div>
+      )}
 
       {/* Filtres */}
       <div className="flex gap-3 mb-4 flex-wrap">
@@ -170,15 +207,16 @@ export default function PaymentList() {
               <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Payé</th>
               <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Solde</th>
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Statut</th>
+              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Quittance</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={8} className="text-center py-12 text-sm text-gray-500">Chargement...</td></tr>
+              <tr><td colSpan={9} className="text-center py-12 text-sm text-gray-500">Chargement...</td></tr>
             ) : payments.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={9}>
                   <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                     <CreditCard size={32} className="text-gray-300 mb-2" />
                     <p className="text-sm">Aucun paiement — cliquez sur "Générer" pour créer les loyers du mois</p>
@@ -206,6 +244,59 @@ export default function PaymentList() {
                       dot
                     />
                   </td>
+
+                  {/* Colonne quittance */}
+                  <td className="px-4 py-3">
+                    {['paid', 'partial'].includes(p.status) ? (
+                      <div className="flex items-center gap-2">
+                        {/* Télécharger */}
+                        <button
+                          onClick={() => handleDownloadQuittance(p)}
+                          disabled={downloadingId === p.id}
+                          className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600 disabled:opacity-50"
+                          title="Télécharger la quittance PDF"
+                        >
+                          {downloadingId === p.id
+                            ? <RefreshCw size={14} className="animate-spin" />
+                            : <FileDown size={14} />
+                          }
+                        </button>
+
+                        {/* Envoyer / marquer envoyée */}
+                        <button
+                          onClick={() => handleSendQuittance(p)}
+                          disabled={sendingQuittanceId === p.id}
+                          title={p.quittance_sent_at
+                            ? `Envoyée le ${format(new Date(p.quittance_sent_at), 'd MMM yyyy', { locale: fr })}`
+                            : 'Marquer comme envoyée'}
+                          className={`p-1.5 rounded disabled:opacity-50 transition-colors ${
+                            p.quittance_sent_at
+                              ? 'text-green-600 bg-green-50 hover:bg-green-100'
+                              : 'text-gray-400 hover:bg-gray-100 hover:text-blue-600'
+                          }`}
+                        >
+                          {sendingQuittanceId === p.id
+                            ? <RefreshCw size={14} className="animate-spin" />
+                            : p.quittance_sent_at
+                              ? <CheckCircle2 size={14} />
+                              : <Mail size={14} />
+                          }
+                        </button>
+
+                        {/* Badge "auto" si générée automatiquement */}
+                        {p.quittance_generated_at && !p.quittance_sent_at && (
+                          <span className="text-xs text-blue-500 whitespace-nowrap">Prête</span>
+                        )}
+                        {p.quittance_sent_at && (
+                          <span className="text-xs text-green-600 whitespace-nowrap">Envoyée</span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
+
+                  {/* Actions */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
                       {['pending', 'partial', 'late'].includes(p.status) && (
@@ -214,15 +305,6 @@ export default function PaymentList() {
                           className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
                         >
                           Saisir
-                        </button>
-                      )}
-                      {p.status === 'paid' && (
-                        <button
-                          onClick={() => paymentsApi.downloadQuittance(p.id, `quittance_${p.tenant_full_name.replace(/ /g, '_')}_${p.period_year}_${String(p.period_month).padStart(2, '0')}.pdf`)}
-                          className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-700"
-                          title="Télécharger la quittance"
-                        >
-                          <FileDown size={14} />
                         </button>
                       )}
                       {['pending', 'partial', 'late'].includes(p.status) && (
@@ -234,6 +316,21 @@ export default function PaymentList() {
                           <Send size={14} />
                         </button>
                       )}
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Supprimer le paiement de ${p.tenant_full_name} — ${p.period_label} ?\nCette action est irréversible.`)) return
+                          try {
+                            await paymentsApi.delete(p.id)
+                            fetchPayments(search, filterStatus, filterYear, filterMonth)
+                          } catch (e: any) {
+                            alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
+                          }
+                        }}
+                        title="Supprimer ce paiement"
+                        className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-red-600"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>

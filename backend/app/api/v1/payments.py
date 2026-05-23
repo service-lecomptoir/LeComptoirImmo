@@ -30,6 +30,8 @@ get_current_user = _get_current_user
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
+# ── Routes statiques (doivent être enregistrées AVANT les routes paramétrées) ──
+
 @router.get("/stats/dashboard", response_model=DashboardStats)
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
@@ -58,6 +60,85 @@ async def generate_monthly_payments(
     await db.commit()
     return {"generated": count, "year": data.year, "month": data.month}
 
+
+@router.get("/locataire/current", summary="Paiement du mois courant (locataire)")
+async def locataire_current_payment(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from datetime import date
+    from sqlalchemy import select
+    from app.models.tenant import Tenant
+    from app.models.payment import Payment as PaymentModel
+
+    tenant_res = await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    tenant = tenant_res.scalar_one_or_none()
+    if not tenant:
+        return {"payment": None, "tenant": None}
+
+    from sqlalchemy.orm import selectinload
+    from app.models.lease import Lease
+    result = await db.execute(
+        select(PaymentModel)
+        .options(
+            selectinload(PaymentModel.tenant),
+            selectinload(PaymentModel.unit),
+            selectinload(PaymentModel.lease).selectinload(Lease.parent_property),
+        )
+        .where(PaymentModel.tenant_id == tenant.id)
+        .where(PaymentModel.status.in_(["pending", "partial", "late"]))
+        .order_by(PaymentModel.period_year.desc(), PaymentModel.period_month.desc())
+        .limit(1)
+    )
+    payment = result.scalar_one_or_none()
+    return {
+        "payment": PaymentService.to_list_item(payment).__dict__ if payment else None,
+        "tenant_name": tenant.full_name,
+    }
+
+
+@router.post("/locataire/declare", status_code=201, summary="Déclarer un paiement (locataire)")
+async def locataire_declare_payment(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from sqlalchemy import select
+    from app.models.tenant import Tenant
+    from app.models.notification import Notification, NotificationType, NotificationPriority
+    from app.schemas.notification import NotificationCreate
+    from app.services.notification_service import NotificationService
+
+    tenant_res = await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    tenant = tenant_res.scalar_one_or_none()
+    if not tenant:
+        from app.core.exceptions import BadRequestException
+        raise BadRequestException("Profil locataire introuvable")
+
+    method_labels = {
+        "carte": "Carte bancaire",
+        "virement": "Virement bancaire",
+        "prelevement": "Prélèvement automatique",
+        "cheque": "Chèque",
+        "especes": "Espèces",
+    }
+    method = data.get("method", "virement")
+    amount = data.get("amount", 0)
+    label = method_labels.get(method, method)
+
+    notif = NotificationCreate(
+        title=f"Déclaration de paiement — {tenant.full_name}",
+        message=f"{tenant.full_name} a déclaré un paiement de {amount} € par {label}. Veuillez valider le règlement.",
+        notification_type=NotificationType.PAIEMENT_RECU,
+        priority=NotificationPriority.HIGH,
+        user_id=None,
+    )
+    await NotificationService.create(db, notif)
+    await db.commit()
+    return {"status": "declared", "method": method}
+
+
+# ── Routes liste / création ────────────────────────────────────────────────────
 
 @router.get("", response_model=PaymentListResponse)
 async def list_payments(
@@ -157,6 +238,8 @@ async def create_payment(
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
 
 
+# ── Routes paramétrées /{payment_id} ──────────────────────────────────────────
+
 @router.get("/{payment_id}", response_model=PaymentResponse)
 async def get_payment(
     payment_id: uuid.UUID,
@@ -166,81 +249,15 @@ async def get_payment(
     return await PaymentService.get_by_id(db, payment_id, load_relations=True)
 
 
-@router.get("/locataire/current", summary="Paiement du mois courant (locataire)")
-async def locataire_current_payment(
+@router.delete("/{payment_id}", status_code=204)
+async def delete_payment(
+    payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    _: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
-    from datetime import date
-    from sqlalchemy import select
-    from app.models.tenant import Tenant
-    from app.models.payment import Payment as PaymentModel
-
-    tenant_res = await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
-    tenant = tenant_res.scalar_one_or_none()
-    if not tenant:
-        return {"payment": None, "tenant": None}
-
-    from sqlalchemy.orm import selectinload
-    from app.models.lease import Lease
-    result = await db.execute(
-        select(PaymentModel)
-        .options(
-            selectinload(PaymentModel.tenant),
-            selectinload(PaymentModel.unit),
-            selectinload(PaymentModel.lease).selectinload(Lease.parent_property),
-        )
-        .where(PaymentModel.tenant_id == tenant.id)
-        .where(PaymentModel.status.in_(["pending", "partial", "late"]))
-        .order_by(PaymentModel.period_year.desc(), PaymentModel.period_month.desc())
-        .limit(1)
-    )
-    payment = result.scalar_one_or_none()
-    return {
-        "payment": PaymentService.to_list_item(payment).__dict__ if payment else None,
-        "tenant_name": tenant.full_name,
-    }
-
-
-@router.post("/locataire/declare", status_code=201, summary="Déclarer un paiement (locataire)")
-async def locataire_declare_payment(
-    data: dict,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    from sqlalchemy import select
-    from app.models.tenant import Tenant
-    from app.models.notification import Notification, NotificationType, NotificationPriority
-    from app.schemas.notification import NotificationCreate
-    from app.services.notification_service import NotificationService
-
-    tenant_res = await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
-    tenant = tenant_res.scalar_one_or_none()
-    if not tenant:
-        from app.core.exceptions import BadRequestException
-        raise BadRequestException("Profil locataire introuvable")
-
-    method_labels = {
-        "carte": "Carte bancaire",
-        "virement": "Virement bancaire",
-        "prelevement": "Prélèvement automatique",
-        "cheque": "Chèque",
-        "especes": "Espèces",
-    }
-    method = data.get("method", "virement")
-    amount = data.get("amount", 0)
-    label = method_labels.get(method, method)
-
-    notif = NotificationCreate(
-        title=f"Déclaration de paiement — {tenant.full_name}",
-        message=f"{tenant.full_name} a déclaré un paiement de {amount} € par {label}. Veuillez valider le règlement.",
-        notification_type=NotificationType.PAIEMENT_RECU,
-        priority=NotificationPriority.HIGH,
-        user_id=None,
-    )
-    await NotificationService.create(db, notif)
+    """Supprime définitivement un paiement."""
+    await PaymentService.delete_payment(db, payment_id)
     await db.commit()
-    return {"status": "declared", "method": method}
 
 
 @router.post("/{payment_id}/record", response_model=PaymentResponse)
@@ -272,10 +289,17 @@ async def download_quittance(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(Role.LECTURE)),
 ):
+    from datetime import datetime, timezone
     payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
     if payment.status not in (PaymentStatus.PAID, PaymentStatus.PARTIAL):
         from app.core.exceptions import BadRequestException
         raise BadRequestException("Impossible de générer une quittance pour un loyer non payé")
+
+    # Marquer comme générée si c'est la première fois
+    if not payment.quittance_generated_at:
+        payment.quittance_generated_at = datetime.now(timezone.utc)
+        await db.flush()
+        await db.commit()
 
     html = render_template("quittance.html.j2", {"payment": payment})
     pdf_bytes = html_to_pdf(html)
@@ -289,3 +313,26 @@ async def download_quittance(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.post("/{payment_id}/quittance/send")
+async def send_quittance(
+    payment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Marque la quittance comme envoyée au locataire."""
+    from fastapi import HTTPException
+    try:
+        payment = await PaymentService.send_quittance(db, payment_id)
+        await db.commit()
+        return {
+            "id": str(payment.id),
+            "quittance_generated_at": payment.quittance_generated_at,
+            "quittance_sent_at": payment.quittance_sent_at,
+        }
+    except Exception as e:
+        from app.core.exceptions import BadRequestException
+        if "non payé" in str(e):
+            raise HTTPException(status_code=400, detail=str(e))
+        raise

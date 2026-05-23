@@ -1,7 +1,7 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Date, Numeric, Integer, Enum as SAEnum, ForeignKey, UniqueConstraint
+from sqlalchemy import String, Date, DateTime, Numeric, Integer, Enum as SAEnum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
@@ -83,6 +83,14 @@ class Payment(Base, TimestampMixin):
         index=True,
     )
     notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+
+    # ── Quittance ─────────────────────────────────────────────────────────────
+    quittance_generated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    quittance_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # ── Audit ─────────────────────────────────────────────────────────────────
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(

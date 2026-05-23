@@ -24,6 +24,13 @@ class AvisEcheanceGenerateIn(BaseModel):
     lease_id: uuid.UUID
     period_year: int
     period_month: int
+    # Montant APL spécifique à ce mois (remplace celui du bail si fourni)
+    apl_amount_override: Optional[float] = None
+
+
+class AvisEcheancePatchApl(BaseModel):
+    """Modification du montant APL d'un avis existant."""
+    apl_amount: Optional[float] = None  # None = supprimer l'APL
 
 
 class AvisEcheaneBulkGenerateIn(BaseModel):

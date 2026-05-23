@@ -29,6 +29,7 @@ export interface GenerateAvisIn {
   lease_id: string
   period_year: number
   period_month: number
+  apl_amount_override?: number | null
 }
 
 export interface BulkGenerateIn {
@@ -73,6 +74,10 @@ export const avisEcheancesApi = {
 
   markAcquitte(id: string) {
     return apiClient.post<AvisEcheanceSummary>(`/avis-echeances/${id}/acquitter`)
+  },
+
+  updateApl(id: string, apl_amount: number | null) {
+    return apiClient.patch<AvisEcheanceSummary>(`/avis-echeances/${id}/apl`, { apl_amount })
   },
 
   delete(id: string) {

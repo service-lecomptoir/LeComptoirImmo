@@ -35,6 +35,9 @@ export const paymentsApi = {
   cancel: (id: string) =>
     apiClient.post<Payment>(`/payments/${id}/cancel`),
 
+  delete: (id: string) =>
+    apiClient.delete(`/payments/${id}`),
+
   generate: (year: number, month: number) =>
     apiClient.post<{ generated: number; year: number; month: number }>(
       '/payments/generate',
@@ -60,6 +63,11 @@ export const paymentsApi = {
     link.remove()
     window.URL.revokeObjectURL(url)
   },
+
+  sendQuittance: (id: string) =>
+    apiClient.post<{ id: string; quittance_generated_at: string; quittance_sent_at: string }>(
+      `/payments/${id}/quittance/send`
+    ),
 }
 
 export const lettersApi = {

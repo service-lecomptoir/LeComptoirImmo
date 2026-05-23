@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Building2, MapPin } from 'lucide-react'
+import { Plus, Search, Building2, MapPin, User, Pencil, Trash2 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -15,6 +15,14 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
   autre: 'Autre',
 }
 
+const TYPE_VARIANT: Record<string, 'blue' | 'green' | 'yellow' | 'gray'> = {
+  immeuble: 'blue',
+  maison: 'green',
+  appartement: 'blue',
+  local_commercial: 'yellow',
+  autre: 'gray',
+}
+
 export default function PropertyList() {
   const navigate = useNavigate()
   const [properties, setProperties] = useState<PropertyListItem[]>([])
@@ -22,6 +30,7 @@ export default function PropertyList() {
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editProperty, setEditProperty] = useState<PropertyListItem | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -55,19 +64,21 @@ export default function PropertyList() {
 
   return (
     <div className="p-6">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Biens immobiliers</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Propriétés</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} bien{total > 1 ? 's' : ''}</p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => { setEditProperty(null); setShowForm(true) }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={16} /> Nouveau bien
         </button>
       </div>
 
+      {/* Search */}
       <div className="relative mb-4">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
@@ -79,57 +90,105 @@ export default function PropertyList() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         {isLoading ? (
-          <div className="col-span-3 flex items-center justify-center h-32 text-sm text-gray-500">Chargement...</div>
+          <div className="flex items-center justify-center h-48 text-sm text-gray-400">Chargement...</div>
         ) : properties.length === 0 ? (
-          <div className="col-span-3 flex flex-col items-center justify-center h-32 text-gray-500">
-            <Building2 size={32} className="text-gray-300 mb-2" />
-            <p className="text-sm">{search ? 'Aucun résultat' : 'Aucun bien enregistré'}</p>
+          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+            <Building2 size={36} className="text-gray-300 mb-3" />
+            <p className="text-sm font-medium">{search ? 'Aucun résultat' : 'Aucun bien enregistré'}</p>
+            {!search && <p className="text-xs mt-1">Cliquez sur « Nouveau bien » pour commencer</p>}
           </div>
-        ) : properties.map(prop => {
-          const occupancyRate = prop.unit_count > 0
-            ? Math.round((prop.occupied_count / prop.unit_count) * 100)
-            : 0
-          return (
-            <div
-              key={prop.id}
-              onClick={() => navigate(`/properties/${prop.id}`)}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md hover:border-blue-200 cursor-pointer transition-all"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                  <Building2 size={20} className="text-blue-600" />
-                </div>
-                <StatusBadge
-                  label={PROPERTY_TYPE_LABELS[prop.property_type]}
-                  variant="blue"
-                />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-1">{prop.name}</h3>
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
-                <MapPin size={11} />
-                <span>{prop.full_address}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-500">
-                  {prop.unit_count} logement{prop.unit_count > 1 ? 's' : ''}
-                </span>
-                <StatusBadge
-                  label={`${prop.occupied_count}/${prop.unit_count} occupés`}
-                  variant={occupancyRate > 80 ? 'green' : occupancyRate > 50 ? 'yellow' : 'gray'}
-                  dot
-                />
-              </div>
-            </div>
-          )
-        })}
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nom du bien</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Adresse</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Propriétaire</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Logements</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {properties.map(prop => (
+                <tr
+                  key={prop.id}
+                  onClick={() => navigate(`/properties/${prop.id}`)}
+                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <StatusBadge
+                      label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
+                      variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Building2 size={15} className="text-blue-600" />
+                      </div>
+                      <span className="font-medium text-gray-900">{prop.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1 text-gray-500 text-xs">
+                      <MapPin size={11} />
+                      <span>{prop.full_address}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {prop.owner_name ? (
+                      <div className="flex items-center gap-1.5 text-gray-700 text-xs">
+                        <User size={12} className="text-gray-400" />
+                        <span>{prop.owner_name}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      prop.occupied_count > 0
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {prop.occupied_count}/{prop.unit_count}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => { setEditProperty(prop); setShowForm(true) }}
+                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Modifier"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(prop.id)}
+                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
+      {/* Modals */}
       {showForm && (
         <PropertyForm
-          onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchProperties(search) }}
+          property={editProperty as any}
+          onClose={() => { setShowForm(false); setEditProperty(null) }}
+          onSaved={() => { setShowForm(false); setEditProperty(null); fetchProperties(search) }}
         />
       )}
       <ConfirmDialog

@@ -57,6 +57,8 @@ class PaymentResponse(BaseModel):
     payment_method: Optional[str] = None
     status: PaymentStatus
     notes: Optional[str] = None
+    quittance_generated_at: Optional[datetime] = None
+    quittance_sent_at: Optional[datetime] = None
     tenant: Optional[TenantInPayment] = None
     unit: Optional[UnitInPayment] = None
     created_at: datetime
@@ -78,6 +80,8 @@ class PaymentListItem(BaseModel):
     amount_paid: float
     balance: float
     status: PaymentStatus
+    quittance_generated_at: Optional[datetime] = None
+    quittance_sent_at: Optional[datetime] = None
 
 
 class PaymentListResponse(BaseModel):

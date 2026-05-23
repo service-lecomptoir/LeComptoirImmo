@@ -1,43 +1,36 @@
-import { useState, useEffect, useRef } from 'react'
-import axios from 'axios'
-import {
-  FileText, Plus, Trash2, Edit2, Star, Upload,
-  Eye, Check, Building2, Download
-} from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
+import { useState, useEffect } from 'react'
+import { FileText, Plus, Trash2, Pencil, Star, Check, X, RefreshCw, Download } from 'lucide-react'
+import { apiClient } from '@/api/client'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// ── Constantes ────────────────────────────────────────────────────────────────
 
 const TEMPLATE_TYPES = [
-  { value: 'avis_echeance', label: "Avis d'échéance" },
-  { value: 'quittance', label: 'Quittance de loyer' },
-  { value: 'lettre_relance', label: 'Lettre de relance' },
+  { value: 'avis_echeance',      label: "Avis d'échéance" },
+  { value: 'quittance',          label: 'Quittance de loyer' },
+  { value: 'lettre_relance',     label: 'Lettre de relance' },
   { value: 'lettre_resiliation', label: 'Lettre de résiliation' },
-  { value: 'contrat_bail', label: 'Contrat de bail' },
-  { value: 'etat_des_lieux', label: 'État des lieux' },
+  { value: 'contrat_bail',       label: 'Contrat de bail' },
+  { value: 'etat_des_lieux',     label: 'État des lieux' },
+]
+
+const PRESET_COLORS = [
+  '#1E3A5F', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DC2626', '#374151',
 ]
 
 const VARIABLES = [
-  { var: '{{tenant_name}}', desc: 'Nom du locataire' },
-  { var: '{{property_name}}', desc: 'Nom du bien' },
-  { var: '{{unit_ref}}', desc: 'Référence unité' },
-  { var: '{{property_address}}', desc: 'Adresse du bien' },
-  { var: '{{rent_amount}}', desc: 'Montant loyer' },
-  { var: '{{charges_amount}}', desc: 'Montant charges' },
-  { var: '{{total_due}}', desc: 'Total à payer' },
-  { var: '{{amount_paid}}', desc: 'Montant reçu' },
-  { var: '{{due_date}}', desc: "Date d'échéance" },
-  { var: '{{month}}', desc: 'Mois concerné' },
-  { var: '{{date}}', desc: 'Date du jour' },
-  { var: '{{company_name}}', desc: 'Nom société' },
-  { var: '{{apl_amount}}', desc: 'Aide au logement' },
+  '{{tenant_name}}', '{{property_name}}', '{{unit_ref}}', '{{property_address}}',
+  '{{rent_amount}}', '{{charges_amount}}', '{{total_due}}', '{{amount_paid}}',
+  '{{due_date}}', '{{month}}', '{{date}}', '{{company_name}}', '{{apl_amount}}',
 ]
+
+const typeLabel = (val: string) => TEMPLATE_TYPES.find(t => t.value === val)?.label ?? val
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Template {
   id: string
   name: string
   template_type: string
-  logo_url?: string
   header_color?: string
   company_name?: string
   company_address?: string
@@ -50,462 +43,399 @@ interface Template {
   is_active: boolean
 }
 
-interface TemplateFormProps {
-  template?: Template | null
-  onClose: () => void
-  onSaved: () => void
+type FormData = Omit<Template, 'id' | 'is_active'>
+
+const EMPTY_FORM: FormData = {
+  name: '',
+  template_type: 'avis_echeance',
+  header_color: '#1E3A5F',
+  company_name: '',
+  company_address: '',
+  company_phone: '',
+  company_email: '',
+  company_siret: '',
+  content_html: '',
+  footer_text: '',
+  is_default: false,
 }
 
-function TemplateForm({ template, onClose, onSaved }: TemplateFormProps) {
-  const { accessToken: token } = useAuthStore()
-  const [form, setForm] = useState({
-    name: template?.name || '',
-    template_type: template?.template_type || 'avis_echeance',
-    header_color: template?.header_color || '#1E3A5F',
-    company_name: template?.company_name || '',
-    company_address: template?.company_address || '',
-    company_phone: template?.company_phone || '',
-    company_email: template?.company_email || '',
-    company_siret: template?.company_siret || '',
-    content_html: template?.content_html || '',
-    footer_text: template?.footer_text || '',
-    is_default: template?.is_default || false,
-    is_active: template?.is_active ?? true,
-  })
+// ── Modale Formulaire ─────────────────────────────────────────────────────────
+
+function TemplateModal({
+  template,
+  onClose,
+  onSaved,
+}: {
+  template: Template | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [form, setForm] = useState<FormData>(
+    template
+      ? {
+          name: template.name,
+          template_type: template.template_type,
+          header_color: template.header_color ?? '#1E3A5F',
+          company_name: template.company_name ?? '',
+          company_address: template.company_address ?? '',
+          company_phone: template.company_phone ?? '',
+          company_email: template.company_email ?? '',
+          company_siret: template.company_siret ?? '',
+          content_html: template.content_html ?? '',
+          footer_text: template.footer_text ?? '',
+          is_default: template.is_default,
+        }
+      : { ...EMPTY_FORM }
+  )
   const [saving, setSaving] = useState(false)
-  const [logoFile, setLogoFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState(false)
-  const [tab, setTab] = useState<'general' | 'content' | 'logo'>('general')
-  const [savedId, setSavedId] = useState<string | null>(template?.id || null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
+  const set = (field: keyof FormData, value: string | boolean) =>
+    setForm(f => ({ ...f, [field]: value }))
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { setError('Le nom est obligatoire'); return }
+    setSaving(true); setError('')
     try {
-      let id = savedId
       if (template?.id) {
-        await axios.patch(`${API}/api/v1/templates/${template.id}`, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        id = template.id
+        await apiClient.patch(`/templates/${template.id}`, form)
       } else {
-        const r = await axios.post(`${API}/api/v1/templates`, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        id = r.data.id
-        setSavedId(id)
+        await apiClient.post('/templates', form)
       }
-
-      // Upload logo si sélectionné
-      if (logoFile && id) {
-        const fd = new FormData()
-        fd.append('file', logoFile)
-        await axios.post(`${API}/api/v1/templates/${id}/upload-logo`, fd, {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
-        })
-      }
-
       onSaved()
       onClose()
-    } catch {
-      alert('Erreur lors de la sauvegarde')
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Erreur lors de la sauvegarde')
     } finally {
       setSaving(false)
     }
   }
 
-  const insertVariable = (v: string) => {
-    const ta = document.getElementById('template-content') as HTMLTextAreaElement
-    if (ta) {
-      const start = ta.selectionStart
-      const end = ta.selectionEnd
-      const newContent = form.content_html.slice(0, start) + v + form.content_html.slice(end)
-      setForm({ ...form, content_html: newContent })
-      setTimeout(() => {
-        ta.focus()
-        ta.setSelectionRange(start + v.length, start + v.length)
-      }, 0)
-    }
+  const insertVar = (v: string) => {
+    const ta = document.getElementById('tpl-content') as HTMLTextAreaElement | null
+    if (!ta) { set('content_html', (form.content_html ?? '') + v); return }
+    const s = ta.selectionStart, e = ta.selectionEnd
+    const next = (form.content_html ?? '').slice(0, s) + v + (form.content_html ?? '').slice(e)
+    set('content_html', next)
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(s + v.length, s + v.length) }, 0)
   }
+
+  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
+        {/* Header */}
         <div className="border-b px-6 py-4 flex items-center justify-between shrink-0">
           <h2 className="text-lg font-bold text-gray-900">
             {template ? 'Modifier le template' : 'Nouveau template'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b shrink-0">
-          {(['general', 'content', 'logo'] as const).map(t => (
-            <button key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                tab === t ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t === 'general' ? 'Informations' : t === 'content' ? 'Contenu HTML' : 'Logo & Couleurs'}
-            </button>
-          ))}
+        {/* Body scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+          {/* Nom + Type */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nom *</label>
+              <input className={inp} value={form.name} onChange={e => set('name', e.target.value)}
+                placeholder="Ex: Avis d'échéance standard" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Type de document</label>
+              <select className={inp} value={form.template_type}
+                onChange={e => set('template_type', e.target.value)}>
+                {TEMPLATE_TYPES.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Informations cabinet */}
+          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Votre cabinet</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nom société</label>
+                <input className={inp} value={form.company_name}
+                  onChange={e => set('company_name', e.target.value)}
+                  placeholder="Cabinet Immobilier XYZ" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">SIRET</label>
+                <input className={inp} value={form.company_siret}
+                  onChange={e => set('company_siret', e.target.value)} placeholder="12345678900000" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Adresse</label>
+              <input className={inp} value={form.company_address}
+                onChange={e => set('company_address', e.target.value)}
+                placeholder="1 rue de la Paix, 75001 Paris" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Téléphone</label>
+                <input className={inp} value={form.company_phone}
+                  onChange={e => set('company_phone', e.target.value)} placeholder="01 23 45 67 89" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" className={inp} value={form.company_email}
+                  onChange={e => set('company_email', e.target.value)} placeholder="contact@cabinet.fr" />
+              </div>
+            </div>
+          </div>
+
+          {/* Couleur d'en-tête */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">Couleur d'en-tête</label>
+            <div className="flex items-center gap-2">
+              {PRESET_COLORS.map(c => (
+                <button key={c} type="button"
+                  onClick={() => set('header_color', c)}
+                  className={`w-8 h-8 rounded-full border-2 transition-transform ${
+                    form.header_color === c ? 'border-gray-800 scale-110' : 'border-white shadow'
+                  }`}
+                  style={{ backgroundColor: c }}
+                  title={c}
+                />
+              ))}
+              <input type="color" value={form.header_color ?? '#1E3A5F'}
+                onChange={e => set('header_color', e.target.value)}
+                className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                title="Couleur personnalisée" />
+            </div>
+            {/* Mini aperçu */}
+            <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 flex items-center gap-3 px-4 py-2"
+              style={{ backgroundColor: form.header_color ?? '#1E3A5F' }}>
+              <span className="text-white text-sm font-semibold">
+                {form.company_name || 'Votre société'}
+              </span>
+            </div>
+          </div>
+
+          {/* Contenu */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-gray-700">Contenu du document</label>
+            </div>
+            {/* Variables rapides */}
+            <div className="flex flex-wrap gap-1 mb-2">
+              {VARIABLES.map(v => (
+                <button key={v} type="button" onClick={() => insertVar(v)}
+                  className="text-xs px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 font-mono">
+                  {v}
+                </button>
+              ))}
+            </div>
+            <textarea
+              id="tpl-content"
+              rows={8}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+              placeholder="Saisissez le contenu HTML ou texte du document. Cliquez sur une variable pour l'insérer."
+              value={form.content_html}
+              onChange={e => set('content_html', e.target.value)}
+            />
+          </div>
+
+          {/* Pied de page */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Pied de page</label>
+            <input className={inp} value={form.footer_text}
+              onChange={e => set('footer_text', e.target.value)}
+              placeholder="Texte légal, mentions obligatoires…" />
+          </div>
+
+          {/* Options */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.is_default}
+              onChange={e => set('is_default', e.target.checked)} className="rounded" />
+            <span className="text-sm text-gray-700">Template par défaut pour ce type de document</span>
+          </label>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-          <div className="p-6">
-            {tab === 'general' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom du template *</label>
-                    <input required className="w-full border rounded-lg px-3 py-2 text-sm" value={form.name}
-                      onChange={e => setForm({ ...form, name: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Type de document</label>
-                    <select className="w-full border rounded-lg px-3 py-2 text-sm" value={form.template_type}
-                      onChange={e => setForm({ ...form, template_type: e.target.value })}>
-                      {TEMPLATE_TYPES.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la société/cabinet</label>
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.company_name}
-                    onChange={e => setForm({ ...form, company_name: e.target.value })}
-                    placeholder="Cabinet Immobilier XYZ" />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.company_address}
-                    onChange={e => setForm({ ...form, company_address: e.target.value })} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                    <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.company_phone}
-                      onChange={e => setForm({ ...form, company_phone: e.target.value })} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.company_email}
-                      onChange={e => setForm({ ...form, company_email: e.target.value })} />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
-                  <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.company_siret}
-                    onChange={e => setForm({ ...form, company_siret: e.target.value })} />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pied de page</label>
-                  <textarea rows={2} className="w-full border rounded-lg px-3 py-2 text-sm" value={form.footer_text}
-                    onChange={e => setForm({ ...form, footer_text: e.target.value })} />
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={form.is_default}
-                      onChange={e => setForm({ ...form, is_default: e.target.checked })} />
-                    <span className="text-sm text-gray-700">Template par défaut pour ce type</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={form.is_active}
-                      onChange={e => setForm({ ...form, is_active: e.target.checked })} />
-                    <span className="text-sm text-gray-700">Actif</span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {tab === 'content' && (
-              <div className="space-y-4">
-                {/* Variables helper */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs font-medium text-blue-800 mb-2">Variables disponibles (cliquer pour insérer) :</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {VARIABLES.map(v => (
-                      <button key={v.var} type="button"
-                        onClick={() => insertVariable(v.var)}
-                        title={v.desc}
-                        className="text-xs px-2 py-0.5 bg-white border border-blue-200 rounded text-blue-700 hover:bg-blue-100 font-mono"
-                      >
-                        {v.var}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mb-2">
-                  <button type="button"
-                    onClick={() => setPreview(!preview)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border transition-colors ${
-                      preview ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Eye size={12} />
-                    {preview ? 'Éditeur' : 'Aperçu HTML'}
-                  </button>
-                </div>
-
-                {preview ? (
-                  <div className="border rounded-lg p-4 min-h-64 bg-white">
-                    <div
-                      style={{ borderTop: `4px solid ${form.header_color}` }}
-                      className="p-4 rounded"
-                      dangerouslySetInnerHTML={{ __html: form.content_html || '<em class="text-gray-400">Aucun contenu</em>' }}
-                    />
-                    {form.footer_text && (
-                      <div className="mt-4 pt-4 border-t text-xs text-gray-400">{form.footer_text}</div>
-                    )}
-                  </div>
-                ) : (
-                  <textarea
-                    id="template-content"
-                    rows={20}
-                    className="w-full border rounded-lg px-3 py-2 text-xs font-mono"
-                    placeholder="HTML du template... ex: <h2>AVIS D'ÉCHÉANCE</h2><p>Cher {{tenant_name}}...</p>"
-                    value={form.content_html}
-                    onChange={e => setForm({ ...form, content_html: e.target.value })}
-                  />
-                )}
-              </div>
-            )}
-
-            {tab === 'logo' && (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Couleur d'en-tête</label>
-                  <div className="flex items-center gap-4">
-                    <input type="color" value={form.header_color || '#1E3A5F'}
-                      onChange={e => setForm({ ...form, header_color: e.target.value })}
-                      className="w-12 h-10 rounded cursor-pointer" />
-                    <input className="border rounded-lg px-3 py-2 text-sm w-32"
-                      value={form.header_color || '#1E3A5F'}
-                      onChange={e => setForm({ ...form, header_color: e.target.value })} />
-                    <div className="flex gap-2">
-                      {['#1E3A5F', '#F07800', '#059669', '#7C3AED', '#DC2626', '#1D4ED8'].map(c => (
-                        <button key={c} type="button"
-                          onClick={() => setForm({ ...form, header_color: c })}
-                          className={`w-8 h-8 rounded-full border-2 ${form.header_color === c ? 'border-gray-800 scale-110' : 'border-transparent'}`}
-                          style={{ backgroundColor: c }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Logo</label>
-                  <div
-                    onClick={() => fileRef.current?.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
-                  >
-                    {logoFile ? (
-                      <div className="space-y-2">
-                        <Check size={32} className="mx-auto text-green-500" />
-                        <p className="text-sm font-medium text-gray-700">{logoFile.name}</p>
-                        <p className="text-xs text-gray-400">Cliquer pour changer</p>
-                      </div>
-                    ) : template?.logo_url ? (
-                      <div className="space-y-2">
-                        <img src={`${API}${template.logo_url}`} alt="Logo" className="max-h-16 mx-auto object-contain" />
-                        <p className="text-xs text-gray-400">Cliquer pour remplacer</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Upload size={32} className="mx-auto text-gray-400" />
-                        <p className="text-sm font-medium text-gray-700">Déposer ou cliquer pour uploader</p>
-                        <p className="text-xs text-gray-400">PNG, JPG, SVG — max 2Mo</p>
-                      </div>
-                    )}
-                  </div>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                    onChange={e => setLogoFile(e.target.files?.[0] || null)} />
-                </div>
-
-                {/* Aperçu en-tête */}
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">Aperçu de l'en-tête</p>
-                  <div className="border rounded-lg overflow-hidden">
-                    <div style={{ backgroundColor: form.header_color || '#1E3A5F' }} className="p-4 flex items-center gap-4">
-                      {(logoFile || template?.logo_url) && (
-                        <div className="w-12 h-12 bg-white rounded flex items-center justify-center">
-                          {logoFile
-                            ? <img src={URL.createObjectURL(logoFile)} alt="" className="max-h-10 object-contain" />
-                            : <img src={`${API}${template?.logo_url}`} alt="" className="max-h-10 object-contain" />
-                          }
-                        </div>
-                      )}
-                      <div className="text-white">
-                        <p className="font-bold">{form.company_name || 'Votre société'}</p>
-                        <p className="text-xs opacity-75">{form.company_address || 'Votre adresse'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t p-4 flex gap-3 shrink-0">
-            <button type="button" onClick={onClose}
-              className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">
-              Annuler
-            </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Sauvegarde...' : <><Check size={14} /> Enregistrer</>}
-            </button>
-          </div>
-        </form>
+        {/* Footer */}
+        <div className="border-t px-6 py-4 flex gap-3 shrink-0">
+          <button type="button" onClick={onClose}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+            Annuler
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            {saving ? <><RefreshCw size={14} className="animate-spin" /> Sauvegarde…</> : <><Check size={14} /> Enregistrer</>}
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
+// ── Page principale ───────────────────────────────────────────────────────────
+
 export default function TemplateEditor() {
-  const { accessToken: token } = useAuthStore()
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editTemplate, setEditTemplate] = useState<Template | null>(null)
+  const [successMsg, setSuccessMsg] = useState('')
+  const [initLoading, setInitLoading] = useState(false)
 
   const load = async () => {
     setLoading(true)
     try {
-      const params = filterType ? `?template_type=${filterType}` : ''
-      const r = await axios.get(`${API}/api/v1/templates${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const params = filterType ? { template_type: filterType } : {}
+      const r = await apiClient.get<Template[]>('/templates', { params })
       setTemplates(r.data)
     } catch {
       setTemplates([])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const initDefaults = async () => {
-    await axios.post(`${API}/api/v1/templates/initialize-defaults`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    setInitLoading(true)
+    try {
+      const r = await apiClient.post<{ created: number; message: string }>('/templates/initialize-defaults')
+      load()
+      setSuccessMsg(r.data.message)
+      setTimeout(() => setSuccessMsg(''), 3000)
+    } finally {
+      setInitLoading(false)
+    }
+  }
+
+  const deleteTemplate = async (t: Template) => {
+    if (!confirm(`Supprimer "${t.name}" ?`)) return
+    try {
+      await apiClient.delete(`/templates/${t.id}`)
+      load()
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
+    }
+  }
+
+  const openNew = () => { setEditTemplate(null); setShowModal(true) }
+  const openEdit = (t: Template) => { setEditTemplate(t); setShowModal(true) }
+
+  const onSaved = () => {
     load()
+    setSuccessMsg('Template enregistré')
+    setTimeout(() => setSuccessMsg(''), 3000)
   }
 
   useEffect(() => { load() }, [filterType])
 
-  const deleteTemplate = async (id: string) => {
-    if (!confirm('Supprimer ce template ?')) return
-    try {
-      await axios.delete(`${API}/api/v1/templates/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      load()
-    } catch (err: any) {
-      alert(err.response?.data?.detail || 'Erreur')
-    }
-  }
-
-  const typeLabel = (val: string) => TEMPLATE_TYPES.find(t => t.value === val)?.label || val
-
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-5xl mx-auto">
+
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Templates de documents</h1>
-          <p className="text-sm text-gray-500 mt-1">Personnalisez vos avis d'échéance, quittances et courriers</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Personnalisez vos avis d'échéance, quittances et courriers
+          </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={initDefaults}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
-            <Download size={16} />
-            Charger les modèles par défaut
+          <button onClick={initDefaults} disabled={initLoading}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
+            {initLoading ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
+            Modèles par défaut
           </button>
-          <button onClick={() => { setEditTemplate(null); setShowModal(true) }}
+          <button onClick={openNew}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-            <Plus size={16} />
+            <Plus size={15} />
             Nouveau template
           </button>
         </div>
       </div>
 
-      {/* Filtre */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        <button onClick={() => setFilterType('')}
-          className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${!filterType ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-          Tous
-        </button>
-        {TEMPLATE_TYPES.map(t => (
+      {successMsg && (
+        <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 flex items-center gap-2">
+          <Check size={14} className="text-green-600" /> {successMsg}
+        </div>
+      )}
+
+      {/* Filtres par type */}
+      <div className="flex gap-2 mb-5 flex-wrap">
+        {[{ value: '', label: 'Tous' }, ...TEMPLATE_TYPES].map(t => (
           <button key={t.value} onClick={() => setFilterType(t.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${filterType === t.value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+              filterType === t.value
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}>
             {t.label}
           </button>
         ))}
       </div>
 
+      {/* Liste */}
       {loading ? (
         <div className="text-center py-12 text-gray-400">Chargement…</div>
       ) : templates.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border">
-          <FileText size={48} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 mb-3">Aucun template configuré</p>
+        <div className="text-center py-16 bg-white rounded-xl border">
+          <FileText size={40} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-500 font-medium mb-1">Aucun template configuré</p>
+          <p className="text-sm text-gray-400 mb-4">
+            Commencez par charger les modèles par défaut ou créez le vôtre.
+          </p>
           <button onClick={initDefaults}
             className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Charger les modèles par défaut
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map(t => (
             <div key={t.id} className="bg-white rounded-xl border overflow-hidden hover:shadow-md transition-shadow">
-              {/* Preview bar */}
-              <div style={{ backgroundColor: t.header_color || '#1E3A5F' }} className="h-2" />
+              {/* Bande couleur */}
+              <div style={{ backgroundColor: t.header_color ?? '#1E3A5F' }} className="h-2" />
               <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
-                      {t.is_default && (
-                        <Star size={12} className="fill-yellow-400 text-yellow-400" />
-                      )}
-                    </div>
-                    <span className="text-xs text-gray-500">{typeLabel(t.template_type)}</span>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900 text-sm truncate flex items-center gap-1.5">
+                      {t.name}
+                      {t.is_default && <Star size={12} className="fill-yellow-400 text-yellow-400 shrink-0" />}
+                    </p>
+                    <span className="text-xs text-blue-600 font-medium">{typeLabel(t.template_type)}</span>
                   </div>
-                  {t.logo_url && (
-                    <img src={`${API}${t.logo_url}`} alt="logo" className="h-8 object-contain" />
-                  )}
                 </div>
 
                 {t.company_name && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mt-2">
-                    <Building2 size={10} />
-                    <span>{t.company_name}</span>
-                  </div>
+                  <p className="text-xs text-gray-500 mt-1 truncate">{t.company_name}</p>
                 )}
 
-                <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                  <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.header_color || '#1E3A5F' }} />
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full border border-gray-200"
+                      style={{ backgroundColor: t.header_color ?? '#1E3A5F' }} />
                     <span className="text-xs text-gray-400">{t.header_color}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => { setEditTemplate(t); setShowModal(true) }}
-                      className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg">
-                      <Edit2 size={14} />
+                    <button onClick={() => openEdit(t)}
+                      title="Modifier"
+                      className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+                      <Pencil size={14} />
                     </button>
                     {!t.is_default && (
-                      <button onClick={() => deleteTemplate(t.id)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                      <button onClick={() => deleteTemplate(t)}
+                        title="Supprimer"
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -518,7 +448,11 @@ export default function TemplateEditor() {
       )}
 
       {showModal && (
-        <TemplateForm template={editTemplate} onClose={() => setShowModal(false)} onSaved={load} />
+        <TemplateModal
+          template={editTemplate}
+          onClose={() => setShowModal(false)}
+          onSaved={onSaved}
+        />
       )}
     </div>
   )

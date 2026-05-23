@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 import logging
 
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
@@ -27,6 +29,18 @@ async def lifespan(app: FastAPI):
     async with engine.connect() as conn:
         await conn.execute(text("SELECT 1"))
     logger.info("PostgreSQL OK")
+
+    # ── Création des tables manquantes (idempotent) ───────────────────────────
+    try:
+        import app.models  # noqa — importe tous les modèles pour que Base.metadata les connaisse
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Tables vérifiées / créées ✓")
+    except Exception as exc:
+        logger.warning(f"create_all ignoré : {exc}")
+
+    # ── Migrations légères (colonnes manquantes) ───────────────────────────────
+    await _apply_column_migrations()
 
     # Crée les comptes de démonstration s'ils sont absents
     logger.info("Vérification des comptes par défaut...")
@@ -113,6 +127,24 @@ async def _seed_default_users() -> None:
             logger.info(f"Mot de passe resynchronisé : {email}")
 
 
+async def _apply_column_migrations() -> None:
+    """Ajoute les colonnes manquantes (idempotent — IF NOT EXISTS).
+    Les erreurs sont loguées mais ne bloquent pas le démarrage."""
+    from sqlalchemy import text
+    migrations = [
+        # Quittances sur les paiements
+        "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_generated_at TIMESTAMPTZ",
+        "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_sent_at TIMESTAMPTZ",
+    ]
+    try:
+        async with engine.begin() as conn:
+            for sql in migrations:
+                await conn.execute(text(sql))
+        logger.info("Migrations colonnes appliquées ✓")
+    except Exception as exc:
+        logger.warning(f"Migration colonnes ignorée (non bloquant) : {exc}")
+
+
 # ── Application ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title=settings.APP_NAME,
@@ -140,6 +172,10 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 app.include_router(api_router)
+
+# ── Fichiers statiques (logos uploadés) ───────────────────────────────────────
+os.makedirs("uploads/logos", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/health", tags=["Health"])

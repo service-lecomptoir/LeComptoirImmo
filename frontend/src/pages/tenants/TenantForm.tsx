@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { UserRound, Plus, X } from 'lucide-react'
@@ -28,6 +28,33 @@ const schema = z.object({
 })
 
 type FormData = z.infer<typeof schema>
+
+// ─── Field helper — must be defined at module level (outside TenantForm)
+// so React never treats it as a new component type on re-render, which would
+// cause inputs to lose focus every time state changes.
+interface FieldProps {
+  label: string
+  name: keyof FormData
+  type?: string
+  required?: boolean
+  register: UseFormRegister<FormData>
+  errors: FieldErrors<FormData>
+}
+function TenantField({ label, name, type = 'text', required = false, register, errors }: FieldProps) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-700 mb-1">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
+      <input
+        {...register(name)}
+        type={type}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {errors[name] && <p className="mt-1 text-xs text-red-600">{errors[name]?.message as string}</p>}
+    </div>
+  )
+}
 
 interface Props {
   tenant?: Tenant
@@ -114,20 +141,6 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
     }
     onSaved()
   }
-
-  const Field = ({ label, name, type = 'text', required = false }: { label: string; name: keyof FormData; type?: string; required?: boolean }) => (
-    <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      <input
-        {...register(name)}
-        type={type}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      {errors[name] && <p className="mt-1 text-xs text-red-600">{errors[name]?.message as string}</p>}
-    </div>
-  )
 
   return (
     <Modal
@@ -224,13 +237,13 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
                 <option value="Autre">Autre</option>
               </select>
             </div>
-            <Field label="Prénom" name="first_name" required />
-            <Field label="Nom" name="last_name" required />
+            <TenantField label="Prénom" name="first_name" required register={register} errors={errors} />
+            <TenantField label="Nom" name="last_name" required register={register} errors={errors} />
           </div>
           <div className="grid grid-cols-3 gap-3 mt-3">
-            <Field label="Date de naissance" name="birth_date" type="date" />
-            <Field label="Lieu de naissance" name="birth_place" />
-            <Field label="N° pièce d'identité" name="national_id" />
+            <TenantField label="Date de naissance" name="birth_date" type="date" register={register} errors={errors} />
+            <TenantField label="Lieu de naissance" name="birth_place" register={register} errors={errors} />
+            <TenantField label="N° pièce d'identité" name="national_id" register={register} errors={errors} />
           </div>
         </div>
 
@@ -238,9 +251,9 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact</h3>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Email" name="email" type="email" />
-            <Field label="Téléphone" name="phone" />
-            <Field label="Téléphone 2" name="phone2" />
+            <TenantField label="Email" name="email" type="email" register={register} errors={errors} />
+            <TenantField label="Téléphone" name="phone" register={register} errors={errors} />
+            <TenantField label="Téléphone 2" name="phone2" register={register} errors={errors} />
           </div>
         </div>
 
@@ -248,12 +261,12 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Situation professionnelle</h3>
           <div className="grid grid-cols-3 gap-3">
-            <Field label="Employeur" name="employer" />
-            <Field label="Tél. employeur" name="employer_phone" />
-            <Field label="Revenu mensuel (€)" name="monthly_income" type="number" />
+            <TenantField label="Employeur" name="employer" register={register} errors={errors} />
+            <TenantField label="Tél. employeur" name="employer_phone" register={register} errors={errors} />
+            <TenantField label="Revenu mensuel (€)" name="monthly_income" type="number" register={register} errors={errors} />
           </div>
           <div className="mt-3">
-            <Field label="Source de revenus" name="income_source" />
+            <TenantField label="Source de revenus" name="income_source" register={register} errors={errors} />
           </div>
         </div>
 

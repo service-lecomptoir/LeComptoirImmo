@@ -19,8 +19,7 @@ interface NavItem {
 // Navigation Gestionnaire / Admin
 const navGestionnaire: NavItem[] = [
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
-  { to: '/tenants', icon: Users, label: 'Locataires' },
-  { to: '/properties', icon: Building2, label: 'Biens immobiliers' },
+  { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },

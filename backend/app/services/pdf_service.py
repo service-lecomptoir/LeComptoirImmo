@@ -27,17 +27,24 @@ def render_template(template_name: str, context: dict[str, Any]) -> str:
 
 
 def html_to_pdf(html_content: str) -> bytes:
-    """Convertit un HTML en PDF via WeasyPrint."""
+    """Convertit un HTML en PDF via xhtml2pdf (pure Python, compatible Windows)."""
     try:
-        from weasyprint import HTML as WeasyHTML
-        pdf_buffer = io.BytesIO()
-        WeasyHTML(string=html_content).write_pdf(pdf_buffer)
-        return pdf_buffer.getvalue()
+        from xhtml2pdf import pisa
     except ImportError:
         raise RuntimeError(
-            "WeasyPrint n'est pas installé. "
-            "Exécutez : pip install weasyprint"
+            "xhtml2pdf n'est pas installé. "
+            "Exécutez : pip install xhtml2pdf"
         )
+
+    pdf_buffer = io.BytesIO()
+    result = pisa.CreatePDF(
+        html_content,
+        dest=pdf_buffer,
+        encoding="utf-8",
+    )
+    if result.err:
+        raise RuntimeError(f"Erreur lors de la génération du PDF (code {result.err})")
+    return pdf_buffer.getvalue()
 
 
 def generate_lease_pdf(lease: Any) -> bytes:

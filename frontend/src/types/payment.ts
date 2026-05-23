@@ -67,6 +67,8 @@ export interface PaymentListItem {
   amount_paid: number
   balance: number
   status: PaymentStatus
+  quittance_generated_at?: string | null
+  quittance_sent_at?: string | null
 }
 
 export interface PaymentListResponse {

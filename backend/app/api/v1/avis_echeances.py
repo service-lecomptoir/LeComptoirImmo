@@ -23,6 +23,7 @@ from app.schemas.avis_echeance import (
     AvisEcheanceOut,
     AvisEcheanceSummary,
     GenerateMonthlyResult,
+    AvisEcheancePatchApl,
 )
 from app.core.exceptions import ConflictException, NotFoundException
 
@@ -173,6 +174,7 @@ async def generate_one(
         avis = await AvisEcheanceService.generate_for_lease(
             db, lease, body.period_year, body.period_month,
             generated_by=current_user.id,
+            apl_override=body.apl_amount_override,
         )
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -278,6 +280,24 @@ async def delete_avis(
             )
         await AvisEcheanceService.delete(db, avis_id)
         await db.commit()
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/{avis_id}/apl")
+async def patch_apl(
+    avis_id: uuid.UUID,
+    body: AvisEcheancePatchApl,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Modifie le montant APL d'un avis existant (recalcule total + paiement lié)."""
+    _require_manager(current_user)
+    try:
+        avis = await AvisEcheanceService.update_apl(db, avis_id, body.apl_amount)
+        await db.commit()
+        avis = await AvisEcheanceService.get_by_id(db, avis.id)
+        return _avis_to_summary(avis)
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 

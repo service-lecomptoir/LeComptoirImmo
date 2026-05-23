@@ -13,10 +13,25 @@ from app.core.exceptions import NotFoundException
 class PropertyService:
 
     @staticmethod
+    async def _enrich_owner(db: AsyncSession, data_dict: dict) -> dict:
+        """Auto-remplit owner_name/owner_email depuis le compte lié si non fournis."""
+        owner_user_id = data_dict.get("owner_user_id")
+        if owner_user_id:
+            from app.models.user import User
+            user = await db.get(User, owner_user_id)
+            if user:
+                if not data_dict.get("owner_name"):
+                    data_dict["owner_name"] = user.full_name
+                if not data_dict.get("owner_email"):
+                    data_dict["owner_email"] = user.email
+        return data_dict
+
+    @staticmethod
     async def create(
         db: AsyncSession, data: PropertyCreate, created_by: uuid.UUID
     ) -> Property:
-        prop = Property(**data.model_dump(), created_by=created_by)
+        data_dict = await PropertyService._enrich_owner(db, data.model_dump())
+        prop = Property(**data_dict, created_by=created_by)
         db.add(prop)
         await db.flush()
         return prop
@@ -67,6 +82,7 @@ class PropertyService:
     ) -> Property:
         prop = await PropertyService.get_by_id(db, property_id)
         update_data = data.model_dump(exclude_unset=True)
+        update_data = await PropertyService._enrich_owner(db, update_data)
         for field, value in update_data.items():
             setattr(prop, field, value)
         await db.flush()
