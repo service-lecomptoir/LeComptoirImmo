@@ -1,10 +1,12 @@
 import uuid
-from typing import List
-from fastapi import APIRouter, Depends
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.api.deps import get_current_user, get_current_active_admin
+from app.api.deps import get_current_user, get_current_active_admin, get_current_gestionnaire
+from app.core.permissions import Role
 from app.models.user import User
 from app.schemas.user import (
     UserCreate, UserUpdate, UserRoleUpdate,
@@ -14,23 +16,51 @@ from app.services.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["Utilisateurs"])
 
+# Rôles que le gestionnaire peut créer / voir
+_GESTIONNAIRE_ALLOWED_ROLES = {Role.PROPRIETAIRE, Role.LOCATAIRE}
+
 
 @router.get("", response_model=List[UserResponse], summary="Liste des utilisateurs")
 async def list_users(
+    role: Optional[str] = Query(None, description="Filtrer par rôle (ex: proprietaire, locataire)"),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
-    """Retourne la liste de tous les utilisateurs (admin uniquement)."""
-    return await UserService.list_all(db)
+    """
+    Retourne la liste des utilisateurs.
+    - Admin : tous les utilisateurs
+    - Gestionnaire : seulement les propriétaires et locataires
+    """
+    users = await UserService.list_all(db)
+
+    # Gestionnaire : restreindre aux rôles qu'il gère
+    if Role(current_user.role) == Role.GESTIONNAIRE:
+        users = [u for u in users if Role(u.role) in _GESTIONNAIRE_ALLOWED_ROLES]
+
+    # Filtre optionnel par rôle
+    if role:
+        users = [u for u in users if u.role == role]
+
+    return users
 
 
 @router.post("", response_model=UserResponse, status_code=201, summary="Créer un utilisateur")
 async def create_user(
     data: UserCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
-    """Crée un nouvel utilisateur (admin uniquement)."""
+    """
+    Crée un nouvel utilisateur.
+    - Admin : peut créer n'importe quel rôle
+    - Gestionnaire : peut créer uniquement propriétaire ou locataire
+    """
+    if Role(current_user.role) == Role.GESTIONNAIRE:
+        if Role(data.role) not in _GESTIONNAIRE_ALLOWED_ROLES:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Un gestionnaire ne peut créer que des comptes propriétaire ou locataire.",
+            )
     return await UserService.create(db, data)
 
 

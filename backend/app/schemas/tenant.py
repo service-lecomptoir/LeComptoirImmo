@@ -20,6 +20,7 @@ class TenantCreate(BaseModel):
     monthly_income: Optional[float] = None
     income_source: Optional[str] = None
     notes: Optional[str] = None
+    user_id: Optional[uuid.UUID] = None  # Lien vers le compte utilisateur locataire
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -44,6 +45,7 @@ class TenantUpdate(BaseModel):
     monthly_income: Optional[float] = None
     income_source: Optional[str] = None
     notes: Optional[str] = None
+    user_id: Optional[uuid.UUID] = None  # Lien vers le compte utilisateur locataire
 
 
 class TenantResponse(BaseModel):
@@ -63,6 +65,7 @@ class TenantResponse(BaseModel):
     monthly_income: Optional[float]
     income_source: Optional[str]
     notes: Optional[str]
+    user_id: Optional[uuid.UUID] = None
     created_at: datetime
     updated_at: datetime
 
@@ -78,6 +81,7 @@ class TenantListItem(BaseModel):
     last_name: str
     email: Optional[str]
     phone: Optional[str]
+    user_id: Optional[uuid.UUID] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

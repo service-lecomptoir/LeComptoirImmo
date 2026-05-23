@@ -1,0 +1,23 @@
+import { apiClient } from './client'
+import type { User } from '@/types/auth'
+
+interface CreateUserPayload {
+  full_name: string
+  email: string
+  password: string
+  role: string
+}
+
+export const usersApi = {
+  /** Liste tous les utilisateurs (admin) ou propriétaires/locataires (gestionnaire) */
+  list: (params?: { role?: string }) =>
+    apiClient.get<User[]>('/users', { params }),
+
+  /** Crée un compte utilisateur */
+  create: (data: CreateUserPayload) =>
+    apiClient.post<User>('/users', data),
+
+  /** Retourne le profil de l'utilisateur connecté */
+  me: () =>
+    apiClient.get<User>('/users/me'),
+}

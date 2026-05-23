@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, UserRound, Mail, Phone } from 'lucide-react'
+import { Plus, Search, UserRound, Mail, Phone, ShieldCheck } from 'lucide-react'
 import { tenantsApi } from '@/api/tenants'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -109,7 +109,14 @@ export default function TenantList() {
                           {tenant.first_name.charAt(0)}{tenant.last_name.charAt(0)}
                         </span>
                       </div>
-                      <span className="font-medium text-gray-900">{tenant.full_name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">{tenant.full_name}</span>
+                        {tenant.user_id && (
+                          <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full" title="Compte locataire lié">
+                            <ShieldCheck size={10} /> Compte
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">

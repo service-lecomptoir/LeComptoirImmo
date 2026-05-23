@@ -1,9 +1,13 @@
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { UserRound, Plus, X } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import { propertiesApi } from '@/api/properties'
+import { usersApi } from '@/api/users'
 import type { Property } from '@/types/property'
+import type { User } from '@/types/auth'
 
 const schema = z.object({
   name: z.string().min(1, 'Nom requis'),
@@ -14,6 +18,7 @@ const schema = z.object({
   city: z.string().min(1, 'Ville requise'),
   country: z.string().default('France'),
   property_type: z.enum(['immeuble', 'maison', 'appartement', 'local_commercial', 'autre']),
+  owner_user_id: z.string().uuid().optional().or(z.literal('')),
   owner_name: z.string().optional(),
   owner_email: z.string().email().optional().or(z.literal('')),
   owner_phone: z.string().optional(),
@@ -32,7 +37,15 @@ interface Props {
 
 export function PropertyForm({ property, onClose, onSaved }: Props) {
   const isEdit = !!property
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const [proprietaires, setProprietaires] = useState<User[]>([])
+  const [showCreateOwner, setShowCreateOwner] = useState(false)
+  const [newOwnerName, setNewOwnerName] = useState('')
+  const [newOwnerEmail, setNewOwnerEmail] = useState('')
+  const [newOwnerPassword, setNewOwnerPassword] = useState('')
+  const [creatingOwner, setCreatingOwner] = useState(false)
+  const [createOwnerError, setCreateOwnerError] = useState<string | null>(null)
+
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: property ? {
       name: property.name,
@@ -43,6 +56,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       city: property.city,
       country: property.country,
       property_type: property.property_type,
+      owner_user_id: property.owner_user_id ?? '',
       owner_name: property.owner_name ?? '',
       owner_email: property.owner_email ?? '',
       owner_phone: property.owner_phone ?? '',
@@ -51,11 +65,59 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
     } : { property_type: 'immeuble', country: 'France' },
   })
 
+  const selectedOwnerId = watch('owner_user_id')
+
+  useEffect(() => {
+    usersApi.list({ role: 'proprietaire' })
+      .then(r => setProprietaires(r.data))
+      .catch(() => {})
+  }, [])
+
+  // Quand on sélectionne un propriétaire, auto-remplir owner_name + owner_email
+  const handleOwnerSelect = (userId: string) => {
+    setValue('owner_user_id', userId)
+    if (userId) {
+      const owner = proprietaires.find(u => u.id === userId)
+      if (owner) {
+        setValue('owner_name', owner.full_name)
+        setValue('owner_email', owner.email)
+      }
+    }
+  }
+
+  const handleCreateOwner = async () => {
+    if (!newOwnerName.trim() || !newOwnerEmail.trim() || !newOwnerPassword.trim()) {
+      setCreateOwnerError('Tous les champs sont requis')
+      return
+    }
+    setCreatingOwner(true)
+    setCreateOwnerError(null)
+    try {
+      const { data: newUser } = await usersApi.create({
+        full_name: newOwnerName,
+        email: newOwnerEmail,
+        password: newOwnerPassword,
+        role: 'proprietaire',
+      })
+      setProprietaires(prev => [...prev, newUser])
+      handleOwnerSelect(newUser.id)
+      setShowCreateOwner(false)
+      setNewOwnerName('')
+      setNewOwnerEmail('')
+      setNewOwnerPassword('')
+    } catch (e: any) {
+      setCreateOwnerError(e?.response?.data?.detail || 'Erreur lors de la création')
+    } finally {
+      setCreatingOwner(false)
+    }
+  }
+
   const onSubmit = async (data: FormData) => {
     const payload = {
       ...data,
       year_built: data.year_built ? Number(data.year_built) : undefined,
       owner_email: data.owner_email || undefined,
+      owner_user_id: data.owner_user_id || undefined,
     }
     if (isEdit) {
       await propertiesApi.update(property.id, payload)
@@ -143,9 +205,89 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
         {/* Propriétaire */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Propriétaire</h3>
+
+          {/* Compte propriétaire lié */}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Compte propriétaire
+            </label>
+            {!showCreateOwner ? (
+              <div className="flex gap-2">
+                <select
+                  value={selectedOwnerId || ''}
+                  onChange={e => handleOwnerSelect(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— Aucun compte lié —</option>
+                  {proprietaires.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name} ({u.email})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateOwner(true)}
+                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors whitespace-nowrap"
+                >
+                  <Plus size={13} /> Nouveau compte
+                </button>
+              </div>
+            ) : (
+              <div className="border border-blue-200 rounded-lg p-3 bg-blue-50 space-y-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-semibold text-blue-700 flex items-center gap-1">
+                    <UserRound size={13} /> Créer un compte propriétaire
+                  </span>
+                  <button type="button" onClick={() => setShowCreateOwner(false)} className="text-gray-400 hover:text-gray-600">
+                    <X size={14} />
+                  </button>
+                </div>
+                {createOwnerError && (
+                  <p className="text-xs text-red-600">{createOwnerError}</p>
+                )}
+                <input
+                  value={newOwnerName}
+                  onChange={e => setNewOwnerName(e.target.value)}
+                  placeholder="Nom complet *"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  value={newOwnerEmail}
+                  onChange={e => setNewOwnerEmail(e.target.value)}
+                  placeholder="Email *"
+                  type="email"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  value={newOwnerPassword}
+                  onChange={e => setNewOwnerPassword(e.target.value)}
+                  placeholder="Mot de passe *"
+                  type="password"
+                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateOwner}
+                  disabled={creatingOwner}
+                  className="w-full py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {creatingOwner ? 'Création...' : 'Créer et lier le compte'}
+                </button>
+              </div>
+            )}
+            {selectedOwnerId && (
+              <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                <UserRound size={11} />
+                Compte propriétaire lié — le propriétaire pourra se connecter et voir ce bien
+              </p>
+            )}
+          </div>
+
+          {/* Infos manuelles (nom / email / tel) */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Nom</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nom affiché</label>
               <input {...register('owner_name')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>

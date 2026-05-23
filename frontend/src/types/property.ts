@@ -12,6 +12,7 @@ export interface Property {
   country: string
   property_type: PropertyType
   full_address: string
+  owner_user_id: string | null
   owner_name: string | null
   owner_email: string | null
   owner_phone: string | null
@@ -30,6 +31,7 @@ export interface PropertyListItem {
   city: string
   property_type: PropertyType
   full_address: string
+  owner_user_id: string | null
   owner_name: string | null
   unit_count: number
   occupied_count: number

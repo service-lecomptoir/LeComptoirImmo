@@ -118,6 +118,9 @@ class LeaseResponse(BaseModel):
 
 class LeaseListItem(BaseModel):
     id: uuid.UUID
+    property_id: uuid.UUID
+    unit_id: uuid.UUID
+    tenant_id: uuid.UUID
     tenant_full_name: str
     unit_ref: str
     property_name: str

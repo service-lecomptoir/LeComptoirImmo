@@ -131,6 +131,9 @@ class LeaseService:
         """Construit un LeaseListItem depuis un Lease avec relations chargées."""
         return LeaseListItem(
             id=lease.id,
+            property_id=lease.property_id,
+            unit_id=lease.unit_id,
+            tenant_id=lease.tenant_id,
             tenant_full_name=(
                 lease.tenant.full_name if lease.tenant else str(lease.tenant_id)
             ),

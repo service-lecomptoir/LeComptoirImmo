@@ -17,6 +17,7 @@ export interface Tenant {
   monthly_income: number | null
   income_source: string | null
   notes: string | null
+  user_id: string | null
   created_at: string
   updated_at: string
 }
@@ -29,6 +30,7 @@ export interface TenantListItem {
   last_name: string
   email: string | null
   phone: string | null
+  user_id: string | null
   created_at: string
 }
 
@@ -47,6 +49,7 @@ export interface TenantCreate {
   monthly_income?: number
   income_source?: string
   notes?: string
+  user_id?: string
 }
 
 export interface PaginatedResponse<T> {

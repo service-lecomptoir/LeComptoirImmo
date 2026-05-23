@@ -69,6 +69,9 @@ export interface Lease {
 
 export interface LeaseListItem {
   id: string
+  property_id: string
+  unit_id: string
+  tenant_id: string
   tenant_full_name: string
   unit_ref: string
   property_name: string

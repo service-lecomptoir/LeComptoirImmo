@@ -14,6 +14,7 @@ class PropertyCreate(BaseModel):
     city: str
     country: str = "France"
     property_type: PropertyType = PropertyType.IMMEUBLE
+    owner_user_id: Optional[uuid.UUID] = None
     owner_name: Optional[str] = None
     owner_email: Optional[EmailStr] = None
     owner_phone: Optional[str] = None
@@ -31,6 +32,7 @@ class PropertyUpdate(BaseModel):
     city: Optional[str] = None
     country: Optional[str] = None
     property_type: Optional[PropertyType] = None
+    owner_user_id: Optional[uuid.UUID] = None
     owner_name: Optional[str] = None
     owner_email: Optional[EmailStr] = None
     owner_phone: Optional[str] = None
@@ -50,6 +52,7 @@ class PropertyResponse(BaseModel):
     country: str
     property_type: PropertyType
     full_address: str
+    owner_user_id: Optional[uuid.UUID] = None
     owner_name: Optional[str]
     owner_email: Optional[str]
     owner_phone: Optional[str]
@@ -70,6 +73,7 @@ class PropertyListItem(BaseModel):
     city: str
     property_type: PropertyType
     full_address: str
+    owner_user_id: Optional[uuid.UUID] = None
     owner_name: Optional[str]
     unit_count: int = 0
     occupied_count: int = 0
