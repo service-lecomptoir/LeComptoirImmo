@@ -1,5 +1,5 @@
 @echo off
-title Locataire Cloud - Backend
+title LeComptoirImmo - Backend
 cd /d "%~dp0backend"
 echo Demarrage du backend FastAPI sur http://localhost:8000 ...
 echo API Docs: http://localhost:8000/api/docs

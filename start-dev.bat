@@ -1,6 +1,6 @@
 @echo off
 echo ================================================
-echo   Locataire Cloud - Environnement de dev local
+echo   LeComptoirImmo - Environnement de dev local
 echo ================================================
 echo.
 echo Demarrage du backend  → http://localhost:8000
