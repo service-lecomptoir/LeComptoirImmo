@@ -40,6 +40,7 @@ const navProprietaire: NavItem[] = [
   { to: '/proprietaire/locataires', icon: Users, label: 'Mes locataires' },
   { to: '/proprietaire/incidents', icon: MessageSquare, label: 'Incidents' },
   { to: '/proprietaire/entretiens', icon: Wrench, label: 'Entretiens' },
+  { to: '/proprietaire/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]

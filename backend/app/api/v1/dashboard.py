@@ -243,6 +243,78 @@ async def get_dashboard_stats(
     )
 
 
+@router.get("/proprietaire-stats")
+async def get_proprietaire_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Statistiques mensuelles pour le tableau de bord propriétaire."""
+    from app.core.permissions import Role as R
+    role = R(current_user.role)
+
+    # Uniquement propriétaire ou gestionnaire
+    if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.ADMIN):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    proprietaire_id = current_user.id
+
+    # Biens du propriétaire
+    props_res = await db.execute(
+        select(Property).where(Property.owner_user_id == proprietaire_id)
+    )
+    properties = list(props_res.scalars().all())
+    prop_ids = [p.id for p in properties]
+
+    if not prop_ids:
+        return {
+            "monthly_revenue_expected": 0,
+            "monthly_revenue_received": 0,
+            "total_properties": 0,
+            "active_leases": 0,
+        }
+
+    # Revenus attendus = somme loyers+charges baux actifs
+    expected_res = await db.execute(
+        select(func.sum(Lease.rent_amount + Lease.charges_amount))
+        .where(
+            Lease.property_id.in_(prop_ids),
+            Lease.is_active.is_(True),
+        )
+    )
+    monthly_expected = float(expected_res.scalar_one() or 0)
+
+    # Revenus encaissés ce mois
+    today = date.today()
+    start_month = date(today.year, today.month, 1)
+    end_month = date(today.year, today.month + 1, 1) if today.month < 12 else date(today.year + 1, 1, 1)
+
+    received_res = await db.execute(
+        select(func.sum(Payment.amount_paid))
+        .join(Lease, Payment.lease_id == Lease.id)
+        .where(
+            Lease.property_id.in_(prop_ids),
+            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+            Payment.payment_date >= start_month,
+            Payment.payment_date < end_month,
+        )
+    )
+    monthly_received = float(received_res.scalar_one() or 0)
+
+    active_leases_res = await db.execute(
+        select(func.count(Lease.id))
+        .where(Lease.property_id.in_(prop_ids), Lease.is_active.is_(True))
+    )
+    active_leases = active_leases_res.scalar_one() or 0
+
+    return {
+        "monthly_revenue_expected": round(monthly_expected, 2),
+        "monthly_revenue_received": round(monthly_received, 2),
+        "total_properties": len(properties),
+        "active_leases": active_leases,
+    }
+
+
 @router.get("/fiscal/{year}", response_model=FiscalRevenueFoncier)
 async def get_fiscal_revenues(
     year: int,
@@ -289,28 +361,31 @@ async def get_fiscal_revenues(
             properties=[],
         )
 
-    # Loyers encaissés
+    # Loyers encaissés (uniquement la part loyer, hors charges)
     rent_res = await db.execute(
-        select(func.sum(Payment.amount_paid))
+        select(func.sum(Payment.amount_rent))
         .join(Lease, Payment.lease_id == Lease.id)
         .where(
             Lease.property_id.in_(prop_ids),
-            Payment.status == PaymentStatus.PAID,
+            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
             Payment.payment_date >= start_date,
             Payment.payment_date <= end_date,
         )
     )
     gross_rent = float(rent_res.scalar_one() or 0)
 
-    # Charges récupérables encaissées
+    # Charges récupérables encaissées (depuis les paiements réels)
     charges_res = await db.execute(
-        select(func.sum(Lease.charges_amount))
+        select(func.sum(Payment.amount_charges))
+        .join(Lease, Payment.lease_id == Lease.id)
         .where(
             Lease.property_id.in_(prop_ids),
-            Lease.is_active.is_(True),
+            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+            Payment.payment_date >= start_date,
+            Payment.payment_date <= end_date,
         )
     )
-    charges_annual = float(charges_res.scalar_one() or 0) * 12
+    charges_annual = float(charges_res.scalar_one() or 0)
 
     # Frais de gestion estimés (8% des loyers bruts — valeur par défaut)
     management_fees = round(gross_rent * 0.08, 2)
@@ -319,11 +394,11 @@ async def get_fiscal_revenues(
     properties_detail = []
     for prop in properties:
         prop_rent_res = await db.execute(
-            select(func.sum(Payment.amount_paid))
+            select(func.sum(Payment.amount_rent))
             .join(Lease, Payment.lease_id == Lease.id)
             .where(
                 Lease.property_id == prop.id,
-                Payment.status == PaymentStatus.PAID,
+                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
                 Payment.payment_date >= start_date,
                 Payment.payment_date <= end_date,
             )

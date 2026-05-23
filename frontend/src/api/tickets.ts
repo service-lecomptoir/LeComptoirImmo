@@ -52,4 +52,7 @@ export const ticketsApi = {
 
   stats: () =>
     apiClient.get<{ open: number }>('/tickets/stats'),
+
+  proprietaire: (params?: { status?: string }) =>
+    apiClient.get<{ total: number; items: Ticket[] }>('/tickets/proprietaire', { params }),
 }

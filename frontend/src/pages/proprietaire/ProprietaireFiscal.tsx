@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
 import {
   FileText, Building2, ChevronDown, ChevronUp, Printer
 } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { apiClient } from '@/api/client'
 
 function fmtEur(n: number) {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 }).format(n)
@@ -34,9 +31,8 @@ interface FiscalData {
 }
 
 export default function ProprietaireFiscal() {
-  const { accessToken: token } = useAuthStore()
   const currentYear = new Date().getFullYear()
-  const [year, setYear] = useState(currentYear - 1)
+  const [year, setYear] = useState(currentYear)
   const [data, setData] = useState<FiscalData | null>(null)
   const [loading, setLoading] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
@@ -51,9 +47,7 @@ export default function ProprietaireFiscal() {
   const load = async () => {
     setLoading(true)
     try {
-      const r = await axios.get(`${API}/api/v1/dashboard/fiscal/${year}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const r = await apiClient.get(`/dashboard/fiscal/${year}`)
       setData(r.data)
     } catch {
       setData(null)
@@ -87,7 +81,7 @@ export default function ProprietaireFiscal() {
             value={year}
             onChange={e => setYear(parseInt(e.target.value))}
           >
-            {[currentYear - 1, currentYear - 2, currentYear - 3].map(y => (
+            {[currentYear, currentYear - 1, currentYear - 2, currentYear - 3].map(y => (
               <option key={y} value={y}>Année {y}</option>
             ))}
           </select>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  ArrowLeft, Save, Upload, X, Star, Check, RefreshCw, Download,
+  ArrowLeft, Save, X, Star, Check, RefreshCw, Download,
   Plus, Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'

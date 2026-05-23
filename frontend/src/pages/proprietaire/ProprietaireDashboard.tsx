@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Building2, CreditCard, TrendingUp, ArrowRight, Home } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { propertiesApi } from '@/api/properties'
+import { apiClient } from '@/api/client'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -52,19 +53,26 @@ export default function ProprietaireDashboard() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const [properties, setProperties] = useState<any[]>([])
+  const [stats, setStats] = useState<{ monthly_revenue_expected: number; monthly_revenue_received: number; active_leases: number } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const today = new Date()
 
   useEffect(() => {
-    propertiesApi.list({ limit: 100 })
-      .then(r => setProperties(r.data.items ?? r.data))
+    Promise.all([
+      propertiesApi.list({ limit: 100 }),
+      apiClient.get('/dashboard/proprietaire-stats'),
+    ])
+      .then(([propsRes, statsRes]) => {
+        setProperties(propsRes.data.items ?? propsRes.data)
+        setStats(statsRes.data)
+      })
       .catch(() => { })
       .finally(() => setIsLoading(false))
   }, [])
 
   const totalUnits = properties.reduce((s, p) => s + (p.unit_count ?? 0), 0)
   const occupiedUnits = properties.reduce((s, p) => s + (p.occupied_count ?? 0), 0)
-  const monthlyRevenue = 0  // calculé côté serveur si besoin
+  const monthlyRevenue = stats?.monthly_revenue_expected ?? 0
 
   return (
     <div className="p-6">

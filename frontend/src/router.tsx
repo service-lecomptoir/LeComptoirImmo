@@ -32,6 +32,7 @@ import IncidentList from '@/pages/incidents/IncidentList'
 import EntretienList from '@/pages/entretien/EntretienList'
 import ProprietaireEntretien from '@/pages/proprietaire/ProprietaireEntretien'
 import ProprietaireIncidents from '@/pages/proprietaire/ProprietaireIncidents'
+import ProprietaireMessages from '@/pages/proprietaire/ProprietaireMessages'
 
 function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
@@ -97,6 +98,7 @@ export const router = createBrowserRouter([
       { path: 'entretiens', element: <EntretienList /> },
       { path: 'proprietaire/entretiens', element: <ProprietaireEntretien /> },
       { path: 'proprietaire/incidents', element: <ProprietaireIncidents /> },
+      { path: 'proprietaire/messages', element: <ProprietaireMessages /> },
       {
         path: 'unauthorized',
         element: (

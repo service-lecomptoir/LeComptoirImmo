@@ -1,11 +1,16 @@
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.models.user import User
+from app.models.ticket import Ticket
+from app.models.lease import Lease
+from app.models.property import Property
 from app.core.permissions import Role
 from app.schemas.ticket import (
     TicketCreate, TicketUpdate, TicketResponse, TicketListItem,
@@ -98,6 +103,53 @@ async def ticket_stats(
 ):
     open_count = await TicketService.count_open(db)
     return {"open": open_count}
+
+
+@router.get("/proprietaire", summary="Tickets des biens du propriétaire")
+async def proprietaire_tickets(
+    status: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Liste les tickets des locataires pour les biens appartenant au propriétaire connecté."""
+    # Trouver les biens du propriétaire
+    props_res = await db.execute(
+        select(Property).where(Property.owner_user_id == current_user.id)
+    )
+    prop_ids = [p.id for p in props_res.scalars().all()]
+
+    if not prop_ids:
+        return {"total": 0, "items": []}
+
+    # Trouver les tenant_ids pour ces biens via les baux
+    leases_res = await db.execute(
+        select(Lease.tenant_id).where(
+            Lease.property_id.in_(prop_ids),
+        ).distinct()
+    )
+    tenant_ids = [row[0] for row in leases_res.all()]
+
+    if not tenant_ids:
+        return {"total": 0, "items": []}
+
+    # Lister les tickets de ces locataires
+    q = (
+        select(Ticket)
+        .options(selectinload(Ticket.tenant))
+        .options(selectinload(Ticket.assigned_to))
+        .where(Ticket.tenant_id.in_(tenant_ids))
+    )
+    if status:
+        q = q.where(Ticket.status == status)
+    q = q.order_by(Ticket.created_at.desc())
+
+    result = await db.execute(q)
+    tickets = list(result.scalars().all())
+
+    return {
+        "total": len(tickets),
+        "items": [_enrich_ticket(t) for t in tickets],
+    }
 
 
 @router.get("/{ticket_id}", summary="Détail d'un ticket")

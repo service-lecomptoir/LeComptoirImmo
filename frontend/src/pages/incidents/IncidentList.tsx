@@ -33,7 +33,19 @@ const FILTERS = [
   { value: 'closed', label: 'Clôturés' },
 ]
 
-export default function IncidentList({ readOnly = false }: { readOnly?: boolean }) {
+type FetchFn = (params?: { status?: string }) => Promise<{ data: { total: number; items: Ticket[] } }>
+
+export default function IncidentList({
+  readOnly = false,
+  fetchFn,
+  title = 'Suivi des incidents',
+  subtitle = 'Messages et demandes des locataires',
+}: {
+  readOnly?: boolean
+  fetchFn?: FetchFn
+  title?: string
+  subtitle?: string
+}) {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -43,10 +55,12 @@ export default function IncidentList({ readOnly = false }: { readOnly?: boolean 
   const [isSending, setIsSending] = useState(false)
   const [newStatus, setNewStatus] = useState<string>('')
 
+  const listFn: FetchFn = fetchFn ?? ((params) => ticketsApi.list({ ...params, limit: 100 }))
+
   const load = async () => {
     setIsLoading(true)
     try {
-      const res = await ticketsApi.list({ status: filter || undefined, limit: 100 })
+      const res = await listFn({ status: filter || undefined })
       setTickets(res.data.items)
       setTotal(res.data.total)
     } catch { /* */ }
@@ -61,6 +75,7 @@ export default function IncidentList({ readOnly = false }: { readOnly?: boolean 
     } catch { /* */ }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [filter])
 
   const handleReply = async () => {
@@ -89,14 +104,14 @@ export default function IncidentList({ readOnly = false }: { readOnly?: boolean 
     <div className="p-6">
       <div className="mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">Suivi des incidents</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
           {openCount > 0 && (
             <span className="px-2.5 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full">
               {openCount} ouvert{openCount > 1 ? 's' : ''}
             </span>
           )}
         </div>
-        <p className="text-gray-500 text-sm mt-1">Messages et demandes des locataires</p>
+        <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
       </div>
 
       {/* Filtres */}
