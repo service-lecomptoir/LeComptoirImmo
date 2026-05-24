@@ -39,7 +39,7 @@ async def get_current_active_admin(
 ) -> User:
     """Dependency — administrateurs et gestionnaires (rôles de gestion)."""
     role = Role(current_user.role)
-    if role not in (Role.ADMIN, Role.GESTIONNAIRE):
+    if role not in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux gestionnaires et administrateurs")
     return current_user
 

@@ -51,13 +51,26 @@ const navProprietaire: NavItem[] = [
   { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]
 
-// Navigation Gestionnaire-Propriétaire : nav gestionnaire + section finances propriétaire
-const navGestionnaireProprioExtras: NavItem[] = [
+// Navigation Gestionnaire-Propriétaire : menu complet avec section finances après quittances
+const navGestionnairePropio: NavItem[] = [
+  { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
+  { to: '/properties', icon: Building2, label: 'Propriétés' },
+  { to: '/leases', icon: FileText, label: 'Contrats' },
+  { to: '/payments', icon: CreditCard, label: 'Paiements' },
+  { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
+  { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
   { label: 'Mes finances', isSeparator: true },
   { to: '/proprietaire', icon: LayoutDashboard, label: 'Vue propriétaire' },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
   { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
+  { to: '/incidents', icon: MessageSquare, label: 'Incidents' },
+  { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
+  { to: '/automatisation', icon: Zap, label: 'Automatisation' },
+  { to: '/templates', icon: PenSquare, label: 'Templates docs' },
+  { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
+  { to: '/notifications', icon: Bell, label: 'Notifications' },
+  { to: '/admin', icon: Settings, label: 'Administration' },
 ]
 
 // Navigation Locataire
@@ -210,7 +223,7 @@ export function Sidebar() {
     if (!user) return []
     if (user.role === 'locataire') return navLocataire
     if (user.role === 'proprietaire') return navProprietaire
-    if (user.role === 'gestionnaire_proprio') return [...navGestionnaire, ...navGestionnaireProprioExtras]
+    if (user.role === 'gestionnaire_proprio') return navGestionnairePropio
     return navGestionnaire
   }
 

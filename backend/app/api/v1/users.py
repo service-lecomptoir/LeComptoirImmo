@@ -16,8 +16,38 @@ from app.services.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["Utilisateurs"])
 
-# Rôles que le gestionnaire peut créer / voir
+# Rôles que le gestionnaire mandataire peut créer / voir
 _GESTIONNAIRE_ALLOWED_ROLES = {Role.PROPRIETAIRE, Role.LOCATAIRE}
+
+
+async def _gp_tenant_ids(db: AsyncSession, owner_id: uuid.UUID) -> set[str]:
+    """Retourne les IDs des locataires liés aux biens du gestionnaire-propriétaire."""
+    from app.models.property import Property
+    from app.models.lease import Lease
+
+    props_res = await db.execute(
+        select(Property.id).where(Property.owner_user_id == owner_id)
+    )
+    prop_ids = list(props_res.scalars().all())
+    if not prop_ids:
+        return set()
+
+    leases_res = await db.execute(
+        select(Lease.tenant_user_id).where(
+            Lease.property_id.in_(prop_ids),
+            Lease.tenant_user_id.isnot(None),
+        )
+    )
+    return {str(tid) for tid in leases_res.scalars().all()}
+
+
+async def _require_gp_scope(db: AsyncSession, current_user: User, target_id: uuid.UUID):
+    """Pour gestionnaire_proprio : vérifie que la cible est un de ses locataires (ou lui-même)."""
+    if str(target_id) == str(current_user.id):
+        return
+    tenant_ids = await _gp_tenant_ids(db, current_user.id)
+    if str(target_id) not in tenant_ids:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
 
 @router.get("", response_model=List[UserResponse], summary="Liste des utilisateurs")
@@ -33,9 +63,15 @@ async def list_users(
     """
     users = await UserService.list_all(db)
 
-    # Gestionnaire : restreindre aux rôles qu'il gère
-    if Role(current_user.role) == Role.GESTIONNAIRE:
+    current_role = Role(current_user.role)
+
+    if current_role == Role.GESTIONNAIRE:
+        # Gestionnaire mandataire : propriétaires et locataires seulement
         users = [u for u in users if Role(u.role) in _GESTIONNAIRE_ALLOWED_ROLES]
+    elif current_role == Role.GESTIONNAIRE_PROPRIO:
+        # Gestionnaire-propriétaire : lui-même + ses propres locataires uniquement
+        tenant_ids = await _gp_tenant_ids(db, current_user.id)
+        users = [u for u in users if str(u.id) == str(current_user.id) or str(u.id) in tenant_ids]
 
     # Filtre optionnel par rôle
     if role:
@@ -55,11 +91,18 @@ async def create_user(
     - Admin : peut créer n'importe quel rôle
     - Gestionnaire : peut créer uniquement propriétaire ou locataire
     """
-    if Role(current_user.role) == Role.GESTIONNAIRE:
+    current_role = Role(current_user.role)
+    if current_role == Role.GESTIONNAIRE:
         if Role(data.role) not in _GESTIONNAIRE_ALLOWED_ROLES:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Un gestionnaire ne peut créer que des comptes propriétaire ou locataire.",
+            )
+    elif current_role == Role.GESTIONNAIRE_PROPRIO:
+        if Role(data.role) != Role.LOCATAIRE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Un gestionnaire-propriétaire ne peut créer que des comptes locataire.",
             )
     return await UserService.create(db, data)
 
@@ -86,8 +129,10 @@ async def update_my_profile(
 async def get_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_active_admin),
 ):
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        await _require_gp_scope(db, current_user, user_id)
     return await UserService.get_by_id(db, user_id)
 
 
@@ -96,8 +141,10 @@ async def update_user(
     user_id: uuid.UUID,
     data: UserUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_active_admin),
 ):
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        await _require_gp_scope(db, current_user, user_id)
     return await UserService.update(db, user_id, data)
 
 
@@ -106,9 +153,11 @@ async def update_role(
     user_id: uuid.UUID,
     data: UserRoleUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_active_admin),
 ):
-    """Modifie le rôle d'un utilisateur (admin uniquement)."""
+    """Modifie le rôle d'un utilisateur (admin et gestionnaire mandataire uniquement)."""
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Modification de rôle réservée aux administrateurs")
     return await UserService.update_role(db, user_id, data)
 
 
@@ -126,6 +175,8 @@ async def change_my_password(
 async def delete_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_active_admin),
 ):
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        await _require_gp_scope(db, current_user, user_id)
     await UserService.delete(db, user_id)

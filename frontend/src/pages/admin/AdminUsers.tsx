@@ -17,14 +17,14 @@ const createUserSchema = z.object({
   full_name: z.string().min(2, 'Nom requis (min 2 caractères)'),
   email: z.string().email('Email invalide'),
   password: z.string().min(8, 'Mot de passe min 8 caractères'),
-  role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'admin', 'lecture', 'comptable']),
+  role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'gestionnaire_proprio', 'admin', 'lecture', 'comptable']),
 })
 
 const editUserSchema = z.object({
   full_name: z.string().min(2, 'Nom requis'),
   email: z.string().email('Email invalide'),
   is_active: z.boolean(),
-  role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'admin', 'lecture', 'comptable']),
+  role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'gestionnaire_proprio', 'admin', 'lecture', 'comptable']),
 })
 
 type CreateUserForm = z.infer<typeof createUserSchema>
@@ -35,7 +35,8 @@ type EditUserForm = z.infer<typeof editUserSchema>
 const ROLE_LABELS: Record<Role, string> = {
   locataire: 'Locataire',
   proprietaire: 'Propriétaire',
-  gestionnaire: 'Gestionnaire',
+  gestionnaire: 'Gestionnaire mandataire',
+  gestionnaire_proprio: 'Gestionnaire-Propriétaire',
   admin: 'Administrateur',
   lecture: 'Lecture seule',
   comptable: 'Comptable',
@@ -45,6 +46,7 @@ const ROLE_COLORS: Record<Role, string> = {
   locataire: 'bg-teal-100 text-teal-700',
   proprietaire: 'bg-orange-100 text-orange-700',
   gestionnaire: 'bg-purple-100 text-purple-700',
+  gestionnaire_proprio: 'bg-indigo-100 text-indigo-700',
   admin: 'bg-red-100 text-red-700',
   lecture: 'bg-gray-100 text-gray-600',
   comptable: 'bg-blue-100 text-blue-700',
@@ -66,6 +68,17 @@ async function fetchUsers(): Promise<User[]> {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+
+// Rôles disponibles selon le rôle de l'utilisateur connecté
+function getCreatableRoles(myRole: Role | undefined): [Role, string][] {
+  if (myRole === 'gestionnaire_proprio') {
+    return [['locataire', 'Locataire']]
+  }
+  if (myRole === 'gestionnaire') {
+    return [['locataire', 'Locataire'], ['proprietaire', 'Propriétaire']]
+  }
+  return Object.entries(ROLE_LABELS) as [Role, string][]
+}
 
 export default function AdminUsers() {
   const { user: me } = useAuthStore()
@@ -175,11 +188,14 @@ export default function AdminUsers() {
           </div>
         </div>
         <button
-          onClick={() => { setShowCreate(true); setFormError(null); createForm.reset({ role: 'gestionnaire' }) }}
+          onClick={() => {
+            const defaultRole = me?.role === 'gestionnaire_proprio' ? 'locataire' : 'gestionnaire'
+            setShowCreate(true); setFormError(null); createForm.reset({ role: defaultRole as Role })
+          }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
         >
           <Plus size={16} />
-          Nouvel utilisateur
+          {me?.role === 'gestionnaire_proprio' ? 'Nouveau locataire' : 'Nouvel utilisateur'}
         </button>
       </div>
 
@@ -337,7 +353,7 @@ export default function AdminUsers() {
               {...createForm.register('role')}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {(Object.entries(ROLE_LABELS) as [Role, string][]).map(([value, label]) => (
+              {getCreatableRoles(me?.role).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
@@ -403,10 +419,10 @@ export default function AdminUsers() {
             <label className="block text-sm font-medium text-gray-700 mb-1">Rôle *</label>
             <select
               {...editForm.register('role')}
-              disabled={editTarget?.id === me?.id}
+              disabled={editTarget?.id === me?.id || me?.role === 'gestionnaire_proprio'}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
             >
-              {(Object.entries(ROLE_LABELS) as [Role, string][]).map(([value, label]) => (
+              {getCreatableRoles(me?.role).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
