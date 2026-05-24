@@ -98,25 +98,27 @@ class AvisEcheanceService:
         db.add(avis)
         await db.flush()
 
-        # ── Pré-créditer l'APL tiers-payant dans le paiement du mois ─────────
-        # Si APL tiers-payant : la CAF verse directement au bailleur.
-        # On génère (ou met à jour) le paiement du mois avec l'APL déjà comptabilisée.
-        if apl and apl > 0:
-            await cls._ensure_apl_payment(db, lease, year, month, apl, due)
+        # ── Créer le paiement du mois (systématique) ─────────────────────────
+        # APL tiers-payant : pré-créditer le montant CAF ; sinon PENDING à 0.
+        await cls._ensure_payment(db, lease, year, month, apl, due)
 
         return avis
 
     @classmethod
-    async def _ensure_apl_payment(
+    async def _ensure_payment(
         cls,
         db: AsyncSession,
         lease: Lease,
         year: int,
         month: int,
-        apl: float,
+        apl: Optional[float],
         due_date: date,
     ) -> None:
-        """Crée ou met à jour le paiement du mois pour pré-créditer l'APL."""
+        """Crée ou met à jour le paiement du mois.
+
+        Sans APL : paiement PENDING, montant dû = loyer + charges, rien d'encaissé.
+        Avec APL tiers-payant : APL pré-créditée, solde restant à la charge du locataire.
+        """
         existing = (await db.execute(
             select(Payment).where(
                 Payment.lease_id == lease.id,
@@ -128,8 +130,15 @@ class AvisEcheanceService:
         amount_rent = float(lease.rent_amount)
         amount_charges = float(lease.charges_amount)
         amount_due = amount_rent + amount_charges
-        initial_paid = min(apl, amount_due)
-        status = PaymentStatus.PAID if initial_paid >= amount_due else PaymentStatus.PARTIAL
+
+        if apl and apl > 0:
+            initial_paid = min(apl, amount_due)
+            status = PaymentStatus.PAID if initial_paid >= amount_due else PaymentStatus.PARTIAL
+            notes = "Tiers-payant CAF – versement automatique"
+        else:
+            initial_paid = 0.0
+            status = PaymentStatus.PENDING
+            notes = None
 
         if existing is None:
             payment = Payment(
@@ -141,17 +150,17 @@ class AvisEcheanceService:
                 due_date=due_date,
                 amount_rent=amount_rent,
                 amount_charges=amount_charges,
-                amount_apl=apl,
+                amount_apl=apl if apl and apl > 0 else None,
                 amount_due=amount_due,
                 amount_paid=initial_paid,
-                payment_date=due_date,
-                payment_method="virement",
+                payment_date=due_date if (apl and apl > 0) else None,
+                payment_method="virement" if (apl and apl > 0) else None,
                 status=status,
-                notes="Tiers-payant CAF – versement automatique",
+                notes=notes,
             )
             db.add(payment)
-        else:
-            # Le paiement existe déjà : mettre à jour l'APL si pas encore crédité
+        elif apl and apl > 0:
+            # Mettre à jour l'APL si pas encore crédité
             if (existing.amount_apl or 0) < apl:
                 existing.amount_apl = apl
                 existing.amount_paid = max(float(existing.amount_paid), initial_paid)
@@ -162,7 +171,7 @@ class AvisEcheanceService:
                 elif existing.amount_paid > 0:
                     existing.status = PaymentStatus.PARTIAL
                 if not existing.notes:
-                    existing.notes = "Tiers-payant CAF – versement automatique"
+                    existing.notes = notes
 
         await db.flush()
 
