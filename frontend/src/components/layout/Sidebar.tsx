@@ -271,10 +271,10 @@ export function Sidebar() {
     }
 
     // Gestionnaire mandataire
-    if (user?.role === 'gestionnaire_mandataire') {
+    if (user?.role === 'gestionnaire') {
       return (
         <div className="px-6 py-5 border-b border-gray-700">
-          <p className="text-white font-semibold text-sm">Gestionnaire sous mandat</p>
+          <p className="text-white font-semibold text-sm">Gestionnaire mandataire</p>
           {user.full_name && <p className="text-gray-400 text-xs mt-0.5">{user.full_name}</p>}
         </div>
       )
