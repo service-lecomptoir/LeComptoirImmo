@@ -4,7 +4,8 @@
 
 param(
     [int]$Port = 8000,
-    [switch]$NoReload
+    [switch]$NoReload,
+    [switch]$Background   # Lance en arrière-plan sans fenêtre (utile depuis Claude Code)
 )
 
 $BackendDir = Join-Path $PSScriptRoot "backend"
@@ -41,7 +42,14 @@ Write-Host ""
 Write-Host "Backend : http://localhost:$Port" -ForegroundColor Cyan
 Write-Host "Docs    : http://localhost:$Port/api/docs" -ForegroundColor Cyan
 Write-Host ""
-if ($NoReload) {
+$PythonExe = Join-Path $BackendDir ".venv\Scripts\python.exe"
+if ($Background) {
+    $env:PYTHONUNBUFFERED = "1"
+    $proc = Start-Process -FilePath $PythonExe -ArgumentList "-m","uvicorn","app.main:app","--host","127.0.0.1","--port",$Port,"--log-level","warning" -WorkingDirectory $BackendDir -PassThru -NoNewWindow
+    Start-Sleep 10
+    $r = try { (Invoke-RestMethod "http://127.0.0.1:$Port/health").status } catch { "DOWN" }
+    Write-Host "Backend PID $($proc.Id) : $r" -ForegroundColor $(if ($r -eq "ok") {"Green"} else {"Red"})
+} elseif ($NoReload) {
     & $UvicornExe app.main:app --host 127.0.0.1 --port $Port
 } else {
     & $UvicornExe app.main:app --host 127.0.0.1 --port $Port --reload

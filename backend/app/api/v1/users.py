@@ -21,24 +21,33 @@ _GESTIONNAIRE_ALLOWED_ROLES = {Role.PROPRIETAIRE, Role.LOCATAIRE}
 
 
 async def _gp_tenant_ids(db: AsyncSession, owner_id: uuid.UUID) -> set[str]:
-    """Retourne les IDs des locataires liés aux biens du gestionnaire-propriétaire."""
+    """Retourne les user_ids des locataires liés aux biens du gestionnaire-propriétaire."""
     from app.models.property import Property
     from app.models.lease import Lease
+    from app.models.tenant import Tenant
 
-    props_res = await db.execute(
+    prop_ids = list((await db.execute(
         select(Property.id).where(Property.owner_user_id == owner_id)
-    )
-    prop_ids = list(props_res.scalars().all())
+    )).scalars().all())
     if not prop_ids:
         return set()
 
-    leases_res = await db.execute(
-        select(Lease.tenant_user_id).where(
+    tenant_table_ids = list((await db.execute(
+        select(Lease.tenant_id).where(
             Lease.property_id.in_(prop_ids),
-            Lease.tenant_user_id.isnot(None),
+            Lease.tenant_id.isnot(None),
         )
-    )
-    return {str(tid) for tid in leases_res.scalars().all()}
+    )).scalars().all())
+    if not tenant_table_ids:
+        return set()
+
+    user_ids = list((await db.execute(
+        select(Tenant.user_id).where(
+            Tenant.id.in_(tenant_table_ids),
+            Tenant.user_id.isnot(None),
+        )
+    )).scalars().all())
+    return {str(uid) for uid in user_ids}
 
 
 async def _require_gp_scope(db: AsyncSession, current_user: User, target_id: uuid.UUID):
