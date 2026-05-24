@@ -120,6 +120,19 @@ async def create_lease(
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     lease = await LeaseService.create(db, data, created_by=current_user.id)
+    await db.flush()
+    # Auto-générer le paiement du mois de début de bail
+    from datetime import date
+    from app.services.payment_service import PaymentService
+    from app.core.exceptions import ConflictException as _Conflict
+    today = date.today()
+    start = lease.start_date if hasattr(lease.start_date, 'year') else date.fromisoformat(str(lease.start_date))
+    gen_year = start.year if (start.year, start.month) >= (today.year, today.month) else today.year
+    gen_month = start.month if (start.year, start.month) >= (today.year, today.month) else today.month
+    try:
+        await PaymentService.generate_for_lease(db, lease, gen_year, gen_month, current_user.id)
+    except _Conflict:
+        pass
     await db.commit()
     lease = await LeaseService.get_by_id(db, lease.id, load_relations=True)
     return lease

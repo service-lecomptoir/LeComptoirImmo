@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CreditCard, Search, Filter, FileDown, Send, RefreshCw, CheckCircle2, Mail, Trash2 } from 'lucide-react'
+import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2 } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Modal } from '@/components/common/Modal'
@@ -26,7 +26,7 @@ export default function PaymentList() {
   const [filterMonth, setFilterMonth] = useState(today.getMonth() + 1)
   const [isLoading, setIsLoading] = useState(true)
   const [recordingId, setRecordingId] = useState<string | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false) // eslint-disable-line @typescript-eslint/no-unused-vars
   const [sendingQuittanceId, setSendingQuittanceId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')
@@ -58,6 +58,11 @@ export default function PaymentList() {
     []
   )
 
+  // Auto-génère les paiements manquants à chaque changement de mois/année
+  useEffect(() => {
+    paymentsApi.generate(filterYear, filterMonth).catch(() => {})
+  }, [filterYear, filterMonth])
+
   useEffect(() => {
     const t = setTimeout(
       () => fetchPayments(search, filterStatus, filterYear, filterMonth),
@@ -65,17 +70,6 @@ export default function PaymentList() {
     )
     return () => clearTimeout(t)
   }, [search, filterStatus, filterYear, filterMonth, fetchPayments])
-
-  const handleGenerate = async () => {
-    setIsGenerating(true)
-    try {
-      const { data } = await paymentsApi.generate(filterYear, filterMonth)
-      alert(`${data.generated} loyer(s) généré(s) pour ${filterMonth}/${filterYear}`)
-      fetchPayments(search, filterStatus, filterYear, filterMonth)
-    } finally {
-      setIsGenerating(false)
-    }
-  }
 
   const handleRecord = async (form: RecordForm) => {
     if (!recordingId) return
@@ -133,14 +127,6 @@ export default function PaymentList() {
           <h1 className="text-2xl font-bold text-gray-900">Paiements</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} enregistrement{total > 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
-          <RefreshCw size={15} className={isGenerating ? 'animate-spin' : ''} />
-          Générer loyers {months[filterMonth]} {filterYear}
-        </button>
       </div>
 
       {successMsg && (

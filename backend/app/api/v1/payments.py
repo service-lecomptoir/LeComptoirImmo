@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.core.permissions import Role
-from app.api.deps import require_role
+from app.api.deps import require_role, get_current_gestionnaire
 from app.models.user import User
 from app.models.payment import PaymentStatus
 from app.schemas.payment import (
@@ -55,9 +55,20 @@ async def get_monthly_stats(
 async def generate_monthly_payments(
     data: GenerateMonthlyIn,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
-    count = await PaymentService.generate_monthly(db, data.year, data.month, current_user.id)
+    prop_ids_filter = None
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        from app.models.property import Property
+        from sqlalchemy import select as sa_select
+        res = await db.execute(
+            sa_select(Property.id).where(Property.created_by == current_user.id)
+        )
+        prop_ids_filter = list(res.scalars().all())
+
+    count = await PaymentService.generate_monthly(
+        db, data.year, data.month, current_user.id, property_ids=prop_ids_filter
+    )
     await db.commit()
     return {"generated": count, "year": data.year, "month": data.month}
 

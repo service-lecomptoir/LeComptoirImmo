@@ -106,16 +106,16 @@ class PaymentService:
         year: int,
         month: int,
         created_by: Optional[uuid.UUID] = None,
+        property_ids: list | None = None,
     ) -> int:
         """Génère les loyers pour tous les baux actifs d'une période. Retourne le nombre créé."""
-        leases = (
-            await db.execute(
-                select(Lease).where(
-                    Lease.is_active == True,
-                    or_(Lease.end_date == None, Lease.end_date >= date(year, month, 1)),
-                )
-            )
-        ).scalars().all()
+        q = select(Lease).where(
+            Lease.is_active == True,
+            or_(Lease.end_date == None, Lease.end_date >= date(year, month, 1)),
+        )
+        if property_ids is not None:
+            q = q.where(Lease.property_id.in_(property_ids))
+        leases = (await db.execute(q)).scalars().all()
 
         created = 0
         for lease in leases:
