@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, FileText,
-  CreditCard, Bell, Settings, Calendar,
+  CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
   MapPin, Hash, User,
@@ -34,7 +34,6 @@ const navGestionnaire: NavItem[] = [
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/admin', icon: Settings, label: 'Administration' },
 ]
 
@@ -48,7 +47,6 @@ const navProprietaire: NavItem[] = [
   { to: '/proprietaire/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/proprietaire/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]
 
 // Navigation Gestionnaire-Propriétaire : menu complet avec section finances après quittances
@@ -69,7 +67,6 @@ const navGestionnairePropio: NavItem[] = [
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/admin', icon: Settings, label: 'Administration' },
 ]
 
@@ -81,7 +78,6 @@ const navLocataire: NavItem[] = [
   { to: '/locataire/paiements', icon: CreditCard, label: 'Mes paiements' },
   { to: '/locataire/messages', icon: MessageSquare, label: 'Mes messages' },
   { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]
 
 // ── Skeleton commun ───────────────────────────────────────────────────────────
