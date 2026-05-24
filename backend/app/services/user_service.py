@@ -29,6 +29,7 @@ class UserService:
         )
         db.add(user)
         await db.flush()
+        await db.refresh(user)
         return user
 
     @staticmethod
@@ -67,6 +68,7 @@ class UserService:
             user.is_active = data.is_active
 
         await db.flush()
+        await db.refresh(user)
         return user
 
     @staticmethod
@@ -76,6 +78,7 @@ class UserService:
         user = await UserService.get_by_id(db, user_id)
         user.role = data.role
         await db.flush()
+        await db.refresh(user)
         return user
 
     @staticmethod
