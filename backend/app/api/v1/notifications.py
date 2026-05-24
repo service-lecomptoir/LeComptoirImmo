@@ -39,9 +39,6 @@ async def get_badge_count(
     """Compteur global cloche : notifications + messages non lus + tickets ouverts."""
     role = Role(current_user.role)
 
-    # ── Notifications système ─────────────────────────────────────────────────
-    notif_count = await NotificationService.get_unread_count(db, current_user.id)
-
     # ── Messages propriétaire ↔ gestionnaire ──────────────────────────────────
     msg_count = 0
     if role == Role.PROPRIETAIRE:
@@ -115,10 +112,9 @@ async def get_badge_count(
             )
             inc_count = res.scalar_one()
 
-    total = notif_count + msg_count + inc_count
+    total = msg_count + inc_count
     return {
         "total": total,
-        "notifications": notif_count,
         "messages": msg_count,
         "incidents": inc_count,
     }

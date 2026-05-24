@@ -1,11 +1,11 @@
 import { Bell, User, LogOut, ChevronDown, X, Check, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { notificationsApi } from '@/api/notifications'
 import { apiClient } from '@/api/client'
 
-const POLL_INTERVAL_MS = 60_000 // 1 minute
+const POLL_INTERVAL_MS = 30_000 // 30 secondes
 
 // ── Modale "Mon profil" ───────────────────────────────────────────────────────
 
@@ -192,6 +192,7 @@ function ProfileModal({ user, onClose, onSaved }: ProfileModalProps) {
 export function Header() {
   const { user, logout, fetchMe } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [unreadCount, setUnreadCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
@@ -207,9 +208,14 @@ export function Header() {
     }
   }, [])
 
+  // Refresh sur montage, changement de route, et toutes les 30s
   useEffect(() => {
     if (!user) return
     fetchCount()
+  }, [user, fetchCount, location.pathname])
+
+  useEffect(() => {
+    if (!user) return
     const timer = setInterval(fetchCount, POLL_INTERVAL_MS)
     return () => clearInterval(timer)
   }, [user, fetchCount])

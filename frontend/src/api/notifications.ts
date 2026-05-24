@@ -7,7 +7,6 @@ import type {
 
 export interface BadgeCountResponse {
   total: number
-  notifications: number
   messages: number
   incidents: number
 }
