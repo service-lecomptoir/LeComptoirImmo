@@ -1,0 +1,32 @@
+import uuid
+from typing import Optional
+from datetime import datetime
+from pydantic import BaseModel, Field
+
+
+class PlanBase(BaseModel):
+    name: str = Field(..., max_length=100)
+    description: Optional[str] = None
+    property_limit: Optional[int] = Field(None, ge=1, description="null = illimité")
+    monthly_price: float = Field(0.0, ge=0)
+
+
+class PlanCreate(PlanBase):
+    pass
+
+
+class PlanUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=100)
+    description: Optional[str] = None
+    property_limit: Optional[int] = Field(None, ge=1)
+    monthly_price: Optional[float] = Field(None, ge=0)
+    is_active: Optional[bool] = None
+
+
+class PlanOut(PlanBase):
+    id: uuid.UUID
+    is_active: bool
+    created_at: datetime
+    gestionnaire_count: int = 0
+
+    model_config = {"from_attributes": True}

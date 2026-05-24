@@ -1,7 +1,7 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -65,6 +65,45 @@ async def create_property(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
+    # ── Vérification limite de biens ProxyGen ─────────────────────────────────
+    try:
+        from sqlalchemy import text as sa_text
+        lic_result = await db.execute(
+            sa_text(
+                "SELECT property_limit_override, plan_id FROM proxygen_licenses "
+                "WHERE gestionnaire_user_id = :uid"
+            ).bindparams(uid=current_user.id)
+        )
+        lic_row = lic_result.fetchone()
+        if lic_row:
+            effective_limit = lic_row[0]  # property_limit_override
+            if effective_limit is None and lic_row[1]:  # pas d'override → vérifier plan
+                plan_result = await db.execute(
+                    sa_text(
+                        "SELECT property_limit FROM proxygen_plans WHERE id = :plan_id"
+                    ).bindparams(plan_id=lic_row[1])
+                )
+                plan_row = plan_result.fetchone()
+                if plan_row:
+                    effective_limit = plan_row[0]
+            if effective_limit is not None:
+                count_result = await db.execute(
+                    select(func.count(Property.id)).where(
+                        Property.created_by == current_user.id
+                    )
+                )
+                current_count = count_result.scalar_one_or_none() or 0
+                if current_count >= effective_limit:
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Limite de biens atteinte pour votre formule ({effective_limit} biens max)"
+                    )
+    except Exception as exc:
+        # Ne pas bloquer si ProxyGen n'est pas disponible
+        import logging
+        logging.getLogger(__name__).warning(f"ProxyGen license check skipped: {exc}")
+    # ─────────────────────────────────────────────────────────────────────────
     return await PropertyService.create(db, data, created_by=current_user.id)
 
 
