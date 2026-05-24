@@ -610,10 +610,26 @@ export default function TemplateEditor() {
 
   const openNew = () => { setEditTemplate(null); setEditMode(true) }
   const openEdit = (t: Template) => { setEditTemplate(t); setEditMode(true) }
-  const handleBack = () => { setEditMode(false); setEditTemplate(null); load() }
-  const onSaved = () => { load(); setSuccessMsg('Template enregistré'); setTimeout(() => setSuccessMsg(''), 3000) }
+  const handleBack = () => { setEditMode(false); setEditTemplate(null) }
+  const onSaved = () => { setSuccessMsg('Template enregistré'); setTimeout(() => setSuccessMsg(''), 3000) }
 
-  useEffect(() => { load() }, [filterType])
+  useEffect(() => {
+    if (editMode) return
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      try {
+        const params = filterType ? { template_type: filterType } : {}
+        const r = await apiClient.get<Template[]>('/templates', { params })
+        if (!cancelled) setTemplates(r.data)
+      } catch {
+        if (!cancelled) setTemplates([])
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [filterType, editMode])
 
   // Mode éditeur plein écran
   if (editMode) {
