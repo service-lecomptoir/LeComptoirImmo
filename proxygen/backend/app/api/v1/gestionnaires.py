@@ -6,12 +6,18 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
+from sqlalchemy import or_
+
 from app.database import get_db
 from app.models.admin import ProxygenAdmin
 from app.models.license import ProxygenLicense
 from app.models.plan import ProxygenPlan
 from app.models.leci import LeciUser, LeciProperty
 from app.schemas.gestionnaire import GestionnaireCreate, GestionnaireUpdate, GestionnaireOut, GestionnairePropertyOut
+
+# Filtre OR pour les deux rôles gestionnaire
+def _manager_roles():
+    return or_(_manager_roles(), LeciUser.role_eq("gestionnaire_proprio"))
 from app.schemas.license import LicenseOut
 from app.schemas.plan import PlanOut
 from app.core.security import hash_password
@@ -50,6 +56,7 @@ async def _build_gestionnaire_out(
         id=user.id,
         email=user.email,
         full_name=user.full_name,
+        role=user.role,
         is_active=user.is_active,
         created_at=user.created_at,
         license=license_out,
@@ -69,7 +76,7 @@ async def list_gestionnaires(
     """Liste tous les gestionnaires avec leur licence et plan."""
     users_result = await db.execute(
         select(LeciUser)
-        .where(LeciUser.role_eq("gestionnaire"))
+        .where(_manager_roles())
         .order_by(LeciUser.created_at.desc())
         .offset(skip)
         .limit(limit)
@@ -115,7 +122,7 @@ async def create_gestionnaire(
         email=data.email,
         full_name=data.full_name,
         hashed_password=hashed,
-        role="gestionnaire",
+        role=data.role,
         is_active=True,
     )
     db.add(new_user)
@@ -152,7 +159,7 @@ async def get_gestionnaire(
 ):
     """Détail d'un gestionnaire."""
     user_result = await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, LeciUser.role_eq("gestionnaire"))
+        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
     )
     user = user_result.scalar_one_or_none()
     if not user:
@@ -180,7 +187,7 @@ async def update_gestionnaire(
 ):
     """Modifie les informations d'un gestionnaire et/ou sa licence."""
     user_result = await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, LeciUser.role_eq("gestionnaire"))
+        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
     )
     user = user_result.scalar_one_or_none()
     if not user:
@@ -229,7 +236,7 @@ async def block_gestionnaire_endpoint(
 ):
     """Bloque un gestionnaire et tous ses propriétaires/locataires en cascade."""
     user_result = await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, LeciUser.role_eq("gestionnaire"))
+        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
     )
     user = user_result.scalar_one_or_none()
     if not user:
@@ -275,7 +282,7 @@ async def unblock_gestionnaire_endpoint(
 ):
     """Débloque un gestionnaire et ses propriétaires/locataires."""
     user_result = await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, LeciUser.role_eq("gestionnaire"))
+        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
     )
     user = user_result.scalar_one_or_none()
     if not user:
@@ -310,7 +317,7 @@ async def get_gestionnaire_properties(
 ):
     """Liste des biens créés par ce gestionnaire."""
     user_result = await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, LeciUser.role_eq("gestionnaire"))
+        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
     )
     if not user_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Gestionnaire introuvable")

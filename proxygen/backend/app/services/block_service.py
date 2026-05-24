@@ -97,7 +97,8 @@ async def block_gestionnaire(
     tenant_user_ids = await _get_tenant_user_ids(db, property_ids)
 
     # 4. Collecter tous les IDs à bloquer (sauf le gestionnaire lui-même)
-    all_cascade_ids = list(set(owner_user_ids + tenant_user_ids))
+    # Pour gestionnaire_proprio, il est aussi owner → l'exclure de la cascade
+    all_cascade_ids = list(set(owner_user_ids + tenant_user_ids) - {gestionnaire_id})
     logger.info(f"  {len(all_cascade_ids)} user(s) à bloquer en cascade")
 
     # 5. Désactiver le gestionnaire

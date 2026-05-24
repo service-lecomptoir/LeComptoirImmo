@@ -39,11 +39,17 @@ interface CreateModalProps {
   onCreated: (g: Gestionnaire) => void
 }
 
+const ROLE_OPTIONS: { value: 'gestionnaire' | 'gestionnaire_proprio'; label: string; description: string }[] = [
+  { value: 'gestionnaire', label: 'Gestionnaire mandataire', description: 'Gère des biens pour le compte de propriétaires tiers' },
+  { value: 'gestionnaire_proprio', label: 'Gestionnaire-Propriétaire', description: 'Gère et possède ses propres biens (même personne)' },
+]
+
 function CreateModal({ plans, onClose, onCreated }: CreateModalProps) {
   const [form, setForm] = useState<GestionnaireCreateData>({
     email: '',
     full_name: '',
     password: '',
+    role: 'gestionnaire',
     plan_id: null,
     property_limit_override: null,
     monthly_price_override: null,
@@ -86,6 +92,27 @@ function CreateModal({ plans, onClose, onCreated }: CreateModalProps) {
           )}
 
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1.5">Type de compte *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {ROLE_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, role: opt.value }))}
+                    className={clsx(
+                      'text-left px-3 py-2.5 rounded-lg border text-xs transition-colors',
+                      form.role === opt.value
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    )}
+                  >
+                    <div className="font-semibold">{opt.label}</div>
+                    <div className={clsx('mt-0.5', form.role === opt.value ? 'text-indigo-500' : 'text-gray-400')}>{opt.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1">Nom complet *</label>
               <input
@@ -250,6 +277,7 @@ export default function GestionnaireList() {
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nom</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Plan</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Biens</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
@@ -259,7 +287,7 @@ export default function GestionnaireList() {
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-400">
                     {search ? 'Aucun gestionnaire ne correspond a votre recherche' : 'Aucun gestionnaire'}
                   </td>
                 </tr>
@@ -281,6 +309,17 @@ export default function GestionnaireList() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{g.email}</td>
+                    <td className="px-6 py-4">
+                      {g.role === 'gestionnaire_proprio' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-violet-50 text-violet-700">
+                          Gest.-Proprio
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-600">
+                          Mandataire
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       {g.plan ? (
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700">

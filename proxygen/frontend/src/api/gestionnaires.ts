@@ -5,6 +5,7 @@ export interface GestionnaireCreateData {
   email: string
   full_name: string
   password: string
+  role: 'gestionnaire' | 'gestionnaire_proprio'
   plan_id?: string | null
   property_limit_override?: number | null
   monthly_price_override?: number | null
