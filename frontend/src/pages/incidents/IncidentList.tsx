@@ -4,6 +4,7 @@ import { ticketsApi, type Ticket } from '@/api/tickets'
 import { messagesApi, type ProprietaireMessage, type Conversation } from '@/api/messages'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { useAuthStore } from '@/store/authStore'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   open:        { label: 'Ouvert',    color: '#D97706', bg: '#FEF3C7', icon: Clock },
@@ -490,6 +491,10 @@ export default function IncidentList({
   subtitle?: string
   hideProprietaireTab?: boolean
 }) {
+  const { user } = useAuthStore()
+  const isGestionnairePropio = user?.role === 'gestionnaire_proprio'
+  const showProprietaireTab = !hideProprietaireTab && !isGestionnairePropio
+
   const [activeTab, setActiveTab] = useState<'tickets' | 'messages'>('tickets')
 
   return (
@@ -499,8 +504,8 @@ export default function IncidentList({
         <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
       </div>
 
-      {/* Onglets — masqués si readOnly (vue propriétaire) */}
-      {!readOnly && !hideProprietaireTab && (
+      {/* Onglets — visibles uniquement si l'onglet proprio est pertinent */}
+      {!readOnly && showProprietaireTab && (
         <div className="flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
           <button
             onClick={() => setActiveTab('tickets')}
@@ -528,10 +533,10 @@ export default function IncidentList({
       )}
 
       {/* Contenu selon onglet */}
-      {(readOnly || hideProprietaireTab || activeTab === 'tickets') && (
+      {(readOnly || !showProprietaireTab || activeTab === 'tickets') && (
         <TicketsTab readOnly={readOnly} fetchFn={fetchFn} />
       )}
-      {!readOnly && !hideProprietaireTab && activeTab === 'messages' && (
+      {!readOnly && showProprietaireTab && activeTab === 'messages' && (
         <ProprietaireMessagesTab />
       )}
     </div>
