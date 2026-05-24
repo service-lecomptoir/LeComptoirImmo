@@ -172,11 +172,13 @@ class AvisEcheanceService:
         db: AsyncSession,
         year: int,
         month: int,
+        property_ids: list | None = None,
     ) -> int:
         """Génère les avis pour tous les baux actifs (appelé par le scheduler)."""
-        leases = (await db.execute(
-            select(Lease).where(Lease.is_active == True)
-        )).scalars().all()
+        q = select(Lease).where(Lease.is_active == True)
+        if property_ids is not None:
+            q = q.where(Lease.property_id.in_(property_ids))
+        leases = (await db.execute(q)).scalars().all()
 
         count = 0
         for lease in leases:

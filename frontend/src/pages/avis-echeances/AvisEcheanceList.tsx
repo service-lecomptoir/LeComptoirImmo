@@ -332,7 +332,7 @@ function BulkGenerateModal({
 // ── Page principale ───────────────────────────────────────────────────────────
 export default function AvisEcheanceList() {
   const { user } = useAuthStore()
-  const isManager = user?.role === 'admin' || user?.role === 'gestionnaire'
+  const isManager = user?.role === 'admin' || user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
 
   const now = new Date()
   const [filterYear, setFilterYear] = useState<number>(now.getFullYear())

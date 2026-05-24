@@ -182,6 +182,12 @@ async def generate_one(
     if not lease.is_active:
         raise HTTPException(status_code=400, detail="Ce bail n'est plus actif")
 
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        from app.models.property import Property
+        prop = await db.get(Property, lease.property_id)
+        if not prop or str(prop.created_by) != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Accès refusé")
+
     try:
         avis = await AvisEcheanceService.generate_for_lease(
             db, lease, body.period_year, body.period_month,
@@ -204,8 +210,16 @@ async def generate_monthly(
     """Génère les avis pour tous les baux actifs sur un mois donné."""
     _require_manager(current_user)
 
+    prop_ids_filter = None
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        from app.models.property import Property
+        res = await db.execute(
+            select(Property.id).where(Property.created_by == current_user.id)
+        )
+        prop_ids_filter = list(res.scalars().all())
+
     count = await AvisEcheanceService.generate_monthly_all(
-        db, body.period_year, body.period_month
+        db, body.period_year, body.period_month, property_ids=prop_ids_filter
     )
     await db.commit()
 
