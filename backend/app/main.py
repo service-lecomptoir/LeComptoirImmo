@@ -83,6 +83,12 @@ async def _seed_default_users() -> None:
             role=Role.GESTIONNAIRE,
         ),
         UserCreate(
+            email="gestionnaire-proprio@cabinet.fr",
+            password="GestionnaireProprio1!",
+            full_name="Gestionnaire-Propriétaire Demo",
+            role=Role.GESTIONNAIRE_PROPRIO,
+        ),
+        UserCreate(
             email="proprietaire@email.fr",
             password="Proprietaire1!",
             full_name="Propriétaire Demo",

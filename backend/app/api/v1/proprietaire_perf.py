@@ -24,7 +24,7 @@ async def get_proprietaire_performance(
     from fastapi import HTTPException
     role = R(current_user.role)
 
-    if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.ADMIN):
+    if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.GESTIONNAIRE_PROPRIO, R.ADMIN):
         raise HTTPException(status_code=403, detail="Accès refusé")
 
     proprietaire_id = current_user.id

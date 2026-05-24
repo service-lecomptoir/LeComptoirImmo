@@ -14,10 +14,11 @@ import clsx from 'clsx'
 import { useState, useEffect } from 'react'
 
 interface NavItem {
-  to: string
-  icon: React.ElementType
+  to?: string
+  icon?: React.ElementType
   label: string
   roles?: Role[]
+  isSeparator?: boolean
 }
 
 // Navigation Gestionnaire / Admin
@@ -48,6 +49,15 @@ const navProprietaire: NavItem[] = [
   { to: '/proprietaire/messages', icon: MessageSquare, label: 'Messages' },
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
+]
+
+// Navigation Gestionnaire-Propriétaire : nav gestionnaire + section finances propriétaire
+const navGestionnaireProprioExtras: NavItem[] = [
+  { label: 'Mes finances', isSeparator: true },
+  { to: '/proprietaire', icon: LayoutDashboard, label: 'Vue propriétaire' },
+  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
+  { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
+  { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
 ]
 
 // Navigation Locataire
@@ -200,6 +210,7 @@ export function Sidebar() {
     if (!user) return []
     if (user.role === 'locataire') return navLocataire
     if (user.role === 'proprietaire') return navProprietaire
+    if (user.role === 'gestionnaire_proprio') return [...navGestionnaire, ...navGestionnaireProprioExtras]
     return navGestionnaire
   }
 
@@ -262,24 +273,35 @@ export function Sidebar() {
 
       {/* ── Navigation ── */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {filteredItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/proprietaire' || to === '/locataire'}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              )
-            }
-          >
-            <Icon size={18} />
-            <span>{label}</span>
-          </NavLink>
-        ))}
+        {filteredItems.map((item, idx) => {
+          if (item.isSeparator) {
+            return (
+              <div key={`sep-${idx}`} className="px-3 pt-4 pb-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{item.label}</p>
+              </div>
+            )
+          }
+          const Icon = item.icon!
+          const to = item.to!
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/proprietaire' || to === '/locataire'}
+              className={({ isActive }) =>
+                clsx(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                )
+              }
+            >
+              <Icon size={18} />
+              <span>{label}</span>
+            </NavLink>
+          )
+        })}
       </nav>
     </aside>
   )

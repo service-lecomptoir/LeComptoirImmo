@@ -16,6 +16,7 @@ from fastapi import HTTPException, status
 class Role(str, Enum):
     ADMIN = "admin"
     GESTIONNAIRE = "gestionnaire"
+    GESTIONNAIRE_PROPRIO = "gestionnaire_proprio"  # gestionnaire qui est aussi propriétaire de ses biens
     PROPRIETAIRE = "proprietaire"
     LOCATAIRE = "locataire"
     # Legacy (gardés pour compatibilité DB, non utilisés dans la nouvelle archi)
@@ -24,25 +25,27 @@ class Role(str, Enum):
 
 
 # Hiérarchie : admin et gestionnaire ont accès à tout en gestion
-# propriétaire et locataire ont accès limité à leurs propres données
+# gestionnaire_proprio = mêmes droits que gestionnaire + accès aux vues propriétaire
 ROLE_HIERARCHY: dict[Role, Set[Role]] = {
-    Role.ADMIN:        {Role.ADMIN, Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LOCATAIRE,
-                        Role.LECTURE, Role.COMPTABLE},
-    Role.GESTIONNAIRE: {Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LOCATAIRE,
-                        Role.LECTURE, Role.COMPTABLE},
-    Role.PROPRIETAIRE: {Role.PROPRIETAIRE, Role.LECTURE},
-    Role.LOCATAIRE:    {Role.LOCATAIRE},
-    Role.LECTURE:      {Role.LECTURE},
-    Role.COMPTABLE:    {Role.LECTURE, Role.COMPTABLE},
+    Role.ADMIN:                {Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO,
+                                Role.PROPRIETAIRE, Role.LOCATAIRE, Role.LECTURE, Role.COMPTABLE},
+    Role.GESTIONNAIRE:         {Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LOCATAIRE,
+                                Role.LECTURE, Role.COMPTABLE},
+    Role.GESTIONNAIRE_PROPRIO: {Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO, Role.PROPRIETAIRE,
+                                Role.LOCATAIRE, Role.LECTURE, Role.COMPTABLE},
+    Role.PROPRIETAIRE:         {Role.PROPRIETAIRE, Role.LECTURE},
+    Role.LOCATAIRE:            {Role.LOCATAIRE},
+    Role.LECTURE:              {Role.LECTURE},
+    Role.COMPTABLE:            {Role.LECTURE, Role.COMPTABLE},
 }
 
 def is_manager(role: "Role") -> bool:
     """Retourne True si le rôle a accès au panneau de gestion complet."""
-    return role in (Role.ADMIN, Role.GESTIONNAIRE)
+    return role in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
 
 def is_owner_or_manager(role: "Role") -> bool:
     """Retourne True si le rôle peut voir des biens immobiliers."""
-    return role in (Role.ADMIN, Role.GESTIONNAIRE, Role.PROPRIETAIRE)
+    return role in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO, Role.PROPRIETAIRE)
 
 
 def role_has_permission(user_role: Role, required_role: Role) -> bool:

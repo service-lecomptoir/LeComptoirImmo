@@ -252,8 +252,7 @@ async def get_proprietaire_stats(
     from app.core.permissions import Role as R
     role = R(current_user.role)
 
-    # Uniquement propriétaire ou gestionnaire
-    if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.ADMIN):
+    if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.GESTIONNAIRE_PROPRIO, R.ADMIN):
         from fastapi import HTTPException
         raise HTTPException(status_code=403, detail="Accès refusé")
 
@@ -324,8 +323,8 @@ async def get_fiscal_revenues(
     from app.core.permissions import Role as R
     role = R(current_user.role)
 
-    # Propriétaire ne voit que ses propres données
-    if role == R.PROPRIETAIRE:
+    # Propriétaire (et gestionnaire_proprio) ne voient que leurs propres données
+    if role in (R.PROPRIETAIRE, R.GESTIONNAIRE_PROPRIO):
         proprietaire_id = current_user.id
 
     # Trouver les biens du propriétaire
