@@ -76,23 +76,20 @@ async def list_users(
     current_role = Role(current_user.role)
 
     if current_role == Role.GESTIONNAIRE:
-        # Gestionnaire mandataire : proprio/locataires, hors ceux appartenant à un gestionnaire_proprio
-        gp_t_ids = await _isolation_gp_tenant_ids(db)
-        # Récupérer les user_id des locataires liés à ces tenants GP
-        from app.models.tenant import Tenant as TenantModel
-        gp_loc_user_ids: set[str] = set()
-        if gp_t_ids:
+        # Gestionnaire mandataire : proprio/locataires, hors ceux créés par un gestionnaire_proprio
+        # Approche directe : User.created_by → GP user ids
+        from app.api.v1._isolation import _gp_user_ids
+        gp_ids = await _gp_user_ids(db)
+        gp_created_user_ids: set[str] = set()
+        if gp_ids:
             rows = (await db.execute(
-                select(TenantModel.user_id).where(
-                    TenantModel.id.in_(gp_t_ids),
-                    TenantModel.user_id.isnot(None),
-                )
+                select(User.id).where(User.created_by.in_(gp_ids))
             )).scalars().all()
-            gp_loc_user_ids = {str(uid) for uid in rows}
+            gp_created_user_ids = {str(uid) for uid in rows}
         users = [
             u for u in users
             if Role(u.role) in _GESTIONNAIRE_ALLOWED_ROLES
-            and str(u.id) not in gp_loc_user_ids
+            and str(u.id) not in gp_created_user_ids
         ]
     elif current_role == Role.GESTIONNAIRE_PROPRIO:
         # Gestionnaire-propriétaire : lui-même + ses propres locataires uniquement
@@ -130,7 +127,8 @@ async def create_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Un gestionnaire-propriétaire ne peut créer que des comptes locataire.",
             )
-    return await UserService.create(db, data)
+    # Passer current_user.id pour tracer le créateur (isolation GP)
+    return await UserService.create(db, data, created_by=current_user.id)
 
 
 @router.get("/me", response_model=UserResponse, summary="Mon profil")

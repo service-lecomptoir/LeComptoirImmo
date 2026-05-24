@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import String, Boolean, Enum as SAEnum
+from typing import Optional
+from sqlalchemy import String, Boolean, Enum as SAEnum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -26,6 +27,11 @@ class User(Base, TimestampMixin):
         default=Role.LECTURE,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # Audit : qui a créé cet utilisateur (utile pour l'isolation GP)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email} [{self.role}]>"

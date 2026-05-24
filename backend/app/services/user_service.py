@@ -15,7 +15,11 @@ from app.core.exceptions import (
 class UserService:
 
     @staticmethod
-    async def create(db: AsyncSession, data: UserCreate) -> User:
+    async def create(
+        db: AsyncSession,
+        data: UserCreate,
+        created_by: Optional[uuid.UUID] = None,
+    ) -> User:
         """Crée un nouvel utilisateur après vérification de l'unicité de l'email."""
         result = await db.execute(select(User).where(User.email == data.email))
         if result.scalar_one_or_none():
@@ -26,6 +30,7 @@ class UserService:
             hashed_password=hash_password(data.password),
             full_name=data.full_name,
             role=data.role,
+            created_by=created_by,
         )
         db.add(user)
         await db.flush()
