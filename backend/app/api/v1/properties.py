@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
+from app.api.v1._isolation import gp_property_ids
 from app.models.user import User
 from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertyUpdate, PropertyResponse, PropertyListItem
@@ -53,7 +54,15 @@ async def list_properties(
     if role == Role.LOCATAIRE:
         return {"items": [], "total": 0, "skip": skip, "limit": limit}
 
-    # Gestionnaire / Admin / autres
+    # Gestionnaire mandataire : exclure les biens des gestionnaire_proprio
+    if role == Role.GESTIONNAIRE:
+        excluded = await gp_property_ids(db)
+        all_props, _ = await PropertyService.list_all(db, search=search, skip=0, limit=2000)
+        filtered = [p for p in all_props if p.id not in excluded]
+        items = await _enrich_properties(db, filtered)
+        return {"items": items, "total": len(items), "skip": 0, "limit": limit}
+
+    # Admin / autres
     properties, total = await PropertyService.list_all(db, search=search, skip=skip, limit=limit)
     items = await _enrich_properties(db, properties)
     return {"items": items, "total": total, "skip": skip, "limit": limit}

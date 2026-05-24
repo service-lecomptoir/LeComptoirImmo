@@ -24,6 +24,7 @@ from app.schemas.payment import (
 from app.services.payment_service import PaymentService
 from app.services.pdf_service import render_template, html_to_pdf
 from app.api.deps import get_current_user as _get_current_user
+from app.api.v1._isolation import gp_lease_ids
 # Allow import from auth for backward compatibility
 get_current_user = _get_current_user
 
@@ -204,6 +205,22 @@ async def list_payments(
             all_items.extend(page)
         list_items = [PaymentService.to_list_item(p) for p in all_items]
         return PaymentListResponse(items=list_items, total=len(list_items), skip=0, limit=limit)
+
+    # Gestionnaire mandataire : exclure les paiements des baux GP
+    if Role(current_user.role) == Role.GESTIONNAIRE:
+        excluded = await gp_lease_ids(db)
+        if lease_id and lease_id in excluded:
+            return PaymentListResponse(items=[], total=0, skip=skip, limit=limit)
+        all_items, _ = await PaymentService.list_all(
+            db, search=search, lease_id=lease_id, tenant_id=tenant_id,
+            status=status, year=year, month=month, skip=0, limit=5000,
+        )
+        filtered = [p for p in all_items if p.lease_id not in excluded]
+        page = filtered[skip: skip + limit]
+        return PaymentListResponse(
+            items=[PaymentService.to_list_item(p) for p in page],
+            total=len(filtered), skip=skip, limit=limit,
+        )
 
     items, total = await PaymentService.list_all(
         db,

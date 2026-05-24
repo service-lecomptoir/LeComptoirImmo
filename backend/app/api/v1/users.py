@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_active_admin, get_current_gestionnaire
 from app.core.permissions import Role
+from app.api.v1._isolation import gp_tenant_ids as _isolation_gp_tenant_ids
 from app.models.user import User
 from app.schemas.user import (
     UserCreate, UserUpdate, UserRoleUpdate,
@@ -75,8 +76,24 @@ async def list_users(
     current_role = Role(current_user.role)
 
     if current_role == Role.GESTIONNAIRE:
-        # Gestionnaire mandataire : propriétaires et locataires seulement
-        users = [u for u in users if Role(u.role) in _GESTIONNAIRE_ALLOWED_ROLES]
+        # Gestionnaire mandataire : proprio/locataires, hors ceux appartenant à un gestionnaire_proprio
+        gp_t_ids = await _isolation_gp_tenant_ids(db)
+        # Récupérer les user_id des locataires liés à ces tenants GP
+        from app.models.tenant import Tenant as TenantModel
+        gp_loc_user_ids: set[str] = set()
+        if gp_t_ids:
+            rows = (await db.execute(
+                select(TenantModel.user_id).where(
+                    TenantModel.id.in_(gp_t_ids),
+                    TenantModel.user_id.isnot(None),
+                )
+            )).scalars().all()
+            gp_loc_user_ids = {str(uid) for uid in rows}
+        users = [
+            u for u in users
+            if Role(u.role) in _GESTIONNAIRE_ALLOWED_ROLES
+            and str(u.id) not in gp_loc_user_ids
+        ]
     elif current_role == Role.GESTIONNAIRE_PROPRIO:
         # Gestionnaire-propriétaire : lui-même + ses propres locataires uniquement
         tenant_ids = await _gp_tenant_ids(db, current_user.id)

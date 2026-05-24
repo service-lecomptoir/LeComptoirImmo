@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.core.permissions import Role
+from app.api.v1._isolation import gp_lease_ids
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.property import Property
@@ -86,9 +87,18 @@ async def list_leases(
             items = [LeaseService.to_list_item(l) for l in leases_all]
             return LeaseListResponse(items=items, total=len(items), skip=0, limit=limit)
 
-    # ── Gestionnaire/Admin/Comptable ──────────────────────────────────────────────
-    # pas de filtrage supplémentaire
+    # ── Gestionnaire mandataire : exclure les baux des gestionnaire_proprio ──────
+    if role == Role.GESTIONNAIRE:
+        excluded = await gp_lease_ids(db)
+        all_leases, _ = await LeaseService.list_all(
+            db, search=search, unit_id=unit_id, tenant_id=tenant_id,
+            property_id=property_id, is_active=is_active, skip=0, limit=2000,
+        )
+        filtered = [l for l in all_leases if l.id not in excluded]
+        items = [LeaseService.to_list_item(l) for l in filtered[skip: skip + limit]]
+        return LeaseListResponse(items=items, total=len(filtered), skip=skip, limit=limit)
 
+    # ── Admin/Comptable ───────────────────────────────────────────────────────────
     leases, total = await LeaseService.list_all(
         db,
         search=search,

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
+from app.api.v1._isolation import gp_tenant_ids as _gp_tenant_ids
 from app.models.user import User
 from app.models.document import EntityType, DocumentType
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, TenantListItem
@@ -50,15 +51,23 @@ async def list_tenants(
             own = [t for t in own if t.id not in active_ids]
         return {"items": [TenantListItem.model_validate(t) for t in own], "total": len(own), "skip": 0, "limit": limit}
 
-    tenants, total = await TenantService.list_all(db, search=search, skip=skip, limit=limit)
+    tenants, total = await TenantService.list_all(db, search=search, skip=0, limit=2000)
+
+    # Gestionnaire mandataire : exclure les locataires des gestionnaire_proprio
+    if Role(current_user.role) == Role.GESTIONNAIRE:
+        excluded = await _gp_tenant_ids(db)
+        tenants = [t for t in tenants if t.id not in excluded]
+
     if available_only:
         active_ids = {l.tenant_id for l in (await db.execute(
             select(Lease).where(Lease.is_active.is_(True), Lease.tenant_id.isnot(None))
         )).scalars().all()}
         tenants = [t for t in tenants if t.id not in active_ids]
-        total = len(tenants)
+
+    total = len(tenants)
+    page = tenants[skip: skip + limit]
     return {
-        "items": [TenantListItem.model_validate(t) for t in tenants],
+        "items": [TenantListItem.model_validate(t) for t in page],
         "total": total,
         "skip": skip,
         "limit": limit,
