@@ -72,7 +72,7 @@ export default function ProprietaireBiens() {
 
     Promise.allSettled([
       propertiesApi.list({ limit: 100 }),
-      apiClient.get(`/dashboard/proprietaire-performance/${year}`),
+      apiClient.get(`/proprietaire-performance/${year}`),
     ]).then(([propsRes, perfRes]) => {
       if (propsRes.status === 'fulfilled') {
         const items = (propsRes.value.data as any).items ?? propsRes.value.data
