@@ -200,8 +200,8 @@ export function Header() {
   // ── Notifications ─────────────────────────────────────────────────────────
   const fetchCount = useCallback(async () => {
     try {
-      const { data } = await notificationsApi.getUnreadCount()
-      setUnreadCount(data.count)
+      const { data } = await notificationsApi.getBadgeCount()
+      setUnreadCount(data.total)
     } catch {
       // silently ignore
     }
@@ -249,12 +249,16 @@ export function Header() {
           {/* Notifications */}
           <button
             onClick={() => navigate('/notifications')}
-            className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className={`relative p-2 rounded-lg transition-colors ${
+              unreadCount > 0
+                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+            }`}
             title="Notifications"
           >
             <Bell size={18} />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none animate-pulse">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}

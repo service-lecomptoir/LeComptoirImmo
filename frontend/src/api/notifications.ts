@@ -5,9 +5,19 @@ import type {
   UnreadCountResponse,
 } from '@/types/notification'
 
+export interface BadgeCountResponse {
+  total: number
+  notifications: number
+  messages: number
+  incidents: number
+}
+
 export const notificationsApi = {
   getUnreadCount: () =>
     apiClient.get<UnreadCountResponse>('/notifications/count'),
+
+  getBadgeCount: () =>
+    apiClient.get<BadgeCountResponse>('/notifications/badge'),
 
   list: (params?: { unread_only?: boolean; limit?: number }) =>
     apiClient.get<NotificationListResponse>('/notifications', { params }),
