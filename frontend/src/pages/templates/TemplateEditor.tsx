@@ -619,7 +619,7 @@ export default function TemplateEditor() {
   // Mode éditeur plein écran
   if (editMode) {
     return (
-      <div className="h-full">
+      <div className="fixed inset-0 z-50 overflow-hidden">
         <TemplateEditorPanel
           key={editTemplate?.id ?? 'new'}
           template={editTemplate}
