@@ -169,9 +169,14 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
     if (!selectedPropertyId) { setUnits([]); return }
     setLoadingUnits(true)
     apiClient.get<UnitOption[]>(`/properties/${selectedPropertyId}/units`)
-      .then(r => setUnits(r.data))
+      .then(r => {
+        setUnits(r.data)
+        if (!isEdit) {
+          const first = r.data.find(u => !u.is_occupied) ?? r.data[0]
+          setValue('unit_id', first?.id ?? '', { shouldValidate: true })
+        }
+      })
       .finally(() => setLoadingUnits(false))
-    if (!isEdit) setValue('unit_id', '')
   }, [selectedPropertyId, isEdit, setValue])
 
   const handleTenantCreated = (tenant: TenantListItem) => {
@@ -231,32 +236,33 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
 
         {/* ── Bien & logement ── */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bien & logement</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Bien immobilier <span className="text-red-500">*</span></label>
-              <select {...register('property_id')} className={inp} disabled={isEdit}>
-                <option value="">— Sélectionner un bien —</option>
-                {properties.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} — {p.city}</option>
-                ))}
-              </select>
-              {errors.property_id && <p className={err}>{errors.property_id.message}</p>}
-            </div>
-            <div>
-              <label className={lbl}>Unité / Appartement <span className="text-red-500">*</span></label>
-              <select {...register('unit_id')} className={inp} disabled={isEdit || !selectedPropertyId || loadingUnits}>
-                <option value="">
-                  {loadingUnits ? 'Chargement...' : selectedPropertyId ? '— Sélectionner —' : '← Choisir un bien d\'abord'}
-                </option>
-                {units.map(u => (
-                  <option key={u.id} value={u.id} disabled={u.is_occupied && u.id !== lease?.unit_id}>
-                    {u.unit_ref} ({u.unit_type}){u.is_occupied && u.id !== lease?.unit_id ? ' — Occupé' : ` — ${u.base_rent} €/mois`}
-                  </option>
-                ))}
-              </select>
-              {errors.unit_id && <p className={err}>{errors.unit_id.message}</p>}
-            </div>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bien immobilier</h3>
+          <div>
+            <label className={lbl}>Bien immobilier <span className="text-red-500">*</span></label>
+            <select {...register('property_id')} className={inp} disabled={isEdit}>
+              <option value="">— Sélectionner un bien —</option>
+              {properties.map(p => (
+                <option key={p.id} value={p.id}>{p.name} — {p.city}</option>
+              ))}
+            </select>
+            {errors.property_id && <p className={err}>{errors.property_id.message}</p>}
+            {/* Logement auto-sélectionné ou choix si plusieurs */}
+            {selectedPropertyId && !loadingUnits && units.length > 1 && (
+              <div className="mt-2">
+                <label className={lbl}>Logement</label>
+                <select {...register('unit_id')} className={inp} disabled={isEdit}>
+                  {units.map(u => (
+                    <option key={u.id} value={u.id} disabled={u.is_occupied && u.id !== lease?.unit_id}>
+                      {u.unit_ref} ({u.unit_type}){u.is_occupied && u.id !== lease?.unit_id ? ' — Occupé' : ` — ${u.base_rent} €/mois`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {selectedPropertyId && loadingUnits && (
+              <p className="mt-1 text-xs text-gray-400">Chargement du logement…</p>
+            )}
+            {errors.unit_id && <p className={err}>{errors.unit_id.message}</p>}
           </div>
         </div>
 
