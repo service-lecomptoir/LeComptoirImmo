@@ -34,6 +34,8 @@ import ProprietaireEntretien from '@/pages/proprietaire/ProprietaireEntretien'
 import ProprietaireIncidents from '@/pages/proprietaire/ProprietaireIncidents'
 import ProprietaireMessages from '@/pages/proprietaire/ProprietaireMessages'
 import QuittanceList from '@/pages/quittances/QuittanceList'
+import OffersManager from '@/pages/offers/OffersManager'
+import LocataireOffres from '@/pages/locataire/LocataireOffres'
 
 function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
@@ -101,6 +103,8 @@ export const router = createBrowserRouter([
       { path: 'proprietaire/entretiens', element: <ProprietaireEntretien /> },
       { path: 'proprietaire/incidents', element: <ProprietaireIncidents /> },
       { path: 'proprietaire/messages', element: <ProprietaireMessages /> },
+      { path: 'offres', element: <OffersManager /> },
+      { path: 'locataire/offres', element: <LocataireOffres /> },
       {
         path: 'unauthorized',
         element: (

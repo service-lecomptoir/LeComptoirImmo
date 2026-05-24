@@ -4,7 +4,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  MapPin, Hash, User,
+  MapPin, Hash, User, ShoppingBag,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
@@ -34,6 +34,7 @@ const navGestionnaire: NavItem[] = [
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
+  { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
 ]
 
@@ -67,6 +68,7 @@ const navGestionnairePropio: NavItem[] = [
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
+  { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
 ]
 
@@ -78,6 +80,7 @@ const navLocataire: NavItem[] = [
   { to: '/locataire/paiements', icon: CreditCard, label: 'Mes paiements' },
   { to: '/locataire/messages', icon: MessageSquare, label: 'Mes messages' },
   { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
+  { to: '/locataire/offres', icon: ShoppingBag, label: 'Offres & Services' },
 ]
 
 // ── Skeleton commun ───────────────────────────────────────────────────────────
