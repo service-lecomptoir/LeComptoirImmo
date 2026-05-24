@@ -6,6 +6,7 @@ import { UserRound, Plus, X } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import { propertiesApi } from '@/api/properties'
 import { usersApi } from '@/api/users'
+import { useAuthStore } from '@/store/authStore'
 import type { Property } from '@/types/property'
 import type { User } from '@/types/auth'
 
@@ -84,6 +85,8 @@ function CreateOwnerPanel({ onCreated, onCancel }: CreateOwnerPanelProps) {
 // ─── Main form ────────────────────────────────────────────────────────────────
 export function PropertyForm({ property, onClose, onSaved }: Props) {
   const isEdit = !!property
+  const { user: currentUser } = useAuthStore()
+  const isGestionnairePropio = currentUser?.role === 'gestionnaire_proprio'
   const [proprietaires, setProprietaires] = useState<User[]>([])
   const [showCreateOwner, setShowCreateOwner] = useState(false)
 
@@ -96,18 +99,23 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       zip_code: property.zip_code,
       city: property.city,
       country: property.country ?? 'France',
-      owner_user_id: property.owner_user_id ?? '',
+      owner_user_id: property.owner_user_id ?? (isGestionnairePropio ? (currentUser?.id ?? '') : ''),
       notes: property.notes ?? '',
-    } : { property_type: 'appartement', country: 'France' },
+    } : {
+      property_type: 'appartement',
+      country: 'France',
+      owner_user_id: isGestionnairePropio ? (currentUser?.id ?? '') : '',
+    },
   })
 
   const selectedOwnerId = watch('owner_user_id')
 
   useEffect(() => {
+    if (isGestionnairePropio) return
     usersApi.list({ role: 'proprietaire' })
       .then(r => setProprietaires(r.data))
       .catch(() => {})
-  }, [])
+  }, [isGestionnairePropio])
 
   const handleOwnerCreated = (user: User) => {
     setProprietaires(prev => [...prev, user])
@@ -204,45 +212,52 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        {/* Propriétaire — obligatoire */}
-        <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Propriétaire <span className="text-red-500 font-normal normal-case">*</span>
-          </h3>
+        {/* Propriétaire */}
+        {isGestionnairePropio ? (
+          <div className="px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700 flex items-center gap-2">
+            <UserRound size={13} />
+            Vous êtes le propriétaire de ce bien
+          </div>
+        ) : (
+          <div>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Propriétaire <span className="text-red-500 font-normal normal-case">*</span>
+            </h3>
 
-          {!showCreateOwner ? (
-            <div className="flex gap-2">
-              <select
-                value={selectedOwnerId || ''}
-                onChange={e => setValue('owner_user_id', e.target.value, { shouldValidate: true })}
-                className={`flex-1 ${inp}`}
-              >
-                <option value="">— Sélectionner un propriétaire —</option>
-                {proprietaires.map(u => (
-                  <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
-                ))}
-              </select>
-              <button type="button" onClick={() => setShowCreateOwner(true)}
-                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 whitespace-nowrap">
-                <Plus size={13} /> Nouveau
-              </button>
-            </div>
-          ) : (
-            <CreateOwnerPanel
-              onCreated={handleOwnerCreated}
-              onCancel={() => setShowCreateOwner(false)}
-            />
-          )}
+            {!showCreateOwner ? (
+              <div className="flex gap-2">
+                <select
+                  value={selectedOwnerId || ''}
+                  onChange={e => setValue('owner_user_id', e.target.value, { shouldValidate: true })}
+                  className={`flex-1 ${inp}`}
+                >
+                  <option value="">— Sélectionner un propriétaire —</option>
+                  {proprietaires.map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => setShowCreateOwner(true)}
+                  className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 whitespace-nowrap">
+                  <Plus size={13} /> Nouveau
+                </button>
+              </div>
+            ) : (
+              <CreateOwnerPanel
+                onCreated={handleOwnerCreated}
+                onCancel={() => setShowCreateOwner(false)}
+              />
+            )}
 
-          {errors.owner_user_id && !showCreateOwner && (
-            <p className={err}>{errors.owner_user_id.message}</p>
-          )}
-          {selectedOwnerId && !showCreateOwner && (
-            <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
-              <UserRound size={11} /> Le propriétaire pourra se connecter et voir ce bien
-            </p>
-          )}
-        </div>
+            {errors.owner_user_id && !showCreateOwner && (
+              <p className={err}>{errors.owner_user_id.message}</p>
+            )}
+            {selectedOwnerId && !showCreateOwner && (
+              <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                <UserRound size={11} /> Le propriétaire pourra se connecter et voir ce bien
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Notes */}
         <div>
