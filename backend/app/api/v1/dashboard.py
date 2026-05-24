@@ -29,44 +29,93 @@ async def get_dashboard_stats(
     current_user=Depends(require_role(Role.GESTIONNAIRE)),
 ):
     today = date.today()
+    role = Role(current_user.role)
+
+    # ── Périmètre : gestionnaire_proprio ne voit que ses propres biens ─────────
+    prop_ids_filter: list = []  # liste vide = pas de filtre (gestionnaire/admin)
+    is_gp = role == Role.GESTIONNAIRE_PROPRIO
+
+    if is_gp:
+        res = await db.execute(
+            select(Property.id).where(Property.owner_user_id == current_user.id)
+        )
+        prop_ids_filter = list(res.scalars().all())
+        if not prop_ids_filter:
+            # Aucun bien : retourner des stats vides
+            return DashboardStats(
+                occupancy=OccupancyStats(total_units=0, occupied_units=0, vacant_units=0, occupancy_rate=0),
+                financial=FinancialStats(total_rent_expected=0, total_rent_received=0,
+                                         total_outstanding=0, collection_rate=0, total_deposits=0),
+                monthly_revenues=[
+                    MonthlyRevenue(
+                        month=(today.replace(day=1) - relativedelta(months=i)).strftime("%Y-%m"),
+                        expected=0, received=0, outstanding=0,
+                    )
+                    for i in range(11, -1, -1)
+                ],
+                top_properties=[],
+                alerts=AlertStats(leases_expiring_30d=0, leases_expiring_90d=0,
+                                   overdue_payments=0, overdue_amount=0, tenants_no_insurance=0),
+                total_tenants=0,
+                total_properties=0,
+                total_leases_active=0,
+            )
+
+    def _lease_scope(q):
+        """Ajoute le filtre property si gestionnaire_proprio."""
+        return q.where(Lease.property_id.in_(prop_ids_filter)) if is_gp else q
+
+    def _payment_scope(q):
+        """Joint Payment→Lease et filtre par property si gestionnaire_proprio."""
+        if not is_gp:
+            return q
+        return q.join(Lease, Payment.lease_id == Lease.id).where(
+            Lease.property_id.in_(prop_ids_filter)
+        )
 
     # ── Propriétés & Unités ───────────────────────────────────────────────────
-    total_units_res = await db.execute(select(func.count(Unit.id)))
+    if is_gp:
+        total_units_res = await db.execute(
+            select(func.count(Unit.id)).where(Unit.property_id.in_(prop_ids_filter))
+        )
+    else:
+        total_units_res = await db.execute(select(func.count(Unit.id)))
     total_units = total_units_res.scalar_one() or 0
 
     occupied_units_res = await db.execute(
-        select(func.count(func.distinct(Lease.unit_id)))
-        .where(Lease.is_active.is_(True))
+        _lease_scope(
+            select(func.count(func.distinct(Lease.unit_id))).where(Lease.is_active.is_(True))
+        )
     )
     occupied_units = occupied_units_res.scalar_one() or 0
     vacant_units = max(0, total_units - occupied_units)
     occupancy_rate = round((occupied_units / total_units * 100) if total_units else 0, 1)
 
     # ── Finances ──────────────────────────────────────────────────────────────
-    # Loyers attendus ce mois
     rent_expected_res = await db.execute(
-        select(func.sum(Lease.rent_amount + Lease.charges_amount))
-        .where(Lease.is_active.is_(True))
+        _lease_scope(
+            select(func.sum(Lease.rent_amount + Lease.charges_amount)).where(Lease.is_active.is_(True))
+        )
     )
     total_rent_expected = float(rent_expected_res.scalar_one() or 0)
 
-    # Paiements reçus ce mois : tous les paiements PAID ou PARTIAL (partiel inclus)
     rent_received_res = await db.execute(
-        select(func.coalesce(func.sum(Payment.amount_paid), 0.0))
-        .where(
-            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
-            Payment.period_year == today.year,
-            Payment.period_month == today.month,
+        _payment_scope(
+            select(func.coalesce(func.sum(Payment.amount_paid), 0.0)).where(
+                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                Payment.period_year == today.year,
+                Payment.period_month == today.month,
+            )
         )
     )
     total_rent_received = float(rent_received_res.scalar_one() or 0)
 
-    # Impayés (montant total des paiements en retard)
     outstanding_res = await db.execute(
-        select(func.sum(Payment.amount_due - Payment.amount_paid))
-        .where(
-            Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
-            Payment.due_date < today,
+        _payment_scope(
+            select(func.sum(Payment.amount_due - Payment.amount_paid)).where(
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
+                Payment.due_date < today,
+            )
         )
     )
     total_outstanding = float(outstanding_res.scalar_one() or 0)
@@ -74,9 +123,10 @@ async def get_dashboard_stats(
         (total_rent_received / total_rent_expected * 100) if total_rent_expected else 0, 1
     )
 
-    # Dépôts de garantie
     deposits_res = await db.execute(
-        select(func.sum(Lease.deposit_amount)).where(Lease.is_active.is_(True))
+        _lease_scope(
+            select(func.sum(Lease.deposit_amount)).where(Lease.is_active.is_(True))
+        )
     )
     total_deposits = float(deposits_res.scalar_one() or 0)
 
@@ -89,30 +139,33 @@ async def get_dashboard_stats(
         month_end = (month_date + relativedelta(months=1))
 
         exp_res = await db.execute(
-            select(func.sum(Lease.rent_amount + Lease.charges_amount))
-            .where(
-                Lease.is_active.is_(True),
-                Lease.start_date <= month_end,
+            _lease_scope(
+                select(func.sum(Lease.rent_amount + Lease.charges_amount)).where(
+                    Lease.is_active.is_(True),
+                    Lease.start_date <= month_end,
+                )
             )
         )
         expected = float(exp_res.scalar_one() or 0)
 
         rec_res = await db.execute(
-            select(func.coalesce(func.sum(Payment.amount_paid), 0.0))
-            .where(
-                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
-                Payment.period_year == month_date.year,
-                Payment.period_month == month_date.month,
+            _payment_scope(
+                select(func.coalesce(func.sum(Payment.amount_paid), 0.0)).where(
+                    Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                    Payment.period_year == month_date.year,
+                    Payment.period_month == month_date.month,
+                )
             )
         )
         received = float(rec_res.scalar_one() or 0)
 
         out_res = await db.execute(
-            select(func.sum(Payment.amount_due - Payment.amount_paid))
-            .where(
-                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
-                Payment.due_date >= month_start,
-                Payment.due_date < month_end,
+            _payment_scope(
+                select(func.sum(Payment.amount_due - Payment.amount_paid)).where(
+                    Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
+                    Payment.due_date >= month_start,
+                    Payment.due_date < month_end,
+                )
             )
         )
         outstanding = float(out_res.scalar_one() or 0)
@@ -125,8 +178,14 @@ async def get_dashboard_stats(
         ))
 
     # ── Top propriétés ────────────────────────────────────────────────────────
-    props_res = await db.execute(select(Property).limit(10))
+    if is_gp:
+        props_res = await db.execute(
+            select(Property).where(Property.id.in_(prop_ids_filter)).limit(10)
+        )
+    else:
+        props_res = await db.execute(select(Property).limit(10))
     properties = props_res.scalars().all()
+
     top_properties = []
     for prop in properties:
         units_res = await db.execute(
@@ -171,46 +230,66 @@ async def get_dashboard_stats(
 
     # ── Alertes ───────────────────────────────────────────────────────────────
     expiring_30_res = await db.execute(
-        select(func.count(Lease.id)).where(
-            Lease.is_active.is_(True),
-            Lease.end_date.between(today, today + timedelta(days=30)),
+        _lease_scope(
+            select(func.count(Lease.id)).where(
+                Lease.is_active.is_(True),
+                Lease.end_date.between(today, today + timedelta(days=30)),
+            )
         )
     )
     expiring_30 = expiring_30_res.scalar_one() or 0
 
     expiring_90_res = await db.execute(
-        select(func.count(Lease.id)).where(
-            Lease.is_active.is_(True),
-            Lease.end_date.between(today, today + timedelta(days=90)),
+        _lease_scope(
+            select(func.count(Lease.id)).where(
+                Lease.is_active.is_(True),
+                Lease.end_date.between(today, today + timedelta(days=90)),
+            )
         )
     )
     expiring_90 = expiring_90_res.scalar_one() or 0
 
     overdue_count_res = await db.execute(
-        select(func.count(Payment.id)).where(
-            Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
-            Payment.due_date < today,
+        _payment_scope(
+            select(func.count(Payment.id)).where(
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
+                Payment.due_date < today,
+            )
         )
     )
     overdue_payments = overdue_count_res.scalar_one() or 0
 
     overdue_amount_res = await db.execute(
-        select(func.sum(Payment.amount_due - Payment.amount_paid)).where(
-            Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
-            Payment.due_date < today,
+        _payment_scope(
+            select(func.sum(Payment.amount_due - Payment.amount_paid)).where(
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
+                Payment.due_date < today,
+            )
         )
     )
     overdue_amount = float(overdue_amount_res.scalar_one() or 0)
 
     # ── Totaux généraux ───────────────────────────────────────────────────────
-    total_tenants_res = await db.execute(select(func.count(Tenant.id)))
+    if is_gp:
+        # Locataires = ceux liés aux baux de ses biens
+        total_tenants_res = await db.execute(
+            select(func.count(func.distinct(Lease.tenant_id))).where(
+                Lease.property_id.in_(prop_ids_filter),
+                Lease.is_active.is_(True),
+            )
+        )
+    else:
+        total_tenants_res = await db.execute(select(func.count(Tenant.id)))
     total_tenants = total_tenants_res.scalar_one() or 0
 
-    total_props_res = await db.execute(select(func.count(Property.id)))
-    total_props = total_props_res.scalar_one() or 0
+    total_props = len(prop_ids_filter) if is_gp else (
+        (await db.execute(select(func.count(Property.id)))).scalar_one() or 0
+    )
 
     active_leases_res = await db.execute(
-        select(func.count(Lease.id)).where(Lease.is_active.is_(True))
+        _lease_scope(
+            select(func.count(Lease.id)).where(Lease.is_active.is_(True))
+        )
     )
     total_leases_active = active_leases_res.scalar_one() or 0
 
@@ -470,7 +549,7 @@ async def get_proprietaire_performance(
     from fastapi import HTTPException
     role = R(current_user.role)
 
-    if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.ADMIN):
+    if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.GESTIONNAIRE_PROPRIO, R.ADMIN):
         raise HTTPException(status_code=403, detail="Accès refusé")
 
     proprietaire_id = current_user.id
