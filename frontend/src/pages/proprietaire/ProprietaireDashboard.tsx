@@ -58,16 +58,16 @@ export default function ProprietaireDashboard() {
   const today = new Date()
 
   useEffect(() => {
-    Promise.all([
-      propertiesApi.list({ limit: 100 }),
-      apiClient.get('/dashboard/proprietaire-stats'),
-    ])
-      .then(([propsRes, statsRes]) => {
-        setProperties(propsRes.data.items ?? propsRes.data)
-        setStats(statsRes.data)
-      })
-      .catch(() => { })
-      .finally(() => setIsLoading(false))
+    setIsLoading(true)
+    const loadProps = propertiesApi.list({ limit: 100 })
+      .then(r => setProperties((r.data as any).items ?? r.data))
+      .catch(() => setProperties([]))
+
+    const loadStats = apiClient.get('/dashboard/proprietaire-stats')
+      .then(r => setStats(r.data))
+      .catch(() => {})
+
+    Promise.all([loadProps, loadStats]).finally(() => setIsLoading(false))
   }, [])
 
   const totalUnits = properties.reduce((s, p) => s + (p.unit_count ?? 0), 0)
