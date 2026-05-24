@@ -571,7 +571,6 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
 export default function TemplateEditor() {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
-  const [filterType, setFilterType] = useState('')
   const [editTemplate, setEditTemplate] = useState<Template | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
@@ -611,13 +610,11 @@ export default function TemplateEditor() {
     if (editMode) return
     let cancelled = false
     setLoading(true)
-    const params: Record<string, string> = {}
-    if (filterType) params.template_type = filterType
-    apiClient.get<Template[]>('/templates', { params })
+    apiClient.get<Template[]>('/templates')
       .then(r => { if (!cancelled) { setTemplates(r.data); setLoading(false) } })
       .catch(() => { if (!cancelled) { setTemplates([]); setLoading(false) } })
     return () => { cancelled = true }
-  }, [filterType, editMode, reloadKey])
+  }, [editMode, reloadKey])
 
   // Mode éditeur plein écran
   if (editMode) {
@@ -664,20 +661,6 @@ export default function TemplateEditor() {
           <Check size={14} className="text-green-600" /> {successMsg}
         </div>
       )}
-
-      {/* Filtres */}
-      <div className="flex gap-2 mb-5 flex-wrap">
-        {[{ value: '', label: 'Tous' }, ...TEMPLATE_TYPES].map(t => (
-          <button key={t.value} onClick={() => setFilterType(t.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-              filterType === t.value
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {/* Liste */}
       {loading ? (
