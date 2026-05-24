@@ -4,10 +4,11 @@ import {
   CreditCard, Bell, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  MapPin, Hash,
+  MapPin, Hash, User,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
+import { propertiesApi } from '@/api/properties'
 import type { Role } from '@/types/auth'
 import clsx from 'clsx'
 import { useState, useEffect } from 'react'
@@ -60,8 +61,20 @@ const navLocataire: NavItem[] = [
   { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]
 
+// ── Skeleton commun ───────────────────────────────────────────────────────────
 
-// ── Infos bail pour le locataire ──────────────────────────────────────────────
+function SidebarSkeleton() {
+  return (
+    <div className="space-y-2 animate-pulse">
+      <div className="h-3.5 bg-gray-700 rounded w-3/4" />
+      <div className="h-3 bg-gray-700 rounded w-full" />
+      <div className="h-3 bg-gray-700 rounded w-2/3" />
+      <div className="h-2.5 bg-gray-700 rounded w-1/2 mt-1" />
+    </div>
+  )
+}
+
+// ── Hook : infos bail locataire ───────────────────────────────────────────────
 
 interface LeaseInfo {
   propertyName: string
@@ -70,11 +83,11 @@ interface LeaseInfo {
   leaseRef: string
 }
 
-function useLocataireLeaseInfo(isLocataire: boolean): LeaseInfo | null {
+function useLocataireLeaseInfo(active: boolean): LeaseInfo | null {
   const [info, setInfo] = useState<LeaseInfo | null>(null)
 
   useEffect(() => {
-    if (!isLocataire) return
+    if (!active) return
     const load = async () => {
       try {
         const res = await leasesApi.list({ is_active: true, limit: 1 })
@@ -82,14 +95,11 @@ function useLocataireLeaseInfo(isLocataire: boolean): LeaseInfo | null {
         const lease = items?.[0]
         if (!lease) return
 
-        // Essayer de charger le détail pour avoir l'adresse complète
         let fullAddress = ''
         try {
           const detail = await leasesApi.get(lease.id)
           fullAddress = detail.data?.parent_property?.full_address ?? ''
-        } catch {
-          // fallback silencieux
-        }
+        } catch { /* silently ignore */ }
 
         setInfo({
           propertyName: lease.property_name ?? '—',
@@ -97,14 +107,83 @@ function useLocataireLeaseInfo(isLocataire: boolean): LeaseInfo | null {
           tenantName: lease.tenant_full_name ?? '—',
           leaseRef: String(lease.id).slice(0, 8).toUpperCase(),
         })
-      } catch {
-        // silently ignore
-      }
+      } catch { /* silently ignore */ }
     }
     load()
-  }, [isLocataire])
+  }, [active])
 
   return info
+}
+
+// ── Hook : infos propriétaire ─────────────────────────────────────────────────
+
+interface ProprietaireInfo {
+  fullName: string
+  propertyAddress: string
+  contractRef: string
+}
+
+function useProprietaireInfo(active: boolean, userName: string): ProprietaireInfo | null {
+  const [info, setInfo] = useState<ProprietaireInfo | null>(null)
+
+  useEffect(() => {
+    if (!active) return
+    const load = async () => {
+      try {
+        const res = await propertiesApi.list({ limit: 1 })
+        const items = (res.data as any).items ?? res.data
+        const prop = items?.[0]
+
+        setInfo({
+          fullName: userName,
+          propertyAddress: prop?.full_address ?? '—',
+          contractRef: prop?.reference
+            ? String(prop.reference).toUpperCase()
+            : String(prop?.id ?? '').slice(0, 8).toUpperCase(),
+        })
+      } catch { /* silently ignore */ }
+    }
+    load()
+  }, [active, userName])
+
+  return info
+}
+
+// ── Bloc d'info affiché en haut de sidebar ────────────────────────────────────
+
+interface SidebarInfoBlockProps {
+  line1: string           // gras, blanc — titre principal
+  address: string         // avec icône MapPin
+  personName?: string     // optionnel — nom personne sous séparateur (icône User)
+  refCode: string         // référence avec icône #
+}
+
+function SidebarInfoBlock({ line1, address, personName, refCode }: SidebarInfoBlockProps) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-white font-semibold text-sm leading-tight truncate">{line1}</p>
+
+      {address && (
+        <div className="flex items-start gap-1.5">
+          <MapPin size={11} className="text-gray-400 mt-0.5 shrink-0" />
+          <p className="text-gray-400 text-xs leading-snug line-clamp-2">{address}</p>
+        </div>
+      )}
+
+      <div className="border-t border-gray-700/60 pt-1.5 mt-1.5 space-y-1">
+        {personName && (
+          <div className="flex items-center gap-1.5">
+            <User size={10} className="text-gray-500 shrink-0" />
+            <p className="text-gray-300 text-xs font-medium truncate">{personName}</p>
+          </div>
+        )}
+        <div className="flex items-center gap-1.5">
+          <Hash size={10} className="text-gray-500 shrink-0" />
+          <p className="text-gray-500 text-xs font-mono tracking-wide">{refCode}</p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── Composant Sidebar ─────────────────────────────────────────────────────────
@@ -112,7 +191,10 @@ function useLocataireLeaseInfo(isLocataire: boolean): LeaseInfo | null {
 export function Sidebar() {
   const { user } = useAuthStore()
   const isLocataire = user?.role === 'locataire'
+  const isProprietaire = user?.role === 'proprietaire'
+
   const leaseInfo = useLocataireLeaseInfo(isLocataire)
+  const proprietaireInfo = useProprietaireInfo(isProprietaire, user?.full_name ?? '')
 
   const getNavItems = (): NavItem[] => {
     if (!user) return []
@@ -125,70 +207,58 @@ export function Sidebar() {
     (item) => !item.roles || item.roles.includes(user?.role as Role)
   )
 
-  return (
-    <aside className="w-64 min-h-screen bg-gray-900 flex flex-col">
-
-      {/* ── Header sidebar ── */}
-      {isLocataire ? (
-        /* Locataire : infos du bien + contrat */
+  // ── Header sidebar ────────────────────────────────────────────────────────
+  const renderHeader = () => {
+    if (isLocataire) {
+      return (
         <div className="px-4 py-4 border-b border-gray-700">
-          {leaseInfo ? (
-            <div className="space-y-1.5">
-              {/* Nom du bien */}
-              <p className="text-white font-semibold text-sm leading-tight truncate">
-                {leaseInfo.propertyName}
-              </p>
-
-              {/* Adresse */}
-              {leaseInfo.propertyAddress && (
-                <div className="flex items-start gap-1.5">
-                  <MapPin size={11} className="text-gray-400 mt-0.5 shrink-0" />
-                  <p className="text-gray-400 text-xs leading-snug line-clamp-2">
-                    {leaseInfo.propertyAddress}
-                  </p>
-                </div>
-              )}
-
-              {/* Séparateur */}
-              <div className="border-t border-gray-700/60 pt-1.5 mt-1.5 space-y-1">
-                {/* Nom locataire */}
-                <p className="text-gray-300 text-xs font-medium truncate">
-                  {leaseInfo.tenantName}
-                </p>
-
-                {/* Référence contrat */}
-                <div className="flex items-center gap-1.5">
-                  <Hash size={10} className="text-gray-500 shrink-0" />
-                  <p className="text-gray-500 text-xs font-mono tracking-wide">
-                    {leaseInfo.leaseRef}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Skeleton pendant le chargement */
-            <div className="space-y-2 animate-pulse">
-              <div className="h-3.5 bg-gray-700 rounded w-3/4" />
-              <div className="h-3 bg-gray-700 rounded w-full" />
-              <div className="h-3 bg-gray-700 rounded w-2/3" />
-              <div className="h-2.5 bg-gray-700 rounded w-1/2 mt-1" />
-            </div>
-          )}
+          {leaseInfo
+            ? <SidebarInfoBlock
+                line1={leaseInfo.propertyName}
+                address={leaseInfo.propertyAddress}
+                personName={leaseInfo.tenantName}
+                refCode={leaseInfo.leaseRef}
+              />
+            : <SidebarSkeleton />
+          }
         </div>
-      ) : (
-        /* Gestionnaire / Propriétaire : logo habituel */
-        <div className="px-6 py-5 border-b border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xs">LC</span>
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm">LeComptoirImmo</p>
-              <p className="text-gray-400 text-xs">Gestion locative</p>
-            </div>
+      )
+    }
+
+    if (isProprietaire) {
+      return (
+        <div className="px-4 py-4 border-b border-gray-700">
+          {proprietaireInfo
+            ? <SidebarInfoBlock
+                line1={proprietaireInfo.fullName}
+                address={proprietaireInfo.propertyAddress}
+                refCode={proprietaireInfo.contractRef}
+              />
+            : <SidebarSkeleton />
+          }
+        </div>
+      )
+    }
+
+    // Gestionnaire / Admin : logo habituel
+    return (
+      <div className="px-6 py-5 border-b border-gray-700">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-xs">LC</span>
+          </div>
+          <div>
+            <p className="text-white font-semibold text-sm">LeComptoirImmo</p>
+            <p className="text-gray-400 text-xs">Gestion locative</p>
           </div>
         </div>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <aside className="w-64 min-h-screen bg-gray-900 flex flex-col">
+      {renderHeader()}
 
       {/* ── Navigation ── */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -211,7 +281,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-
     </aside>
   )
 }
