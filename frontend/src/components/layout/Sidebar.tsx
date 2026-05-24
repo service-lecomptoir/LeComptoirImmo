@@ -1,7 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Building2, FileText,
-  CreditCard, Bell, Settings, LogOut, Calendar,
+  CreditCard, Bell, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
   MapPin, Hash,
@@ -60,14 +60,6 @@ const navLocataire: NavItem[] = [
   { to: '/notifications', icon: Bell, label: 'Notifications' },
 ]
 
-const ROLE_LABEL: Record<Role, string> = {
-  admin: 'Administrateur',
-  gestionnaire: 'Gestionnaire',
-  proprietaire: 'Propriétaire',
-  locataire: 'Locataire',
-  lecture: 'Lecture seule',
-  comptable: 'Comptable',
-}
 
 // ── Infos bail pour le locataire ──────────────────────────────────────────────
 
@@ -118,8 +110,7 @@ function useLocataireLeaseInfo(isLocataire: boolean): LeaseInfo | null {
 // ── Composant Sidebar ─────────────────────────────────────────────────────────
 
 export function Sidebar() {
-  const { user, logout } = useAuthStore()
-  const navigate = useNavigate()
+  const { user } = useAuthStore()
   const isLocataire = user?.role === 'locataire'
   const leaseInfo = useLocataireLeaseInfo(isLocataire)
 
@@ -133,11 +124,6 @@ export function Sidebar() {
   const filteredItems = getNavItems().filter(
     (item) => !item.roles || item.roles.includes(user?.role as Role)
   )
-
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
 
   return (
     <aside className="w-64 min-h-screen bg-gray-900 flex flex-col">
@@ -226,25 +212,6 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* ── Pied de sidebar : uniquement pour gestionnaire/propriétaire ── */}
-      {!isLocataire && (
-        <div className="px-3 py-4 border-t border-gray-700">
-          <div className="px-3 py-2 mb-2">
-            <p className="text-white text-sm font-medium truncate">{user?.full_name}</p>
-            <p className="text-gray-400 text-xs truncate">{user?.email}</p>
-            <span className="inline-block mt-1 px-2 py-0.5 bg-gray-700 text-gray-300 text-xs rounded-full">
-              {ROLE_LABEL[user?.role as Role] ?? user?.role}
-            </span>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
-          >
-            <LogOut size={18} />
-            <span>Déconnexion</span>
-          </button>
-        </div>
-      )}
     </aside>
   )
 }
