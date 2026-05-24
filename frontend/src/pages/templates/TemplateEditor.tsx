@@ -576,27 +576,17 @@ export default function TemplateEditor() {
   const [editMode, setEditMode] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
   const [initLoading, setInitLoading] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
-  const load = async () => {
-    setLoading(true)
-    try {
-      const params = filterType ? { template_type: filterType } : {}
-      const r = await apiClient.get<Template[]>('/templates', { params })
-      setTemplates(r.data)
-    } catch {
-      setTemplates([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const triggerReload = () => setReloadKey(k => k + 1)
 
   const initDefaults = async () => {
     setInitLoading(true)
     try {
       const r = await apiClient.post<{ created: number; message: string }>('/templates/initialize-defaults')
-      await load()
       setSuccessMsg(r.data.message)
       setTimeout(() => setSuccessMsg(''), 3000)
+      triggerReload()
     } finally {
       setInitLoading(false)
     }
@@ -606,7 +596,7 @@ export default function TemplateEditor() {
     if (!confirm(`Supprimer "${t.name}" ?`)) return
     try {
       await apiClient.delete(`/templates/${t.id}`)
-      await load()
+      triggerReload()
     } catch (e: any) {
       alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
     }
@@ -615,25 +605,19 @@ export default function TemplateEditor() {
   const openNew = () => { setEditTemplate(null); setEditMode(true) }
   const openEdit = (t: Template) => { setEditTemplate(t); setEditMode(true) }
   const handleBack = () => { setEditMode(false); setEditTemplate(null) }
-  const onSaved = () => { setSuccessMsg('Template enregistré'); setTimeout(() => setSuccessMsg(''), 3000) }
+  const onSaved = () => { setSuccessMsg('Template enregistré'); setTimeout(() => setSuccessMsg(''), 3000); triggerReload() }
 
   useEffect(() => {
     if (editMode) return
     let cancelled = false
-    ;(async () => {
-      setLoading(true)
-      try {
-        const params = filterType ? { template_type: filterType } : {}
-        const r = await apiClient.get<Template[]>('/templates', { params })
-        if (!cancelled) setTemplates(r.data)
-      } catch {
-        if (!cancelled) setTemplates([])
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
+    setLoading(true)
+    const params: Record<string, string> = {}
+    if (filterType) params.template_type = filterType
+    apiClient.get<Template[]>('/templates', { params })
+      .then(r => { if (!cancelled) { setTemplates(r.data); setLoading(false) } })
+      .catch(() => { if (!cancelled) { setTemplates([]); setLoading(false) } })
     return () => { cancelled = true }
-  }, [filterType, editMode])
+  }, [filterType, editMode, reloadKey])
 
   // Mode éditeur plein écran
   if (editMode) {
