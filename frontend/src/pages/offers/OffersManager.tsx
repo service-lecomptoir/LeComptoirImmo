@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Pencil, Trash2, Tag, Euro, Phone, Image, Check, X, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, Tag, Euro, Phone, Image, Check, ToggleLeft, ToggleRight } from 'lucide-react'
 import { offersApi, OFFER_CATEGORIES } from '@/api/offers'
 import type { Offer, OfferCreate } from '@/api/offers'
 
