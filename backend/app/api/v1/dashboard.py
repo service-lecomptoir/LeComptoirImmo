@@ -31,17 +31,18 @@ async def get_dashboard_stats(
     today = date.today()
     role = Role(current_user.role)
 
-    # ── Périmètre : gestionnaire_proprio ne voit que ses propres biens ─────────
-    prop_ids_filter: list = []  # liste vide = pas de filtre (gestionnaire/admin)
+    # ── Périmètre ─────────────────────────────────────────────────────────────
+    prop_ids_filter: list = []   # GP : liste blanche de ses biens
+    excluded_prop_ids: list = [] # Mandataire : biens GP à exclure
     is_gp = role == Role.GESTIONNAIRE_PROPRIO
+    is_mandataire = role == Role.GESTIONNAIRE
 
     if is_gp:
         res = await db.execute(
-            select(Property.id).where(Property.owner_user_id == current_user.id)
+            select(Property.id).where(Property.created_by == current_user.id)
         )
         prop_ids_filter = list(res.scalars().all())
         if not prop_ids_filter:
-            # Aucun bien : retourner des stats vides
             return DashboardStats(
                 occupancy=OccupancyStats(total_units=0, occupied_units=0, vacant_units=0, occupancy_rate=0),
                 financial=FinancialStats(total_rent_expected=0, total_rent_received=0,
@@ -61,22 +62,41 @@ async def get_dashboard_stats(
                 total_leases_active=0,
             )
 
+    if is_mandataire:
+        from app.api.v1._isolation import _gp_user_ids
+        gp_ids = await _gp_user_ids(db)
+        if gp_ids:
+            res = await db.execute(
+                select(Property.id).where(Property.created_by.in_(gp_ids))
+            )
+            excluded_prop_ids = list(res.scalars().all())
+
     def _lease_scope(q):
-        """Ajoute le filtre property si gestionnaire_proprio."""
-        return q.where(Lease.property_id.in_(prop_ids_filter)) if is_gp else q
+        if is_gp:
+            return q.where(Lease.property_id.in_(prop_ids_filter))
+        if is_mandataire and excluded_prop_ids:
+            return q.where(Lease.property_id.notin_(excluded_prop_ids))
+        return q
 
     def _payment_scope(q):
-        """Joint Payment→Lease et filtre par property si gestionnaire_proprio."""
-        if not is_gp:
-            return q
-        return q.join(Lease, Payment.lease_id == Lease.id).where(
-            Lease.property_id.in_(prop_ids_filter)
-        )
+        if is_gp:
+            return q.join(Lease, Payment.lease_id == Lease.id).where(
+                Lease.property_id.in_(prop_ids_filter)
+            )
+        if is_mandataire and excluded_prop_ids:
+            return q.join(Lease, Payment.lease_id == Lease.id).where(
+                Lease.property_id.notin_(excluded_prop_ids)
+            )
+        return q
 
     # ── Propriétés & Unités ───────────────────────────────────────────────────
     if is_gp:
         total_units_res = await db.execute(
             select(func.count(Unit.id)).where(Unit.property_id.in_(prop_ids_filter))
+        )
+    elif is_mandataire and excluded_prop_ids:
+        total_units_res = await db.execute(
+            select(func.count(Unit.id)).where(Unit.property_id.notin_(excluded_prop_ids))
         )
     else:
         total_units_res = await db.execute(select(func.count(Unit.id)))
@@ -182,6 +202,10 @@ async def get_dashboard_stats(
         props_res = await db.execute(
             select(Property).where(Property.id.in_(prop_ids_filter)).limit(10)
         )
+    elif is_mandataire and excluded_prop_ids:
+        props_res = await db.execute(
+            select(Property).where(Property.id.notin_(excluded_prop_ids)).limit(10)
+        )
     else:
         props_res = await db.execute(select(Property).limit(10))
     properties = props_res.scalars().all()
@@ -271,10 +295,16 @@ async def get_dashboard_stats(
 
     # ── Totaux généraux ───────────────────────────────────────────────────────
     if is_gp:
-        # Locataires = ceux liés aux baux de ses biens
         total_tenants_res = await db.execute(
             select(func.count(func.distinct(Lease.tenant_id))).where(
                 Lease.property_id.in_(prop_ids_filter),
+                Lease.is_active.is_(True),
+            )
+        )
+    elif is_mandataire and excluded_prop_ids:
+        total_tenants_res = await db.execute(
+            select(func.count(func.distinct(Lease.tenant_id))).where(
+                Lease.property_id.notin_(excluded_prop_ids),
                 Lease.is_active.is_(True),
             )
         )
@@ -282,9 +312,14 @@ async def get_dashboard_stats(
         total_tenants_res = await db.execute(select(func.count(Tenant.id)))
     total_tenants = total_tenants_res.scalar_one() or 0
 
-    total_props = len(prop_ids_filter) if is_gp else (
-        (await db.execute(select(func.count(Property.id)))).scalar_one() or 0
-    )
+    if is_gp:
+        total_props = len(prop_ids_filter)
+    elif is_mandataire and excluded_prop_ids:
+        total_props = (await db.execute(
+            select(func.count(Property.id)).where(Property.id.notin_(excluded_prop_ids))
+        )).scalar_one() or 0
+    else:
+        total_props = (await db.execute(select(func.count(Property.id)))).scalar_one() or 0
 
     active_leases_res = await db.execute(
         _lease_scope(
