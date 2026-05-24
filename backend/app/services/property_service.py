@@ -4,10 +4,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 
-from app.models.property import Property
-from app.models.unit import Unit
+from app.models.property import Property, PropertyType
+from app.models.unit import Unit, UnitType
 from app.schemas.property import PropertyCreate, PropertyUpdate
 from app.core.exceptions import NotFoundException
+
+_PROPERTY_TO_UNIT_TYPE: dict[str, str] = {
+    PropertyType.MAISON.value:          UnitType.MAISON.value,
+    PropertyType.APPARTEMENT.value:     UnitType.T2.value,
+    PropertyType.LOCAL_COMMERCIAL.value: UnitType.LOCAL.value,
+}
 
 
 class PropertyService:
@@ -34,6 +40,19 @@ class PropertyService:
         prop = Property(**data_dict, created_by=created_by)
         db.add(prop)
         await db.flush()
+        # Pour tout bien non-immeuble, créer automatiquement un logement principal
+        unit_type = _PROPERTY_TO_UNIT_TYPE.get(prop.property_type)
+        if unit_type:
+            unit = Unit(
+                property_id=prop.id,
+                unit_ref="Principal",
+                unit_type=unit_type,
+                base_rent=0,
+                charges_amount=0,
+                deposit_months=1,
+            )
+            db.add(unit)
+            await db.flush()
         return prop
 
     @staticmethod
