@@ -79,19 +79,36 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
-  // Plus de restauration automatique de session —
-  // l'utilisateur doit toujours se connecter explicitement.
+  // Initialisation : valide le token stocké auprès du backend.
+  // - Token valide  → reste connecté (refresh de page normal)
+  // - Token absent/expiré → redirige vers /login
+  // Cela évite la déconnexion sur F5 tout en garantissant qu'aucune session
+  // périmée n'est acceptée sans validation serveur.
   initialize: async () => {
-    // Nettoyage de toute session précédemment persistée
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('lecomptoirimmo-auth')
-    set({
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
-      isInitializing: false,
-    })
+    const accessToken = localStorage.getItem('access_token')
+    const refreshToken = localStorage.getItem('refresh_token')
+
+    if (!accessToken) {
+      // Aucun token stocké → pas de session
+      set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, isInitializing: false })
+      return
+    }
+
+    try {
+      // Valide le token en interrogeant le backend
+      const { data: user } = await authApi.me()
+      set({
+        user,
+        accessToken,
+        refreshToken,
+        isAuthenticated: true,
+        isInitializing: false,
+      })
+    } catch {
+      // Token invalide ou expiré → nettoyage propre
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, isInitializing: false })
+    }
   },
 }))
