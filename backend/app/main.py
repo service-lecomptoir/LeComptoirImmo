@@ -71,12 +71,6 @@ async def _seed_default_users() -> None:
 
     default_users = [
         UserCreate(
-            email=settings.FIRST_ADMIN_EMAIL,
-            password=settings.FIRST_ADMIN_PASSWORD,
-            full_name=settings.FIRST_ADMIN_NAME,
-            role=Role.ADMIN,
-        ),
-        UserCreate(
             email="gestionnaire@cabinet.fr",
             password="Gestionnaire1!",
             full_name="Gestionnaire Demo",
