@@ -1,7 +1,7 @@
 """Modèle DocumentTemplate — templates personnalisables pour documents générés."""
 import uuid
 from typing import Optional
-from sqlalchemy import String, Text, Boolean
+from sqlalchemy import String, Text, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
@@ -41,6 +41,11 @@ class DocumentTemplate(Base, TimestampMixin):
     # Contenu HTML du template
     content_html: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     footer_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Isolation par gestionnaire (NULL = ancien template global, visible admin seulement)
+    gestionnaire_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Statut
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

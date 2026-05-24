@@ -301,16 +301,20 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
           <span className="hidden md:inline">Par défaut</span>
         </label>
 
-        {error && (
-          <span className="text-xs text-red-600 truncate max-w-48">{error}</span>
-        )}
-
         <button onClick={handleSave} disabled={saving}
           className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 shrink-0 transition-colors">
           {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
           <span>Enregistrer</span>
         </button>
       </div>
+
+      {/* ── Bannière d'erreur ─────────────────────────────────────────────── */}
+      {error && (
+        <div className="shrink-0 px-4 py-2 bg-red-50 border-b border-red-200 flex items-center gap-2 text-sm text-red-700">
+          <X size={14} className="shrink-0 text-red-500" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* ── Corps principal ────────────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">

@@ -143,6 +143,18 @@ DEFAULT_TEMPLATES = {
 }
 
 
+def _is_admin(current_user) -> bool:
+    return Role(current_user.role) == Role.ADMIN
+
+
+def _check_ownership(tmpl: DocumentTemplate, current_user) -> None:
+    """Lève 403 si le template n'appartient pas à l'utilisateur (hors admin)."""
+    if _is_admin(current_user):
+        return
+    if tmpl.gestionnaire_id is None or str(tmpl.gestionnaire_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Ce template ne vous appartient pas")
+
+
 @router.get("", response_model=List[DocumentTemplateResponse])
 async def list_templates(
     template_type: Optional[TemplateType] = Query(None),
@@ -152,6 +164,9 @@ async def list_templates(
     q = select(DocumentTemplate)
     if template_type:
         q = q.where(DocumentTemplate.template_type == template_type)
+    # Admin voit tout ; gestionnaires voient uniquement leurs propres templates
+    if not _is_admin(current_user):
+        q = q.where(DocumentTemplate.gestionnaire_id == current_user.id)
     q = q.where(DocumentTemplate.is_active.is_(True)).order_by(
         DocumentTemplate.template_type, DocumentTemplate.name
     )
@@ -164,19 +179,21 @@ async def initialize_defaults(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role(Role.GESTIONNAIRE)),
 ):
-    """Crée les templates par défaut s'ils n'existent pas."""
+    """Crée les templates par défaut pour l'utilisateur courant s'ils n'existent pas."""
     created = 0
     for ttype, defaults in DEFAULT_TEMPLATES.items():
         existing = await db.execute(
             select(DocumentTemplate)
             .where(DocumentTemplate.template_type == ttype)
             .where(DocumentTemplate.is_default.is_(True))
+            .where(DocumentTemplate.gestionnaire_id == current_user.id)
         )
         if existing.scalar_one_or_none() is None:
             tmpl = DocumentTemplate(
                 template_type=ttype,
                 is_default=True,
                 is_active=True,
+                gestionnaire_id=current_user.id,
                 **defaults,
             )
             db.add(tmpl)
@@ -191,11 +208,10 @@ async def create_template(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role(Role.GESTIONNAIRE)),
 ):
-    # Si nouveau défaut, désactiver l'ancien
     if data.is_default:
-        await _unset_default(db, data.template_type)
+        await _unset_default(db, data.template_type, current_user.id)
 
-    tmpl = DocumentTemplate(**data.model_dump())
+    tmpl = DocumentTemplate(**data.model_dump(), gestionnaire_id=current_user.id)
     db.add(tmpl)
     await db.commit()
     await db.refresh(tmpl)
@@ -211,6 +227,7 @@ async def get_template(
     tmpl = await db.get(DocumentTemplate, template_id)
     if not tmpl:
         raise HTTPException(status_code=404, detail="Template introuvable")
+    _check_ownership(tmpl, current_user)
     return tmpl
 
 
@@ -224,9 +241,10 @@ async def update_template(
     tmpl = await db.get(DocumentTemplate, template_id)
     if not tmpl:
         raise HTTPException(status_code=404, detail="Template introuvable")
+    _check_ownership(tmpl, current_user)
 
     if data.is_default:
-        await _unset_default(db, tmpl.template_type, exclude_id=template_id)
+        await _unset_default(db, tmpl.template_type, current_user.id, exclude_id=template_id)
 
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(tmpl, field, value)
@@ -245,8 +263,8 @@ async def upload_logo(
     tmpl = await db.get(DocumentTemplate, template_id)
     if not tmpl:
         raise HTTPException(status_code=404, detail="Template introuvable")
+    _check_ownership(tmpl, current_user)
 
-    # Valider le type
     if file.content_type not in ("image/png", "image/jpeg", "image/svg+xml", "image/webp"):
         raise HTTPException(status_code=400, detail="Format d'image non supporté (PNG, JPG, SVG, WebP)")
 
@@ -274,16 +292,23 @@ async def delete_template(
     tmpl = await db.get(DocumentTemplate, template_id)
     if not tmpl:
         raise HTTPException(status_code=404, detail="Template introuvable")
+    _check_ownership(tmpl, current_user)
     if tmpl.is_default:
         raise HTTPException(status_code=400, detail="Le template par défaut ne peut pas être supprimé")
     await db.delete(tmpl)
     await db.commit()
 
 
-async def _unset_default(db, template_type: TemplateType, exclude_id: uuid.UUID = None):
-    """Désactive le statut 'défaut' des autres templates du même type."""
+async def _unset_default(
+    db,
+    template_type: TemplateType,
+    gestionnaire_id: uuid.UUID,
+    exclude_id: uuid.UUID = None,
+):
+    """Désactive le statut 'défaut' pour les autres templates du même type/gestionnaire."""
     q = select(DocumentTemplate).where(
         DocumentTemplate.template_type == template_type,
+        DocumentTemplate.gestionnaire_id == gestionnaire_id,
         DocumentTemplate.is_default.is_(True),
     )
     if exclude_id:
