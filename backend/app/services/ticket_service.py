@@ -93,7 +93,11 @@ class TicketService:
         tenant = await TicketService._get_tenant_for_user(db, user_id)
         result = await db.execute(
             select(Ticket)
-            .options(selectinload(Ticket.messages))
+            .options(
+                selectinload(Ticket.messages).selectinload(TicketMessage.author),
+                selectinload(Ticket.tenant),
+                selectinload(Ticket.assigned_to),
+            )
             .where(Ticket.tenant_id == tenant.id)
             .order_by(Ticket.created_at.desc())
         )

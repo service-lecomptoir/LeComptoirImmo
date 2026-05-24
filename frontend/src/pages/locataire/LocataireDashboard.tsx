@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Home, CreditCard, Calendar, FileText,
-  ArrowRight, CheckCircle, AlertCircle,
+  ArrowRight, CheckCircle, AlertCircle, Download,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
@@ -102,6 +102,15 @@ export default function LocataireDashboard() {
               <Home size={15} className="text-blue-600" />
               Mon bail
             </h2>
+            {lease && (
+              <button
+                onClick={() => leasesApi.downloadPdf(lease.id, `bail_${lease.unit_ref ?? 'contrat'}.pdf`)}
+                className="flex items-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 transition-colors"
+              >
+                <Download size={12} />
+                Télécharger le bail
+              </button>
+            )}
           </div>
           {isLoading ? (
             <p className="text-sm text-gray-400">Chargement…</p>

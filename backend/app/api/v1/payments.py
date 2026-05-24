@@ -287,10 +287,24 @@ async def cancel_payment(
 async def download_quittance(
     payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(get_current_user),
 ):
     from datetime import datetime, timezone
+    from app.models.tenant import Tenant as TenantModel
     payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+
+    # Locataire : vérifier que c'est son propre paiement
+    role = Role(current_user.role)
+    if role == Role.LOCATAIRE:
+        tenant_res = await db.execute(
+            select(TenantModel).where(TenantModel.user_id == current_user.id)
+        )
+        tenant = tenant_res.scalar_one_or_none()
+        if not tenant or payment.tenant_id != tenant.id:
+            raise HTTPException(status_code=403, detail="Accès non autorisé")
+    elif role not in (Role.ADMIN, Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LECTURE, Role.COMPTABLE):
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+
     if payment.status not in (PaymentStatus.PAID, PaymentStatus.PARTIAL):
         from app.core.exceptions import BadRequestException
         raise BadRequestException("Impossible de générer une quittance pour un loyer non payé")

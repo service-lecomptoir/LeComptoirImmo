@@ -76,6 +76,9 @@ class PaymentListItem(BaseModel):
     period_year: int
     period_month: int
     due_date: date
+    amount_rent: float = 0.0
+    amount_charges: float = 0.0
+    amount_apl: Optional[float] = None
     amount_due: float
     amount_paid: float
     balance: float

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CreditCard } from 'lucide-react'
+import { CreditCard, Download } from 'lucide-react'
 import { paymentsApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { format } from 'date-fns'
@@ -59,6 +59,7 @@ export default function LocatairePaiements() {
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Dû</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Versé</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Quittance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -71,6 +72,7 @@ export default function LocatairePaiements() {
                   cancelled: { label: 'Annulé', variant: 'gray' },
                 }
                 const { label, variant } = statusMap[p.status] ?? { label: p.status, variant: 'gray' }
+                const canDownloadQuittance = p.status === 'paid' || p.status === 'partial'
                 return (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
@@ -85,6 +87,22 @@ export default function LocatairePaiements() {
                     <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">{fmtEuro(p.amount_paid ?? 0)}</td>
                     <td className="px-4 py-3">
                       <StatusBadge label={label} variant={variant} dot />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {canDownloadQuittance ? (
+                        <button
+                          onClick={() => paymentsApi.downloadQuittance(
+                            p.id,
+                            `quittance_${p.period_year}_${String(p.period_month).padStart(2,'0')}.pdf`
+                          )}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 transition-colors"
+                        >
+                          <Download size={11} />
+                          PDF
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
                     </td>
                   </tr>
                 )
