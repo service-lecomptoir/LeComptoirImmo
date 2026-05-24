@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -328,9 +328,6 @@ async def get_fiscal_revenues(
     if role == R.PROPRIETAIRE:
         proprietaire_id = current_user.id
 
-    start_date = date(year, 1, 1)
-    end_date = date(year, 12, 31)
-
     # Trouver les biens du propriétaire
     q_props = select(Property)
     if proprietaire_id:
@@ -359,29 +356,46 @@ async def get_fiscal_revenues(
             properties=[],
         )
 
-    # Loyers encaissés (uniquement la part loyer, hors charges)
+    # ── Filtre commun : paiements perçus (PAID ou PARTIAL) sur l'année ─────────
+    # On filtre par period_year (période du loyer) et non payment_date
+    # pour être robuste aux saisies tardives.
+    # Pour les paiements partiels, on pro-rate la part loyer/charges
+    # sur le montant réellement encaissé (amount_paid).
+    _base_filter = [
+        Lease.property_id.in_(prop_ids),
+        Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+        Payment.period_year == year,
+    ]
+
+    # Part loyer réellement perçue = amount_paid × (amount_rent / amount_due)
     rent_res = await db.execute(
-        select(func.sum(Payment.amount_rent))
-        .join(Lease, Payment.lease_id == Lease.id)
-        .where(
-            Lease.property_id.in_(prop_ids),
-            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
-            Payment.payment_date >= start_date,
-            Payment.payment_date <= end_date,
+        select(
+            func.sum(
+                case(
+                    (Payment.amount_due > 0,
+                     Payment.amount_paid * Payment.amount_rent / Payment.amount_due),
+                    else_=0.0,
+                )
+            )
         )
+        .join(Lease, Payment.lease_id == Lease.id)
+        .where(*_base_filter)
     )
     gross_rent = float(rent_res.scalar_one() or 0)
 
-    # Charges récupérables encaissées (depuis les paiements réels)
+    # Part charges réellement perçue = amount_paid × (amount_charges / amount_due)
     charges_res = await db.execute(
-        select(func.sum(Payment.amount_charges))
-        .join(Lease, Payment.lease_id == Lease.id)
-        .where(
-            Lease.property_id.in_(prop_ids),
-            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
-            Payment.payment_date >= start_date,
-            Payment.payment_date <= end_date,
+        select(
+            func.sum(
+                case(
+                    (Payment.amount_due > 0,
+                     Payment.amount_paid * Payment.amount_charges / Payment.amount_due),
+                    else_=0.0,
+                )
+            )
         )
+        .join(Lease, Payment.lease_id == Lease.id)
+        .where(*_base_filter)
     )
     charges_annual = float(charges_res.scalar_one() or 0)
 
@@ -392,13 +406,20 @@ async def get_fiscal_revenues(
     properties_detail = []
     for prop in properties:
         prop_rent_res = await db.execute(
-            select(func.sum(Payment.amount_rent))
+            select(
+                func.sum(
+                    case(
+                        (Payment.amount_due > 0,
+                         Payment.amount_paid * Payment.amount_rent / Payment.amount_due),
+                        else_=0.0,
+                    )
+                )
+            )
             .join(Lease, Payment.lease_id == Lease.id)
             .where(
                 Lease.property_id == prop.id,
                 Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
-                Payment.payment_date >= start_date,
-                Payment.payment_date <= end_date,
+                Payment.period_year == year,
             )
         )
         prop_rent = float(prop_rent_res.scalar_one() or 0)
