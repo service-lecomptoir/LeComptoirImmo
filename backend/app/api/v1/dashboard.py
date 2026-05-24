@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_, case as sa_case, literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -50,13 +50,30 @@ async def get_dashboard_stats(
     )
     total_rent_expected = float(rent_expected_res.scalar_one() or 0)
 
-    # Paiements reçus ce mois (PAID ou PARTIAL, filtrés sur la période courante)
+    # Paiements reçus ce mois :
+    #   - PAID / PARTIAL  → amount_paid (inclut déjà l'APL si tiers-payant actif)
+    #   - PENDING / LATE avec amount_apl renseigné → compter l'APL comme encaissé
+    #     (cas des données existantes ou apl_tiers_payant activé tardivement)
     rent_received_res = await db.execute(
-        select(func.sum(Payment.amount_paid))
+        select(
+            func.coalesce(
+                func.sum(
+                    sa_case(
+                        (Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]), Payment.amount_paid),
+                        else_=func.coalesce(Payment.amount_apl, literal(0.0)),
+                    )
+                ),
+                0.0,
+            )
+        )
         .where(
-            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
             Payment.period_year == today.year,
             Payment.period_month == today.month,
+            Payment.status != PaymentStatus.CANCELLED,
+            or_(
+                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                Payment.amount_apl.isnot(None),
+            ),
         )
     )
     total_rent_received = float(rent_received_res.scalar_one() or 0)
@@ -98,11 +115,25 @@ async def get_dashboard_stats(
         expected = float(exp_res.scalar_one() or 0)
 
         rec_res = await db.execute(
-            select(func.sum(Payment.amount_paid))
+            select(
+                func.coalesce(
+                    func.sum(
+                        sa_case(
+                            (Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]), Payment.amount_paid),
+                            else_=func.coalesce(Payment.amount_apl, literal(0.0)),
+                        )
+                    ),
+                    0.0,
+                )
+            )
             .where(
-                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
                 Payment.period_year == month_date.year,
                 Payment.period_month == month_date.month,
+                Payment.status != PaymentStatus.CANCELLED,
+                or_(
+                    Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                    Payment.amount_apl.isnot(None),
+                ),
             )
         )
         received = float(rec_res.scalar_one() or 0)
