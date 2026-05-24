@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { User, Role } from '@/types/auth'
 import { authApi } from '@/api/auth'
 
@@ -23,79 +22,76 @@ export function roleHomePath(role: Role | undefined): string {
   return '/dashboard'
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: null,
+  accessToken: null,
+  refreshToken: null,
+  isAuthenticated: false,
+  isLoading: false,
+  isInitializing: true,
+
+  login: async (email, password) => {
+    set({ isLoading: true })
+    try {
+      const { data } = await authApi.login({ email, password })
+
+      // Stockage pour le client Axios (durée de session uniquement)
+      localStorage.setItem('access_token', data.access_token)
+      localStorage.setItem('refresh_token', data.refresh_token)
+
+      // Récupère le profil
+      const { data: user } = await authApi.me()
+
+      set({
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      })
+
+      return roleHomePath(user.role)
+    } catch (error) {
+      set({ isLoading: false })
+      throw error
+    }
+  },
+
+  logout: () => {
+    // Effacement complet — aucune session persistée
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('lecomptoirimmo-auth')
+    set({
       user: null,
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
-      isLoading: false,
-      isInitializing: true,
+    })
+  },
 
-      login: async (email, password) => {
-        set({ isLoading: true })
-        try {
-          const { data } = await authApi.login({ email, password })
-
-          // Stockage localStorage pour le client Axios
-          localStorage.setItem('access_token', data.access_token)
-          localStorage.setItem('refresh_token', data.refresh_token)
-
-          // Récupère le profil
-          const { data: user } = await authApi.me()
-
-          set({
-            accessToken: data.access_token,
-            refreshToken: data.refresh_token,
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-          })
-
-          return roleHomePath(user.role)
-        } catch (error) {
-          set({ isLoading: false })
-          throw error
-        }
-      },
-
-      logout: () => {
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        set({
-          user: null,
-          accessToken: null,
-          refreshToken: null,
-          isAuthenticated: false,
-        })
-      },
-
-      fetchMe: async () => {
-        try {
-          const { data } = await authApi.me()
-          set({ user: data, isAuthenticated: true })
-        } catch {
-          get().logout()
-        }
-      },
-
-      initialize: async () => {
-        const { accessToken, fetchMe } = get()
-        if (accessToken) {
-          await fetchMe()
-        }
-        set({ isInitializing: false })
-      },
-    }),
-    {
-      name: 'lecomptoirimmo-auth',
-      partialize: (state) => ({
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
+  fetchMe: async () => {
+    try {
+      const { data } = await authApi.me()
+      set({ user: data, isAuthenticated: true })
+    } catch {
+      get().logout()
     }
-  )
-)
+  },
+
+  // Plus de restauration automatique de session —
+  // l'utilisateur doit toujours se connecter explicitement.
+  initialize: async () => {
+    // Nettoyage de toute session précédemment persistée
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('lecomptoirimmo-auth')
+    set({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
+      isInitializing: false,
+    })
+  },
+}))
