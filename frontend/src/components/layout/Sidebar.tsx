@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Building2, FileText,
   CreditCard, Bell, Settings, LogOut, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
-  Calculator, MessageSquare, Wrench, Wallet
+  Calculator, MessageSquare, Wrench, Wallet, FileCheck
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import type { Role } from '@/types/auth'
@@ -22,6 +22,7 @@ const navGestionnaire: NavItem[] = [
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
+  { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/incidents', icon: MessageSquare, label: 'Incidents & messages' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },

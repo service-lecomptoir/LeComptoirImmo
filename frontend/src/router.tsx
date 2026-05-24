@@ -33,6 +33,7 @@ import EntretienList from '@/pages/entretien/EntretienList'
 import ProprietaireEntretien from '@/pages/proprietaire/ProprietaireEntretien'
 import ProprietaireIncidents from '@/pages/proprietaire/ProprietaireIncidents'
 import ProprietaireMessages from '@/pages/proprietaire/ProprietaireMessages'
+import QuittanceList from '@/pages/quittances/QuittanceList'
 
 function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
@@ -77,6 +78,7 @@ export const router = createBrowserRouter([
       { path: 'leases', element: <LeaseList /> },
       { path: 'leases/:id', element: <LeaseDetail /> },
       { path: 'payments', element: <PaymentList /> },
+      { path: 'quittances', element: <QuittanceList /> },
       { path: 'avis-echeances', element: <AvisEcheanceList /> },
       { path: 'contacts', element: <ContactList /> },
       { path: 'automatisation', element: <Automatisation /> },

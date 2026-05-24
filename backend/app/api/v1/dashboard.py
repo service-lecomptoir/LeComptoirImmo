@@ -50,13 +50,13 @@ async def get_dashboard_stats(
     )
     total_rent_expected = float(rent_expected_res.scalar_one() or 0)
 
-    # Paiements reçus ce mois
-    start_month = date(today.year, today.month, 1)
+    # Paiements reçus ce mois (PAID ou PARTIAL, filtrés sur la période courante)
     rent_received_res = await db.execute(
         select(func.sum(Payment.amount_paid))
         .where(
-            Payment.status == PaymentStatus.PAID,
-            Payment.payment_date >= start_month,
+            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+            Payment.period_year == today.year,
+            Payment.period_month == today.month,
         )
     )
     total_rent_received = float(rent_received_res.scalar_one() or 0)
@@ -100,9 +100,9 @@ async def get_dashboard_stats(
         rec_res = await db.execute(
             select(func.sum(Payment.amount_paid))
             .where(
-                Payment.status == PaymentStatus.PAID,
-                Payment.payment_date >= month_start,
-                Payment.payment_date < month_end,
+                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                Payment.period_year == month_date.year,
+                Payment.period_month == month_date.month,
             )
         )
         received = float(rec_res.scalar_one() or 0)
