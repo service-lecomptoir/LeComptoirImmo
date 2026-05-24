@@ -72,7 +72,7 @@ export default function ProprietaireDashboard() {
 
   const totalUnits = properties.reduce((s, p) => s + (p.unit_count ?? 0), 0)
   const occupiedUnits = properties.reduce((s, p) => s + (p.occupied_count ?? 0), 0)
-  const monthlyRevenue = stats?.monthly_revenue_expected ?? 0
+  const monthlyRevenue = stats?.monthly_revenue_received ?? 0
 
   return (
     <div className="p-6">
@@ -105,7 +105,7 @@ export default function ProprietaireDashboard() {
           icon={CreditCard}
           label="Revenus mensuels"
           value={isLoading ? '…' : fmtEuro(monthlyRevenue)}
-          sub="Loyers charges comprises"
+          sub="Encaissé ce mois"
           color="purple"
           onClick={() => navigate('/proprietaire/revenus')}
         />

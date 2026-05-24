@@ -284,10 +284,8 @@ async def get_proprietaire_stats(
     )
     monthly_expected = float(expected_res.scalar_one() or 0)
 
-    # Revenus encaissés ce mois
+    # Revenus encaissés ce mois (par période, cohérent avec le dashboard gestionnaire)
     today = date.today()
-    start_month = date(today.year, today.month, 1)
-    end_month = date(today.year, today.month + 1, 1) if today.month < 12 else date(today.year + 1, 1, 1)
 
     received_res = await db.execute(
         select(func.sum(Payment.amount_paid))
@@ -295,8 +293,8 @@ async def get_proprietaire_stats(
         .where(
             Lease.property_id.in_(prop_ids),
             Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
-            Payment.payment_date >= start_month,
-            Payment.payment_date < end_month,
+            Payment.period_year == today.year,
+            Payment.period_month == today.month,
         )
     )
     monthly_received = float(received_res.scalar_one() or 0)
