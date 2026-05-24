@@ -55,8 +55,8 @@ async def list_leases(
             return LeaseListResponse(items=[], total=0, skip=skip, limit=limit)
         tenant_id = tenant.id
 
-    # ── Propriétaire : baux de ses biens ─────────────────────────────────────────
-    elif role == Role.PROPRIETAIRE:
+    # ── Propriétaire / Gestionnaire-Propriétaire : baux de ses biens ────────────
+    elif role in (Role.PROPRIETAIRE, Role.GESTIONNAIRE_PROPRIO):
         props = (await db.execute(
             select(Property).where(Property.owner_user_id == current_user.id)
         )).scalars().all()

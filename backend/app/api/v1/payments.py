@@ -176,8 +176,8 @@ async def list_payments(
             return PaymentListResponse(items=[], total=0, skip=skip, limit=limit)
         tenant_id = t.id
 
-    # ── Propriétaire ──────────────────────────────────────────────────────────
-    elif role == Role.PROPRIETAIRE:
+    # ── Propriétaire / Gestionnaire-Propriétaire ──────────────────────────────
+    elif role in (Role.PROPRIETAIRE, Role.GESTIONNAIRE_PROPRIO):
         props = (await db.execute(
             select(Property).where(Property.owner_user_id == current_user.id)
         )).scalars().all()

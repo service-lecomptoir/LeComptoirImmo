@@ -41,8 +41,8 @@ async def list_properties(
 ):
     role = Role(current_user.role)
 
-    # Propriétaire : uniquement ses biens
-    if role == Role.PROPRIETAIRE:
+    # Propriétaire / Gestionnaire-Propriétaire : uniquement ses biens
+    if role in (Role.PROPRIETAIRE, Role.GESTIONNAIRE_PROPRIO):
         props = (await db.execute(
             select(Property).where(Property.owner_user_id == current_user.id)
         )).scalars().all()

@@ -33,7 +33,7 @@ router = APIRouter(prefix="/avis-echeances", tags=["Avis d'échéances"])
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _require_manager(user: User) -> None:
-    if user.role not in (Role.ADMIN, Role.GESTIONNAIRE):
+    if user.role not in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
 
 
@@ -95,7 +95,7 @@ async def list_avis(
             return []
         tenant_id_filter = tenant.id
 
-    elif current_user.role == Role.PROPRIETAIRE:
+    elif current_user.role in (Role.PROPRIETAIRE, Role.GESTIONNAIRE_PROPRIO):
         # Le propriétaire voit les avis de ses biens
         from app.models.property import Property
         from app.models.unit import Unit

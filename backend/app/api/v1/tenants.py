@@ -3,8 +3,10 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import select
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
+from app.core.permissions import Role
 from app.models.user import User
 from app.models.document import EntityType, DocumentType
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, TenantListItem
@@ -21,9 +23,27 @@ async def list_tenants(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Liste paginée avec recherche full-text."""
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        from app.models.property import Property
+        from app.models.lease import Lease
+        from app.models.tenant import Tenant as TenantModel
+        prop_ids = [p.id for p in (await db.execute(
+            select(Property).where(Property.owner_user_id == current_user.id)
+        )).scalars().all()]
+        if not prop_ids:
+            return {"items": [], "total": 0, "skip": skip, "limit": limit}
+        tenant_ids = {l.tenant_id for l in (await db.execute(
+            select(Lease).where(Lease.property_id.in_(prop_ids), Lease.tenant_id.isnot(None))
+        )).scalars().all()}
+        if not tenant_ids:
+            return {"items": [], "total": 0, "skip": skip, "limit": limit}
+        all_tenants, _ = await TenantService.list_all(db, search=search, skip=0, limit=500)
+        own = [t for t in all_tenants if t.id in tenant_ids]
+        return {"items": [TenantListItem.model_validate(t) for t in own], "total": len(own), "skip": 0, "limit": limit}
+
     tenants, total = await TenantService.list_all(db, search=search, skip=skip, limit=limit)
     return {
         "items": [TenantListItem.model_validate(t) for t in tenants],

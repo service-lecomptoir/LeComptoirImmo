@@ -87,8 +87,30 @@ async def list_tickets(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
+    if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+        prop_ids = [p.id for p in (await db.execute(
+            select(Property).where(Property.owner_user_id == current_user.id)
+        )).scalars().all()]
+        if not prop_ids:
+            return {"total": 0, "items": []}
+        tenant_ids = [row[0] for row in (await db.execute(
+            select(Lease.tenant_id).where(Lease.property_id.in_(prop_ids)).distinct()
+        )).all()]
+        if not tenant_ids:
+            return {"total": 0, "items": []}
+        q = (
+            select(Ticket)
+            .options(selectinload(Ticket.tenant), selectinload(Ticket.assigned_to))
+            .where(Ticket.tenant_id.in_(tenant_ids))
+        )
+        if status:
+            q = q.where(Ticket.status == status)
+        q = q.order_by(Ticket.created_at.desc()).limit(limit).offset(offset)
+        tickets = list((await db.execute(q)).scalars().all())
+        return {"total": len(tickets), "items": [_enrich_ticket(t) for t in tickets]}
+
     items, total = await TicketService.list_all(db, status=status, limit=limit, offset=offset)
     return {
         "total": total,
