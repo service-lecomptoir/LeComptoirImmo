@@ -22,14 +22,15 @@ async def list_tenants(
     search: Optional[str] = Query(None, description="Recherche par nom, email, téléphone"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    available_only: bool = Query(False, description="Exclure les locataires ayant déjà un bail actif"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Liste paginée avec recherche full-text."""
+    from app.models.lease import Lease
+
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         from app.models.property import Property
-        from app.models.lease import Lease
-        from app.models.tenant import Tenant as TenantModel
         prop_ids = [p.id for p in (await db.execute(
             select(Property).where(Property.owner_user_id == current_user.id)
         )).scalars().all()]
@@ -42,9 +43,20 @@ async def list_tenants(
             return {"items": [], "total": 0, "skip": skip, "limit": limit}
         all_tenants, _ = await TenantService.list_all(db, search=search, skip=0, limit=500)
         own = [t for t in all_tenants if t.id in tenant_ids]
+        if available_only:
+            active_ids = {l.tenant_id for l in (await db.execute(
+                select(Lease).where(Lease.is_active.is_(True), Lease.tenant_id.isnot(None))
+            )).scalars().all()}
+            own = [t for t in own if t.id not in active_ids]
         return {"items": [TenantListItem.model_validate(t) for t in own], "total": len(own), "skip": 0, "limit": limit}
 
     tenants, total = await TenantService.list_all(db, search=search, skip=skip, limit=limit)
+    if available_only:
+        active_ids = {l.tenant_id for l in (await db.execute(
+            select(Lease).where(Lease.is_active.is_(True), Lease.tenant_id.isnot(None))
+        )).scalars().all()}
+        tenants = [t for t in tenants if t.id not in active_ids]
+        total = len(tenants)
     return {
         "items": [TenantListItem.model_validate(t) for t in tenants],
         "total": total,

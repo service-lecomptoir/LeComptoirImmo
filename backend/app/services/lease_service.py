@@ -25,6 +25,16 @@ class LeaseService:
         if unit.is_occupied:
             raise ConflictException("Ce logement est déjà occupé")
 
+        # Vérifier que le locataire n'a pas déjà un bail actif
+        existing_lease = await db.execute(
+            select(Lease).where(
+                Lease.tenant_id == data.tenant_id,
+                Lease.is_active.is_(True),
+            )
+        )
+        if existing_lease.scalar_one_or_none():
+            raise ConflictException("Ce locataire a déjà un contrat de bail actif")
+
         lease = Lease(
             **data.model_dump(),
             is_active=True,

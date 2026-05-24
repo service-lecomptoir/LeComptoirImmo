@@ -162,7 +162,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
 
   useEffect(() => {
     propertiesApi.list({ limit: 200 }).then(r => setProperties(r.data.items as PropertyListItem[]))
-    tenantsApi.list({ limit: 200 }).then(r => setTenants(r.data.items))
+    tenantsApi.list({ limit: 200, available_only: !isEdit }).then(r => setTenants(r.data.items))
   }, [])
 
   useEffect(() => {

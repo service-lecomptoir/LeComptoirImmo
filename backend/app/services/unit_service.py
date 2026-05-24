@@ -14,11 +14,23 @@ class UnitService:
     @staticmethod
     async def create(db: AsyncSession, data: UnitCreate) -> Unit:
         # Vérifie que le bien parent existe
-        prop = await db.execute(
+        prop_result = await db.execute(
             select(Property).where(Property.id == data.property_id)
         )
-        if not prop.scalar_one_or_none():
+        property_obj = prop_result.scalar_one_or_none()
+        if not property_obj:
             raise NotFoundException("Bien immobilier", str(data.property_id))
+
+        # Seuls les immeubles peuvent avoir plusieurs logements
+        if property_obj.property_type != 'immeuble':
+            count_result = await db.execute(
+                select(func.count(Unit.id)).where(Unit.property_id == data.property_id)
+            )
+            if (count_result.scalar() or 0) >= 1:
+                raise BadRequestException(
+                    "Ce type de bien ne peut contenir qu'un seul logement. "
+                    "Seuls les immeubles peuvent avoir plusieurs logements."
+                )
 
         # Vérifie l'unicité de la référence au sein du bien
         existing = await db.execute(

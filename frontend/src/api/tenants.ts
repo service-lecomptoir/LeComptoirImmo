@@ -2,7 +2,7 @@ import { apiClient } from './client'
 import type { Tenant, TenantCreate, TenantListItem, PaginatedResponse } from '@/types/tenant'
 
 export const tenantsApi = {
-  list: (params?: { search?: string; skip?: number; limit?: number }) =>
+  list: (params?: { search?: string; skip?: number; limit?: number; available_only?: boolean }) =>
     apiClient.get<PaginatedResponse<TenantListItem>>('/tenants', { params }),
 
   get: (id: string) =>
