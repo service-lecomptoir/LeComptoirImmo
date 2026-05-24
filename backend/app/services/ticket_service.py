@@ -71,7 +71,10 @@ class TicketService:
         limit: int = 50,
         offset: int = 0,
     ) -> tuple[list[Ticket], int]:
-        q = select(Ticket).options(selectinload(Ticket.tenant))
+        q = select(Ticket).options(
+            selectinload(Ticket.tenant),
+            selectinload(Ticket.assigned_to),
+        )
         if status:
             q = q.where(Ticket.status == status)
         if tenant_id:

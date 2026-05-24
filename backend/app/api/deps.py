@@ -37,9 +37,10 @@ def require_role(required_role: Role):
 async def get_current_active_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    """Dependency — réservé aux administrateurs."""
-    if not role_has_permission(Role(current_user.role), Role.ADMIN):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux administrateurs")
+    """Dependency — administrateurs et gestionnaires (rôles de gestion)."""
+    role = Role(current_user.role)
+    if role not in (Role.ADMIN, Role.GESTIONNAIRE):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux gestionnaires et administrateurs")
     return current_user
 
 

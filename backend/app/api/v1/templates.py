@@ -66,6 +66,80 @@ DEFAULT_TEMPLATES = {
 <p>Cordialement,<br>{{company_name}}</p>""",
         "footer_text": "Lettre recommandée avec accusé de réception.",
     },
+    TemplateType.LETTRE_RESILIATION: {
+        "name": "Lettre de résiliation standard",
+        "content_html": """<h2>CONGÉ DONNÉ PAR LE BAILLEUR</h2>
+<p>Cher(e) {{tenant_name}},</p>
+<p>Nous vous informons par la présente que nous mettons fin à votre contrat de location concernant le logement situé au :</p>
+<p><strong>{{property_address}}</strong></p>
+<p>Ce congé prend effet à la date d'échéance du bail suivant le délai légal de préavis.</p>
+<p>Nous vous remercions de bien vouloir libérer les lieux à cette date et de nous restituer les clés.</p>
+<p>Cordialement,<br>{{company_name}}</p>""",
+        "footer_text": "Lettre recommandée avec accusé de réception.",
+    },
+    TemplateType.CONTRAT_BAIL: {
+        "name": "Contrat de bail standard",
+        "content_html": """<h2>CONTRAT DE LOCATION</h2>
+<p><strong>ENTRE LES SOUSSIGNÉS :</strong></p>
+<p>Le bailleur : <strong>{{company_name}}</strong>, ci-après dénommé « le Bailleur »,</p>
+<p>ET</p>
+<p>Le preneur : <strong>{{tenant_name}}</strong>, ci-après dénommé « le Locataire »,</p>
+<p><strong>IL A ÉTÉ CONVENU CE QUI SUIT :</strong></p>
+<p><strong>Article 1 — Objet du bail</strong></p>
+<p>Le Bailleur loue au Locataire le logement désigné ci-après : <strong>{{unit_ref}}</strong> situé à <strong>{{property_address}}</strong>.</p>
+<p><strong>Article 2 — Durée</strong></p>
+<p>Le présent bail est consenti pour une durée de 3 ans, à compter du <strong>{{date}}</strong>.</p>
+<p><strong>Article 3 — Loyer</strong></p>
+<p>Le loyer mensuel est fixé à <strong>{{rent_amount}} €</strong> hors charges, auxquelles s'ajoutent des provisions sur charges de <strong>{{charges_amount}} €</strong>, soit un total de <strong>{{total_due}} €</strong> par mois.</p>
+<p>Le loyer est payable le {{due_date}} de chaque mois.</p>
+<p>Fait en deux exemplaires,<br>{{company_name}}</p>""",
+        "footer_text": "Document établi conformément à la loi n° 89-462 du 6 juillet 1989.",
+    },
+    TemplateType.ETAT_DES_LIEUX: {
+        "name": "État des lieux standard",
+        "content_html": """<h2>ÉTAT DES LIEUX</h2>
+<p><strong>Logement :</strong> {{unit_ref}} — {{property_address}}</p>
+<p><strong>Locataire :</strong> {{tenant_name}}</p>
+<p><strong>Date :</strong> {{date}}</p>
+<hr/>
+<h3>ÉTAT GÉNÉRAL DU LOGEMENT</h3>
+<table style="width:100%;border-collapse:collapse;">
+  <tr style="background:#f3f4f6;">
+    <th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Pièce</th>
+    <th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">État</th>
+    <th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Observations</th>
+  </tr>
+  <tr>
+    <td style="padding:8px;border:1px solid #e5e7eb;">Entrée</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+  </tr>
+  <tr>
+    <td style="padding:8px;border:1px solid #e5e7eb;">Séjour</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+  </tr>
+  <tr>
+    <td style="padding:8px;border:1px solid #e5e7eb;">Cuisine</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+  </tr>
+  <tr>
+    <td style="padding:8px;border:1px solid #e5e7eb;">Chambre</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+  </tr>
+  <tr>
+    <td style="padding:8px;border:1px solid #e5e7eb;">Salle de bain</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+    <td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td>
+  </tr>
+</table>
+<br/>
+<p>Signatures :</p>
+<p>Le Bailleur : __________________ Le Locataire : __________________</p>""",
+        "footer_text": "Cet état des lieux a été établi contradictoirement entre le bailleur et le locataire.",
+    },
 }
 
 

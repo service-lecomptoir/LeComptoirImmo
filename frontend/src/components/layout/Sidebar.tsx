@@ -29,7 +29,7 @@ const navGestionnaire: NavItem[] = [
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
   { to: '/contacts', icon: BookUser, label: 'Carnet d\'adresses' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
-  { to: '/admin', icon: Settings, label: 'Administration', roles: ['admin'] },
+  { to: '/admin', icon: Settings, label: 'Administration' },
 ]
 
 // Navigation Propriétaire

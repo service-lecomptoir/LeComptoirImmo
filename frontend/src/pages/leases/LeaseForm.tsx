@@ -113,6 +113,7 @@ interface Props {
   lease?: Lease
   onClose: () => void
   onSaved: () => void
+  submitError?: string
 }
 
 export function LeaseForm({ lease, onClose, onSaved }: Props) {
@@ -122,6 +123,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
   const [tenants, setTenants] = useState<TenantListItem[]>([])
   const [loadingUnits, setLoadingUnits] = useState(false)
   const [showCreateTenant, setShowCreateTenant] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -179,17 +181,23 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
   }
 
   const onSubmit = async (data: FormData) => {
-    const payload = {
-      ...data,
-      end_date: data.end_date || undefined,
-      apl_amount: data.apl_amount !== '' && data.apl_tiers_payant ? Number(data.apl_amount) : undefined,
+    setSubmitError(null)
+    try {
+      const payload = {
+        ...data,
+        end_date: data.end_date || undefined,
+        apl_amount: data.apl_amount !== '' && data.apl_tiers_payant ? Number(data.apl_amount) : undefined,
+      }
+      if (isEdit) {
+        await leasesApi.update(lease.id, payload)
+      } else {
+        await leasesApi.create(payload)
+      }
+      onSaved()
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail
+      setSubmitError(typeof detail === 'string' ? detail : 'Erreur lors de l\'enregistrement du contrat')
     }
-    if (isEdit) {
-      await leasesApi.update(lease.id, payload)
-    } else {
-      await leasesApi.create(payload)
-    }
-    onSaved()
   }
 
   const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -215,6 +223,11 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
       }
     >
       <form className="space-y-6">
+        {submitError && (
+          <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {submitError}
+          </div>
+        )}
 
         {/* ── Bien & logement ── */}
         <div>
@@ -231,7 +244,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               {errors.property_id && <p className={err}>{errors.property_id.message}</p>}
             </div>
             <div>
-              <label className={lbl}>Logement <span className="text-red-500">*</span></label>
+              <label className={lbl}>Unité / Appartement <span className="text-red-500">*</span></label>
               <select {...register('unit_id')} className={inp} disabled={isEdit || !selectedPropertyId || loadingUnits}>
                 <option value="">
                   {loadingUnits ? 'Chargement...' : selectedPropertyId ? '— Sélectionner —' : '← Choisir un bien d\'abord'}
