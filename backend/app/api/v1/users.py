@@ -72,6 +72,16 @@ async def get_my_profile(
     return current_user
 
 
+@router.patch("/me", response_model=UserResponse, summary="Mettre à jour mon profil")
+async def update_my_profile(
+    data: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Permet à l'utilisateur connecté de mettre à jour son propre profil (nom, email)."""
+    return await UserService.update(db, current_user.id, data)
+
+
 @router.get("/{user_id}", response_model=UserResponse, summary="Détail d'un utilisateur")
 async def get_user(
     user_id: uuid.UUID,

@@ -102,6 +102,58 @@ async def upload_document(
     )
 
 
+# Types de documents uploadables par le locataire lui-même
+_LOCATAIRE_UPLOADABLE_TYPES = {
+    DocumentType.ASSURANCE,
+    DocumentType.AUTRE,
+}
+
+
+@router.post(
+    "/upload-locataire",
+    response_model=DocumentResponse,
+    status_code=201,
+    summary="Locataire — uploader son propre document (assurance...)",
+)
+async def upload_document_locataire(
+    file: UploadFile = File(...),
+    document_type: DocumentType = Form(DocumentType.ASSURANCE),
+    label: str | None = Form(None),
+    notes: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Permet à un locataire d'uploader ses propres documents (attestation assurance…).
+    Le document est automatiquement rattaché à son dossier locataire.
+    """
+    from app.models.tenant import Tenant
+    from sqlalchemy import select
+
+    if document_type not in _LOCATAIRE_UPLOADABLE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Type de document non autorisé pour un upload locataire. Types autorisés : {[t.value for t in _LOCATAIRE_UPLOADABLE_TYPES]}",
+        )
+
+    tenant = (await db.execute(
+        select(Tenant).where(Tenant.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Dossier locataire introuvable")
+
+    return await DocumentService.upload(
+        db=db,
+        file=file,
+        entity_type=EntityType.TENANT,
+        entity_id=tenant.id,
+        document_type=document_type,
+        label=label,
+        notes=notes,
+        uploaded_by=current_user.id,
+    )
+
+
 @router.get("/{doc_id}", response_model=DocumentResponse, summary="Détail d'un document")
 async def get_document(
     doc_id: uuid.UUID,

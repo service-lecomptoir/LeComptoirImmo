@@ -34,6 +34,11 @@ class DocumentType(str, Enum):
     ETAT_DES_LIEUX = "etat_des_lieux"
     PHOTO = "photo"
     AUTRE = "autre"
+    # Documents locataire (uploadables par le locataire)
+    ASSURANCE = "assurance"
+    REGULARISATION_CHARGES = "regularisation_charges"
+    REVISION_LOYER = "revision_loyer"
+    TAXE_ORDURES = "taxe_ordures"
 
 
 class Document(Base, TimestampMixin):
