@@ -31,7 +31,7 @@ DEFAULT_TEMPLATES = {
 <table>
   <tr><td>Loyer :</td><td>{{rent_amount}} €</td></tr>
   <tr><td>Charges :</td><td>{{charges_amount}} €</td></tr>
-  {{#if apl_amount}}<tr><td>Aide au logement (APL) :</td><td>- {{apl_amount}} €</td></tr>{{/if}}
+  {{#if apl_amount}}<tr><td>Aide personnelle au logement :</td><td>- {{apl_amount}} €</td></tr>{{/if}}
   <tr><td><strong>Total à payer :</strong></td><td><strong>{{total_due}} €</strong></td></tr>
 </table>
 <p>Bien :</p>
@@ -49,7 +49,7 @@ DEFAULT_TEMPLATES = {
 <table>
   <tr><td>Loyer :</td><td>{{rent_amount}} €</td></tr>
   <tr><td>Charges :</td><td>{{charges_amount}} €</td></tr>
-  {{#if apl_amount}}<tr><td>Aide au logement :</td><td>- {{apl_amount}} €</td></tr>{{/if}}
+  {{#if apl_amount}}<tr><td>Aide personnelle au logement :</td><td>- {{apl_amount}} €</td></tr>{{/if}}
   <tr><td><strong>Montant reçu :</strong></td><td><strong>{{amount_paid}} €</strong></td></tr>
 </table>
 <p>Et lui en donne bonne et valable quittance.</p>

@@ -84,7 +84,7 @@ export default function LocataireAvis() {
                   </div>
                   {a.amount_apl && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">APL déduite</span>
+                      <span className="text-gray-500">Aide personnelle au logement déduite</span>
                       <span className="text-green-600">- {fmtEuro(a.amount_apl)}</span>
                     </div>
                   )}

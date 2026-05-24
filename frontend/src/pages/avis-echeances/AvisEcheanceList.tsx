@@ -30,7 +30,7 @@ function statusLabel(s: string): string {
   return 'Brouillon'
 }
 
-// ── Modale édition APL ────────────────────────────────────────────────────────
+// ── Modale édition Aide personnelle au logement ───────────────────────────────
 function EditAplModal({
   avis,
   onClose,
@@ -65,7 +65,7 @@ function EditAplModal({
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl p-5 w-full max-w-sm">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-gray-900">Modifier le montant APL</h2>
+          <h2 className="text-base font-bold text-gray-900">Modifier l'aide personnelle au logement</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <p className="text-xs text-gray-500 mb-3">
@@ -73,7 +73,7 @@ function EditAplModal({
         </p>
         <div className="mb-3">
           <label className="block text-xs font-medium text-gray-700 mb-1">
-            Montant APL pour ce mois (€) — laisser vide pour supprimer
+            Montant aide personnelle au logement pour ce mois (€) — laisser vide pour supprimer
           </label>
           <input
             type="number"
@@ -131,7 +131,7 @@ function GenerateModal({
     })
   }, [])
 
-  // Charger les détails du bail sélectionné pour pré-remplir l'APL
+  // Charger les détails du bail sélectionné pour pré-remplir l'aide personnelle au logement
   useEffect(() => {
     if (!leaseId) { setDefaultApl(null); setAplTiersPayant(false); setAplOverride(''); return }
     leasesApi.get(leaseId).then(r => {
@@ -203,11 +203,11 @@ function GenerateModal({
             </div>
           </div>
 
-          {/* APL — affiché si bail avec tiers-payant OU saisie manuelle */}
+          {/* Aide personnelle au logement — affiché si bail avec tiers-payant OU saisie manuelle */}
           {leaseId && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <label className="block text-xs font-semibold text-blue-700 mb-1">
-                Montant APL ce mois (€)
+                Aide personnelle au logement ce mois (€)
                 {defaultApl != null && (
                   <span className="ml-1 font-normal text-blue-500">
                     — défaut du bail : {defaultApl.toFixed(2)} €
@@ -224,7 +224,7 @@ function GenerateModal({
               <p className="text-xs text-blue-500 mt-1">
                 {aplTiersPayant
                   ? 'Modifiable mois par mois. Laissez vide pour utiliser le montant du bail.'
-                  : 'Vous pouvez indiquer un montant APL spécifique à ce mois.'}
+                  : 'Vous pouvez indiquer un montant d\'aide personnelle au logement spécifique à ce mois.'}
               </p>
             </div>
           )}
@@ -532,7 +532,7 @@ export default function AvisEcheanceList() {
                   <td className="px-4 py-3 text-right">
                     <p className="text-sm font-semibold text-gray-900">{fmtEuro(a.amount_total)}</p>
                     {a.amount_apl && (
-                      <p className="text-xs text-green-600">APL -{fmtEuro(a.amount_apl)}</p>
+                      <p className="text-xs text-green-600">Aide pers. logement -{fmtEuro(a.amount_apl)}</p>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -560,10 +560,10 @@ export default function AvisEcheanceList() {
 
                       {isManager && (
                         <>
-                          {/* Modifier le montant APL */}
+                          {/* Modifier l'aide personnelle au logement */}
                           <button
                             onClick={() => setEditAplAvis(a)}
-                            title="Modifier le montant APL"
+                            title="Modifier l'aide personnelle au logement"
                             className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
                           >
                             <Pencil size={14} />
@@ -626,7 +626,7 @@ export default function AvisEcheanceList() {
           onSaved={(updated) => {
             setAvis(prev => prev.map(a => a.id === updated.id ? updated : a))
             setEditAplAvis(null)
-            setSuccessMsg('Montant APL mis à jour')
+            setSuccessMsg('Aide personnelle au logement mise à jour')
             setTimeout(() => setSuccessMsg(''), 3000)
           }}
         />

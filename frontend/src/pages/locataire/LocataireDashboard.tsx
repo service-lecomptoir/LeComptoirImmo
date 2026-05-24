@@ -134,7 +134,7 @@ export default function LocataireDashboard() {
               </div>
               {lease.apl_tiers_payant && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">APL tiers-payant</span>
+                  <span className="text-gray-500">Aide personnelle au logement (tiers-payant)</span>
                   <span className="text-green-600 font-medium">Oui</span>
                 </div>
               )}

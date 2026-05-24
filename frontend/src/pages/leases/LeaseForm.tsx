@@ -349,7 +349,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        {/* ── APL ── */}
+        {/* ── Aide personnelle au logement ── */}
         <div>
           <div className="flex items-center gap-2 mb-2">
             <input type="checkbox" id="apl_tiers_payant" {...register('apl_tiers_payant')}
@@ -360,7 +360,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           </div>
           {aplTiersPayant && (
             <div className="pl-6">
-              <label className={lbl}>Montant APL mensuel (€)</label>
+              <label className={lbl}>Montant aide personnelle au logement mensuel (€)</label>
               <input type="number" step="0.01" min="0" {...register('apl_amount')} className={`${inp} max-w-xs`} placeholder="0.00" />
               <p className="text-xs text-blue-600 mt-1">
                 Ce montant sera automatiquement comptabilisé comme pré-payé par la CAF dès la génération de l'avis d'échéance.

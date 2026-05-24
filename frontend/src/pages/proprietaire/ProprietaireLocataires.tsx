@@ -59,7 +59,7 @@ export default function ProprietaireLocataires() {
                       {(l.rent_amount + l.charges_amount).toLocaleString('fr-FR', { minimumFractionDigits: 0 })} €
                     </p>
                     {l.apl_tiers_payant && (
-                      <p className="text-xs text-green-600">APL tiers-payant</p>
+                      <p className="text-xs text-green-600">Aide personnelle au logement (tiers-payant)</p>
                     )}
                   </td>
                   <td className="px-4 py-3">

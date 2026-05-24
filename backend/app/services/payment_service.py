@@ -69,7 +69,7 @@ class PaymentService:
             initial_status = PaymentStatus.PAID if initial_paid >= amount_due else PaymentStatus.PARTIAL
             initial_payment_date = due_date
             initial_method = "virement"
-            initial_notes = "Tiers-payant CAF – versement automatique"
+            initial_notes = "Aide personnelle au logement – tiers-payant CAF – versement automatique"
         else:
             initial_paid = 0.0
             initial_status = PaymentStatus.PENDING

@@ -163,7 +163,7 @@ export default function LocatairePayer() {
               <span className="text-right font-medium">{fmtEuro(payment.amount_charges)}</span>
             </>}
             {payment.amount_apl > 0 && <>
-              <span className="text-green-600">APL déduit</span>
+              <span className="text-green-600">Aide personnelle au logement déduite</span>
               <span className="text-right font-medium text-green-600">− {fmtEuro(payment.amount_apl)}</span>
             </>}
           </div>
