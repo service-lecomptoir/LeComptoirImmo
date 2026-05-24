@@ -92,9 +92,12 @@ async def list_users(
             and str(u.id) not in gp_created_user_ids
         ]
     elif current_role == Role.GESTIONNAIRE_PROPRIO:
-        # Gestionnaire-propriétaire : lui-même + ses propres locataires uniquement
-        tenant_ids = await _gp_tenant_ids(db, current_user.id)
-        users = [u for u in users if str(u.id) == str(current_user.id) or str(u.id) in tenant_ids]
+        # GP voit lui-même + tous les users qu'il a directement créés (created_by)
+        created_rows = (await db.execute(
+            select(User.id).where(User.created_by == current_user.id)
+        )).scalars().all()
+        created_ids = {str(uid) for uid in created_rows}
+        users = [u for u in users if str(u.id) == str(current_user.id) or str(u.id) in created_ids]
 
     # Filtre optionnel par rôle
     if role:
