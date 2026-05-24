@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import require_role, get_current_user
+from app.api.v1._isolation import gp_property_ids
 from app.models.user import User
 from app.core.permissions import Role
 from app.schemas.entretien import (
@@ -128,6 +129,16 @@ async def list_entretiens(
             chunk, _ = await EntretienService.list_all(db, status=status, property_id=oid, limit=limit, offset=0)
             all_items.extend(chunk)
         return {"total": len(all_items), "items": [_enrich_entretien(e) for e in all_items]}
+
+    # Gestionnaire mandataire : exclure les entretiens des biens GP
+    if Role(current_user.role) == Role.GESTIONNAIRE:
+        excluded = await gp_property_ids(db)
+        if property_id and property_id in excluded:
+            return {"total": 0, "items": []}
+        all_items, _ = await EntretienService.list_all(db, status=status, property_id=property_id, limit=5000, offset=0)
+        filtered = [e for e in all_items if e.property_id not in excluded]
+        page = filtered[offset: offset + limit]
+        return {"total": len(filtered), "items": [_enrich_entretien(e) for e in page]}
 
     items, total = await EntretienService.list_all(
         db, status=status, property_id=property_id, limit=limit, offset=offset

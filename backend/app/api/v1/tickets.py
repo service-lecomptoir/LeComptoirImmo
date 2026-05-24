@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
+from app.api.v1._isolation import gp_tenant_ids
 from app.models.user import User
 from app.models.ticket import Ticket
 from app.models.lease import Lease
@@ -110,6 +111,14 @@ async def list_tickets(
         q = q.order_by(Ticket.created_at.desc()).limit(limit).offset(offset)
         tickets = list((await db.execute(q)).scalars().all())
         return {"total": len(tickets), "items": [_enrich_ticket(t) for t in tickets]}
+
+    # Gestionnaire mandataire : exclure les tickets des locataires GP
+    if Role(current_user.role) == Role.GESTIONNAIRE:
+        excluded = await gp_tenant_ids(db)
+        all_items, _ = await TicketService.list_all(db, status=status, limit=5000, offset=0)
+        filtered = [t for t in all_items if t.tenant_id not in excluded]
+        page = filtered[offset: offset + limit]
+        return {"total": len(filtered), "items": [_enrich_ticket(t) for t in page]}
 
     items, total = await TicketService.list_all(db, status=status, limit=limit, offset=offset)
     return {

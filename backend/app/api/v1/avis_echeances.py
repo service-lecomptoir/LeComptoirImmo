@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.api.v1._isolation import gp_lease_ids
 from app.core.permissions import Role
 from app.models.user import User
 from app.models.lease import Lease
@@ -139,6 +140,17 @@ async def list_avis(
         ).offset(skip).limit(limit)
         avis_list = (await db.execute(q)).scalars().all()
         return [_avis_to_summary(a) for a in avis_list]
+
+    # Gestionnaire mandataire : exclure les avis des baux GP
+    if current_user.role == Role.GESTIONNAIRE:
+        excluded = await gp_lease_ids(db)
+        if lease_id and lease_id in excluded:
+            return []
+        all_avis = await AvisEcheanceService.get_list(
+            db, lease_id=lease_id, tenant_id=None, year=year, month=month, status=status, skip=0, limit=5000,
+        )
+        filtered = [a for a in all_avis if a.lease_id not in excluded]
+        return [_avis_to_summary(a) for a in filtered[skip: skip + limit]]
 
     avis_list = await AvisEcheanceService.get_list(
         db,
