@@ -5,21 +5,16 @@
   <style>
     @page {
       size: A4;
-      margin: 2cm 2.5cm;
-      @bottom-center {
-        content: "Page " counter(page) " sur " counter(pages);
-        font-size: 9pt;
-        color: #666;
-      }
+      margin: 2cm 2.5cm 2.5cm 2.5cm;
     }
     body {
-      font-family: "DejaVu Sans", Arial, sans-serif;
+      font-family: Arial, sans-serif;
       font-size: 10pt;
       color: #1a1a1a;
       line-height: 1.6;
     }
     h1 {
-      font-size: 16pt;
+      font-size: 15pt;
       text-align: center;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -30,30 +25,32 @@
       text-align: center;
       font-size: 9pt;
       color: #555;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
-    .separator {
+    hr.separator {
       border: none;
       border-top: 2px solid #1e3a5f;
-      margin: 16px 0;
+      margin: 12px 0;
     }
     .section-title {
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: bold;
       color: #1e3a5f;
       background: #f0f4f8;
-      padding: 6px 10px;
-      margin-top: 20px;
-      margin-bottom: 10px;
+      padding: 5px 8px;
+      margin-top: 18px;
+      margin-bottom: 8px;
       border-left: 4px solid #1e3a5f;
     }
-    .row {
-      display: flex;
-      gap: 16px;
+    /* Grille simulée avec table */
+    .row-table {
+      width: 100%;
+      border-collapse: collapse;
       margin-bottom: 6px;
     }
-    .field {
-      flex: 1;
+    .row-table td {
+      vertical-align: top;
+      padding: 2px 6px 2px 0;
     }
     .label {
       font-size: 8pt;
@@ -66,54 +63,53 @@
       font-weight: bold;
       color: #111;
       border-bottom: 1px dotted #bbb;
-      min-height: 16px;
       padding-bottom: 2px;
     }
     .badge {
-      display: inline-block;
       background: #1e3a5f;
       color: white;
-      padding: 2px 8px;
-      border-radius: 3px;
-      font-size: 9pt;
+      padding: 1px 6px;
+      font-size: 8pt;
       font-weight: bold;
     }
     .badge-green { background: #166534; }
     .badge-orange { background: #9a3412; }
+    /* Tableau montants */
     .amounts-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 8px;
     }
     .amounts-table th {
       background: #1e3a5f;
       color: white;
-      padding: 6px 10px;
+      padding: 5px 8px;
       text-align: left;
       font-size: 9pt;
     }
     .amounts-table td {
-      padding: 6px 10px;
+      padding: 5px 8px;
       border-bottom: 1px solid #e5e7eb;
       font-size: 10pt;
     }
-    .amounts-table tr:nth-child(even) td { background: #f9fafb; }
-    .amounts-table .total td {
+    .amounts-table tr.even td { background: #f9fafb; }
+    .amounts-table tr.total td {
       font-weight: bold;
       background: #f0f4f8;
-      font-size: 11pt;
+      font-size: 10pt;
     }
     .amount-right { text-align: right; }
-    .signature-block {
-      margin-top: 40px;
-      display: flex;
-      gap: 40px;
+    /* Signatures en table */
+    .sign-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
     }
-    .sign-box {
-      flex: 1;
+    .sign-table td {
       border: 1px solid #ddd;
-      padding: 12px;
-      min-height: 80px;
+      padding: 10px;
+      vertical-align: top;
+      width: 33%;
     }
     .sign-label {
       font-size: 9pt;
@@ -121,19 +117,28 @@
       margin-bottom: 4px;
       font-weight: bold;
     }
-    .footer-notice {
-      font-size: 8pt;
-      color: #888;
-      margin-top: 20px;
-      text-align: center;
+    .sign-space {
+      min-height: 60px;
     }
     .alert {
       background: #fef9c3;
       border: 1px solid #ca8a04;
-      padding: 8px 12px;
-      margin: 10px 0;
+      padding: 6px 10px;
+      margin: 8px 0;
       font-size: 9pt;
-      border-radius: 3px;
+    }
+    .footer-notice {
+      font-size: 8pt;
+      color: #888;
+      margin-top: 16px;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 8px;
+    }
+    .page-num {
+      font-size: 8pt;
+      color: #888;
+      text-align: right;
     }
   </style>
 </head>
@@ -141,7 +146,11 @@
 
   <h1>Contrat de bail d&apos;habitation</h1>
   <p class="subtitle">
-    {% if lease.lease_type == 'meuble' %}Location meublée{% elif lease.lease_type == 'mobilite' %}Bail mobilité{% elif lease.lease_type == 'commercial' %}Bail commercial{% else %}Location vide (loi du 6 juillet 1989){% endif %}
+    {% if lease.lease_type == 'meuble' %}Location meublée
+    {% elif lease.lease_type == 'mobilite' %}Bail mobilité
+    {% elif lease.lease_type == 'commercial' %}Bail commercial
+    {% else %}Location vide (loi du 6 juillet 1989)
+    {% endif %}
     &nbsp;&bull;&nbsp; Réf. {{ lease.id | string | truncate(8, end='') }}
   </p>
   <hr class="separator">
@@ -149,120 +158,128 @@
   <!-- PARTIES -->
   <div class="section-title">1. Les parties</div>
 
-  <div class="row">
-    <div class="field">
-      <div class="label">Bailleur (bien)</div>
-      <div class="value">{{ lease.parent_property.name if lease.parent_property else '—' }}</div>
-    </div>
-    <div class="field">
-      <div class="label">Adresse du bien</div>
-      <div class="value">{{ lease.parent_property.full_address if lease.parent_property else '—' }}</div>
-    </div>
-  </div>
+  <table class="row-table">
+    <tr>
+      <td style="width:50%">
+        <div class="label">Bailleur (bien)</div>
+        <div class="value">{{ lease.parent_property.name if lease.parent_property else '—' }}</div>
+      </td>
+      <td style="width:50%">
+        <div class="label">Adresse du bien</div>
+        <div class="value">{{ lease.parent_property.full_address if lease.parent_property else '—' }}</div>
+      </td>
+    </tr>
+  </table>
 
-  <div class="row" style="margin-top: 10px;">
-    <div class="field">
-      <div class="label">Locataire</div>
-      <div class="value">{{ lease.tenant.full_name if lease.tenant else '—' }}</div>
-    </div>
-    <div class="field">
-      <div class="label">Email</div>
-      <div class="value">{{ lease.tenant.email if lease.tenant and lease.tenant.email else '—' }}</div>
-    </div>
-    <div class="field">
-      <div class="label">Téléphone</div>
-      <div class="value">{{ lease.tenant.phone if lease.tenant and lease.tenant.phone else '—' }}</div>
-    </div>
-  </div>
+  <table class="row-table" style="margin-top:8px">
+    <tr>
+      <td style="width:34%">
+        <div class="label">Locataire</div>
+        <div class="value">{{ lease.tenant.full_name if lease.tenant else '—' }}</div>
+      </td>
+      <td style="width:33%">
+        <div class="label">Email</div>
+        <div class="value">{{ lease.tenant.email if lease.tenant and lease.tenant.email else '—' }}</div>
+      </td>
+      <td style="width:33%">
+        <div class="label">Téléphone</div>
+        <div class="value">{{ lease.tenant.phone if lease.tenant and lease.tenant.phone else '—' }}</div>
+      </td>
+    </tr>
+  </table>
 
   {% if lease.has_guarantor and lease.guarantor_name %}
-  <div class="row" style="margin-top: 10px;">
-    <div class="field">
-      <div class="label">Garant</div>
-      <div class="value">{{ lease.guarantor_name }}</div>
-    </div>
-    {% if lease.guarantor_email %}
-    <div class="field">
-      <div class="label">Email garant</div>
-      <div class="value">{{ lease.guarantor_email }}</div>
-    </div>
-    {% endif %}
-    {% if lease.guarantor_phone %}
-    <div class="field">
-      <div class="label">Téléphone garant</div>
-      <div class="value">{{ lease.guarantor_phone }}</div>
-    </div>
-    {% endif %}
-  </div>
+  <table class="row-table" style="margin-top:8px">
+    <tr>
+      <td style="width:34%">
+        <div class="label">Garant</div>
+        <div class="value">{{ lease.guarantor_name }}</div>
+      </td>
+      {% if lease.guarantor_email %}
+      <td style="width:33%">
+        <div class="label">Email garant</div>
+        <div class="value">{{ lease.guarantor_email }}</div>
+      </td>
+      {% endif %}
+      {% if lease.guarantor_phone %}
+      <td style="width:33%">
+        <div class="label">Téléphone garant</div>
+        <div class="value">{{ lease.guarantor_phone }}</div>
+      </td>
+      {% endif %}
+    </tr>
+  </table>
   {% endif %}
 
   <!-- LOGEMENT -->
   <div class="section-title">2. Le logement</div>
 
-  <div class="row">
-    <div class="field">
-      <div class="label">Référence logement</div>
-      <div class="value">{{ lease.unit.unit_ref if lease.unit else '—' }}</div>
-    </div>
-    <div class="field">
-      <div class="label">Type</div>
-      <div class="value">{{ lease.unit.unit_type if lease.unit else '—' }}</div>
-    </div>
-    {% if lease.unit and lease.unit.floor is not none %}
-    <div class="field">
-      <div class="label">Étage</div>
-      <div class="value">{{ lease.unit.floor }}</div>
-    </div>
-    {% endif %}
-    {% if lease.unit and lease.unit.area_sqm %}
-    <div class="field">
-      <div class="label">Surface</div>
-      <div class="value">{{ "%.2f" | format(lease.unit.area_sqm) }} m²</div>
-    </div>
-    {% endif %}
-  </div>
+  <table class="row-table">
+    <tr>
+      <td style="width:25%">
+        <div class="label">Référence logement</div>
+        <div class="value">{{ lease.unit.unit_ref if lease.unit else '—' }}</div>
+      </td>
+      <td style="width:25%">
+        <div class="label">Type</div>
+        <div class="value">{{ lease.unit.unit_type if lease.unit else '—' }}</div>
+      </td>
+      {% if lease.unit and lease.unit.floor is not none %}
+      <td style="width:25%">
+        <div class="label">Étage</div>
+        <div class="value">{{ lease.unit.floor }}</div>
+      </td>
+      {% endif %}
+      {% if lease.unit and lease.unit.area_sqm %}
+      <td style="width:25%">
+        <div class="label">Surface</div>
+        <div class="value">{{ "%.2f" | format(lease.unit.area_sqm) }} m²</div>
+      </td>
+      {% endif %}
+    </tr>
+  </table>
 
   <!-- DURÉE -->
   <div class="section-title">3. Durée du contrat</div>
 
-  <div class="row">
-    <div class="field">
-      <div class="label">Date d&apos;entrée</div>
-      <div class="value">{{ lease.start_date.strftime('%d/%m/%Y') }}</div>
-    </div>
-    {% if lease.end_date %}
-    <div class="field">
-      <div class="label">Date de fin</div>
-      <div class="value">{{ lease.end_date.strftime('%d/%m/%Y') }}</div>
-    </div>
-    {% else %}
-    <div class="field">
-      <div class="label">Durée légale</div>
-      <div class="value">
-        {% if lease.lease_type == 'meuble' %}1 an renouvelable
-        {% elif lease.lease_type == 'mobilite' %}10 mois maximum
-        {% elif lease.lease_type == 'commercial' %}9 ans minimum
-        {% else %}3 ans renouvelable{% endif %}
-      </div>
-    </div>
-    {% endif %}
-    {% if lease.notice_date %}
-    <div class="field">
-      <div class="label">Congé donné le</div>
-      <div class="value">{{ lease.notice_date.strftime('%d/%m/%Y') }}</div>
-    </div>
-    {% endif %}
-    <div class="field">
-      <div class="label">Statut</div>
-      <div class="value">
-        {% if lease.is_active %}
-          <span class="badge badge-green">Actif</span>
+  <table class="row-table">
+    <tr>
+      <td style="width:25%">
+        <div class="label">Date d&apos;entrée</div>
+        <div class="value">{{ lease.start_date.strftime('%d/%m/%Y') }}</div>
+      </td>
+      <td style="width:25%">
+        {% if lease.end_date %}
+        <div class="label">Date de fin</div>
+        <div class="value">{{ lease.end_date.strftime('%d/%m/%Y') }}</div>
         {% else %}
-          <span class="badge badge-orange">Résilié</span>
+        <div class="label">Durée légale</div>
+        <div class="value">
+          {% if lease.lease_type == 'meuble' %}1 an renouvelable
+          {% elif lease.lease_type == 'mobilite' %}10 mois maximum
+          {% elif lease.lease_type == 'commercial' %}9 ans minimum
+          {% else %}3 ans renouvelable{% endif %}
+        </div>
         {% endif %}
-      </div>
-    </div>
-  </div>
+      </td>
+      {% if lease.notice_date %}
+      <td style="width:25%">
+        <div class="label">Congé donné le</div>
+        <div class="value">{{ lease.notice_date.strftime('%d/%m/%Y') }}</div>
+      </td>
+      {% endif %}
+      <td style="width:25%">
+        <div class="label">Statut</div>
+        <div class="value">
+          {% if lease.is_active %}
+            <span class="badge badge-green">Actif</span>
+          {% else %}
+            <span class="badge badge-orange">Résilié</span>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+  </table>
 
   <!-- FINANCES -->
   <div class="section-title">4. Loyer et charges</div>
@@ -279,13 +296,13 @@
         <td>Loyer hors charges</td>
         <td class="amount-right">{{ "%.2f" | format(lease.rent_amount | float) }} €</td>
       </tr>
-      <tr>
+      <tr class="even">
         <td>Charges récupérables</td>
         <td class="amount-right">{{ "%.2f" | format(lease.charges_amount | float) }} €</td>
       </tr>
       {% if lease.apl_tiers_payant and lease.apl_amount %}
       <tr>
-        <td>APL versées par la CAF (tiers-payant)</td>
+        <td>Aide personnelle au logement versée par la CAF (tiers-payant)</td>
         <td class="amount-right">- {{ "%.2f" | format(lease.apl_amount | float) }} €</td>
       </tr>
       {% endif %}
@@ -296,36 +313,38 @@
       {% if lease.apl_tiers_payant and lease.apl_amount %}
       <tr class="total">
         <td>Solde dû par le locataire</td>
-        <td class="amount-right">{{ "%.2f" | format(lease.net_rent + lease.charges_amount | float) }} €</td>
+        <td class="amount-right">{{ "%.2f" | format((lease.net_rent + lease.charges_amount) | float) }} €</td>
       </tr>
       {% endif %}
     </tbody>
   </table>
 
-  <div class="row" style="margin-top: 14px;">
-    <div class="field">
-      <div class="label">Dépôt de garantie</div>
-      <div class="value">{{ "%.2f" | format(lease.deposit_amount | float) }} €</div>
-    </div>
-    <div class="field">
-      <div class="label">Jour de paiement</div>
-      <div class="value">Le {{ lease.payment_day }} de chaque mois</div>
-    </div>
-    <div class="field">
-      <div class="label">Mode de paiement</div>
-      <div class="value">
-        {% if lease.payment_method == 'virement' %}Virement bancaire
-        {% elif lease.payment_method == 'cheque' %}Chèque
-        {% elif lease.payment_method == 'prelevement' %}Prélèvement automatique
-        {% else %}Espèces{% endif %}
-      </div>
-    </div>
-  </div>
+  <table class="row-table" style="margin-top:12px">
+    <tr>
+      <td style="width:34%">
+        <div class="label">Dépôt de garantie</div>
+        <div class="value">{{ "%.2f" | format(lease.deposit_amount | float) }} €</div>
+      </td>
+      <td style="width:33%">
+        <div class="label">Jour de paiement</div>
+        <div class="value">Le {{ lease.payment_day }} de chaque mois</div>
+      </td>
+      <td style="width:33%">
+        <div class="label">Mode de paiement</div>
+        <div class="value">
+          {% if lease.payment_method == 'virement' %}Virement bancaire
+          {% elif lease.payment_method == 'cheque' %}Chèque
+          {% elif lease.payment_method == 'prelevement' %}Prélèvement automatique
+          {% else %}Espèces{% endif %}
+        </div>
+      </td>
+    </tr>
+  </table>
 
   {% if lease.apl_tiers_payant %}
   <div class="alert">
     <strong>Tiers-payant CAF :</strong> Une partie du loyer est versée directement par la CAF au bailleur.
-    Le locataire s'acquitte uniquement du loyer résiduel.
+    Le locataire s&apos;acquitte uniquement du loyer résiduel.
   </div>
   {% endif %}
 
@@ -338,28 +357,36 @@
   <!-- SIGNATURES -->
   <div class="section-title">{{ '6' if lease.notes else '5' }}. Signatures</div>
 
-  <div class="signature-block">
-    <div class="sign-box">
-      <div class="sign-label">Le bailleur</div>
-      <br/>Date : _______________<br/>
-      <br/>Signature :
-    </div>
-    <div class="sign-box">
-      <div class="sign-label">Le locataire — {{ lease.tenant.full_name if lease.tenant else '' }}</div>
-      <br/>Date : _______________<br/>
-      <br/>Signature :
-    </div>
-    {% if lease.has_guarantor and lease.guarantor_name %}
-    <div class="sign-box">
-      <div class="sign-label">Le garant — {{ lease.guarantor_name }}</div>
-      <br/>Date : _______________<br/>
-      <br/>Signature :
-    </div>
-    {% endif %}
-  </div>
+  <table class="sign-table">
+    <tr>
+      <td>
+        <div class="sign-label">Le bailleur</div>
+        <div class="sign-space">
+          <br/>Date : _______________<br/><br/>
+          Signature :
+        </div>
+      </td>
+      <td>
+        <div class="sign-label">Le locataire — {{ lease.tenant.full_name if lease.tenant else '' }}</div>
+        <div class="sign-space">
+          <br/>Date : _______________<br/><br/>
+          Signature :
+        </div>
+      </td>
+      {% if lease.has_guarantor and lease.guarantor_name %}
+      <td>
+        <div class="sign-label">Le garant — {{ lease.guarantor_name }}</div>
+        <div class="sign-space">
+          <br/>Date : _______________<br/><br/>
+          Signature :
+        </div>
+      </td>
+      {% endif %}
+    </tr>
+  </table>
 
   <p class="footer-notice">
-    Document généré par Locataire Cloud &bull;
+    Document généré par LeComptoirImmo &bull;
     Ce document est fourni à titre indicatif et ne remplace pas un acte authentique.
   </p>
 
