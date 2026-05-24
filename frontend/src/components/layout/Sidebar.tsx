@@ -260,7 +260,27 @@ export function Sidebar() {
       )
     }
 
-    // Gestionnaire / Admin : logo habituel
+    // Gestionnaire propriétaire
+    if (user?.role === 'gestionnaire_proprio') {
+      return (
+        <div className="px-6 py-5 border-b border-gray-700">
+          <p className="text-white font-semibold text-sm">Gestionnaire propriétaire</p>
+          {user.full_name && <p className="text-gray-400 text-xs mt-0.5">{user.full_name}</p>}
+        </div>
+      )
+    }
+
+    // Gestionnaire mandataire
+    if (user?.role === 'gestionnaire_mandataire') {
+      return (
+        <div className="px-6 py-5 border-b border-gray-700">
+          <p className="text-white font-semibold text-sm">Gestionnaire sous mandat</p>
+          {user.full_name && <p className="text-gray-400 text-xs mt-0.5">{user.full_name}</p>}
+        </div>
+      )
+    }
+
+    // Admin : logo habituel
     return (
       <div className="px-6 py-5 border-b border-gray-700">
         <div className="flex items-center gap-3">
