@@ -298,7 +298,7 @@ export function Sidebar() {
               }
             >
               <Icon size={18} />
-              <span>{label}</span>
+              <span>{item.label}</span>
             </NavLink>
           )
         })}
