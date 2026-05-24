@@ -610,7 +610,7 @@ export default function TemplateEditor() {
 
   const openNew = () => { setEditTemplate(null); setEditMode(true) }
   const openEdit = (t: Template) => { setEditTemplate(t); setEditMode(true) }
-  const handleBack = () => { setEditMode(false); setEditTemplate(null) }
+  const handleBack = () => { setEditMode(false); setEditTemplate(null); load() }
   const onSaved = () => { load(); setSuccessMsg('Template enregistré'); setTimeout(() => setSuccessMsg(''), 3000) }
 
   useEffect(() => { load() }, [filterType])
@@ -620,6 +620,7 @@ export default function TemplateEditor() {
     return (
       <div className="h-full">
         <TemplateEditorPanel
+          key={editTemplate?.id ?? 'new'}
           template={editTemplate}
           onBack={handleBack}
           onSaved={onSaved}
