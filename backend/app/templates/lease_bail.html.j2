@@ -313,7 +313,7 @@
       {% if lease.apl_tiers_payant and lease.apl_amount %}
       <tr class="total">
         <td>Solde dû par le locataire</td>
-        <td class="amount-right">{{ "%.2f" | format((lease.net_rent + lease.charges_amount) | float) }} €</td>
+        <td class="amount-right">{{ "%.2f" | format((lease.net_rent | float) + (lease.charges_amount | float)) }} €</td>
       </tr>
       {% endif %}
     </tbody>

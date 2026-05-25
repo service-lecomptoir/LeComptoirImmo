@@ -82,7 +82,7 @@ async def lettre_relance(
 async def attestation_caf(
     lease_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     """Génère une attestation de loyer pour la CAF."""
     lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
@@ -93,7 +93,9 @@ async def attestation_caf(
     today = date.today()
 
     ctx = {
+        "bailleur_name": current_user.full_name,
         "property_address": prop.full_address if prop else "—",
+        "property_city": prop.city if prop and prop.city else "",
         "unit_ref": unit.unit_ref if unit else "—",
         "unit_type": unit.unit_type if unit else "—",
         "area_sqm": f"{float(unit.area_sqm):.0f}" if unit and unit.area_sqm else None,

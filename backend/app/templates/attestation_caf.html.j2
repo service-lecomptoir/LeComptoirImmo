@@ -3,28 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    @page { size: A4; margin: 2.5cm 2.5cm; }
-    body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.8; }
-    h1 { font-size: 15pt; text-align: center; color: #1e3a5f; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-    .subtitle { text-align: center; color: #555; font-size: 9pt; margin-bottom: 30px; }
-    hr { border: none; border-top: 2px solid #1e3a5f; margin: 16px 0 24px 0; }
-    .section { margin-bottom: 20px; }
-    .section-title { font-weight: bold; font-size: 10pt; color: #1e3a5f; margin-bottom: 8px; text-decoration: underline; }
-    .info-row { display: flex; gap: 8px; margin-bottom: 4px; }
-    .info-label { width: 180px; flex-shrink: 0; color: #555; }
-    .info-value { font-weight: 500; }
-    .amount-box {
-      background: #f0f4f8;
-      border: 1px solid #cbd5e1;
-      padding: 14px 18px;
-      margin: 16px 0;
-      border-radius: 4px;
-    }
+    @page { size: A4; margin: 2cm 2.5cm; }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.7; }
+    h1 { font-size: 14pt; text-align: center; color: #1e3a5f; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .subtitle { text-align: center; color: #555; font-size: 9pt; margin-bottom: 8px; }
+    hr { border: none; border-top: 2px solid #1e3a5f; margin: 12px 0 20px 0; }
+    .section-title { font-weight: bold; font-size: 10pt; color: #1e3a5f; text-decoration: underline; margin-top: 18px; margin-bottom: 6px; }
+    .info-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
+    .info-table td { vertical-align: top; padding: 3px 4px; font-size: 10pt; }
+    .info-table td.lbl { width: 200px; color: #555; }
+    .info-table td.val { font-weight: bold; }
+    .amount-box { background: #f0f4f8; border: 1px solid #cbd5e1; padding: 10px 14px; margin: 14px 0; }
     .amount-label { font-size: 9pt; color: #64748b; margin-bottom: 4px; }
-    .amount-value { font-size: 20pt; font-weight: bold; color: #1e3a5f; }
-    .signature { margin-top: 50px; display: flex; justify-content: space-between; }
-    .sign-box { width: 200px; border: 1px solid #ddd; padding: 12px; min-height: 80px; font-size: 9pt; }
-    .legal { font-size: 8pt; color: #888; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 8px; text-align: center; }
+    .amount-value { font-size: 18pt; font-weight: bold; color: #1e3a5f; }
+    .amount-detail { font-size: 9pt; color: #555; margin-top: 4px; }
+    .sign-table { width: 100%; border-collapse: collapse; margin-top: 36px; }
+    .sign-table td { border: 1px solid #ccc; padding: 12px; vertical-align: top; }
+    .sign-label { font-size: 9pt; font-weight: bold; color: #444; margin-bottom: 4px; }
+    .sign-space { height: 60px; }
+    .legal { font-size: 8pt; color: #888; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 8px; text-align: center; }
   </style>
 </head>
 <body>
@@ -33,53 +30,88 @@
   <p class="subtitle">À destination de la Caisse d'Allocations Familiales (CAF)</p>
   <hr>
 
-  <p>Je soussigné(e), bailleur du logement désigné ci-dessous, atteste sur l'honneur que :</p>
+  <p>Je soussigné(e), <strong>{{ bailleur_name }}</strong>, bailleur du logement désigné ci-dessous,
+  atteste sur l'honneur que les informations ci-après sont exactes :</p>
 
-  <div class="section">
-    <div class="section-title">Informations sur le logement</div>
-    <div class="info-row"><span class="info-label">Adresse :</span><span class="info-value">{{ property_address }}</span></div>
-    <div class="info-row"><span class="info-label">Logement :</span><span class="info-value">{{ unit_ref }} ({{ unit_type }})</span></div>
-    {% if area_sqm %}<div class="info-row"><span class="info-label">Surface :</span><span class="info-value">{{ area_sqm }} m²</span></div>{% endif %}
-  </div>
+  <div class="section-title">1. Le logement</div>
+  <table class="info-table">
+    <tr>
+      <td class="lbl">Adresse :</td>
+      <td class="val">{{ property_address }}</td>
+    </tr>
+    <tr>
+      <td class="lbl">Référence / type de logement :</td>
+      <td class="val">{{ unit_ref }} — {{ unit_type }}</td>
+    </tr>
+    {% if area_sqm %}
+    <tr>
+      <td class="lbl">Surface habitable :</td>
+      <td class="val">{{ area_sqm }} m²</td>
+    </tr>
+    {% endif %}
+  </table>
 
-  <div class="section">
-    <div class="section-title">Informations sur le locataire</div>
-    <div class="info-row"><span class="info-label">Nom :</span><span class="info-value">{{ tenant_name }}</span></div>
-    {% if tenant_birth_date %}<div class="info-row"><span class="info-label">Date de naissance :</span><span class="info-value">{{ tenant_birth_date }}</span></div>{% endif %}
-  </div>
+  <div class="section-title">2. Le locataire</div>
+  <table class="info-table">
+    <tr>
+      <td class="lbl">Nom et prénom :</td>
+      <td class="val">{{ tenant_name }}</td>
+    </tr>
+    {% if tenant_birth_date %}
+    <tr>
+      <td class="lbl">Date de naissance :</td>
+      <td class="val">{{ tenant_birth_date }}</td>
+    </tr>
+    {% endif %}
+  </table>
 
-  <div class="section">
-    <div class="section-title">Informations sur le bail</div>
-    <div class="info-row"><span class="info-label">Date d'entrée :</span><span class="info-value">{{ start_date }}</span></div>
-    <div class="info-row"><span class="info-label">Type de bail :</span><span class="info-value">{{ lease_type_label }}</span></div>
-    <div class="info-row"><span class="info-label">Statut :</span><span class="info-value">{{ 'Bail en cours' if is_active else 'Bail résilié' }}</span></div>
-  </div>
+  <div class="section-title">3. Le contrat de location</div>
+  <table class="info-table">
+    <tr>
+      <td class="lbl">Date de prise d'effet :</td>
+      <td class="val">{{ start_date }}</td>
+    </tr>
+    <tr>
+      <td class="lbl">Type de bail :</td>
+      <td class="val">{{ lease_type_label }}</td>
+    </tr>
+    <tr>
+      <td class="lbl">Statut du bail :</td>
+      <td class="val">{{ 'Bail en cours' if is_active else 'Bail résilié' }}</td>
+    </tr>
+  </table>
 
+  <div class="section-title">4. Montant du loyer</div>
   <div class="amount-box">
-    <div class="amount-label">Montant mensuel du loyer (charges comprises)</div>
+    <div class="amount-label">Loyer mensuel total charges comprises (TCC)</div>
     <div class="amount-value">{{ total_monthly }} €</div>
-    <div style="font-size: 9pt; color: #555; margin-top: 6px;">
-      Loyer HC : {{ rent_amount }} € &nbsp;|&nbsp; Charges : {{ charges_amount }} €
+    <div class="amount-detail">
+      Loyer hors charges : {{ rent_amount }} €
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+      Charges locatives : {{ charges_amount }} €
     </div>
   </div>
 
-  <div class="signature">
-    <div>
-      <p style="font-size: 9pt; color: #555;">Fait à :</p>
-      <p>______________________________</p>
-    </div>
-    <div>
-      <p style="font-size: 9pt; color: #555;">Le :</p>
-      <p>______________________________</p>
-    </div>
-    <div class="sign-box">
-      <p style="font-weight: bold; margin-bottom: 8px;">Signature du bailleur</p>
-      <br><br>
-    </div>
-  </div>
+  <p>Fait à {% if property_city %}{{ property_city }}{% else %}________________________{% endif %}, le {{ today }}</p>
+
+  <table class="sign-table">
+    <tr>
+      <td style="width: 50%;">
+        <div class="sign-label">Signature du bailleur</div>
+        <div style="font-size: 9pt; color: #555; margin-bottom: 8px;">{{ bailleur_name }}</div>
+        <div class="sign-space"></div>
+      </td>
+      <td style="width: 50%;">
+        <div class="sign-label">Cachet / Tampon (facultatif)</div>
+        <div class="sign-space"></div>
+      </td>
+    </tr>
+  </table>
 
   <div class="legal">
-    Document généré par Locataire Cloud &bull; Cette attestation est fournie à titre indicatif. Le bailleur certifie l'exactitude des informations.
+    Document généré par LeComptoirImmo &bull;
+    Cette attestation est établie à la demande du locataire pour faire valoir ce que de droit.
+    Le bailleur certifie l'exactitude des informations déclarées.
   </div>
 
 </body>

@@ -146,6 +146,9 @@ export default function LeaseDetail() {
   const [showTerminate, setShowTerminate] = useState(false)
   const [isTerminating, setIsTerminating] = useState(false)
   const [showInspectionForm, setShowInspectionForm] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [cafLoading, setCafLoading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const fetchLease = async () => {
     if (!id) return
@@ -178,10 +181,32 @@ export default function LeaseDetail() {
     }
   }
 
-  const handleDownloadPdf = () => {
-    if (!lease || !id) return
-    const name = lease.tenant?.full_name.replace(/ /g, '_') ?? id
-    leasesApi.downloadPdf(id, `bail_${name}_${lease.start_date}.pdf`)
+  const handleDownloadPdf = async () => {
+    if (!lease || !id || pdfLoading) return
+    setPdfLoading(true)
+    setDownloadError(null)
+    try {
+      const name = lease.tenant?.full_name.replace(/ /g, '_') ?? id
+      await leasesApi.downloadPdf(id, `bail_${name}_${lease.start_date}.pdf`)
+    } catch {
+      setDownloadError('Erreur lors de la génération du PDF bail')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
+  const handleDownloadCaf = async () => {
+    if (!id || !lease || cafLoading) return
+    setCafLoading(true)
+    setDownloadError(null)
+    try {
+      const name = lease.tenant?.full_name.replace(/ /g, '_') ?? id
+      await lettersApi.downloadAttestationCaf(id, `attestation_caf_${name}_${new Date().getFullYear()}.pdf`)
+    } catch {
+      setDownloadError("Erreur lors de la génération de l'attestation CAF")
+    } finally {
+      setCafLoading(false)
+    }
   }
 
   if (isLoading) return <div className="p-6 text-sm text-gray-500">Chargement...</div>
@@ -227,19 +252,17 @@ export default function LeaseDetail() {
         <div className="flex gap-2">
           <button
             onClick={handleDownloadPdf}
-            className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
+            disabled={pdfLoading}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <FileDown size={15} /> PDF bail
+            <FileDown size={15} /> {pdfLoading ? 'Génération…' : 'PDF bail'}
           </button>
           <button
-            onClick={() => {
-              if (!id || !lease) return
-              const name = lease.tenant?.full_name.replace(/ /g, '_') ?? id
-              lettersApi.downloadAttestationCaf(id, `attestation_caf_${name}_${new Date().getFullYear()}.pdf`)
-            }}
-            className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
+            onClick={handleDownloadCaf}
+            disabled={cafLoading}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <FileDown size={15} /> Attestation CAF
+            <FileDown size={15} /> {cafLoading ? 'Génération…' : 'Attestation CAF'}
           </button>
           {lease.is_active && (
             <button
@@ -257,6 +280,12 @@ export default function LeaseDetail() {
           </button>
         </div>
       </div>
+
+      {downloadError && (
+        <div className="mb-4 px-4 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          {downloadError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Contrat */}
