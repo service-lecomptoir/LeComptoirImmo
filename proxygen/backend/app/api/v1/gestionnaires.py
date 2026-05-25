@@ -1,8 +1,9 @@
 import uuid
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
@@ -14,6 +15,39 @@ from app.models.license import ProxygenLicense
 from app.models.plan import ProxygenPlan
 from app.models.leci import LeciUser, LeciProperty
 from app.schemas.gestionnaire import GestionnaireCreate, GestionnaireUpdate, GestionnaireOut, GestionnairePropertyOut
+
+logger = logging.getLogger(__name__)
+
+
+async def _notify_leci_webhook(
+    user_id: uuid.UUID,
+    event: str,
+    is_blocked: bool,
+    plan_name: Optional[str] = None,
+    property_limit: Optional[int] = None,
+) -> None:
+    """Notifie LeCI d'un changement de statut ou de plan (fire & forget)."""
+    try:
+        import httpx
+        from app.config import get_settings
+        cfg = get_settings()
+        payload = {
+            "user_id": str(user_id),
+            "event": event,
+            "is_blocked": is_blocked,
+            "plan_name": plan_name,
+            "property_limit": property_limit,
+        }
+        async with httpx.AsyncClient(timeout=5.0) as hc:
+            resp = await hc.post(
+                f"{cfg.LECI_URL}/api/v1/internal/webhook/proxygen",
+                json=payload,
+                headers={"X-Internal-Key": cfg.INTERNAL_API_KEY},
+            )
+        if resp.status_code not in (200, 204):
+            logger.warning("LeCI webhook réponse inattendue: %s", resp.status_code)
+    except Exception as exc:
+        logger.warning("Impossible de notifier LeCI via webhook: %s", exc)
 
 def _manager_roles():
     """Filtre WHERE couvrant les deux rôles gestionnaire de LeCI."""
@@ -185,6 +219,7 @@ async def get_gestionnaire(
 async def update_gestionnaire(
     gestionnaire_id: uuid.UUID,
     data: GestionnaireUpdate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     _: ProxygenAdmin = Depends(get_current_proxygen_admin),
 ):
@@ -216,6 +251,10 @@ async def update_gestionnaire(
         )
         db.add(license)
 
+    plan_fields_changed = any(
+        getattr(data, f, None) is not None
+        for f in ("plan_id", "property_limit_override", "monthly_price_override")
+    )
     for field in ("plan_id", "property_limit_override", "monthly_price_override", "notes"):
         value = getattr(data, field, None)
         if value is not None:
@@ -228,12 +267,20 @@ async def update_gestionnaire(
         plan_result = await db.execute(select(ProxygenPlan).where(ProxygenPlan.id == license.plan_id))
         plan = plan_result.scalar_one_or_none()
 
+    if plan_fields_changed:
+        plan_name = plan.name if plan else None
+        eff_limit = license.property_limit_override if license.property_limit_override is not None else (plan.property_limit if plan else None)
+        background_tasks.add_task(
+            _notify_leci_webhook, gestionnaire_id, "plan_changed", license.is_blocked, plan_name, eff_limit
+        )
+
     return await _build_gestionnaire_out(db, user, license, plan)
 
 
 @router.post("/{gestionnaire_id}/block", response_model=GestionnaireOut)
 async def block_gestionnaire_endpoint(
     gestionnaire_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     _: ProxygenAdmin = Depends(get_current_proxygen_admin),
 ):
@@ -270,6 +317,11 @@ async def block_gestionnaire_endpoint(
         plan_result = await db.execute(select(ProxygenPlan).where(ProxygenPlan.id == license.plan_id))
         plan = plan_result.scalar_one_or_none()
 
+    plan_name = plan.name if plan else None
+    background_tasks.add_task(
+        _notify_leci_webhook, gestionnaire_id, "blocked", True, plan_name, None
+    )
+
     # Re-fetch user après mise à jour is_active
     user_result2 = await db.execute(select(LeciUser).where(LeciUser.id == gestionnaire_id))
     user = user_result2.scalar_one_or_none()
@@ -280,6 +332,7 @@ async def block_gestionnaire_endpoint(
 @router.post("/{gestionnaire_id}/unblock", response_model=GestionnaireOut)
 async def unblock_gestionnaire_endpoint(
     gestionnaire_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     _: ProxygenAdmin = Depends(get_current_proxygen_admin),
 ):
@@ -305,6 +358,11 @@ async def unblock_gestionnaire_endpoint(
     if license.plan_id:
         plan_result = await db.execute(select(ProxygenPlan).where(ProxygenPlan.id == license.plan_id))
         plan = plan_result.scalar_one_or_none()
+
+    plan_name = plan.name if plan else None
+    background_tasks.add_task(
+        _notify_leci_webhook, gestionnaire_id, "unblocked", False, plan_name, None
+    )
 
     user_result2 = await db.execute(select(LeciUser).where(LeciUser.id == gestionnaire_id))
     user = user_result2.scalar_one_or_none()
