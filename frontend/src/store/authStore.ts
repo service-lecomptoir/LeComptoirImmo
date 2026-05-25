@@ -2,6 +2,23 @@ import { create } from 'zustand'
 import type { User, Role } from '@/types/auth'
 import { authApi } from '@/api/auth'
 
+export type AccountType = 'gestionnaire' | 'proprietaire' | 'locataire'
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Gestionnaire (Admin)',
+  gestionnaire: 'Gestionnaire',
+  gestionnaire_proprio: 'Gestionnaire',
+  proprietaire: 'Propriétaire',
+  locataire: 'Locataire',
+}
+
+function roleMatchesAccountType(role: string, accountType: AccountType): boolean {
+  if (accountType === 'gestionnaire') return ['admin', 'gestionnaire', 'gestionnaire_proprio'].includes(role)
+  if (accountType === 'proprietaire') return role === 'proprietaire'
+  if (accountType === 'locataire') return role === 'locataire'
+  return false
+}
+
 interface AuthState {
   user: User | null
   accessToken: string | null
@@ -10,7 +27,8 @@ interface AuthState {
   isLoading: boolean
   isInitializing: boolean
 
-  login: (email: string, password: string) => Promise<string>  // returns redirect path
+  /** Connecte l'utilisateur. Passer `accountType` pour valider le rôle avant de poser isAuthenticated=true. */
+  login: (email: string, password: string, accountType?: AccountType) => Promise<string>
   logout: () => void
   fetchMe: () => Promise<void>
   initialize: () => Promise<void>
@@ -30,17 +48,30 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isLoading: false,
   isInitializing: true,
 
-  login: async (email, password) => {
+  login: async (email, password, accountType?) => {
     set({ isLoading: true })
     try {
       const { data } = await authApi.login({ email, password })
 
-      // Stockage pour le client Axios (durée de session uniquement)
+      // Stockage temporaire pour que authApi.me() fonctionne
       localStorage.setItem('access_token', data.access_token)
       localStorage.setItem('refresh_token', data.refresh_token)
 
       // Récupère le profil
       const { data: user } = await authApi.me()
+
+      // ── Validation du type de compte AVANT de poser isAuthenticated=true ────
+      // (évite la race condition avec le early-return <Navigate> du composant Login)
+      if (accountType && !roleMatchesAccountType(user.role, accountType)) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        set({ isLoading: false })
+        const realLabel = ROLE_LABELS[user.role] ?? user.role
+        throw Object.assign(
+          new Error(`Ce compte est un espace "${realLabel}". Veuillez sélectionner le bon type de compte.`),
+          { code: 'ROLE_MISMATCH' },
+        )
+      }
 
       set({
         accessToken: data.access_token,

@@ -5,8 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Eye, EyeOff, Mail, Lock, ChevronRight } from 'lucide-react'
 import { useAuthStore, roleHomePath } from '@/store/authStore'
-
-type AccountType = 'gestionnaire' | 'proprietaire' | 'locataire'
+import type { AccountType } from '@/store/authStore'
 
 const ACCOUNT_TYPES: {
   id: AccountType
@@ -178,7 +177,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
 // ── Panneau droit — formulaire ────────────────────────────────────────────────
 export default function Login() {
   const navigate = useNavigate()
-  const { login, logout, isLoading, isAuthenticated, user } = useAuthStore()
+  const { login, isLoading, isAuthenticated, user } = useAuthStore()
 
   // ── Tous les hooks AVANT tout early return (règle React) ──────────────────
   const [error, setError] = useState<string | null>(null)
@@ -196,37 +195,18 @@ export default function Login() {
     return <Navigate to={roleHomePath(user.role)} replace />
   }
 
-  const ROLE_LABELS: Record<string, string> = {
-    admin: 'Gestionnaire (Admin)',
-    gestionnaire: 'Gestionnaire',
-    gestionnaire_proprio: 'Gestionnaire',
-    proprietaire: 'Propriétaire',
-    locataire: 'Locataire',
-  }
-
   const onSubmit = async (data: LoginForm) => {
     setError(null)
     try {
-      const rolePath = await login(data.email, data.password)
-
-      // Vérifier que le rôle réel correspond au type de compte sélectionné
-      const loggedUser = useAuthStore.getState().user!
-      const role = loggedUser.role as string
-      const roleMatchesType =
-        (accountType === 'gestionnaire' && ['admin', 'gestionnaire', 'gestionnaire_proprio'].includes(role)) ||
-        (accountType === 'proprietaire' && role === 'proprietaire') ||
-        (accountType === 'locataire' && role === 'locataire')
-
-      if (!roleMatchesType) {
-        logout()
-        const realLabel = ROLE_LABELS[role] ?? role
-        setError(`Ce compte est un espace "${realLabel}". Veuillez sélectionner le bon type de compte.`)
-        return
-      }
-
+      // La validation du rôle est faite dans le store AVANT que isAuthenticated=true
+      // → pas de race condition avec le early-return <Navigate>
+      const rolePath = await login(data.email, data.password, accountType)
       navigate(rolePath, { replace: true })
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || 'Email ou mot de passe incorrect'
+      // Erreur de rôle (ROLE_MISMATCH) ou identifiants incorrects
+      const msg = (err as any)?.code === 'ROLE_MISMATCH'
+        ? err.message
+        : err?.response?.data?.detail || 'Email ou mot de passe incorrect'
       setError(msg)
     }
   }
