@@ -54,6 +54,7 @@ function TicketsTab({
   const [reply, setReply] = useState('')
   const [isSending, setIsSending] = useState(false)
   const [newStatus, setNewStatus] = useState<string>('')
+  const [statusError, setStatusError] = useState('')
 
   const listFn: FetchFn = fetchFn ?? ((params) => ticketsApi.list({ ...params, limit: 100 }))
 
@@ -89,12 +90,17 @@ function TicketsTab({
 
   const handleStatusChange = async (status: string) => {
     if (!selected) return
+    setStatusError('')
     try {
       await ticketsApi.update(selected.id, { status: status as any })
       setNewStatus(status)
       await loadDetail(selected.id)
       await load(filter)
-    } catch { /* */ }
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail ?? 'Erreur lors de la mise à jour du statut'
+      setStatusError(msg)
+      setTimeout(() => setStatusError(''), 4000)
+    }
   }
 
   const openCount = tickets.filter(t => t.status === 'open').length
@@ -204,29 +210,34 @@ function TicketsTab({
                       </span>
                     </div>
                   </div>
-                  {readOnly ? (
-                    (() => {
-                      const sc = STATUS_CONFIG[newStatus] ?? STATUS_CONFIG.open
-                      const Icon = sc.icon
-                      return (
-                        <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0"
-                          style={{ color: sc.color, background: sc.bg }}>
-                          <Icon size={11} />{sc.label}
-                        </span>
-                      )
-                    })()
-                  ) : (
-                    <select
-                      value={newStatus}
-                      onChange={e => handleStatusChange(e.target.value)}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
-                      style={{ color: STATUS_CONFIG[newStatus]?.color }}
-                    >
-                      {Object.entries(STATUS_CONFIG).map(([value, cfg]) => (
-                        <option key={value} value={value}>{cfg.label}</option>
-                      ))}
-                    </select>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {readOnly ? (
+                      (() => {
+                        const sc = STATUS_CONFIG[newStatus] ?? STATUS_CONFIG.open
+                        const Icon = sc.icon
+                        return (
+                          <span className="flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0"
+                            style={{ color: sc.color, background: sc.bg }}>
+                            <Icon size={11} />{sc.label}
+                          </span>
+                        )
+                      })()
+                    ) : (
+                      <select
+                        value={newStatus}
+                        onChange={e => handleStatusChange(e.target.value)}
+                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
+                        style={{ color: STATUS_CONFIG[newStatus]?.color }}
+                      >
+                        {Object.entries(STATUS_CONFIG).map(([value, cfg]) => (
+                          <option key={value} value={value}>{cfg.label}</option>
+                        ))}
+                      </select>
+                    )}
+                    {statusError && (
+                      <p className="text-xs text-red-600 max-w-[180px] text-right">{statusError}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 

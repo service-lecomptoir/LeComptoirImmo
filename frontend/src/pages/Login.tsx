@@ -178,7 +178,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
 // ── Panneau droit — formulaire ────────────────────────────────────────────────
 export default function Login() {
   const navigate = useNavigate()
-  const { login, isLoading, isAuthenticated, user } = useAuthStore()
+  const { login, logout, isLoading, isAuthenticated, user } = useAuthStore()
 
   // Déjà connecté → redirect immédiat vers la page d'accueil du rôle
   if (isAuthenticated && user) {
@@ -194,10 +194,34 @@ export default function Login() {
     resolver: zodResolver(loginSchema),
   })
 
+  const ROLE_LABELS: Record<string, string> = {
+    admin: 'Gestionnaire (Admin)',
+    gestionnaire: 'Gestionnaire',
+    gestionnaire_proprio: 'Gestionnaire',
+    proprietaire: 'Propriétaire',
+    locataire: 'Locataire',
+  }
+
   const onSubmit = async (data: LoginForm) => {
     setError(null)
     try {
       const rolePath = await login(data.email, data.password)
+
+      // Vérifier que le rôle réel correspond au type de compte sélectionné
+      const loggedUser = useAuthStore.getState().user!
+      const role = loggedUser.role as string
+      const roleMatchesType =
+        (accountType === 'gestionnaire' && ['admin', 'gestionnaire', 'gestionnaire_proprio'].includes(role)) ||
+        (accountType === 'proprietaire' && role === 'proprietaire') ||
+        (accountType === 'locataire' && role === 'locataire')
+
+      if (!roleMatchesType) {
+        logout()
+        const realLabel = ROLE_LABELS[role] ?? role
+        setError(`Ce compte est un espace "${realLabel}". Veuillez sélectionner le bon type de compte.`)
+        return
+      }
+
       navigate(rolePath, { replace: true })
     } catch (err: any) {
       const msg = err?.response?.data?.detail || 'Email ou mot de passe incorrect'

@@ -112,7 +112,7 @@ class TicketService:
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(ticket, field, value)
         if data.status in (TicketStatus.CLOSED, TicketStatus.RESOLVED) and not ticket.closed_at:
-            ticket.closed_at = datetime.now(timezone.utc)
+            ticket.closed_at = datetime.utcnow()  # naive datetime — colonne TIMESTAMP WITHOUT TIME ZONE
         await db.flush()
         return ticket
 

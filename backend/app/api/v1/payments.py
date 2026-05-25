@@ -337,7 +337,7 @@ async def download_quittance(
         tenant = tenant_res.scalar_one_or_none()
         if not tenant or payment.tenant_id != tenant.id:
             raise HTTPException(status_code=403, detail="Accès non autorisé")
-    elif role not in (Role.ADMIN, Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LECTURE, Role.COMPTABLE):
+    elif role not in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO, Role.PROPRIETAIRE, Role.LECTURE, Role.COMPTABLE):
         raise HTTPException(status_code=403, detail="Accès non autorisé")
 
     if payment.status not in (PaymentStatus.PAID, PaymentStatus.PARTIAL):
