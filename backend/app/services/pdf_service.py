@@ -89,8 +89,15 @@ class AvisEcheancePDFService:
                 select(Property).where(Property.id == avis_full.unit.property_id)
             )).scalar_one_or_none()
 
+        from datetime import date as _date
+        _MONTHS_FR = ["janvier","février","mars","avril","mai","juin",
+                      "juillet","août","septembre","octobre","novembre","décembre"]
+        _d = _date.today()
+        today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
+
         html = render_template("avis_echeance.html.j2", {
             "avis": avis_full,
             "property": property_obj,
+            "today": today_fr,
         })
         return html_to_pdf(html)

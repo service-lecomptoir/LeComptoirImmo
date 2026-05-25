@@ -3,93 +3,107 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    @page { size: A4; margin: 1.5cm 2cm; }
-    body { font-family: Arial, sans-serif; font-size: 9.5pt; color: #111; line-height: 1.4; }
+    @page { size: A4; margin: 2cm 2.5cm; }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #111; line-height: 1.55; }
     table { width: 100%; border-collapse: collapse; }
-    h1 { font-size: 14pt; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 6px 0 2px 0; color: #1e3a5f; }
-    .subtitle { text-align: center; font-size: 9pt; color: #555; margin-bottom: 10px; }
-    hr { border: none; border-top: 2px solid #1e3a5f; margin: 8px 0 12px 0; }
-    .ref-line { font-size: 8.5pt; color: #888; }
-    .lbl { font-size: 8pt; color: #777; text-transform: uppercase; margin-bottom: 2px; }
-    .pname { font-weight: bold; font-size: 10pt; }
-    .pdetail { font-size: 8.5pt; color: #444; }
-    .due-box { background: #fff7ed; border: 1px solid #fed7aa; padding: 6px 10px; margin: 10px 0; }
-    .sec { font-size: 8.5pt; font-weight: bold; color: #1e3a5f; border-left: 3px solid #1e3a5f; padding-left: 6px; margin: 10px 0 4px 0; }
-    .amt td { padding: 3px 8px; border-bottom: 1px solid #eee; font-size: 9.5pt; }
+
+    /* ── En-tête lettre ── */
+    .logo-name { font-size: 13pt; font-weight: bold; color: #1e3a5f; border-left: 4px solid #1e3a5f; padding-left: 8px; }
+    .sender-info { font-size: 9pt; color: #444; padding-left: 12px; margin-top: 4px; }
+    .recipient-name { font-size: 11pt; font-weight: bold; color: #111; text-align: right; }
+    .recipient-info { font-size: 9pt; color: #444; text-align: right; }
+    .city-date { font-size: 9pt; color: #444; text-align: right; margin-top: 6px; }
+
+    /* ── Objet ── */
+    .objet { font-size: 10pt; margin-top: 18px; margin-bottom: 4px; }
+    .objet strong { color: #1e3a5f; }
+
+    hr { border: none; border-top: 2px solid #1e3a5f; margin: 10px 0 14px 0; }
+
+    /* ── Titre centré ── */
+    h1 { font-size: 12pt; text-align: center; text-transform: uppercase; letter-spacing: 1px; color: #1e3a5f; margin: 0 0 4px 0; }
+    .subtitle { text-align: center; font-size: 9pt; color: #555; margin-bottom: 14px; }
+
+    /* ── Tableaux montants ── */
+    .sec { font-size: 9pt; font-weight: bold; color: #1e3a5f; border-left: 3px solid #1e3a5f; padding-left: 6px; margin: 12px 0 5px 0; }
+    .amt td { padding: 4px 10px; border-bottom: 1px solid #eee; font-size: 10pt; }
     .amt td.r { text-align: right; }
     .amt tr.tot td { font-weight: bold; background: #eef2f7; border-top: 2px solid #1e3a5f; }
+
+    /* ── Formule de politesse ── */
+    .closing { font-size: 9pt; color: #555; margin-top: 16px; text-align: center; }
+
+    /* ── Pied ── */
     .legal { font-size: 7.5pt; color: #aaa; margin-top: 14px; border-top: 1px solid #e5e5e5; padding-top: 6px; }
   </style>
 </head>
 <body>
 
-  <table>
+  <!-- ── En-tête lettre (logo gauche / destinataire droite) ── -->
+  <table style="margin-bottom: 14px;">
     <tr>
-      <td><strong>LeComptoirImmo</strong> — Gestion locative</td>
-      <td style="text-align:right;" class="ref-line">
-        Réf.&nbsp;{{ avis.id | string | truncate(8, end='') }}
-        &nbsp;|&nbsp;{{ avis.created_at.strftime('%d/%m/%Y') }}
-        {% if avis.status == 'acquitte' %}&nbsp;|&nbsp;<strong style="color:#16a34a;">Acquitté</strong>
-        {% elif avis.status == 'envoye' %}&nbsp;|&nbsp;<strong style="color:#2563eb;">Envoyé</strong>
-        {% else %}&nbsp;|&nbsp;Brouillon{% endif %}
+      <td style="width: 52%; vertical-align: top; padding-right: 16px;">
+        <div class="logo-name">LeComptoirImmo</div>
+        <div class="sender-info">
+          {% if property %}
+          {{ property.owner_name }}<br>
+          {{ property.full_address }}
+          {% else %}
+          Gestion locative
+          {% endif %}
+        </div>
       </td>
-    </tr>
-  </table>
-
-  <h1>Avis d'échéance</h1>
-  <p class="subtitle">{{ avis.period_label }}</p>
-  <hr>
-
-  <table style="margin-bottom:10px;">
-    <tr>
-      <td style="width:50%; vertical-align:top; padding-right:12px; border-right:1px solid #ddd;">
-        <div class="lbl">Bailleur / Gestionnaire</div>
-        {% if property %}
-        <div class="pname">{{ property.name }}</div>
-        <div class="pdetail">{{ property.full_address }}</div>
-        {% if property.owner_name %}<div class="pdetail">Propriétaire : {{ property.owner_name }}</div>{% endif %}
-        {% else %}
-        <div class="pname">—</div>
-        {% endif %}
-      </td>
-      <td style="width:50%; vertical-align:top; padding-left:12px;">
-        <div class="lbl">Locataire</div>
-        <div class="pname">{{ avis.tenant.full_name if avis.tenant else '—' }}</div>
-        <div class="pdetail">
-          Logement : {{ avis.unit.unit_ref if avis.unit else '—' }}
-          {% if property %} — {{ property.full_address }}{% endif %}
+      <td style="width: 48%; vertical-align: top; padding-left: 16px;">
+        <div class="recipient-name">{{ avis.tenant.full_name if avis.tenant else '—' }}</div>
+        <div class="recipient-info">
+          {{ avis.unit.unit_ref if avis.unit else '' }}<br>
+          {% if property %}{{ property.full_address }}{% endif %}
+        </div>
+        <div class="city-date">
+          {% if property and property.city %}{{ property.city }}, {% endif %}le {{ today }}
         </div>
       </td>
     </tr>
   </table>
 
-  <div class="due-box">
-    Loyer à régler avant le : <strong>{{ avis.due_date.strftime('%d/%m/%Y') }}</strong>
-    {% if avis.lease and avis.lease.payment_method %}
-    &nbsp;&mdash;&nbsp;{% if avis.lease.payment_method == 'virement' %}Virement bancaire
-    {% elif avis.lease.payment_method == 'cheque' %}Chèque
-    {% elif avis.lease.payment_method == 'prelevement' %}Prélèvement automatique
-    {% else %}Espèces{% endif %}
-    {% endif %}
+  <!-- ── Objet ── -->
+  <div class="objet">
+    <strong>Objet :</strong> Avis d'échéance — {{ avis.period_label if avis.period_label else '' }}
   </div>
 
-  <div class="sec">Détail de l'appel de loyer</div>
+  <hr>
+
+  <!-- ── Titre ── -->
+  <h1>Avis d'échéance</h1>
+  <p class="subtitle">{{ avis.period_label if avis.period_label else '' }}</p>
+
+  <!-- ── Détail ── -->
+  <div class="sec">Détail du loyer</div>
   <table class="amt">
-    <tr><td>Loyer hors charges</td><td class="r">{{ "%.2f"|format(avis.amount_rent|float) }} €</td></tr>
-    <tr><td>Provisions sur charges</td><td class="r">{{ "%.2f"|format(avis.amount_charges|float) }} €</td></tr>
-    {% if avis.amount_apl %}
-    <tr><td>Déduction APL (tiers-payant CAF)</td><td class="r">- {{ "%.2f"|format(avis.amount_apl|float) }} €</td></tr>
+    <tr><td>Loyer hors charges</td><td class="r">{{ "%.2f" | format(avis.amount_rent | float) }} €</td></tr>
+    <tr><td>Charges récupérables</td><td class="r">{{ "%.2f" | format(avis.amount_charges | float) }} €</td></tr>
+    {% if avis.amount_apl and avis.amount_apl | float > 0 %}
+    <tr><td>Déduction APL (tiers-payant CAF)</td><td class="r">- {{ "%.2f" | format(avis.amount_apl | float) }} €</td></tr>
     {% endif %}
-    <tr class="tot"><td>Total à payer</td><td class="r">{{ "%.2f"|format(avis.amount_total|float) }} €</td></tr>
+    <tr class="tot"><td>Total à régler</td><td class="r">{{ "%.2f" | format(avis.amount_due | float) }} €</td></tr>
   </table>
 
-  {% if avis.notes %}
-  <p style="font-size:9pt; margin-top:8px; color:#444;">{{ avis.notes }}</p>
+  {% if avis.due_date %}
+  <div class="sec">Date limite de paiement</div>
+  <table class="amt">
+    <tr><td>À régler avant le</td><td class="r">{{ avis.due_date.strftime('%d/%m/%Y') }}</td></tr>
+  </table>
   {% endif %}
 
+  <!-- ── Formule de politesse ── -->
+  <p class="closing">
+    Nous vous remercions de bien vouloir procéder au règlement de cette somme dans les délais impartis.<br>
+    Pour toute question, n'hésitez pas à nous contacter.
+  </p>
+
   <div class="legal">
-    Cet avis d'échéance est établi conformément aux dispositions du bail en vigueur. Il ne constitue pas une quittance de loyer.
-    La quittance vous sera remise après encaissement du paiement. Document généré par LeComptoirImmo.
+    Document généré par LeComptoirImmo — Gestion locative.
+    Cet avis d'échéance est établi conformément aux dispositions du bail en vigueur.
   </div>
 
 </body>
