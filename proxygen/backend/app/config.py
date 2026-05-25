@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
+    # ── Internal API (service-to-service LeCI → ProxyGen) ────────────────────
+    INTERNAL_API_KEY: str = "lecomptoir-internal-dev-key-change-in-production"
+
     # ── First Admin ──────────────────────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@proxygen.fr"
     FIRST_ADMIN_PASSWORD: str = "ProxyGen1!"

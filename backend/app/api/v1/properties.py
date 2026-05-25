@@ -74,38 +74,32 @@ async def create_property(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    # ── Vérification limite de biens ProxyGen ─────────────────────────────────
+    # ── Vérification limite de biens via ProxyGen ─────────────────────────────
     from fastapi import HTTPException
-    from sqlalchemy import text as sa_text
     import logging
     _log = logging.getLogger(__name__)
 
     role = Role(current_user.role)
     if role in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
-        effective_limit: int | None = 0  # défaut : bloqué si pas de licence
         try:
-            lic_row = (await db.execute(
-                sa_text(
-                    "SELECT property_limit_override, plan_id FROM proxygen_licenses "
-                    "WHERE gestionnaire_user_id = :uid"
-                ).bindparams(uid=current_user.id)
-            )).fetchone()
-
-            if lic_row is None:
-                # Aucune licence → limite 0, accès refusé
+            import httpx
+            from app.config import get_settings as _cfg_fn
+            _cfg = _cfg_fn()
+            async with httpx.AsyncClient(timeout=5.0) as _hc:
+                _resp = await _hc.get(
+                    f"{_cfg.PROXYGEN_URL}/api/v1/internal/license/{current_user.id}",
+                    headers={"X-Internal-Key": _cfg.PROXYGEN_INTERNAL_KEY},
+                )
+            if _resp.status_code == 404:
                 raise HTTPException(
                     status_code=403,
                     detail="Aucune licence ProxyGen associée à votre compte. Contactez l'administrateur."
                 )
+            if _resp.status_code != 200:
+                raise HTTPException(status_code=503, detail="Service de licences indisponible. Réessayez.")
 
-            effective_limit = lic_row[0]  # property_limit_override prioritaire
-            if effective_limit is None and lic_row[1]:
-                plan_row = (await db.execute(
-                    sa_text("SELECT property_limit FROM proxygen_plans WHERE id = :plan_id")
-                    .bindparams(plan_id=lic_row[1])
-                )).fetchone()
-                if plan_row:
-                    effective_limit = plan_row[0]  # None = illimité
+            _lic = _resp.json()
+            effective_limit: int | None = _lic.get("property_limit")
 
             if effective_limit is not None:
                 current_count = (await db.execute(

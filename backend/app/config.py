@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
+    # ── ProxyGen internal API ─────────────────────────────────────────────────
+    PROXYGEN_URL: str = "http://localhost:8001"
+    PROXYGEN_INTERNAL_KEY: str = "lecomptoir-internal-dev-key-change-in-production"
+
     # ── First Admin ──────────────────────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@locataire-cloud.fr"
     FIRST_ADMIN_PASSWORD: str = "Admin1234!"
