@@ -1,6 +1,7 @@
 """
 Tests API — Gestion des utilisateurs.
 """
+import uuid
 import pytest
 from tests.conftest import auth
 
@@ -12,9 +13,11 @@ class TestUserList:
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    async def test_gestionnaire_cannot_list_users(self, client, gestionnaire_token):
+    async def test_gestionnaire_can_list_users(self, client, gestionnaire_token):
+        # Gestionnaire peut lister (restreint à proprio/locataire dans sa portée)
         resp = await client.get("/api/v1/users", headers=auth(gestionnaire_token))
-        assert resp.status_code == 403
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
 
     async def test_locataire_cannot_list_users(self, client, locataire_token):
         resp = await client.get("/api/v1/users", headers=auth(locataire_token))
@@ -40,12 +43,23 @@ class TestUserCreate:
         assert data["role"] == "gestionnaire"
         assert "hashed_password" not in data
 
-    async def test_gestionnaire_cannot_create_user(self, client, gestionnaire_token):
+    async def test_gestionnaire_can_create_locataire(self, client, gestionnaire_token):
+        # Gestionnaire peut créer un locataire ou propriétaire (pas admin/gestionnaire)
         resp = await client.post("/api/v1/users", headers=auth(gestionnaire_token), json={
-            "email": "forbidden@test.fr",
-            "password": "Pass1!",
-            "full_name": "X",
+            "email": f"loc_{uuid.uuid4().hex[:8]}@test.fr",
+            "password": "LocPass1!",
+            "full_name": "Nouveau Locataire",
             "role": "locataire",
+        })
+        assert resp.status_code == 201
+
+    async def test_gestionnaire_cannot_create_admin(self, client, gestionnaire_token):
+        # Gestionnaire ne peut pas créer un admin
+        resp = await client.post("/api/v1/users", headers=auth(gestionnaire_token), json={
+            "email": f"adm_{uuid.uuid4().hex[:8]}@test.fr",
+            "password": "AdminPass1!",
+            "full_name": "Hack Admin",
+            "role": "admin",
         })
         assert resp.status_code == 403
 

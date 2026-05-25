@@ -67,7 +67,7 @@ class NotificationService:
         if not notif:
             raise NotFoundException("Notification introuvable")
         notif.is_read = True
-        notif.read_at = datetime.now(timezone.utc)
+        notif.read_at = datetime.utcnow()
         await db.flush()
         await db.refresh(notif)
         return notif
@@ -81,7 +81,7 @@ class NotificationService:
             )
         )
         notifs = result.scalars().all()
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         for n in notifs:
             n.is_read = True
             n.read_at = now

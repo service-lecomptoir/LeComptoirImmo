@@ -11,6 +11,7 @@ Stratégie d'isolation :
 import asyncio
 import uuid
 from typing import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -19,8 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 
 # ── Configuration test ────────────────────────────────────────────────────────
 TEST_DB_URL = (
-    "postgresql+asyncpg://locataire_user:devpassword123"
-    "@localhost:5432/locataire_cloud_test"
+    "postgresql+asyncpg://lecomptoirimmo_user:devpassword123"
+    "@localhost:5432/lecomptoirimmo"
 )
 
 test_engine = create_async_engine(TEST_DB_URL, echo=False)
@@ -71,6 +72,45 @@ async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
+
+
+# ── Mock ProxyGen (évite les appels HTTP réels vers ProxyGen lors des tests) ──
+# Les utilisateurs de test n'ont pas de licence ProxyGen. Ce mock retourne
+# une licence valide sans limite pour tous les appels httpx vers ProxyGen.
+_PROXYGEN_MOCK_LICENSE = {
+    "is_blocked": False,
+    "property_limit": None,
+    "plan_name": "TestPlan",
+    "gestionnaire_user_id": "00000000-0000-0000-0000-000000000000",
+}
+
+
+class _MockHttpxResponse:
+    status_code = 200
+
+    def json(self):
+        return _PROXYGEN_MOCK_LICENSE
+
+
+class _MockHttpxClient:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        pass
+
+    async def get(self, *args, **kwargs):
+        return _MockHttpxResponse()
+
+    async def post(self, *args, **kwargs):
+        return _MockHttpxResponse()
+
+
+@pytest.fixture(autouse=True)
+def mock_proxygen_http():
+    """Bypass all outbound httpx calls to ProxyGen in tests."""
+    with patch("httpx.AsyncClient", return_value=_MockHttpxClient()):
+        yield
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -140,3 +180,23 @@ async def proprietaire_token(client, proprietaire_user):
 @pytest_asyncio.fixture
 async def locataire_token(client, locataire_user):
     return await _get_token(client, locataire_user.email, "LocPass1!")
+
+
+@pytest_asyncio.fixture
+async def gp_user(db):
+    return await _create_user(db, f"gp_{uuid.uuid4().hex[:8]}@test.fr", "GpPass1!", "gestionnaire_proprio")
+
+
+@pytest_asyncio.fixture
+async def gp_token(client, gp_user):
+    return await _get_token(client, gp_user.email, "GpPass1!")
+
+
+@pytest_asyncio.fixture
+async def gp_user2(db):
+    return await _create_user(db, f"gp2_{uuid.uuid4().hex[:8]}@test.fr", "GpPass1!", "gestionnaire_proprio")
+
+
+@pytest_asyncio.fixture
+async def gp_token2(client, gp_user2):
+    return await _get_token(client, gp_user2.email, "GpPass1!")

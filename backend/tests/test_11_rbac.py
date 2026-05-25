@@ -29,13 +29,18 @@ class TestRBACProperties:
 
 @pytest.mark.asyncio
 class TestRBACUsers:
-    async def test_only_admin_can_manage_users(
-        self, client, admin_token, gestionnaire_token, locataire_token, proprietaire_token
+    async def test_admin_and_gestionnaire_can_list_users(
+        self, client, admin_token, gestionnaire_token
     ):
-        # Admin → 200
+        # Admin → liste complète
         assert (await client.get("/api/v1/users", headers=auth(admin_token))).status_code == 200
-        # Autres → 403
-        for token in [gestionnaire_token, locataire_token, proprietaire_token]:
+        # Gestionnaire → liste restreinte (proprio + locataire de sa portée)
+        assert (await client.get("/api/v1/users", headers=auth(gestionnaire_token))).status_code == 200
+
+    async def test_non_gestionnaire_cannot_list_users(
+        self, client, locataire_token, proprietaire_token
+    ):
+        for token in [locataire_token, proprietaire_token]:
             resp = await client.get("/api/v1/users", headers=auth(token))
             assert resp.status_code == 403
 
