@@ -25,6 +25,7 @@ from app.schemas.avis_echeance import (
     AvisEcheanceSummary,
     GenerateMonthlyResult,
     AvisEcheancePatchApl,
+    AvisEcheancePatch,
 )
 from app.core.exceptions import ConflictException, NotFoundException
 
@@ -306,6 +307,48 @@ async def delete_avis(
             )
         await AvisEcheanceService.delete(db, avis_id)
         await db.commit()
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.patch("/{avis_id}")
+async def patch_avis(
+    avis_id: uuid.UUID,
+    body: AvisEcheancePatch,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Modifie les montants, la date d'échéance ou les notes d'un avis."""
+    _require_manager(current_user)
+    try:
+        avis = await AvisEcheanceService.patch(
+            db, avis_id,
+            amount_rent=body.amount_rent,
+            amount_charges=body.amount_charges,
+            amount_apl=body.amount_apl,
+            due_date=body.due_date,
+            notes=body.notes,
+        )
+        await db.commit()
+        avis = await AvisEcheanceService.get_by_id(db, avis.id)
+        return _avis_to_summary(avis)
+    except NotFoundException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/{avis_id}/relancer")
+async def relancer_avis(
+    avis_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remet un avis en brouillon pour le modifier et le renvoyer."""
+    _require_manager(current_user)
+    try:
+        avis = await AvisEcheanceService.relancer(db, avis_id)
+        await db.commit()
+        avis = await AvisEcheanceService.get_by_id(db, avis.id)
+        return _avis_to_summary(avis)
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 

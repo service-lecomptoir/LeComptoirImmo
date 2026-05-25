@@ -33,6 +33,15 @@ class AvisEcheancePatchApl(BaseModel):
     apl_amount: Optional[float] = None  # None = supprimer l'APL
 
 
+class AvisEcheancePatch(BaseModel):
+    """Modification complète d'un avis d'échéance."""
+    amount_rent: Optional[float] = None
+    amount_charges: Optional[float] = None
+    amount_apl: Optional[float] = None
+    due_date: Optional[date] = None
+    notes: Optional[str] = None
+
+
 class AvisEcheaneBulkGenerateIn(BaseModel):
     """Génération en masse pour un mois donné."""
     period_year: int

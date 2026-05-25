@@ -80,6 +80,20 @@ export const avisEcheancesApi = {
     return apiClient.patch<AvisEcheanceSummary>(`/avis-echeances/${id}/apl`, { apl_amount })
   },
 
+  patch(id: string, body: {
+    amount_rent?: number | null
+    amount_charges?: number | null
+    amount_apl?: number | null
+    due_date?: string | null
+    notes?: string | null
+  }) {
+    return apiClient.patch<AvisEcheanceSummary>(`/avis-echeances/${id}`, body)
+  },
+
+  relancer(id: string) {
+    return apiClient.post<AvisEcheanceSummary>(`/avis-echeances/${id}/relancer`)
+  },
+
   delete(id: string) {
     return apiClient.delete(`/avis-echeances/${id}`)
   },
@@ -87,5 +101,21 @@ export const avisEcheancesApi = {
   pdfUrl(id: string): string {
     const base = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
     return `${base}/api/v1/avis-echeances/${id}/pdf`
+  },
+}
+
+export interface SchedulerConfig {
+  day: number
+  hour: number
+  minute: number
+  next_run: string | null
+}
+
+export const schedulerApi = {
+  getConfig() {
+    return apiClient.get<SchedulerConfig>('/settings/scheduler')
+  },
+  updateConfig(body: { day: number; hour: number; minute: number }) {
+    return apiClient.put<SchedulerConfig>('/settings/scheduler', body)
   },
 }

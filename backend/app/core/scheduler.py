@@ -131,7 +131,7 @@ async def _job_generate_monthly_avis() -> None:
             logger.error(f"[Scheduler] email_monthly_avis error: {exc}")
 
 
-def start_scheduler() -> None:
+def start_scheduler(avis_day: int = 1, avis_hour: int = 7, avis_minute: int = 30) -> None:
     scheduler = get_scheduler()
 
     scheduler.add_job(
@@ -157,14 +157,29 @@ def start_scheduler() -> None:
     )
     scheduler.add_job(
         _job_generate_monthly_avis,
-        CronTrigger(day=1, hour=7, minute=30),
+        CronTrigger(day=avis_day, hour=avis_hour, minute=avis_minute),
         id="generate_monthly_avis",
         replace_existing=True,
         misfire_grace_time=3600,
     )
 
     scheduler.start()
-    logger.info("[Scheduler] Démarré — 4 tâches planifiées")
+    logger.info(
+        "[Scheduler] Démarré — 4 tâches planifiées (avis: jour=%d %02d:%02d)",
+        avis_day, avis_hour, avis_minute,
+    )
+
+
+def reschedule_avis_job(day: int, hour: int, minute: int) -> None:
+    """Reschedule dynamiquement le job avis d'échéance (appelé depuis l'API settings)."""
+    scheduler = get_scheduler()
+    if not scheduler.running:
+        return
+    scheduler.reschedule_job(
+        "generate_monthly_avis",
+        trigger=CronTrigger(day=day, hour=hour, minute=minute, timezone="Europe/Paris"),
+    )
+    logger.info("[Scheduler] Job avis reschedulé → jour=%d %02d:%02d", day, hour, minute)
 
 
 def stop_scheduler() -> None:

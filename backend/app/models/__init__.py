@@ -15,6 +15,7 @@ from app.models.ticket import Ticket, TicketMessage
 from app.models.entretien import Prestataire, Entretien
 from app.models.message import ProprietaireMessage
 from app.models.audit_log import AuditLog
+from app.models.app_setting import AppSetting
 
 __all__ = [
     "User", "Tenant", "Property", "Unit", "Document",

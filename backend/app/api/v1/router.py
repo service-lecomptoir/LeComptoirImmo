@@ -4,7 +4,7 @@ from app.api.v1 import (
     leases, inspections, payments, letters, notifications,
     avis_echeances, contacts, automation, templates, dashboard,
     tickets, entretiens, messages, proprietaire_perf, offers, subscription,
-    webhook, audit,
+    webhook, audit, settings,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -33,3 +33,4 @@ api_router.include_router(offers.router)
 api_router.include_router(subscription.router)
 api_router.include_router(webhook.router)
 api_router.include_router(audit.router)
+api_router.include_router(settings.router)

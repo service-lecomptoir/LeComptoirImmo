@@ -46,9 +46,17 @@ async def lifespan(app: FastAPI):
     logger.info("Vérification des comptes par défaut...")
     await _seed_default_users()
 
-    # Démarre le scheduler de tâches automatiques
+    # Démarre le scheduler de tâches automatiques (lit la config depuis la DB)
     logger.info("Démarrage du scheduler...")
-    start_scheduler()
+    avis_day, avis_hour, avis_minute = 1, 7, 30
+    try:
+        async with AsyncSessionLocal() as _db:
+            from app.services.settings_service import get_scheduler_config
+            _cfg = await get_scheduler_config(_db)
+            avis_day, avis_hour, avis_minute = _cfg["day"], _cfg["hour"], _cfg["minute"]
+    except Exception as _exc:
+        logger.warning(f"Lecture config scheduler ignorée : {_exc}")
+    start_scheduler(avis_day=avis_day, avis_hour=avis_hour, avis_minute=avis_minute)
 
     logger.info("Application prête ✓")
     yield
@@ -135,9 +143,13 @@ async def _apply_column_migrations() -> None:
         # Quittances sur les paiements
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_generated_at TIMESTAMPTZ",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_sent_at TIMESTAMPTZ",
-        # Audit trail (014)
+        # Isolation contacts/automatisation (013)
         "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL",
         "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL",
+        # App settings seed (015)
+        "INSERT INTO app_settings (key, value) VALUES ('avis_generation_day', '1') ON CONFLICT DO NOTHING",
+        "INSERT INTO app_settings (key, value) VALUES ('avis_generation_hour', '7') ON CONFLICT DO NOTHING",
+        "INSERT INTO app_settings (key, value) VALUES ('avis_generation_minute', '30') ON CONFLICT DO NOTHING",
     ]
     try:
         async with engine.begin() as conn:

@@ -3,9 +3,10 @@ import axios from 'axios'
 import {
   Zap, Plus, Trash2, Edit2, ToggleLeft, ToggleRight,
   Mail, MessageSquare, Bell, Calendar, Send,
-  CheckCircle, Clock, AlertTriangle, Users
+  CheckCircle, Clock, AlertTriangle, Users, Settings, RefreshCw,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { schedulerApi, avisEcheancesApi } from '@/api/avis_echeances'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -298,10 +299,61 @@ export default function Automatisation() {
   const [rules, setRules] = useState<Rule[]>([])
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'rules' | 'logs'>('rules')
+  const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'scheduler'>('rules')
   const [showRuleModal, setShowRuleModal] = useState(false)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [editRule, setEditRule] = useState<Rule | null>(null)
+
+  // ── Scheduler state ──────────────────────────────────────────────────────────
+  const [schedulerDay, setSchedulerDay] = useState(1)
+  const [schedulerHour, setSchedulerHour] = useState(7)
+  const [schedulerMinute, setSchedulerMinute] = useState(30)
+  const [schedulerNextRun, setSchedulerNextRun] = useState<string | null>(null)
+  const [schedulerSaving, setSchedulerSaving] = useState(false)
+  const [schedulerMsg, setSchedulerMsg] = useState('')
+  const [generatingBulk, setGeneratingBulk] = useState(false)
+  const [bulkMsg, setBulkMsg] = useState('')
+
+  const loadScheduler = async () => {
+    try {
+      const { data } = await schedulerApi.getConfig()
+      setSchedulerDay(data.day)
+      setSchedulerHour(data.hour)
+      setSchedulerMinute(data.minute)
+      setSchedulerNextRun(data.next_run)
+    } catch {}
+  }
+
+  const saveScheduler = async () => {
+    setSchedulerSaving(true); setSchedulerMsg('')
+    try {
+      const { data } = await schedulerApi.updateConfig({ day: schedulerDay, hour: schedulerHour, minute: schedulerMinute })
+      setSchedulerNextRun(data.next_run)
+      setSchedulerMsg('Configuration enregistrée et scheduler mis à jour.')
+      setTimeout(() => setSchedulerMsg(''), 4000)
+    } catch (e: any) {
+      setSchedulerMsg('Erreur : ' + (e?.response?.data?.detail ?? 'inconnue'))
+    } finally {
+      setSchedulerSaving(false)
+    }
+  }
+
+  const triggerBulkNow = async () => {
+    const now = new Date()
+    setGeneratingBulk(true); setBulkMsg('')
+    try {
+      const { data } = await avisEcheancesApi.generateMonthly({
+        period_year: now.getFullYear(),
+        period_month: now.getMonth() + 1,
+      })
+      setBulkMsg(data.message)
+      setTimeout(() => setBulkMsg(''), 5000)
+    } catch (e: any) {
+      setBulkMsg('Erreur : ' + (e?.response?.data?.detail ?? 'inconnue'))
+    } finally {
+      setGeneratingBulk(false)
+    }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -316,7 +368,7 @@ export default function Automatisation() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); loadScheduler() }, [])
 
   const toggleRule = async (id: string) => {
     await axios.post(`${API}/api/v1/automation/rules/${id}/toggle`, {}, {
@@ -400,16 +452,20 @@ export default function Automatisation() {
 
       {/* Tabs */}
       <div className="flex border-b mb-6">
-        {(['rules', 'logs'] as const).map(tab => (
-          <button key={tab}
-            onClick={() => setActiveTab(tab)}
+        {([
+          { key: 'rules', label: "Règles d'automatisation" },
+          { key: 'logs', label: 'Historique des envois' },
+          { key: 'scheduler', label: 'Planificateur' },
+        ] as const).map(tab => (
+          <button key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
+              activeTab === tab.key
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            {tab === 'rules' ? 'Règles d\'automatisation' : 'Historique des envois'}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -528,6 +584,130 @@ export default function Automatisation() {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* Onglet Planificateur ─────────────────────────────────────────── */}
+      {activeTab === 'scheduler' && (
+        <div className="max-w-2xl space-y-6">
+
+          {/* Config scheduler */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-5">
+              <Settings size={18} className="text-blue-600" />
+              <h2 className="text-base font-bold text-gray-900">Planification automatique des avis</h2>
+            </div>
+            <p className="text-sm text-gray-500 mb-5">
+              Le planificateur génère automatiquement les avis d'échéance pour tous les baux actifs chaque mois
+              à l'heure configurée. Seuls les baux sans avis existant pour la période sont traités.
+            </p>
+
+            <div className="grid grid-cols-3 gap-4 mb-5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Jour du mois</label>
+                <select
+                  value={schedulerDay}
+                  onChange={e => setSchedulerDay(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">1 à 28 (sûr pour tous les mois)</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Heure</label>
+                <select
+                  value={schedulerHour}
+                  onChange={e => setSchedulerHour(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Array.from({ length: 24 }, (_, i) => i).map(h => (
+                    <option key={h} value={h}>{String(h).padStart(2, '0')}h</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Minute</label>
+                <select
+                  value={schedulerMinute}
+                  onChange={e => setSchedulerMinute(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {[0, 15, 30, 45].map(m => (
+                    <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {schedulerNextRun && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 flex items-center gap-2">
+                <Clock size={14} className="text-blue-500 shrink-0" />
+                <span className="text-sm text-blue-700">
+                  Prochaine exécution :{' '}
+                  <span className="font-semibold">
+                    {new Date(schedulerNextRun).toLocaleDateString('fr-FR', {
+                      weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </span>
+                </span>
+              </div>
+            )}
+
+            {schedulerMsg && (
+              <div className={`mb-4 px-4 py-2 rounded-lg text-sm border ${
+                schedulerMsg.startsWith('Erreur')
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-green-50 text-green-700 border-green-200'
+              }`}>
+                {schedulerMsg}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                onClick={saveScheduler}
+                disabled={schedulerSaving}
+                className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                <Settings size={14} />
+                {schedulerSaving ? 'Enregistrement…' : 'Enregistrer la planification'}
+              </button>
+            </div>
+          </div>
+
+          {/* Déclenchement manuel */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-3">
+              <RefreshCw size={18} className="text-purple-600" />
+              <h2 className="text-base font-bold text-gray-900">Lancer maintenant</h2>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Génère immédiatement les avis d'échéance pour le mois en cours (
+              {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}).
+              Les baux ayant déjà un avis pour ce mois sont ignorés.
+            </p>
+            {bulkMsg && (
+              <div className={`mb-4 px-4 py-2 rounded-lg text-sm border ${
+                bulkMsg.startsWith('Erreur')
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-green-50 text-green-700 border-green-200'
+              }`}>
+                {bulkMsg}
+              </div>
+            )}
+            <button
+              onClick={triggerBulkNow}
+              disabled={generatingBulk}
+              className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={generatingBulk ? 'animate-spin' : ''} />
+              {generatingBulk ? 'Génération en cours…' : 'Générer les avis du mois'}
+            </button>
+          </div>
         </div>
       )}
 

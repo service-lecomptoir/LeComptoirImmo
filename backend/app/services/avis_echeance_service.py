@@ -324,6 +324,47 @@ class AvisEcheanceService:
 
         return avis
 
+    @classmethod
+    async def patch(
+        cls,
+        db: AsyncSession,
+        avis_id: uuid.UUID,
+        amount_rent: Optional[float] = None,
+        amount_charges: Optional[float] = None,
+        amount_apl: Optional[float] = None,
+        due_date: Optional[date] = None,
+        notes: Optional[str] = None,
+    ) -> "AvisEcheance":
+        """Modifie un ou plusieurs champs d'un avis et recalcule le total."""
+        avis = await AvisEcheanceService.get_by_id(db, avis_id)
+        if amount_rent is not None:
+            avis.amount_rent = amount_rent
+        if amount_charges is not None:
+            avis.amount_charges = amount_charges
+        if amount_apl is not None:
+            avis.amount_apl = amount_apl if amount_apl > 0 else None
+        if due_date is not None:
+            avis.due_date = due_date
+        if notes is not None:
+            avis.notes = notes
+        # Recalcul du total
+        avis.amount_total = cls._compute_total(
+            float(avis.amount_rent),
+            float(avis.amount_charges),
+            float(avis.amount_apl) if avis.amount_apl else None,
+        )
+        await db.flush()
+        return avis
+
+    @staticmethod
+    async def relancer(db: AsyncSession, avis_id: uuid.UUID) -> "AvisEcheance":
+        """Remet un avis en statut brouillon pour permettre une nouvelle modification/envoi."""
+        avis = await AvisEcheanceService.get_by_id(db, avis_id)
+        avis.status = AvisEcheanceStatus.BROUILLON
+        avis.sent_at = None
+        await db.flush()
+        return avis
+
     @staticmethod
     async def delete(db: AsyncSession, avis_id: uuid.UUID) -> None:
         avis = await AvisEcheanceService.get_by_id(db, avis_id)

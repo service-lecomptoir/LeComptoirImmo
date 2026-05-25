@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   Calendar, Plus, Download, Send, CheckCircle,
-  Trash2, RefreshCw, Filter, Pencil, X,
+  Trash2, RefreshCw, Filter, Pencil, X, RotateCcw,
 } from 'lucide-react'
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { leasesApi } from '@/api/leases'
@@ -88,6 +88,110 @@ function EditAplModal({
         </div>
         {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
         <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+            Annuler
+          </button>
+          <button onClick={handle} disabled={loading}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            {loading ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Modale édition complète ───────────────────────────────────────────────────
+function EditAvisModal({
+  avis,
+  onClose,
+  onSaved,
+}: {
+  avis: AvisEcheanceSummary
+  onClose: () => void
+  onSaved: (updated: AvisEcheanceSummary) => void
+}) {
+  const [form, setForm] = useState({
+    amount_rent: String(avis.amount_rent ?? ''),
+    amount_charges: String(avis.amount_charges ?? ''),
+    amount_apl: avis.amount_apl != null ? String(avis.amount_apl) : '',
+    due_date: avis.due_date ? avis.due_date.split('T')[0] : '',
+    notes: avis.notes ?? '',
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handle = async () => {
+    setLoading(true); setError('')
+    try {
+      const { data } = await avisEcheancesApi.patch(avis.id, {
+        amount_rent: form.amount_rent ? parseFloat(form.amount_rent) : undefined,
+        amount_charges: form.amount_charges ? parseFloat(form.amount_charges) : undefined,
+        amount_apl: form.amount_apl.trim() !== '' ? parseFloat(form.amount_apl) : null,
+        due_date: form.due_date || undefined,
+        notes: form.notes || undefined,
+      })
+      onSaved(data)
+      onClose()
+    } catch (e: any) {
+      setError(e?.response?.data?.detail ?? 'Erreur lors de la sauvegarde')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const inp = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl p-5 w-full max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-900">Modifier l'avis d'échéance</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          <span className="font-medium text-gray-700">{avis.period_label} — {avis.tenant_full_name}</span>
+        </p>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Loyer HC (€)</label>
+              <input type="number" step="0.01" min="0" className={inp}
+                value={form.amount_rent}
+                onChange={e => setForm({ ...form, amount_rent: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Charges (€)</label>
+              <input type="number" step="0.01" min="0" className={inp}
+                value={form.amount_charges}
+                onChange={e => setForm({ ...form, amount_charges: e.target.value })} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Aide personnelle au logement (€) <span className="text-gray-400 font-normal">— vide = aucune</span></label>
+              <input type="number" step="0.01" min="0" className={inp}
+                value={form.amount_apl}
+                onChange={e => setForm({ ...form, amount_apl: e.target.value })}
+                placeholder="0.00" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Date d'échéance</label>
+              <input type="date" className={inp}
+                value={form.due_date}
+                onChange={e => setForm({ ...form, due_date: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Notes internes</label>
+            <textarea rows={2} className={inp + ' resize-none'}
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+              placeholder="Observations, commentaires…" />
+          </div>
+        </div>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <div className="flex justify-end gap-2 mt-4">
           <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
             Annuler
           </button>
@@ -347,6 +451,7 @@ export default function AvisEcheanceList() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
   const [editAplAvis, setEditAplAvis] = useState<AvisEcheanceSummary | null>(null)
+  const [editAvis, setEditAvis] = useState<AvisEcheanceSummary | null>(null)
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -377,6 +482,18 @@ export default function AvisEcheanceList() {
     setSuccessMsg('Avis marqué comme acquitté')
     setTimeout(() => setSuccessMsg(''), 3000)
     load()
+  }
+
+  const handleRelancer = async (id: string) => {
+    try {
+      await avisEcheancesApi.relancer(id)
+      setSuccessMsg('Avis remis en brouillon')
+      setTimeout(() => setSuccessMsg(''), 3000)
+      load()
+    } catch (e: any) {
+      setErrorMsg(e?.response?.data?.detail ?? 'Erreur lors de la relance')
+      setTimeout(() => setErrorMsg(''), 4000)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -560,14 +677,24 @@ export default function AvisEcheanceList() {
 
                       {isManager && (
                         <>
-                          {/* Modifier l'aide personnelle au logement */}
+                          {/* Modifier l'avis (montants, date, notes) */}
                           <button
-                            onClick={() => setEditAplAvis(a)}
-                            title="Modifier l'aide personnelle au logement"
+                            onClick={() => setEditAvis(a)}
+                            title="Modifier l'avis"
                             className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
                           >
                             <Pencil size={14} />
                           </button>
+                          {/* Relancer — remet en brouillon pour modification/renvoi */}
+                          {a.status !== 'brouillon' && (
+                            <button
+                              onClick={() => handleRelancer(a.id)}
+                              title="Relancer (remettre en brouillon)"
+                              className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-orange-600"
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
                           {a.status === 'brouillon' && (
                             <button
                               onClick={() => handleMarkSent(a.id)}
@@ -627,6 +754,18 @@ export default function AvisEcheanceList() {
             setAvis(prev => prev.map(a => a.id === updated.id ? updated : a))
             setEditAplAvis(null)
             setSuccessMsg('Aide personnelle au logement mise à jour')
+            setTimeout(() => setSuccessMsg(''), 3000)
+          }}
+        />
+      )}
+      {editAvis && (
+        <EditAvisModal
+          avis={editAvis}
+          onClose={() => setEditAvis(null)}
+          onSaved={(updated) => {
+            setAvis(prev => prev.map(a => a.id === updated.id ? updated : a))
+            setEditAvis(null)
+            setSuccessMsg('Avis mis à jour')
             setTimeout(() => setSuccessMsg(''), 3000)
           }}
         />
