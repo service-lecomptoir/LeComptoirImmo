@@ -180,10 +180,7 @@ export default function Login() {
   const navigate = useNavigate()
   const { login, logout, isLoading, isAuthenticated, user } = useAuthStore()
 
-  // Déjà connecté → redirect immédiat vers la page d'accueil du rôle
-  if (isAuthenticated && user) {
-    return <Navigate to={roleHomePath(user.role)} replace />
-  }
+  // ── Tous les hooks AVANT tout early return (règle React) ──────────────────
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [accountType, setAccountType] = useState<AccountType>('gestionnaire')
@@ -193,6 +190,11 @@ export default function Login() {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   })
+
+  // Déjà connecté → redirect immédiat vers la page d'accueil du rôle
+  if (isAuthenticated && user) {
+    return <Navigate to={roleHomePath(user.role)} replace />
+  }
 
   const ROLE_LABELS: Record<string, string> = {
     admin: 'Gestionnaire (Admin)',
