@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "ProxyGen"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
+    PORT: int = 8001  # Port d'écoute uvicorn (distinct du port 8000 de LeCI)
 
     # ── Security ─────────────────────────────────────────────────────────────
     SECRET_KEY: str = "proxygen-dev-secret-key-change-in-production"
