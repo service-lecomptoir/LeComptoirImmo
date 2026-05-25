@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2 } from 'lucide-react'
+import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Modal } from '@/components/common/Modal'
@@ -26,7 +26,7 @@ export default function PaymentList() {
   const [filterMonth, setFilterMonth] = useState(today.getMonth() + 1)
   const [isLoading, setIsLoading] = useState(true)
   const [recordingId, setRecordingId] = useState<string | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false) // eslint-disable-line @typescript-eslint/no-unused-vars
+
   const [sendingQuittanceId, setSendingQuittanceId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')

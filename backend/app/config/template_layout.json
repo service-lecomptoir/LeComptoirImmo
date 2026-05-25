@@ -1,0 +1,13 @@
+{
+  "header_left": ["logo", "sender"],
+  "header_right": ["recipient", "citydate"],
+  "spacing": {
+    "page_margin": "2cm 2.5cm",
+    "header_mb": 14,
+    "section_mb": 12,
+    "cell_padding_v": 4,
+    "cell_padding_h": 10,
+    "line_height": 1.55,
+    "font_size": 10
+  }
+}

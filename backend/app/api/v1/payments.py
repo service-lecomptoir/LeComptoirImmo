@@ -353,12 +353,17 @@ async def download_quittance(
         payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
 
     from datetime import date as _date
+    from app.services.template_layout_service import get_layout
     _MONTHS_FR = ["janvier","février","mars","avril","mai","juin",
                   "juillet","août","septembre","octobre","novembre","décembre"]
     _d = _date.today()
     today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
 
-    html = render_template("quittance.html.j2", {"payment": payment, "today": today_fr})
+    html = render_template("quittance.html.j2", {
+        "payment": payment,
+        "today": today_fr,
+        "layout": get_layout(),
+    })
     pdf_bytes = html_to_pdf(html)
 
     tenant_name = (

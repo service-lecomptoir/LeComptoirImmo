@@ -90,6 +90,7 @@ class AvisEcheancePDFService:
             )).scalar_one_or_none()
 
         from datetime import date as _date
+        from app.services.template_layout_service import get_layout
         _MONTHS_FR = ["janvier","février","mars","avril","mai","juin",
                       "juillet","août","septembre","octobre","novembre","décembre"]
         _d = _date.today()
@@ -99,5 +100,6 @@ class AvisEcheancePDFService:
             "avis": avis_full,
             "property": property_obj,
             "today": today_fr,
+            "layout": get_layout(),
         })
         return html_to_pdf(html)
