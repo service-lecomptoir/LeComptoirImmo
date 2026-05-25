@@ -15,9 +15,12 @@ from app.models.plan import ProxygenPlan
 from app.models.leci import LeciUser, LeciProperty
 from app.schemas.gestionnaire import GestionnaireCreate, GestionnaireUpdate, GestionnaireOut, GestionnairePropertyOut
 
-# Filtre OR pour les deux rôles gestionnaire
 def _manager_roles():
-    return or_(_manager_roles(), LeciUser.role_eq("gestionnaire_proprio"))
+    """Filtre WHERE couvrant les deux rôles gestionnaire de LeCI."""
+    return or_(
+        LeciUser.role_eq("gestionnaire"),
+        LeciUser.role_eq("gestionnaire_proprio"),
+    )
 from app.schemas.license import LicenseOut
 from app.schemas.plan import PlanOut
 from app.core.security import hash_password

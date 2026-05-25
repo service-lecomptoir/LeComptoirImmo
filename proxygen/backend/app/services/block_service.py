@@ -10,6 +10,7 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
+from sqlalchemy import or_
 from app.models.license import ProxygenLicense
 from app.models.leci import LeciUser, LeciProperty, LeciUnit, LeciTenant, LeciLease
 
@@ -39,36 +40,49 @@ async def _get_owner_user_ids(db: AsyncSession, property_ids: List[uuid.UUID]) -
 
 async def _get_tenant_user_ids(db: AsyncSession, property_ids: List[uuid.UUID]) -> List[uuid.UUID]:
     """
-    Retourne les IDs des locataires (via users) liés aux baux actifs
-    des logements appartenant à ces biens.
+    Retourne les IDs (users) des locataires liés aux baux actifs de ces biens.
+    Cherche via units ET via property_id direct pour couvrir tous les cas.
     """
     if not property_ids:
         return []
 
-    # units du bien
-    units_result = await db.execute(
-        select(LeciUnit.id).where(LeciUnit.property_id.in_(property_ids))
-    )
-    unit_ids = [row[0] for row in units_result.fetchall()]
-    if not unit_ids:
-        return []
+    tenant_ids: set[uuid.UUID] = set()
 
-    # baux actifs sur ces unités
-    leases_result = await db.execute(
+    # ── Path 1 : property_id direct sur le bail ───────────────────────────────
+    direct_result = await db.execute(
         select(LeciLease.tenant_id).where(
-            LeciLease.unit_id.in_(unit_ids),
+            LeciLease.property_id.in_(property_ids),
             LeciLease.is_active == True,
             LeciLease.tenant_id.isnot(None),
         )
     )
-    tenant_ids = [row[0] for row in leases_result.fetchall()]
+    for row in direct_result.fetchall():
+        if row[0]:
+            tenant_ids.add(row[0])
+
+    # ── Path 2 : via units ────────────────────────────────────────────────────
+    units_result = await db.execute(
+        select(LeciUnit.id).where(LeciUnit.property_id.in_(property_ids))
+    )
+    unit_ids = [row[0] for row in units_result.fetchall()]
+    if unit_ids:
+        unit_leases_result = await db.execute(
+            select(LeciLease.tenant_id).where(
+                LeciLease.unit_id.in_(unit_ids),
+                LeciLease.is_active == True,
+                LeciLease.tenant_id.isnot(None),
+            )
+        )
+        for row in unit_leases_result.fetchall():
+            if row[0]:
+                tenant_ids.add(row[0])
+
     if not tenant_ids:
         return []
 
-    # user_id des tenants
     users_result = await db.execute(
         select(LeciTenant.user_id).where(
-            LeciTenant.id.in_(tenant_ids),
+            LeciTenant.id.in_(list(tenant_ids)),
             LeciTenant.user_id.isnot(None),
         )
     )
@@ -93,12 +107,22 @@ async def block_gestionnaire(
     # 2. Trouver les propriétaires
     owner_user_ids = await _get_owner_user_ids(db, property_ids)
 
-    # 3. Trouver les locataires
+    # 3. Trouver les locataires (via baux)
     tenant_user_ids = await _get_tenant_user_ids(db, property_ids)
 
+    # 3b. Pour les GP : locataires créés directement (created_by = gestionnaire_id)
+    created_tenants_result = await db.execute(
+        select(LeciTenant.user_id).where(
+            LeciTenant.created_by == gestionnaire_id,
+            LeciTenant.user_id.isnot(None),
+        )
+    )
+    direct_tenant_user_ids = [row[0] for row in created_tenants_result.fetchall() if row[0]]
+
     # 4. Collecter tous les IDs à bloquer (sauf le gestionnaire lui-même)
-    # Pour gestionnaire_proprio, il est aussi owner → l'exclure de la cascade
-    all_cascade_ids = list(set(owner_user_ids + tenant_user_ids) - {gestionnaire_id})
+    all_cascade_ids = list(
+        set(owner_user_ids + tenant_user_ids + direct_tenant_user_ids) - {gestionnaire_id}
+    )
     logger.info(f"  {len(all_cascade_ids)} user(s) à bloquer en cascade")
 
     # 5. Désactiver le gestionnaire

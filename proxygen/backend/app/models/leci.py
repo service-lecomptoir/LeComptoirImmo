@@ -82,6 +82,7 @@ class LeciTenant(LeciBase):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     def __repr__(self) -> str:
         return f"<LeciTenant {self.id}>"
@@ -93,6 +94,9 @@ class LeciLease(LeciBase):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    property_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("properties.id"), nullable=True
+    )
     unit_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("units.id"), nullable=True
     )
