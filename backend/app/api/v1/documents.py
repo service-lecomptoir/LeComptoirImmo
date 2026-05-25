@@ -69,7 +69,46 @@ async def list_documents(
         entity_ids = prop_ids + unit_ids + [l.id for l in leases]
         return await DocumentService.list_for_entities(db, entity_ids, entity_type, limit, skip)
 
-    # ── Gestionnaire / Admin ───────────────────────────────────────────────────
+    # ── Gestionnaire propriétaire : uniquement ses propres entités ────────────
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        from app.models.property import Property
+        from app.models.unit import Unit
+        from app.models.lease import Lease
+        from app.models.tenant import Tenant
+
+        prop_ids = (await db.execute(
+            select(Property.id).where(Property.created_by == current_user.id)
+        )).scalars().all()
+
+        unit_ids, lease_ids = [], []
+        if prop_ids:
+            unit_ids = (await db.execute(
+                select(Unit.id).where(Unit.property_id.in_(prop_ids))
+            )).scalars().all()
+            lease_ids = (await db.execute(
+                select(Lease.id).where(Lease.property_id.in_(prop_ids))
+            )).scalars().all()
+
+        tenant_ids = (await db.execute(
+            select(Tenant.id).where(Tenant.created_by == current_user.id)
+        )).scalars().all()
+
+        entity_ids = list(prop_ids) + list(unit_ids) + list(lease_ids) + list(tenant_ids)
+        if not entity_ids:
+            return []
+        return await DocumentService.list_for_entities(db, entity_ids, entity_type, limit, skip)
+
+    # ── Gestionnaire mandataire : exclure les entités GP ──────────────────────
+    if role == Role.GESTIONNAIRE:
+        from app.api.v1._isolation import gp_property_ids, gp_unit_ids, gp_tenant_ids, gp_lease_ids
+        excl_props = await gp_property_ids(db)
+        excl_units = await gp_unit_ids(db)
+        excl_tenants = await gp_tenant_ids(db)
+        excl_leases = await gp_lease_ids(db)
+        excluded = excl_props | excl_units | excl_tenants | excl_leases
+        return await DocumentService.list_excluding_entities(db, excluded, entity_type, limit, skip)
+
+    # ── Admin ──────────────────────────────────────────────────────────────────
     return await DocumentService.list_all(db, entity_type, limit, skip)
 
 

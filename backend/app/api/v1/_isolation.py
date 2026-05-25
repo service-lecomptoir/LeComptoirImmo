@@ -33,6 +33,11 @@ async def _gp_user_ids(db: AsyncSession) -> list[uuid.UUID]:
     return list(result.scalars().all())
 
 
+async def gp_user_ids(db: AsyncSession) -> set[uuid.UUID]:
+    """IDs (set) de tous les gestionnaire_proprio — utile pour filtrer created_by."""
+    return set(await _gp_user_ids(db))
+
+
 async def gp_property_ids(db: AsyncSession) -> set[uuid.UUID]:
     """IDs des propriétés créées par des gestionnaire_proprio (via created_by)."""
     gp_ids = await _gp_user_ids(db)
@@ -51,6 +56,18 @@ async def gp_tenant_ids(db: AsyncSession) -> set[uuid.UUID]:
         return set()
     result = await db.execute(
         select(Tenant.id).where(Tenant.created_by.in_(gp_ids))
+    )
+    return set(result.scalars().all())
+
+
+async def gp_unit_ids(db: AsyncSession) -> set[uuid.UUID]:
+    """IDs des logements appartenant aux propriétés de gestionnaire_proprio."""
+    from app.models.unit import Unit
+    prop_ids = await gp_property_ids(db)
+    if not prop_ids:
+        return set()
+    result = await db.execute(
+        select(Unit.id).where(Unit.property_id.in_(prop_ids))
     )
     return set(result.scalars().all())
 

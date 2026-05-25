@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from enum import Enum
 
+
 from app.database import Base, TimestampMixin
 
 
@@ -50,6 +51,13 @@ class AutomationRule(Base, TimestampMixin):
 
     # Filtre optionnel
     filter_config: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
+    # Propriétaire de la règle (gestionnaire ou admin)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     def __repr__(self) -> str:
         return f"<AutomationRule {self.name}>"

@@ -1,7 +1,7 @@
 """Modèle Contact — carnet d'adresses prestataires et autres."""
 import uuid
 from typing import Optional
-from sqlalchemy import String, Text, Boolean
+from sqlalchemy import String, Text, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
@@ -56,6 +56,13 @@ class Contact(Base, TimestampMixin):
     website: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Propriétaire de la fiche (gestionnaire ou admin)
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     @property
     def full_name(self) -> str:

@@ -58,6 +58,24 @@ class DocumentService:
         return list(result.scalars().all())
 
     @staticmethod
+    async def list_excluding_entities(
+        db: AsyncSession,
+        excluded_entity_ids: set,
+        entity_type: Optional[EntityType] = None,
+        limit: int = 50,
+        skip: int = 0,
+    ) -> List[Document]:
+        """Retourne tous les documents sauf ceux liés aux entités exclues (isolation mandataire)."""
+        q = select(Document)
+        if excluded_entity_ids:
+            q = q.where(Document.entity_id.not_in(excluded_entity_ids))
+        if entity_type:
+            q = q.where(Document.entity_type == entity_type)
+        q = q.order_by(Document.created_at.desc()).offset(skip).limit(limit)
+        result = await db.execute(q)
+        return list(result.scalars().all())
+
+    @staticmethod
     async def list_all(
         db: AsyncSession,
         entity_type: Optional[EntityType] = None,

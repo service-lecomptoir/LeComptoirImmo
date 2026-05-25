@@ -6,12 +6,29 @@ from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
 from app.models.contact import Contact, ContactCategory
+from app.models.user import User
 from app.schemas.contact import ContactCreate, ContactUpdate, ContactResponse
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
+
+
+async def _check_contact_access(contact: Contact, current_user: User, db: AsyncSession) -> None:
+    """Vérifie que l'utilisateur a le droit d'accéder à ce contact."""
+    role = Role(current_user.role)
+    if role == Role.ADMIN:
+        return
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        if contact.created_by != current_user.id:
+            raise HTTPException(status_code=403, detail="Accès refusé")
+    elif role == Role.GESTIONNAIRE:
+        # Un mandataire ne peut pas accéder aux contacts d'un GP
+        from app.api.v1._isolation import gp_user_ids
+        gp_ids = await gp_user_ids(db)
+        if contact.created_by in gp_ids:
+            raise HTTPException(status_code=403, detail="Accès refusé")
 
 
 @router.get("", response_model=List[ContactResponse])
@@ -22,9 +39,26 @@ async def list_contacts(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    role = Role(current_user.role)
     q = select(Contact)
+
+    # ── Scope par rôle ────────────────────────────────────────────────────────
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        # GP voit uniquement ses propres contacts
+        q = q.where(Contact.created_by == current_user.id)
+    elif role == Role.GESTIONNAIRE:
+        # Mandataire : exclure les contacts des GP
+        from app.api.v1._isolation import gp_user_ids
+        gp_ids = await gp_user_ids(db)
+        if gp_ids:
+            q = q.where(
+                or_(Contact.created_by.not_in(gp_ids), Contact.created_by.is_(None))
+            )
+    # Admin : pas de filtre
+
+    # ── Filtres utilisateur ───────────────────────────────────────────────────
     if search:
         term = f"%{search}%"
         q = q.where(or_(
@@ -48,9 +82,9 @@ async def list_contacts(
 async def create_contact(
     data: ContactCreate,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
-    contact = Contact(**data.model_dump())
+    contact = Contact(**data.model_dump(), created_by=current_user.id)
     db.add(contact)
     await db.commit()
     await db.refresh(contact)
@@ -61,11 +95,12 @@ async def create_contact(
 async def get_contact(
     contact_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
     contact = await db.get(Contact, contact_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Contact introuvable")
+    await _check_contact_access(contact, current_user, db)
     return contact
 
 
@@ -74,11 +109,12 @@ async def update_contact(
     contact_id: uuid.UUID,
     data: ContactUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
     contact = await db.get(Contact, contact_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Contact introuvable")
+    await _check_contact_access(contact, current_user, db)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(contact, field, value)
     await db.commit()
@@ -90,11 +126,12 @@ async def update_contact(
 async def delete_contact(
     contact_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
     contact = await db.get(Contact, contact_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Contact introuvable")
+    await _check_contact_access(contact, current_user, db)
     await db.delete(contact)
     await db.commit()
 
@@ -103,11 +140,12 @@ async def delete_contact(
 async def toggle_favorite(
     contact_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
     contact = await db.get(Contact, contact_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Contact introuvable")
+    await _check_contact_access(contact, current_user, db)
     contact.is_favorite = not contact.is_favorite
     await db.commit()
     await db.refresh(contact)

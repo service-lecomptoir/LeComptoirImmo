@@ -75,43 +75,52 @@ async def create_property(
     current_user: User = Depends(get_current_gestionnaire),
 ):
     # ── Vérification limite de biens ProxyGen ─────────────────────────────────
-    try:
-        from sqlalchemy import text as sa_text
-        lic_result = await db.execute(
-            sa_text(
-                "SELECT property_limit_override, plan_id FROM proxygen_licenses "
-                "WHERE gestionnaire_user_id = :uid"
-            ).bindparams(uid=current_user.id)
-        )
-        lic_row = lic_result.fetchone()
-        if lic_row:
-            effective_limit = lic_row[0]  # property_limit_override
-            if effective_limit is None and lic_row[1]:  # pas d'override → vérifier plan
-                plan_result = await db.execute(
-                    sa_text(
-                        "SELECT property_limit FROM proxygen_plans WHERE id = :plan_id"
-                    ).bindparams(plan_id=lic_row[1])
+    from fastapi import HTTPException
+    from sqlalchemy import text as sa_text
+    import logging
+    _log = logging.getLogger(__name__)
+
+    role = Role(current_user.role)
+    if role in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
+        effective_limit: int | None = 0  # défaut : bloqué si pas de licence
+        try:
+            lic_row = (await db.execute(
+                sa_text(
+                    "SELECT property_limit_override, plan_id FROM proxygen_licenses "
+                    "WHERE gestionnaire_user_id = :uid"
+                ).bindparams(uid=current_user.id)
+            )).fetchone()
+
+            if lic_row is None:
+                # Aucune licence → limite 0, accès refusé
+                raise HTTPException(
+                    status_code=403,
+                    detail="Aucune licence ProxyGen associée à votre compte. Contactez l'administrateur."
                 )
-                plan_row = plan_result.fetchone()
+
+            effective_limit = lic_row[0]  # property_limit_override prioritaire
+            if effective_limit is None and lic_row[1]:
+                plan_row = (await db.execute(
+                    sa_text("SELECT property_limit FROM proxygen_plans WHERE id = :plan_id")
+                    .bindparams(plan_id=lic_row[1])
+                )).fetchone()
                 if plan_row:
-                    effective_limit = plan_row[0]
+                    effective_limit = plan_row[0]  # None = illimité
+
             if effective_limit is not None:
-                count_result = await db.execute(
-                    select(func.count(Property.id)).where(
-                        Property.created_by == current_user.id
-                    )
-                )
-                current_count = count_result.scalar_one_or_none() or 0
+                current_count = (await db.execute(
+                    select(func.count(Property.id)).where(Property.created_by == current_user.id)
+                )).scalar_one_or_none() or 0
                 if current_count >= effective_limit:
-                    from fastapi import HTTPException
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Limite de biens atteinte pour votre formule ({effective_limit} biens max)"
+                        detail=f"Limite de biens atteinte ({current_count}/{effective_limit}). Passez à un plan supérieur."
                     )
-    except Exception as exc:
-        # Ne pas bloquer si ProxyGen n'est pas disponible
-        import logging
-        logging.getLogger(__name__).warning(f"ProxyGen license check skipped: {exc}")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            _log.warning(f"ProxyGen license check error for {current_user.id}: {exc}")
+            raise HTTPException(status_code=503, detail="Service de licences indisponible. Réessayez.")
     # ─────────────────────────────────────────────────────────────────────────
     return await PropertyService.create(db, data, created_by=current_user.id)
 
