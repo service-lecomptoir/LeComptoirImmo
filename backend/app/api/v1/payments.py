@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.core.permissions import Role
-from app.api.deps import require_role, get_current_gestionnaire
+from app.api.deps import require_role, get_current_gestionnaire, get_current_user
 from app.models.user import User
+from app.services import audit_service
 from app.models.payment import PaymentStatus
 from app.schemas.payment import (
     PaymentCreate,
@@ -293,9 +294,15 @@ async def record_payment(
     payment_id: uuid.UUID,
     data: PaymentRecordIn,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.COMPTABLE)),
+    current_user: User = Depends(require_role(Role.COMPTABLE)),
 ):
     payment = await PaymentService.record_payment(db, payment_id, data)
+    await audit_service.log(
+        db, action=audit_service.PAYMENT_RECORD,
+        user_id=current_user.id, user_email=current_user.email,
+        entity_type="payment", entity_id=payment.id,
+        details={"amount_paid": float(data.amount_paid), "method": data.payment_method},
+    )
     await db.commit()
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
 

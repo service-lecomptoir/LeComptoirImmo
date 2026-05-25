@@ -131,7 +131,15 @@ async def create_user(
                 detail="Un gestionnaire-propriétaire ne peut créer que des comptes locataire.",
             )
     # Passer current_user.id pour tracer le créateur (isolation GP)
-    return await UserService.create(db, data, created_by=current_user.id)
+    new_user = await UserService.create(db, data, created_by=current_user.id)
+    from app.services import audit_service
+    await audit_service.log(
+        db, action=audit_service.USER_CREATE,
+        user_id=current_user.id, user_email=current_user.email,
+        entity_type="user", entity_id=new_user.id,
+        details={"email": new_user.email, "role": new_user.role},
+    )
+    return new_user
 
 
 @router.get("/me", response_model=UserResponse, summary="Mon profil")

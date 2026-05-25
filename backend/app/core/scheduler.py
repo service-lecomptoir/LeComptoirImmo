@@ -69,11 +69,19 @@ async def _job_generate_monthly_payments() -> None:
 
 
 async def _job_generate_monthly_avis() -> None:
-    """1er de chaque mois à 7h30 : génère les avis d'échéances automatiques."""
+    """1er de chaque mois à 7h30 : génère les avis d'échéances et les envoie par email."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
     from app.database import AsyncSessionLocal
     from app.services.avis_echeance_service import AvisEcheanceService
+    from app.services.email_service import send_avis_echeance
+    from app.models.avis_echeance import AvisEcheance
+    from app.models.tenant import Tenant
 
     today = date.today()
+    months = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+              "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+
     async with AsyncSessionLocal() as db:
         try:
             count = await AvisEcheanceService.generate_monthly_all(
@@ -86,6 +94,41 @@ async def _job_generate_monthly_avis() -> None:
             )
         except Exception as exc:
             logger.error(f"[Scheduler] generate_monthly_avis error: {exc}")
+            return
+
+    # Envoi des emails — session séparée après commit
+    async with AsyncSessionLocal() as db:
+        try:
+            avis_list = (await db.execute(
+                select(AvisEcheance)
+                .options(selectinload(AvisEcheance.tenant))
+                .where(
+                    AvisEcheance.period_year == today.year,
+                    AvisEcheance.period_month == today.month,
+                    AvisEcheance.generated_by.is_(None),  # auto-généré
+                )
+            )).scalars().all()
+
+            period_label = f"{months[today.month]} {today.year}"
+            sent = 0
+            for avis in avis_list:
+                tenant = avis.tenant
+                if not tenant or not tenant.email:
+                    continue
+                ok = await send_avis_echeance(
+                    to=tenant.email,
+                    tenant_name=tenant.full_name or tenant.email,
+                    period_label=period_label,
+                    amount_total=float(avis.amount_total),
+                    due_date=avis.due_date.strftime("%d/%m/%Y"),
+                )
+                if ok:
+                    sent += 1
+
+            if sent:
+                logger.info(f"[Scheduler] {sent} email(s) avis d'échéance envoyé(s)")
+        except Exception as exc:
+            logger.error(f"[Scheduler] email_monthly_avis error: {exc}")
 
 
 def start_scheduler() -> None:

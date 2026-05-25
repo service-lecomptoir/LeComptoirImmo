@@ -14,11 +14,12 @@ from app.models.document_template import DocumentTemplate
 from app.models.ticket import Ticket, TicketMessage
 from app.models.entretien import Prestataire, Entretien
 from app.models.message import ProprietaireMessage
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "User", "Tenant", "Property", "Unit", "Document",
     "Lease", "Inspection", "Payment", "Notification", "AvisEcheance",
     "Contact", "AutomationRule", "CommunicationLog", "DocumentTemplate",
     "Ticket", "TicketMessage", "Prestataire", "Entretien",
-    "ProprietaireMessage",
+    "ProprietaireMessage", "AuditLog",
 ]

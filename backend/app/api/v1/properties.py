@@ -116,7 +116,15 @@ async def create_property(
             _log.warning(f"ProxyGen license check error for {current_user.id}: {exc}")
             raise HTTPException(status_code=503, detail="Service de licences indisponible. Réessayez.")
     # ─────────────────────────────────────────────────────────────────────────
-    return await PropertyService.create(db, data, created_by=current_user.id)
+    prop = await PropertyService.create(db, data, created_by=current_user.id)
+    from app.services import audit_service
+    await audit_service.log(
+        db, action=audit_service.PROPERTY_CREATE,
+        user_id=current_user.id, user_email=current_user.email,
+        entity_type="property", entity_id=prop.id,
+        details={"name": prop.name},
+    )
+    return prop
 
 
 @router.get("/{property_id}", response_model=PropertyResponse, summary="Détail d'un bien")

@@ -41,6 +41,19 @@ class Settings(BaseSettings):
     PROXYGEN_URL: str = "http://localhost:8001"
     PROXYGEN_INTERNAL_KEY: str = "lecomptoir-internal-dev-key-change-in-production"
 
+    # ── SMTP (désactivé si SMTP_HOST est vide) ───────────────────────────────
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@lecomptoirimmo.fr"
+    SMTP_FROM_NAME: str = "LeComptoirImmo"
+    SMTP_TLS: bool = True
+
+    @property
+    def smtp_enabled(self) -> bool:
+        return bool(self.SMTP_HOST)
+
     # ── First Admin ──────────────────────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@locataire-cloud.fr"
     FIRST_ADMIN_PASSWORD: str = "Admin1234!"

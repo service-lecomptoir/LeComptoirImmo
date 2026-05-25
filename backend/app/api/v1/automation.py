@@ -216,12 +216,15 @@ async def send_group_communication(
     result = await db.execute(q)
     tenants = list(result.scalars().all())
 
+    from app.services.email_service import send_group_message
+
     sent_count = 0
     errors = []
 
     for tenant in tenants:
         recipient = None
-        if data.channel.value in ("email", "email_sms"):
+        is_email = data.channel.value in ("email", "email_sms")
+        if is_email:
             recipient = tenant.email
         elif data.channel.value == "sms":
             recipient = tenant.phone
@@ -229,13 +232,18 @@ async def send_group_communication(
         if not recipient:
             continue
 
+        # Envoi réel si SMTP configuré, sinon log "simulated"
+        email_sent = False
+        if is_email and recipient:
+            email_sent = await send_group_message(recipient, data.subject, data.body)
+
         log = CommunicationLog(
             tenant_id=tenant.id,
             channel=data.channel.value,
             recipient=recipient,
             subject=data.subject,
             body=data.body,
-            status="simulated",
+            status="sent" if email_sent else "simulated",
             sent_at=datetime.utcnow(),
         )
         db.add(log)
