@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,9 +50,9 @@ async def list_properties(
         items = await _enrich_properties(db, props)
         return {"items": items, "total": len(items), "skip": 0, "limit": limit}
 
-    # Locataire : aucun bien à afficher directement
+    # Locataire : accès interdit à la liste des biens
     if role == Role.LOCATAIRE:
-        return {"items": [], "total": 0, "skip": skip, "limit": limit}
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
 
     # Gestionnaire mandataire : exclure les biens des gestionnaire_proprio
     if role == Role.GESTIONNAIRE:

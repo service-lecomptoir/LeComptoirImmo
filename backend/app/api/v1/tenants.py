@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import select
@@ -28,6 +28,9 @@ async def list_tenants(
     current_user: User = Depends(get_current_user),
 ):
     """Liste paginée avec recherche full-text."""
+    if Role(current_user.role) == Role.LOCATAIRE:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+
     from app.models.lease import Lease
 
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
