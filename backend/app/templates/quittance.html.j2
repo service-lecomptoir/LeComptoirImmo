@@ -3,246 +3,117 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    @page {
-      size: A4;
-      margin: 2.5cm 2.5cm;
-    }
-    body {
-      font-family: "DejaVu Sans", Arial, sans-serif;
-      font-size: 10pt;
-      color: #1a1a1a;
-      line-height: 1.7;
-    }
-    .header-line {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 30px;
-    }
-    .brand { font-size: 9pt; color: #555; }
-    .doc-ref { font-size: 9pt; color: #888; text-align: right; }
-    h1 {
-      font-size: 18pt;
-      text-align: center;
-      color: #1e3a5f;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin: 0 0 4px 0;
-    }
-    .doc-subtitle {
-      text-align: center;
-      font-size: 10pt;
-      color: #555;
-      margin-bottom: 28px;
-    }
-    hr { border: none; border-top: 2px solid #1e3a5f; margin: 16px 0; }
-    .parties {
-      display: flex;
-      gap: 30px;
-      margin-bottom: 24px;
-    }
-    .party-box {
-      flex: 1;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      padding: 12px 14px;
-      border-radius: 4px;
-    }
-    .party-label {
-      font-size: 8pt;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-    .party-name { font-weight: bold; font-size: 11pt; }
-    .party-detail { font-size: 9pt; color: #444; }
-    .section-title {
-      font-size: 10pt;
-      font-weight: bold;
-      color: #1e3a5f;
-      border-left: 4px solid #1e3a5f;
-      padding-left: 8px;
-      margin: 20px 0 10px 0;
-    }
-    .amounts-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .amounts-table td {
-      padding: 7px 10px;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 10pt;
-    }
-    .amounts-table .label-col { color: #555; }
-    .amounts-table .amount-col {
-      text-align: right;
-      font-weight: 500;
-      white-space: nowrap;
-    }
-    .amounts-table .total-row td {
-      font-weight: bold;
-      font-size: 11pt;
-      background: #f0f4f8;
-      color: #1e3a5f;
-      border-top: 2px solid #1e3a5f;
-    }
-    .badge-paid {
-      display: inline-block;
-      background: #166534;
-      color: white;
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-size: 10pt;
-      font-weight: bold;
-      margin: 16px 0;
-    }
-    .badge-partial {
-      display: inline-block;
-      background: #b45309;
-      color: white;
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-size: 10pt;
-      font-weight: bold;
-      margin: 16px 0;
-    }
-    .legal-mention {
-      font-size: 8pt;
-      color: #888;
-      margin-top: 30px;
-      padding-top: 12px;
-      border-top: 1px solid #e2e8f0;
-    }
-    .signature-area {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 30px;
-    }
-    .sign-box {
-      width: 220px;
-      border: 1px solid #ddd;
-      padding: 12px;
-      min-height: 80px;
-      font-size: 9pt;
-    }
+    @page { size: A4; margin: 1.5cm 2cm; }
+    body { font-family: Arial, sans-serif; font-size: 9.5pt; color: #111; line-height: 1.4; }
+    table { width: 100%; border-collapse: collapse; }
+    h1 { font-size: 14pt; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 6px 0 2px 0; color: #1e3a5f; }
+    .subtitle { text-align: center; font-size: 9pt; color: #555; margin-bottom: 10px; }
+    hr { border: none; border-top: 2px solid #1e3a5f; margin: 8px 0 12px 0; }
+    .ref-line { font-size: 8.5pt; color: #888; }
+    .lbl { font-size: 8pt; color: #777; text-transform: uppercase; margin-bottom: 2px; }
+    .pname { font-weight: bold; font-size: 10pt; }
+    .pdetail { font-size: 8.5pt; color: #444; }
+    .sec { font-size: 8.5pt; font-weight: bold; color: #1e3a5f; border-left: 3px solid #1e3a5f; padding-left: 6px; margin: 10px 0 4px 0; }
+    .amt td { padding: 3px 8px; border-bottom: 1px solid #eee; font-size: 9.5pt; }
+    .amt td.r { text-align: right; }
+    .amt tr.tot td { font-weight: bold; background: #eef2f7; border-top: 2px solid #1e3a5f; }
+    .paid { background: #dcfce7; color: #166534; font-weight: bold; padding: 5px 10px; margin: 8px 0; font-size: 9.5pt; }
+    .partial { background: #fef9c3; color: #b45309; font-weight: bold; padding: 5px 10px; margin: 8px 0; font-size: 9.5pt; }
+    .sign-box { border: 1px solid #ccc; padding: 10px 14px; font-size: 8.5pt; }
+    .legal { font-size: 7.5pt; color: #aaa; margin-top: 10px; border-top: 1px solid #e5e5e5; padding-top: 6px; }
   </style>
 </head>
 <body>
 
-  <div class="header-line">
-    <div class="brand">Locataire Cloud</div>
-    <div class="doc-ref">
-      Réf. {{ payment.id | string | truncate(8, end='') }}<br>
-      Émis le {{ payment.updated_at.strftime('%d/%m/%Y') }}
-    </div>
-  </div>
-
-  <h1>Quittance de loyer</h1>
-  <p class="doc-subtitle">{{ payment.period_label }}</p>
-  <hr>
-
-  <!-- Parties -->
-  <div class="parties">
-    <div class="party-box">
-      <div class="party-label">Bailleur</div>
-      {% if payment.lease and payment.lease.parent_property %}
-      <div class="party-name">{{ payment.lease.parent_property.name }}</div>
-      <div class="party-detail">{{ payment.lease.parent_property.full_address }}</div>
-      {% else %}
-      <div class="party-name">—</div>
-      {% endif %}
-    </div>
-    <div class="party-box">
-      <div class="party-label">Locataire</div>
-      <div class="party-name">{{ payment.tenant.full_name if payment.tenant else '—' }}</div>
-      {% if payment.lease and payment.lease.parent_property %}
-      <div class="party-detail">
-        Logement : {{ payment.unit.unit_ref if payment.unit else '—' }}<br>
-        {{ payment.lease.parent_property.full_address }}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Détail des sommes -->
-  <div class="section-title">Détail du loyer</div>
-
-  <table class="amounts-table">
+  <table>
     <tr>
-      <td class="label-col">Loyer hors charges</td>
-      <td class="amount-col">{{ "%.2f" | format(payment.amount_rent | float) }} €</td>
-    </tr>
-    <tr>
-      <td class="label-col">Charges récupérables</td>
-      <td class="amount-col">{{ "%.2f" | format(payment.amount_charges | float) }} €</td>
-    </tr>
-    {% if payment.amount_apl %}
-    <tr>
-      <td class="label-col">Déduction APL (tiers-payant CAF)</td>
-      <td class="amount-col">- {{ "%.2f" | format(payment.amount_apl | float) }} €</td>
-    </tr>
-    {% endif %}
-    <tr class="total-row">
-      <td>Total dû par le locataire</td>
-      <td class="amount-col">{{ "%.2f" | format(payment.amount_due | float) }} €</td>
-    </tr>
-  </table>
-
-  <!-- Paiement reçu -->
-  <div class="section-title">Paiement reçu</div>
-
-  <table class="amounts-table">
-    <tr>
-      <td class="label-col">Montant encaissé</td>
-      <td class="amount-col">{{ "%.2f" | format(payment.amount_paid | float) }} €</td>
-    </tr>
-    {% if payment.payment_date %}
-    <tr>
-      <td class="label-col">Date de réception</td>
-      <td class="amount-col">{{ payment.payment_date.strftime('%d/%m/%Y') }}</td>
-    </tr>
-    {% endif %}
-    {% if payment.payment_method %}
-    <tr>
-      <td class="label-col">Mode de paiement</td>
-      <td class="amount-col">
-        {% if payment.payment_method == 'virement' %}Virement bancaire
-        {% elif payment.payment_method == 'cheque' %}Chèque
-        {% elif payment.payment_method == 'prelevement' %}Prélèvement automatique
-        {% else %}Espèces{% endif %}
+      <td><strong>LeComptoirImmo</strong> — Gestion locative</td>
+      <td style="text-align:right;" class="ref-line">
+        Réf.&nbsp;{{ payment.id | string | truncate(8, end='') }}
+        &nbsp;|&nbsp;{{ payment.updated_at.strftime('%d/%m/%Y') }}
       </td>
     </tr>
+  </table>
+
+  <h1>Quittance de loyer</h1>
+  <p class="subtitle">{{ payment.period_label }}</p>
+  <hr>
+
+  <table style="margin-bottom:10px;">
+    <tr>
+      <td style="width:50%; vertical-align:top; padding-right:12px; border-right:1px solid #ddd;">
+        <div class="lbl">Bailleur</div>
+        {% if payment.lease and payment.lease.parent_property %}
+        <div class="pname">{{ payment.lease.parent_property.name }}</div>
+        <div class="pdetail">{{ payment.lease.parent_property.full_address }}</div>
+        {% else %}
+        <div class="pname">—</div>
+        {% endif %}
+      </td>
+      <td style="width:50%; vertical-align:top; padding-left:12px;">
+        <div class="lbl">Locataire</div>
+        <div class="pname">{{ payment.tenant.full_name if payment.tenant else '—' }}</div>
+        {% if payment.lease and payment.lease.parent_property %}
+        <div class="pdetail">
+          Logement : {{ payment.unit.unit_ref if payment.unit else '—' }}
+          — {{ payment.lease.parent_property.full_address }}
+        </div>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <div class="sec">Détail du loyer</div>
+  <table class="amt">
+    <tr><td>Loyer hors charges</td><td class="r">{{ "%.2f" | format(payment.amount_rent | float) }} €</td></tr>
+    <tr><td>Charges récupérables</td><td class="r">{{ "%.2f" | format(payment.amount_charges | float) }} €</td></tr>
+    {% if payment.amount_apl %}
+    <tr><td>Déduction APL (tiers-payant CAF)</td><td class="r">- {{ "%.2f" | format(payment.amount_apl | float) }} €</td></tr>
+    {% endif %}
+    <tr class="tot"><td>Total dû par le locataire</td><td class="r">{{ "%.2f" | format(payment.amount_due | float) }} €</td></tr>
+  </table>
+
+  <div class="sec">Paiement reçu</div>
+  <table class="amt">
+    <tr><td>Montant encaissé</td><td class="r">{{ "%.2f" | format(payment.amount_paid | float) }} €</td></tr>
+    {% if payment.payment_date %}
+    <tr><td>Date de réception</td><td class="r">{{ payment.payment_date.strftime('%d/%m/%Y') }}</td></tr>
+    {% endif %}
+    {% if payment.payment_method %}
+    <tr><td>Mode de paiement</td><td class="r">
+      {% if payment.payment_method == 'virement' %}Virement bancaire
+      {% elif payment.payment_method == 'cheque' %}Chèque
+      {% elif payment.payment_method == 'prelevement' %}Prélèvement automatique
+      {% else %}Espèces{% endif %}
+    </td></tr>
     {% endif %}
     {% if payment.balance > 0 %}
-    <tr>
-      <td class="label-col" style="color: #b45309;">Solde restant dû</td>
-      <td class="amount-col" style="color: #b45309;">{{ "%.2f" | format(payment.balance) }} €</td>
-    </tr>
+    <tr><td style="color:#b45309;">Solde restant dû</td><td class="r" style="color:#b45309;">{{ "%.2f" | format(payment.balance) }} €</td></tr>
     {% endif %}
   </table>
 
-  <!-- Statut -->
   {% if payment.status == 'paid' %}
-    <div class="badge-paid">&#10003; Loyer intégralement payé</div>
+  <div class="paid">Loyer intégralement payé</div>
   {% elif payment.status == 'partial' %}
-    <div class="badge-partial">&#9888; Paiement partiel</div>
+  <div class="partial">Paiement partiel</div>
   {% endif %}
 
-  <!-- Signature -->
-  <div class="signature-area">
-    <div class="sign-box">
-      <div style="margin-bottom: 8px; font-weight: bold; font-size: 9pt;">Le bailleur</div>
-      Date : _______________<br><br>
-      Signature :
-    </div>
-  </div>
+  <table style="margin-top:10px;">
+    <tr>
+      <td style="width:55%;"></td>
+      <td style="width:45%;">
+        <div class="sign-box">
+          <strong>Le bailleur</strong><br>
+          Date : _______________<br><br>
+          Signature :
+        </div>
+      </td>
+    </tr>
+  </table>
 
-  <!-- Mention légale -->
-  <div class="legal-mention">
+  <div class="legal">
     Quittance délivrée conformément à l'article 21 de la loi n°89-462 du 6 juillet 1989 tendant à améliorer les rapports locatifs.
-    La présente quittance annule tous les reçus qui auraient pu être établis précédemment pour la même période.
-    Document généré par Locataire Cloud.
+    La présente quittance annule tous les reçus établis précédemment pour la même période. Document généré par LeComptoirImmo.
   </div>
 
 </body>

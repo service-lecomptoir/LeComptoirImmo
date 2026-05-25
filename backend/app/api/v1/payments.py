@@ -349,6 +349,8 @@ async def download_quittance(
         payment.quittance_generated_at = datetime.now(timezone.utc)
         await db.flush()
         await db.commit()
+        # Rechargement nécessaire : le commit expire tous les objets ORM
+        payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
 
     html = render_template("quittance.html.j2", {"payment": payment})
     pdf_bytes = html_to_pdf(html)

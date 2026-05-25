@@ -37,7 +37,7 @@ export default function NotificationList() {
   const { user } = useAuthStore()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
-  const [total, setTotal] = useState(0)
+  const [totalAll, setTotalAll] = useState(0)
   const [loading, setLoading] = useState(true)
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [markingAll, setMarkingAll] = useState(false)
@@ -49,8 +49,8 @@ export default function NotificationList() {
     try {
       const { data } = await notificationsApi.list({ unread_only: unreadOnly, limit: 100 })
       setNotifications(data.items)
-      setTotal(data.total)
       setUnreadCount(data.unread_count)
+      if (!unreadOnly) setTotalAll(data.total)
     } catch {
       // ignore
     } finally {
@@ -67,6 +67,7 @@ export default function NotificationList() {
         prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n))
       )
       setUnreadCount((c) => Math.max(0, c - 1))
+      window.dispatchEvent(new Event('notification-read'))
     } catch { /* ignore */ }
   }
 
@@ -76,6 +77,7 @@ export default function NotificationList() {
       await notificationsApi.markAllRead()
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true, read_at: new Date().toISOString() })))
       setUnreadCount(0)
+      window.dispatchEvent(new Event('notification-read'))
     } catch { /* ignore */ }
     setMarkingAll(false)
   }
@@ -148,7 +150,7 @@ export default function NotificationList() {
             !unreadOnly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
-          Toutes ({total})
+          Toutes ({totalAll})
         </button>
         <button
           onClick={() => setUnreadOnly(true)}

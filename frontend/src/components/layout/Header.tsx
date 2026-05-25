@@ -220,6 +220,11 @@ export function Header() {
     return () => clearInterval(timer)
   }, [user, fetchCount])
 
+  useEffect(() => {
+    window.addEventListener('notification-read', fetchCount)
+    return () => window.removeEventListener('notification-read', fetchCount)
+  }, [fetchCount])
+
   // ── Fermer le menu au clic extérieur ──────────────────────────────────────
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

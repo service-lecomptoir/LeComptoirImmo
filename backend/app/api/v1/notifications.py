@@ -112,11 +112,13 @@ async def get_badge_count(
             )
             inc_count = res.scalar_one()
 
-    total = msg_count + inc_count
+    notif_count = await NotificationService.get_unread_count(db, current_user.id)
+    total = msg_count + inc_count + notif_count
     return {
         "total": total,
         "messages": msg_count,
         "incidents": inc_count,
+        "notifications": notif_count,
     }
 
 
