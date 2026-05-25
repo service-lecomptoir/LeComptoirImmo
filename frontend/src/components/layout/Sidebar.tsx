@@ -4,7 +4,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  MapPin, Hash, User, ShoppingBag,
+  MapPin, Hash, User, ShoppingBag, Package,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
@@ -36,6 +36,8 @@ const navGestionnaire: NavItem[] = [
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
+  { label: 'Mon compte', isSeparator: true },
+  { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
 // Navigation Propriétaire
@@ -70,6 +72,8 @@ const navGestionnairePropio: NavItem[] = [
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
+  { label: 'Mon compte', isSeparator: true },
+  { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
 // Navigation Locataire

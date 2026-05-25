@@ -36,6 +36,7 @@ import ProprietaireMessages from '@/pages/proprietaire/ProprietaireMessages'
 import QuittanceList from '@/pages/quittances/QuittanceList'
 import OffersManager from '@/pages/offers/OffersManager'
 import LocataireOffres from '@/pages/locataire/LocataireOffres'
+import MonAbonnement from '@/pages/subscription/MonAbonnement'
 
 function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
@@ -105,6 +106,7 @@ export const router = createBrowserRouter([
       { path: 'proprietaire/messages', element: <ProprietaireMessages /> },
       { path: 'offres', element: <OffersManager /> },
       { path: 'locataire/offres', element: <LocataireOffres /> },
+      { path: 'abonnement', element: <MonAbonnement /> },
       {
         path: 'unauthorized',
         element: (
