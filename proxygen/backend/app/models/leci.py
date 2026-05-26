@@ -38,6 +38,9 @@ class LeciUser(LeciBase):
         nullable=False,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Coordonnées (profil LeCI) — peuplées depuis ProxyGen à la création
+    phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 

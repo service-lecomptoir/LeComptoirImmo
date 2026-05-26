@@ -161,6 +161,8 @@ async def create_gestionnaire(
         hashed_password=hashed,
         role=data.role,
         is_active=True,
+        phone=data.phone,
+        address=data.address,
     )
     db.add(new_user)
     await db.flush()
@@ -233,11 +235,15 @@ async def update_gestionnaire(
     if not user:
         raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
 
-    # Mise à jour user
+    # Mise à jour user (+ coordonnées profil LeCI)
     if data.email is not None:
         user.email = data.email
     if data.full_name is not None:
         user.full_name = data.full_name
+    if data.phone is not None:
+        user.phone = data.phone
+    if data.address is not None:
+        user.address = data.address
 
     # Mise à jour licence
     lic_result = await db.execute(
