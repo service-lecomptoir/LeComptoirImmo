@@ -109,7 +109,7 @@ export default function Dashboard() {
                     <span className="text-sm font-medium text-gray-700">{plan.name}</span>
                   </div>
                   <span className="text-sm text-gray-500 font-mono">
-                    {plan.count} gestionnaire{plan.count !== 1 ? 's' : ''}
+                    {plan.count} gestionnaire{plan.count > 1 ? 's' : ''}
                   </span>
                 </div>
               ))}

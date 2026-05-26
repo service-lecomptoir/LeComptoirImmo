@@ -308,7 +308,7 @@ export default function LocataireDocuments() {
                 ? 'bg-blue-50 text-blue-600'
                 : 'bg-gray-100 text-gray-400'
             }`}>
-              {docs.length} document{docs.length !== 1 ? 's' : ''}
+              {docs.length} document{docs.length > 1 ? 's' : ''}
             </span>
             {cat.uploadable && (
               <button
