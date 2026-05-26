@@ -1,7 +1,7 @@
 import uuid
 from datetime import date
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Date, Numeric, Boolean, Integer, Enum as SAEnum, ForeignKey
+from sqlalchemy import String, Date, Numeric, Boolean, Integer, Enum as SAEnum, ForeignKey, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
@@ -13,6 +13,16 @@ if TYPE_CHECKING:
     from app.models.unit import Unit
     from app.models.property import Property
     from app.models.inspection import Inspection
+
+
+# ── Association co-titulaires (locataires secondaires d'un contrat) ────────────
+# Le locataire PRINCIPAL reste Lease.tenant_id. Cette table porte les secondaires.
+lease_tenants = Table(
+    "lease_tenants",
+    Base.metadata,
+    Column("lease_id", UUID(as_uuid=True), ForeignKey("leases.id", ondelete="CASCADE"), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), primary_key=True),
+)
 
 
 class LeaseType(str, Enum):
@@ -102,6 +112,10 @@ class Lease(Base, TimestampMixin):
 
     # ── Relations ─────────────────────────────────────────────────────────────
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="leases")
+    # Co-titulaires secondaires (le principal est `tenant` ci-dessus)
+    co_tenants: Mapped[list["Tenant"]] = relationship(
+        "Tenant", secondary=lease_tenants, lazy="selectin",
+    )
     unit: Mapped["Unit"] = relationship("Unit", back_populates="leases")
     parent_property: Mapped["Property"] = relationship("Property", back_populates="leases")
     inspections: Mapped[list["Inspection"]] = relationship(
@@ -118,6 +132,18 @@ class Lease(Base, TimestampMixin):
         if self.apl_tiers_payant and self.apl_amount:
             return max(0.0, float(self.rent_amount) - float(self.apl_amount))
         return float(self.rent_amount)
+
+    @property
+    def all_tenants(self) -> list["Tenant"]:
+        """Locataires du contrat : principal en premier, puis co-titulaires."""
+        result = [self.tenant] if self.tenant else []
+        result += list(self.co_tenants or [])
+        return result
+
+    @property
+    def all_tenant_names(self) -> str:
+        """Noms de tous les co-titulaires, séparés par ' & '."""
+        return " & ".join(t.full_name for t in self.all_tenants)
 
     def __repr__(self) -> str:
         return f"<Lease {self.id} — actif={self.is_active}>"

@@ -41,6 +41,8 @@ class LeaseCreate(BaseModel):
     property_id: uuid.UUID
     unit_id: uuid.UUID
     tenant_id: uuid.UUID
+    # Co-titulaires secondaires (le principal est tenant_id)
+    secondary_tenant_ids: list[uuid.UUID] = Field(default_factory=list)
     lease_type: LeaseType = LeaseType.VIDE
     start_date: date
     end_date: Optional[date] = None
@@ -61,6 +63,8 @@ class LeaseCreate(BaseModel):
 
 class LeaseUpdate(BaseModel):
     lease_type: Optional[LeaseType] = None
+    # Si fourni, remplace la liste des co-titulaires secondaires
+    secondary_tenant_ids: Optional[list[uuid.UUID]] = None
     end_date: Optional[date] = None
     notice_date: Optional[date] = None
     rent_amount: Optional[float] = Field(None, gt=0)
@@ -108,6 +112,8 @@ class LeaseResponse(BaseModel):
     net_rent: float
     # Relations
     tenant: Optional[TenantInLease] = None
+    co_tenants: list[TenantInLease] = Field(default_factory=list)
+    all_tenant_names: Optional[str] = None
     unit: Optional[UnitInLease] = None
     parent_property: Optional[PropertyInLease] = None
     created_at: datetime

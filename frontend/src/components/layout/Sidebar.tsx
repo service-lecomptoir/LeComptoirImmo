@@ -9,6 +9,7 @@ import {
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
+import { apiClient } from '@/api/client'
 import type { Role } from '@/types/auth'
 import clsx from 'clsx'
 import { useState, useEffect } from 'react'
@@ -177,6 +178,23 @@ function useProprietaireInfo(active: boolean, userName: string): ProprietaireInf
   return info
 }
 
+// ── Hook : adresse de l'agence (depuis le template de documents) ──────────────
+
+function useAgencyAddress(active: boolean): string {
+  const [addr, setAddr] = useState('')
+  useEffect(() => {
+    if (!active) return
+    apiClient.get<Array<{ company_address?: string }>>('/templates')
+      .then(r => {
+        const list = r.data ?? []
+        const withAddr = list.find(t => t.company_address) ?? list[0]
+        setAddr(withAddr?.company_address ?? '')
+      })
+      .catch(() => { /* silently ignore */ })
+  }, [active])
+  return addr
+}
+
 // ── Bloc d'info affiché en haut de sidebar ────────────────────────────────────
 
 interface SidebarInfoBlockProps {
@@ -221,8 +239,10 @@ export function Sidebar() {
   const isLocataire = user?.role === 'locataire'
   const isProprietaire = user?.role === 'proprietaire'
 
+  const isGestionnaire = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
   const leaseInfo = useLocataireLeaseInfo(isLocataire)
   const proprietaireInfo = useProprietaireInfo(isProprietaire, user?.full_name ?? '')
+  const agencyAddress = useAgencyAddress(isGestionnaire)
 
   const getNavItems = (): NavItem[] => {
     if (!user) return []
@@ -275,6 +295,12 @@ export function Sidebar() {
         <div className="px-6 py-5 border-b border-gray-700">
           <p className="text-white font-semibold text-sm">Gestionnaire propriétaire</p>
           {user.full_name && <p className="text-gray-400 text-xs mt-0.5">{user.full_name}</p>}
+          {agencyAddress && (
+            <div className="flex items-start gap-1.5 mt-1.5">
+              <MapPin size={11} className="text-gray-500 mt-0.5 shrink-0" />
+              <p className="text-gray-500 text-xs leading-snug line-clamp-2">{agencyAddress}</p>
+            </div>
+          )}
         </div>
       )
     }
@@ -285,6 +311,12 @@ export function Sidebar() {
         <div className="px-6 py-5 border-b border-gray-700">
           <p className="text-white font-semibold text-sm">Gestionnaire mandataire</p>
           {user.full_name && <p className="text-gray-400 text-xs mt-0.5">{user.full_name}</p>}
+          {agencyAddress && (
+            <div className="flex items-start gap-1.5 mt-1.5">
+              <MapPin size={11} className="text-gray-500 mt-0.5 shrink-0" />
+              <p className="text-gray-500 text-xs leading-snug line-clamp-2">{agencyAddress}</p>
+            </div>
+          )}
         </div>
       )
     }

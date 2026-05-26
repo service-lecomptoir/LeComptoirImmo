@@ -359,9 +359,28 @@ async def download_quittance(
     _d = _date.today()
     today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
 
+    # Noms de tous les co-titulaires (principal + secondaires) du bail
+    tenant_names = ""
+    if getattr(payment, "lease_id", None):
+        from sqlalchemy.orm import selectinload as _selectinload
+        from app.models.lease import Lease as _Lease
+        _lease_obj = (await db.execute(
+            select(_Lease)
+            .options(_selectinload(_Lease.tenant), _selectinload(_Lease.co_tenants))
+            .where(_Lease.id == payment.lease_id)
+        )).scalar_one_or_none()
+        if _lease_obj:
+            try:
+                tenant_names = _lease_obj.all_tenant_names
+            except Exception:
+                tenant_names = ""
+    if not tenant_names and payment.tenant:
+        tenant_names = payment.tenant.full_name
+
     html = render_template("quittance.html.j2", {
         "payment": payment,
         "today": today_fr,
+        "tenant_names": tenant_names,
         "layout": get_layout(),
     })
     pdf_bytes = html_to_pdf(html)

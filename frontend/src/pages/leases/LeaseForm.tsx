@@ -124,6 +124,9 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
   const [loadingUnits, setLoadingUnits] = useState(false)
   const [showCreateTenant, setShowCreateTenant] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [secondaryIds, setSecondaryIds] = useState<string[]>(
+    lease?.co_tenants?.map(t => t.id) ?? []
+  )
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -192,6 +195,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
         ...data,
         end_date: data.end_date || undefined,
         apl_amount: data.apl_amount !== '' && data.apl_tiers_payant ? Number(data.apl_amount) : undefined,
+        secondary_tenant_ids: secondaryIds,
       }
       if (isEdit) {
         await leasesApi.update(lease.id, payload)
@@ -293,6 +297,45 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
             />
           )}
           {errors.tenant_id && !showCreateTenant && <p className={err}>{errors.tenant_id.message}</p>}
+        </div>
+
+        {/* ── Co-titulaires (optionnel) ── */}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Co-titulaires (optionnel)</h3>
+          <p className="text-xs text-gray-400 mb-2">
+            Locataires secondaires, solidaires du bail. Ils apparaîtront sur l'avis d'échéance, la quittance et le bail.
+          </p>
+          <select
+            value=""
+            onChange={(e) => {
+              const id = e.target.value
+              if (id) setSecondaryIds(prev => prev.includes(id) ? prev : [...prev, id])
+            }}
+            className={inp}
+          >
+            <option value="">— Ajouter un co-titulaire —</option>
+            {tenants
+              .filter(t => t.id !== watch('tenant_id') && !secondaryIds.includes(t.id))
+              .map(t => (
+                <option key={t.id} value={t.id}>{t.full_name}{t.email ? ` (${t.email})` : ''}</option>
+              ))}
+          </select>
+          {secondaryIds.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {secondaryIds.map(id => {
+                const t = tenants.find(x => x.id === id)
+                return (
+                  <span key={id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
+                    {t?.full_name ?? id}
+                    <button type="button" onClick={() => setSecondaryIds(prev => prev.filter(x => x !== id))}
+                      className="text-blue-400 hover:text-blue-700">
+                      <X size={12} />
+                    </button>
+                  </span>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* ── Type et dates ── */}

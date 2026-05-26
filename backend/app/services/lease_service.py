@@ -35,12 +35,23 @@ class LeaseService:
         if existing_lease.scalar_one_or_none():
             raise ConflictException("Ce locataire a déjà un contrat de bail actif")
 
+        payload = data.model_dump()
+        secondary_ids = payload.pop("secondary_tenant_ids", None) or []
+        # Exclure le principal d'éventuels doublons dans les co-titulaires
+        secondary_ids = [tid for tid in secondary_ids if str(tid) != str(data.tenant_id)]
+
         lease = Lease(
-            **data.model_dump(),
+            **payload,
             is_active=True,
             created_by=created_by,
         )
         db.add(lease)
+
+        # Rattacher les co-titulaires secondaires
+        if secondary_ids:
+            from app.models.tenant import Tenant
+            res = await db.execute(select(Tenant).where(Tenant.id.in_(secondary_ids)))
+            lease.co_tenants = list(res.scalars().all())
 
         # Marquer le logement comme occupé
         unit.is_occupied = True
@@ -61,6 +72,7 @@ class LeaseService:
                 select(Lease)
                 .options(
                     selectinload(Lease.tenant),
+                    selectinload(Lease.co_tenants),
                     selectinload(Lease.unit),
                     selectinload(Lease.parent_property),
                     selectinload(Lease.inspections),
@@ -166,9 +178,29 @@ class LeaseService:
     async def update(
         db: AsyncSession, lease_id: uuid.UUID, data: LeaseUpdate
     ) -> Lease:
-        lease = await LeaseService.get_by_id(db, lease_id)
-        for field, value in data.model_dump(exclude_unset=True).items():
+        # Charger avec co_tenants pour pouvoir réassigner la collection (async-safe)
+        result = await db.execute(
+            select(Lease).options(selectinload(Lease.co_tenants)).where(Lease.id == lease_id)
+        )
+        lease = result.scalar_one_or_none()
+        if not lease:
+            raise NotFoundException("Contrat introuvable")
+
+        payload = data.model_dump(exclude_unset=True)
+        secondary_ids = payload.pop("secondary_tenant_ids", None)
+        for field, value in payload.items():
             setattr(lease, field, value)
+
+        # Remplacer les co-titulaires si la liste est fournie
+        if secondary_ids is not None:
+            secondary_ids = [tid for tid in secondary_ids if str(tid) != str(lease.tenant_id)]
+            if secondary_ids:
+                from app.models.tenant import Tenant
+                res = await db.execute(select(Tenant).where(Tenant.id.in_(secondary_ids)))
+                lease.co_tenants = list(res.scalars().all())
+            else:
+                lease.co_tenants = []
+
         await db.flush()
         await db.refresh(lease)
         return lease

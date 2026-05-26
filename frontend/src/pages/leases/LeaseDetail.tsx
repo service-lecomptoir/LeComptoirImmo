@@ -343,9 +343,21 @@ export default function LeaseDetail() {
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
             <User size={15} className="text-blue-500" /> Locataire
           </h2>
-          <InfoRow label="Nom" value={lease.tenant?.full_name} />
+          <InfoRow label={lease.co_tenants && lease.co_tenants.length > 0 ? 'Locataire principal' : 'Nom'} value={lease.tenant?.full_name} />
           <InfoRow label="Email" value={lease.tenant?.email} />
           <InfoRow label="Téléphone" value={lease.tenant?.phone} />
+          {lease.co_tenants && lease.co_tenants.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs font-medium text-gray-500 mb-1.5">Co-titulaires (solidaires)</p>
+              <div className="space-y-1">
+                {lease.co_tenants.map(ct => (
+                  <p key={ct.id} className="text-sm text-gray-800">
+                    {ct.full_name}{ct.email ? <span className="text-gray-400"> — {ct.email}</span> : null}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
           {lease.has_guarantor && (
             <>
               <div className="mt-3 pt-3 border-t border-gray-100">

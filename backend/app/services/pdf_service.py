@@ -49,7 +49,11 @@ def html_to_pdf(html_content: str) -> bytes:
 
 def generate_lease_pdf(lease: Any) -> bytes:
     """Génère le PDF d'un contrat de bail."""
-    html = render_template("lease_bail.html.j2", {"lease": lease})
+    try:
+        tenant_names = lease.all_tenant_names
+    except Exception:
+        tenant_names = lease.tenant.full_name if getattr(lease, "tenant", None) else ""
+    html = render_template("lease_bail.html.j2", {"lease": lease, "tenant_names": tenant_names})
     return html_to_pdf(html)
 
 
@@ -67,20 +71,32 @@ class AvisEcheancePDFService:
         from app.models.avis_echeance import AvisEcheance
         from app.models.unit import Unit
         from app.models.property import Property
+        from app.models.lease import Lease
 
-        # Recharger avec toutes les relations nécessaires
+        # Recharger avec toutes les relations nécessaires (+ co-titulaires du bail)
         avis_full = (await db.execute(
             select(AvisEcheance)
             .options(
                 selectinload(AvisEcheance.tenant),
                 selectinload(AvisEcheance.unit),
-                selectinload(AvisEcheance.lease),
+                selectinload(AvisEcheance.lease).selectinload(Lease.tenant),
+                selectinload(AvisEcheance.lease).selectinload(Lease.co_tenants),
             )
             .where(AvisEcheance.id == avis.id)
         )).scalar_one_or_none()
 
         if not avis_full:
             avis_full = avis
+
+        # Noms de tous les co-titulaires (principal + secondaires)
+        tenant_names = ""
+        if getattr(avis_full, "lease", None):
+            try:
+                tenant_names = avis_full.lease.all_tenant_names
+            except Exception:
+                tenant_names = ""
+        if not tenant_names and getattr(avis_full, "tenant", None):
+            tenant_names = avis_full.tenant.full_name
 
         # Récupérer le bien lié au logement
         property_obj = None
@@ -100,6 +116,7 @@ class AvisEcheancePDFService:
             "avis": avis_full,
             "property": property_obj,
             "today": today_fr,
+            "tenant_names": tenant_names,
             "layout": get_layout(),
         })
         return html_to_pdf(html)

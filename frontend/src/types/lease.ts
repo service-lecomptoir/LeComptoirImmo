@@ -61,6 +61,8 @@ export interface Lease {
   net_rent: number
   notes?: string
   tenant?: TenantInLease
+  co_tenants?: TenantInLease[]
+  all_tenant_names?: string
   unit?: UnitInLease
   parent_property?: PropertyInLease
   created_at: string

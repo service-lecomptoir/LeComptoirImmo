@@ -174,7 +174,7 @@
   <table class="row-table" style="margin-top:8px">
     <tr>
       <td style="width:34%">
-        <div class="label">Locataire</div>
+        <div class="label">Locataire principal</div>
         <div class="value">{{ lease.tenant.full_name if lease.tenant else '—' }}</div>
       </td>
       <td style="width:33%">
@@ -187,6 +187,22 @@
       </td>
     </tr>
   </table>
+
+  {% if lease.co_tenants and lease.co_tenants|length > 0 %}
+  <table class="row-table" style="margin-top:8px">
+    <tr>
+      <td>
+        <div class="label">Co-titulaires</div>
+        <div class="value">
+          {% for ct in lease.co_tenants %}{{ ct.full_name }}{% if ct.email %} — {{ ct.email }}{% endif %}{% if not loop.last %} ; {% endif %}{% endfor %}
+        </div>
+      </td>
+    </tr>
+  </table>
+  <div style="margin-top:6px; font-size:9px; color:#555; font-style:italic">
+    Les co-titulaires sont solidairement et indivisiblement tenus de l'ensemble des obligations du présent bail (clause de solidarité).
+  </div>
+  {% endif %}
 
   {% if lease.has_guarantor and lease.guarantor_name %}
   <table class="row-table" style="margin-top:8px">
