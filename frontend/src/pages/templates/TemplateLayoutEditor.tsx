@@ -281,9 +281,10 @@ export default function TemplateLayoutEditor() {
     try {
       // Sauvegarde d'abord pour que le preview reflète les changements en cours
       await apiClient.put('/settings/template-layout', config)
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('access_token')
       const url = `${API_BASE}/api/v1/settings/template-preview?template=${previewType}`
       const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      if (!resp.ok) throw new Error(`preview ${resp.status}`)
       const blob = await resp.blob()
       const objUrl = URL.createObjectURL(blob)
       window.open(objUrl, '_blank')
