@@ -160,7 +160,7 @@ export default function Dashboard() {
             )}
             {stats.alerts.overdue_payments > 0 && (
               <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">
-                {stats.alerts.overdue_payments} paiement(s) en retard — {fmtEur(stats.alerts.overdue_amount)}
+                {stats.alerts.overdue_payments} paiement{stats.alerts.overdue_payments > 1 ? 's' : ''} en retard — {fmtEur(stats.alerts.overdue_amount)}
               </span>
             )}
           </div>
@@ -169,15 +169,15 @@ export default function Dashboard() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Biens immobiliers" value={fmt(stats.total_properties)}
-          sub={`${stats.occupancy.total_units} unités`} icon={Building2} color="blue" />
-        <KPICard title="Locataires actifs" value={fmt(stats.total_tenants)}
-          sub={`${stats.total_leases_active} contrat(s) actifs`} icon={Users} color="green" />
+        <KPICard title={stats.total_properties > 1 ? 'Biens immobiliers' : 'Bien immobilier'} value={fmt(stats.total_properties)}
+          sub={`${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`} icon={Building2} color="blue" />
+        <KPICard title={stats.total_tenants > 1 ? 'Locataires actifs' : 'Locataire actif'} value={fmt(stats.total_tenants)}
+          sub={`${stats.total_leases_active} contrat${stats.total_leases_active > 1 ? 's' : ''} actif${stats.total_leases_active > 1 ? 's' : ''}`} icon={Users} color="green" />
         <KPICard title="Taux d'occupation" value={`${stats.occupancy.occupancy_rate}%`}
           sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} unités`}
           icon={Home} color="purple" />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
-          sub={`${stats.alerts.overdue_payments} paiement(s)`} icon={AlertTriangle}
+          sub={`${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''}`} icon={AlertTriangle}
           color={stats.financial.total_outstanding > 0 ? 'red' : 'green'} />
       </div>
 

@@ -65,28 +65,28 @@ export default function Dashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <KpiCard
-          label="Gestionnaires actifs"
+          label={stats.gestionnaires_actifs > 1 ? 'Gestionnaires actifs' : 'Gestionnaire actif'}
           value={stats.gestionnaires_actifs}
           icon={UserCheck}
           color="text-emerald-600"
           bg="bg-emerald-50"
         />
         <KpiCard
-          label="Gestionnaires bloques"
+          label={stats.gestionnaires_bloques > 1 ? 'Gestionnaires bloques' : 'Gestionnaire bloque'}
           value={stats.gestionnaires_bloques}
           icon={UserX}
           color="text-red-600"
           bg="bg-red-50"
         />
         <KpiCard
-          label="Proprietaires"
+          label={stats.total_proprietaires > 1 ? 'Proprietaires' : 'Proprietaire'}
           value={stats.total_proprietaires}
           icon={Key}
           color="text-indigo-600"
           bg="bg-indigo-50"
         />
         <KpiCard
-          label="Locataires"
+          label={stats.total_locataires > 1 ? 'Locataires' : 'Locataire'}
           value={stats.total_locataires}
           icon={Home}
           color="text-violet-600"
