@@ -49,8 +49,7 @@ export default function ProprietaireLocataires() {
                     <div className="flex items-center gap-1.5">
                       <Home size={13} className="text-gray-400" />
                       <div>
-                        <p className="text-sm text-gray-700">{l.unit_ref}</p>
-                        <p className="text-xs text-gray-400">{l.property_name}</p>
+                        <p className="text-sm text-gray-700">{l.property_name}</p>
                       </div>
                     </div>
                   </td>

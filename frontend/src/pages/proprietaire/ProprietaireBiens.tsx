@@ -167,9 +167,6 @@ export default function ProprietaireBiens() {
           {merged.map(prop => {
             const perf = prop.perf
             const isOpen = !!expanded[prop.id]
-            const occupancyRate = (prop.unit_count ?? 0) > 0
-              ? Math.round(((prop.occupied_count ?? 0) / (prop.unit_count ?? 1)) * 100)
-              : 0
 
             return (
               <div key={prop.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -192,15 +189,10 @@ export default function ProprietaireBiens() {
                           </div>
                         )}
                         <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
-                            {prop.occupied_count ?? 0}/{prop.unit_count ?? 0} logement{(prop.unit_count ?? 0) > 1 ? 's' : ''} occupé{(prop.unit_count ?? 0) > 1 ? 's' : ''}
-                          </span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            occupancyRate >= 80 ? 'bg-green-100 text-green-700' :
-                            occupancyRate >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-600'
+                            prop.is_occupied ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
                           }`}>
-                            {occupancyRate} % occupation
+                            {prop.is_occupied ? 'Occupé' : 'Disponible'}
                           </span>
                         </div>
                       </div>

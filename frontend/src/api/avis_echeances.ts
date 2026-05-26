@@ -14,10 +14,9 @@ export interface AvisEcheanceSummary {
   sent_at?: string | null
   is_auto_generated: boolean
   tenant_full_name: string
-  unit_ref: string
+  property_name: string
   lease_id: string
   tenant_id: string
-  unit_id: string
   notes?: string | null
   pdf_path?: string | null
   generated_by?: string | null

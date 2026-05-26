@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.lease import Lease
-from app.models.unit import Unit
+from app.models.property import Property
 from app.schemas.lease import LeaseCreate, LeaseUpdate, LeaseTerminate, LeaseListItem
 from app.core.exceptions import NotFoundException, BadRequestException, ConflictException
 
@@ -16,14 +16,12 @@ class LeaseService:
     async def create(
         db: AsyncSession, data: LeaseCreate, created_by: uuid.UUID
     ) -> Lease:
-        # Vérifier que le logement existe et appartient au bien
-        unit = await db.get(Unit, data.unit_id)
-        if not unit:
-            raise NotFoundException("Logement introuvable")
-        if str(unit.property_id) != str(data.property_id):
-            raise BadRequestException("Ce logement n'appartient pas à ce bien")
-        if unit.is_occupied:
-            raise ConflictException("Ce logement est déjà occupé")
+        # Vérifier que le bien existe et est disponible
+        prop = await db.get(Property, data.property_id)
+        if not prop:
+            raise NotFoundException("Bien immobilier introuvable")
+        if prop.is_occupied:
+            raise ConflictException("Ce bien est déjà loué (un contrat actif existe)")
 
         # Vérifier que le locataire n'a pas déjà un bail actif
         existing_lease = await db.execute(
@@ -53,9 +51,9 @@ class LeaseService:
             res = await db.execute(select(Tenant).where(Tenant.id.in_(secondary_ids)))
             lease.co_tenants = list(res.scalars().all())
 
-        # Marquer le logement comme occupé
-        unit.is_occupied = True
-        unit.is_available = False
+        # Marquer le bien comme occupé
+        prop.is_occupied = True
+        prop.is_available = False
 
         await db.flush()
         await db.refresh(lease)
@@ -73,7 +71,6 @@ class LeaseService:
                 .options(
                     selectinload(Lease.tenant),
                     selectinload(Lease.co_tenants),
-                    selectinload(Lease.unit),
                     selectinload(Lease.parent_property),
                     selectinload(Lease.inspections),
                 )
@@ -91,7 +88,6 @@ class LeaseService:
         db: AsyncSession,
         *,
         search: Optional[str] = None,
-        unit_id: Optional[uuid.UUID] = None,
         tenant_id: Optional[uuid.UUID] = None,
         property_id: Optional[uuid.UUID] = None,
         is_active: Optional[bool] = None,
@@ -99,17 +95,14 @@ class LeaseService:
         limit: int = 50,
     ) -> tuple[list[Lease], int]:
         from app.models.tenant import Tenant
-        from app.models.unit import Unit as UnitModel
         from app.models.property import Property
 
         base_q = (
             select(Lease)
             .join(Tenant, Lease.tenant_id == Tenant.id)
-            .join(UnitModel, Lease.unit_id == UnitModel.id)
             .join(Property, Lease.property_id == Property.id)
             .options(
                 selectinload(Lease.tenant),
-                selectinload(Lease.unit),
                 selectinload(Lease.parent_property),
             )
         )
@@ -117,8 +110,6 @@ class LeaseService:
         filters = []
         if is_active is not None:
             filters.append(Lease.is_active == is_active)
-        if unit_id:
-            filters.append(Lease.unit_id == unit_id)
         if tenant_id:
             filters.append(Lease.tenant_id == tenant_id)
         if property_id:
@@ -129,8 +120,8 @@ class LeaseService:
                 or_(
                     func.lower(Tenant.first_name).like(s),
                     func.lower(Tenant.last_name).like(s),
-                    func.lower(UnitModel.unit_ref).like(s),
                     func.lower(Property.name).like(s),
+                    func.lower(Property.address).like(s),
                 )
             )
 
@@ -154,12 +145,10 @@ class LeaseService:
         return LeaseListItem(
             id=lease.id,
             property_id=lease.property_id,
-            unit_id=lease.unit_id,
             tenant_id=lease.tenant_id,
             tenant_full_name=(
                 lease.tenant.full_name if lease.tenant else str(lease.tenant_id)
             ),
-            unit_ref=lease.unit.unit_ref if lease.unit else str(lease.unit_id),
             property_name=(
                 lease.parent_property.name
                 if lease.parent_property
@@ -218,11 +207,11 @@ class LeaseService:
         if data.notice_date:
             lease.notice_date = data.notice_date
 
-        # Libérer le logement
-        unit = await db.get(Unit, lease.unit_id)
-        if unit:
-            unit.is_occupied = False
-            unit.is_available = True
+        # Libérer le bien
+        prop = await db.get(Property, lease.property_id)
+        if prop:
+            prop.is_occupied = False
+            prop.is_available = True
 
         await db.flush()
         await db.refresh(lease)

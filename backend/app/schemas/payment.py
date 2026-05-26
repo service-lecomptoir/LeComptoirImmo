@@ -32,16 +32,9 @@ class TenantInPayment(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class UnitInPayment(BaseModel):
-    id: uuid.UUID
-    unit_ref: str
-    model_config = {"from_attributes": True}
-
-
 class PaymentResponse(BaseModel):
     id: uuid.UUID
     lease_id: uuid.UUID
-    unit_id: uuid.UUID
     tenant_id: uuid.UUID
     period_year: int
     period_month: int
@@ -60,7 +53,6 @@ class PaymentResponse(BaseModel):
     quittance_generated_at: Optional[datetime] = None
     quittance_sent_at: Optional[datetime] = None
     tenant: Optional[TenantInPayment] = None
-    unit: Optional[UnitInPayment] = None
     created_at: datetime
     updated_at: datetime
 
@@ -70,7 +62,6 @@ class PaymentResponse(BaseModel):
 class PaymentListItem(BaseModel):
     id: uuid.UUID
     tenant_full_name: str
-    unit_ref: str
     property_name: str
     period_label: str
     period_year: int

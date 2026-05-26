@@ -153,15 +153,16 @@ async def preview_template(
         name="Résidence Les Tilleuls",
         full_address="12 avenue des Tilleuls, 75001 Paris",
         city="Paris",
+        property_type="appartement",
+        floor=2,
+        area_sqm=45.0,
     )
     mock_tenant = SimpleNamespace(full_name="Marie Dupont")
-    mock_unit = SimpleNamespace(unit_ref="Appartement 3B")
     mock_lease = SimpleNamespace(parent_property=mock_property)
 
     if template == "avis":
         mock_avis = SimpleNamespace(
             tenant=mock_tenant,
-            unit=mock_unit,
             lease=mock_lease,
             period_label="Juin 2026",
             amount_rent=800.0,
@@ -182,7 +183,6 @@ async def preview_template(
         mock_payment = SimpleNamespace(
             id=_uuid.uuid4(),
             tenant=mock_tenant,
-            unit=mock_unit,
             lease=mock_lease,
             period_label="Juin 2026",
             period_year=2026,

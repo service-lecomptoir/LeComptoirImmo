@@ -8,7 +8,6 @@ import { StatusBadge } from '@/components/common/StatusBadge'
 import type { PropertyListItem } from '@/types/property'
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
-  immeuble: 'Immeuble',
   maison: 'Maison',
   appartement: 'Appartement',
   local_commercial: 'Local commercial',
@@ -16,7 +15,6 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
 }
 
 const TYPE_VARIANT: Record<string, 'blue' | 'green' | 'yellow' | 'gray'> = {
-  immeuble: 'blue',
   maison: 'green',
   appartement: 'blue',
   local_commercial: 'yellow',
@@ -108,7 +106,7 @@ export default function PropertyList() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nom du bien</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Adresse</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Propriétaire</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Logements</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -151,11 +149,11 @@ export default function PropertyList() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      prop.occupied_count > 0
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600'
+                      prop.is_occupied
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-green-100 text-green-700'
                     }`}>
-                      {prop.occupied_count}/{prop.unit_count}
+                      {prop.is_occupied ? 'Occupé' : 'Disponible'}
                     </span>
                   </td>
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
@@ -196,7 +194,7 @@ export default function PropertyList() {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
         title="Supprimer le bien"
-        message="Cette action supprimera aussi tous les logements associés. Êtes-vous sûr ?"
+        message="Cette action supprimera définitivement ce bien. Êtes-vous sûr ?"
         isLoading={isDeleting}
       />
     </div>

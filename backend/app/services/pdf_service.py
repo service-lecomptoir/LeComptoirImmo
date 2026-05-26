@@ -69,18 +69,17 @@ class AvisEcheancePDFService:
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
         from app.models.avis_echeance import AvisEcheance
-        from app.models.unit import Unit
         from app.models.property import Property
         from app.models.lease import Lease
 
-        # Recharger avec toutes les relations nécessaires (+ co-titulaires du bail)
+        # Recharger avec toutes les relations nécessaires (+ co-titulaires du bail + bien)
         avis_full = (await db.execute(
             select(AvisEcheance)
             .options(
                 selectinload(AvisEcheance.tenant),
-                selectinload(AvisEcheance.unit),
                 selectinload(AvisEcheance.lease).selectinload(Lease.tenant),
                 selectinload(AvisEcheance.lease).selectinload(Lease.co_tenants),
+                selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
             )
             .where(AvisEcheance.id == avis.id)
         )).scalar_one_or_none()
@@ -98,12 +97,15 @@ class AvisEcheancePDFService:
         if not tenant_names and getattr(avis_full, "tenant", None):
             tenant_names = avis_full.tenant.full_name
 
-        # Récupérer le bien lié au logement
+        # Récupérer le bien lié au contrat
         property_obj = None
-        if avis_full.unit and avis_full.unit.property_id:
-            property_obj = (await db.execute(
-                select(Property).where(Property.id == avis_full.unit.property_id)
-            )).scalar_one_or_none()
+        _lease = getattr(avis_full, "lease", None)
+        if _lease is not None:
+            property_obj = getattr(_lease, "parent_property", None)
+            if property_obj is None and _lease.property_id:
+                property_obj = (await db.execute(
+                    select(Property).where(Property.id == _lease.property_id)
+                )).scalar_one_or_none()
 
         from datetime import date as _date
         from app.services.template_layout_service import get_layout

@@ -104,7 +104,7 @@ export default function LocataireDashboard() {
             </h2>
             {lease && (
               <button
-                onClick={() => leasesApi.downloadPdf(lease.id, `bail_${lease.unit_ref ?? 'contrat'}.pdf`)}
+                onClick={() => leasesApi.downloadPdf(lease.id, `bail_${lease.property_name ?? 'contrat'}.pdf`)}
                 className="flex items-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 transition-colors"
               >
                 <Download size={12} />
@@ -118,10 +118,6 @@ export default function LocataireDashboard() {
             <p className="text-sm text-gray-400">Aucun bail actif trouvé</p>
           ) : (
             <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Logement</span>
-                <span className="font-medium text-gray-900">{lease.unit_ref}</span>
-              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Bien</span>
                 <span className="font-medium text-gray-900">{lease.property_name}</span>

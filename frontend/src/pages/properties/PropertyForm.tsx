@@ -12,12 +12,21 @@ import type { User } from '@/types/auth'
 
 const schema = z.object({
   name: z.string().min(1, 'Nom requis'),
-  property_type: z.enum(['immeuble', 'maison', 'appartement', 'local_commercial', 'autre']),
+  property_type: z.enum(['appartement', 'maison', 'local_commercial', 'autre']),
   address: z.string().min(1, 'Adresse requise'),
   zip_code: z.string().min(1, 'Code postal requis'),
   city: z.string().min(1, 'Ville requise'),
   country: z.string().default('France'),
   owner_user_id: z.string().uuid('Propriétaire requis').min(1, 'Propriétaire requis'),
+  // ── Caractéristiques du bien ──────────────────────────────────────────────
+  area_sqm: z.coerce.number().min(0).optional(),
+  floor: z.coerce.number().int().optional(),
+  rooms: z.coerce.number().int().min(0).optional(),
+  bedrooms: z.coerce.number().int().min(0).optional(),
+  bathrooms: z.coerce.number().int().min(0).optional(),
+  base_rent: z.coerce.number().min(0).default(0),
+  charges_amount: z.coerce.number().min(0).default(0),
+  deposit_months: z.coerce.number().min(0).default(1),
   notes: z.string().optional(),
 })
 
@@ -100,11 +109,22 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       city: property.city,
       country: property.country ?? 'France',
       owner_user_id: property.owner_user_id ?? (isGestionnairePropio ? (currentUser?.id ?? '') : ''),
+      area_sqm: property.area_sqm ?? undefined,
+      floor: property.floor ?? undefined,
+      rooms: property.rooms ?? undefined,
+      bedrooms: property.bedrooms ?? undefined,
+      bathrooms: property.bathrooms ?? undefined,
+      base_rent: property.base_rent ?? 0,
+      charges_amount: property.charges_amount ?? 0,
+      deposit_months: property.deposit_months ?? 1,
       notes: property.notes ?? '',
     } : {
       property_type: 'appartement',
       country: 'France',
       owner_user_id: isGestionnairePropio ? (currentUser?.id ?? '') : '',
+      base_rent: 0,
+      charges_amount: 0,
+      deposit_months: 1,
     },
   })
 
@@ -132,6 +152,14 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       city: data.city,
       country: data.country,
       owner_user_id: data.owner_user_id,
+      area_sqm: data.area_sqm ?? null,
+      floor: data.floor ?? null,
+      rooms: data.rooms ?? null,
+      bedrooms: data.bedrooms ?? null,
+      bathrooms: data.bathrooms ?? null,
+      base_rent: data.base_rent ?? 0,
+      charges_amount: data.charges_amount ?? 0,
+      deposit_months: data.deposit_months ?? 1,
       notes: data.notes || undefined,
     }
     if (isEdit) {
@@ -177,7 +205,6 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
             <select {...register('property_type')} className={inp}>
               <option value="appartement">Appartement</option>
               <option value="maison">Maison</option>
-              <option value="immeuble">Immeuble</option>
               <option value="local_commercial">Local commercial</option>
               <option value="autre">Autre</option>
             </select>
@@ -208,6 +235,52 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
                 <label className={lbl}>Pays</label>
                 <input {...register('country')} className={inp} />
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Caractéristiques du bien */}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Caractéristiques</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={lbl}>Surface (m²)</label>
+              <input type="number" step="0.01" {...register('area_sqm')} className={inp} placeholder="ex. 45" />
+            </div>
+            <div>
+              <label className={lbl}>Étage</label>
+              <input type="number" {...register('floor')} className={inp} placeholder="ex. 2" />
+            </div>
+            <div>
+              <label className={lbl}>Pièces</label>
+              <input type="number" {...register('rooms')} className={inp} placeholder="ex. 3" />
+            </div>
+            <div>
+              <label className={lbl}>Chambres</label>
+              <input type="number" {...register('bedrooms')} className={inp} placeholder="ex. 2" />
+            </div>
+            <div>
+              <label className={lbl}>Salles de bain</label>
+              <input type="number" {...register('bathrooms')} className={inp} placeholder="ex. 1" />
+            </div>
+          </div>
+        </div>
+
+        {/* Loyer & charges */}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Loyer & charges</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={lbl}>Loyer de base (€)</label>
+              <input type="number" step="0.01" {...register('base_rent')} className={inp} placeholder="ex. 800" />
+            </div>
+            <div>
+              <label className={lbl}>Charges (€)</label>
+              <input type="number" step="0.01" {...register('charges_amount')} className={inp} placeholder="ex. 80" />
+            </div>
+            <div>
+              <label className={lbl}>Dépôt (mois)</label>
+              <input type="number" {...register('deposit_months')} className={inp} placeholder="ex. 1" />
             </div>
           </div>
         </div>

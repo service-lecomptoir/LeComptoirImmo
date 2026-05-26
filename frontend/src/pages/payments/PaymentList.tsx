@@ -214,8 +214,7 @@ export default function PaymentList() {
                 <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.tenant_full_name}</td>
                   <td className="px-4 py-3">
-                    <div className="text-sm text-gray-900">{p.unit_ref}</div>
-                    <div className="text-xs text-gray-500">{p.property_name}</div>
+                    <div className="text-sm text-gray-900">{p.property_name}</div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">{p.period_label}</td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(p.amount_due)}</td>

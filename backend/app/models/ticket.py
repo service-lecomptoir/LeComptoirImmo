@@ -11,7 +11,6 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.tenant import Tenant
     from app.models.lease import Lease
-    from app.models.unit import Unit
     from app.models.user import User
 
 
@@ -65,9 +64,6 @@ class Ticket(Base, TimestampMixin):
     )
     lease_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("leases.id", ondelete="SET NULL"), nullable=True
-    )
-    unit_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("units.id", ondelete="SET NULL"), nullable=True
     )
     assigned_to_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True

@@ -88,7 +88,6 @@ async def attestation_caf(
     lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
 
     tenant = lease.tenant
-    unit = lease.unit
     prop = lease.parent_property
     today = date.today()
 
@@ -96,9 +95,9 @@ async def attestation_caf(
         "bailleur_name": current_user.full_name,
         "property_address": prop.full_address if prop else "—",
         "property_city": prop.city if prop and prop.city else "",
-        "unit_ref": unit.unit_ref if unit else "—",
-        "unit_type": unit.unit_type if unit else "—",
-        "area_sqm": f"{float(unit.area_sqm):.0f}" if unit and unit.area_sqm else None,
+        "unit_ref": prop.name if prop else "—",
+        "unit_type": prop.property_type if prop else "—",
+        "area_sqm": f"{float(prop.area_sqm):.0f}" if prop and prop.area_sqm else None,
         "tenant_name": tenant.full_name if tenant else "—",
         "tenant_birth_date": (
             tenant.birth_date.strftime("%d/%m/%Y") if tenant and tenant.birth_date else None

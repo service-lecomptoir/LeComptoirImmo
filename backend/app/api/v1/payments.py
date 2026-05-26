@@ -95,7 +95,6 @@ async def locataire_current_payment(
         select(PaymentModel)
         .options(
             selectinload(PaymentModel.tenant),
-            selectinload(PaymentModel.unit),
             selectinload(PaymentModel.lease).selectinload(Lease.parent_property),
         )
         .where(PaymentModel.tenant_id == tenant.id)
@@ -175,7 +174,6 @@ async def list_payments(
     from sqlalchemy import select
     from app.models.tenant import Tenant
     from app.models.property import Property
-    from app.models.unit import Unit
     from app.models.lease import Lease
 
     role = Role(current_user.role)
@@ -197,12 +195,8 @@ async def list_payments(
         prop_ids = [p.id for p in props]
         if not prop_ids:
             return PaymentListResponse(items=[], total=0, skip=skip, limit=limit)
-        units = (await db.execute(
-            select(Unit).where(Unit.property_id.in_(prop_ids))
-        )).scalars().all()
-        unit_ids = [u.id for u in units]
         leases = (await db.execute(
-            select(Lease).where(Lease.unit_id.in_(unit_ids))
+            select(Lease).where(Lease.property_id.in_(prop_ids))
         )).scalars().all()
         lease_ids = [l.id for l in leases]
         if not lease_ids:

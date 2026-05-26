@@ -17,16 +17,6 @@ class TenantInLease(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class UnitInLease(BaseModel):
-    id: uuid.UUID
-    unit_ref: str
-    unit_type: str
-    area_sqm: Optional[float] = None
-    floor: Optional[int] = None
-
-    model_config = {"from_attributes": True}
-
-
 class PropertyInLease(BaseModel):
     id: uuid.UUID
     name: str
@@ -39,7 +29,6 @@ class PropertyInLease(BaseModel):
 
 class LeaseCreate(BaseModel):
     property_id: uuid.UUID
-    unit_id: uuid.UUID
     tenant_id: uuid.UUID
     # Co-titulaires secondaires (le principal est tenant_id)
     secondary_tenant_ids: list[uuid.UUID] = Field(default_factory=list)
@@ -89,7 +78,6 @@ class LeaseTerminate(BaseModel):
 class LeaseResponse(BaseModel):
     id: uuid.UUID
     property_id: uuid.UUID
-    unit_id: uuid.UUID
     tenant_id: uuid.UUID
     lease_type: LeaseType
     start_date: date
@@ -114,7 +102,6 @@ class LeaseResponse(BaseModel):
     tenant: Optional[TenantInLease] = None
     co_tenants: list[TenantInLease] = Field(default_factory=list)
     all_tenant_names: Optional[str] = None
-    unit: Optional[UnitInLease] = None
     parent_property: Optional[PropertyInLease] = None
     created_at: datetime
     updated_at: datetime
@@ -125,10 +112,8 @@ class LeaseResponse(BaseModel):
 class LeaseListItem(BaseModel):
     id: uuid.UUID
     property_id: uuid.UUID
-    unit_id: uuid.UUID
     tenant_id: uuid.UUID
     tenant_full_name: str
-    unit_ref: str
     property_name: str
     lease_type: str
     start_date: date

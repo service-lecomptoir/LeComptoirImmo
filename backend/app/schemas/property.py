@@ -13,7 +13,7 @@ class PropertyCreate(BaseModel):
     zip_code: str
     city: str
     country: str = "France"
-    property_type: PropertyType = PropertyType.IMMEUBLE
+    property_type: PropertyType = PropertyType.APPARTEMENT
     owner_user_id: Optional[uuid.UUID] = None
     owner_name: Optional[str] = None
     owner_email: Optional[EmailStr] = None
@@ -21,6 +21,15 @@ class PropertyCreate(BaseModel):
     description: Optional[str] = None
     notes: Optional[str] = None
     year_built: Optional[int] = None
+    # ── Caractéristiques du logement (fusionnées) ─────────────────────────────
+    floor: Optional[int] = None
+    area_sqm: Optional[float] = None
+    rooms: Optional[int] = None
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    base_rent: float = 0
+    charges_amount: float = 0
+    deposit_months: int = 1
 
 
 class PropertyUpdate(BaseModel):
@@ -39,6 +48,14 @@ class PropertyUpdate(BaseModel):
     description: Optional[str] = None
     notes: Optional[str] = None
     year_built: Optional[int] = None
+    floor: Optional[int] = None
+    area_sqm: Optional[float] = None
+    rooms: Optional[int] = None
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    base_rent: Optional[float] = None
+    charges_amount: Optional[float] = None
+    deposit_months: Optional[int] = None
 
 
 class PropertyResponse(BaseModel):
@@ -59,6 +76,16 @@ class PropertyResponse(BaseModel):
     description: Optional[str]
     notes: Optional[str]
     year_built: Optional[int]
+    floor: Optional[int] = None
+    area_sqm: Optional[float] = None
+    rooms: Optional[int] = None
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    base_rent: float = 0
+    charges_amount: float = 0
+    deposit_months: int = 1
+    is_occupied: bool = False
+    is_available: bool = True
     unit_count: int = 0
     occupied_count: int = 0
     created_at: datetime
@@ -75,6 +102,9 @@ class PropertyListItem(BaseModel):
     full_address: str
     owner_user_id: Optional[uuid.UUID] = None
     owner_name: Optional[str]
+    area_sqm: Optional[float] = None
+    base_rent: float = 0
+    is_occupied: bool = False
     unit_count: int = 0
     occupied_count: int = 0
     created_at: datetime

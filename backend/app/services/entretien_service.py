@@ -65,7 +65,7 @@ class EntretienService:
     async def get(db: AsyncSession, entretien_id: uuid.UUID) -> Entretien:
         result = await db.execute(
             select(Entretien)
-            .options(selectinload(Entretien.prestataire), selectinload(Entretien.property), selectinload(Entretien.unit))
+            .options(selectinload(Entretien.prestataire), selectinload(Entretien.property))
             .where(Entretien.id == entretien_id)
         )
         e = result.scalar_one_or_none()
@@ -85,7 +85,6 @@ class EntretienService:
         q = select(Entretien).options(
             selectinload(Entretien.prestataire),
             selectinload(Entretien.property),
-            selectinload(Entretien.unit),
         )
         if status:
             q = q.where(Entretien.status == status)

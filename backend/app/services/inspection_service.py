@@ -34,15 +34,15 @@ class InspectionService:
         db: AsyncSession,
         *,
         lease_id: Optional[uuid.UUID] = None,
-        unit_id: Optional[uuid.UUID] = None,
+        property_id: Optional[uuid.UUID] = None,
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[Inspection], int]:
         query = select(Inspection)
         if lease_id:
             query = query.where(Inspection.lease_id == lease_id)
-        if unit_id:
-            query = query.where(Inspection.unit_id == unit_id)
+        if property_id:
+            query = query.where(Inspection.property_id == property_id)
 
         count_q = select(func.count()).select_from(query.subquery())
         total = (await db.execute(count_q)).scalar_one()

@@ -31,9 +31,9 @@ interface InspectionFormData {
   notes: string
 }
 
-function InspectionForm({ leaseId, unitId, onSaved, onCancel }: {
+function InspectionForm({ leaseId, propertyId, onSaved, onCancel }: {
   leaseId: string
-  unitId: string
+  propertyId: string
   onSaved: () => void
   onCancel: () => void
 }) {
@@ -57,7 +57,7 @@ function InspectionForm({ leaseId, unitId, onSaved, onCancel }: {
     try {
       await inspectionsApi.create({
         lease_id: leaseId,
-        unit_id: unitId,
+        property_id: propertyId,
         inspection_type: form.inspection_type,
         inspection_date: form.inspection_date,
         inspector_name: form.inspector_name || undefined,
@@ -245,7 +245,7 @@ export default function LeaseDetail() {
             />
           </div>
           <p className="text-sm text-gray-500">
-            {lease.parent_property?.name} — {lease.unit?.unit_ref}
+            {lease.parent_property?.name}
             &nbsp;·&nbsp;{LEASE_TYPE_LABELS[lease.lease_type]}
           </p>
         </div>
@@ -299,18 +299,13 @@ export default function LeaseDetail() {
           <InfoRow label="Congé donné le" value={fmtDate(lease.notice_date)} />
         </div>
 
-        {/* Logement */}
+        {/* Bien */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
-            <Home size={15} className="text-blue-500" /> Logement
+            <Home size={15} className="text-blue-500" /> Bien immobilier
           </h2>
           <InfoRow label="Bien" value={lease.parent_property?.name} />
           <InfoRow label="Adresse" value={lease.parent_property?.full_address} />
-          <InfoRow label="Unité" value={lease.unit?.unit_ref} />
-          <InfoRow label="Type" value={lease.unit?.unit_type} />
-          {lease.unit?.area_sqm && (
-            <InfoRow label="Surface" value={`${lease.unit.area_sqm} m²`} />
-          )}
         </div>
 
         {/* Finances */}
@@ -401,7 +396,7 @@ export default function LeaseDetail() {
           {showInspectionForm && lease && (
             <InspectionForm
               leaseId={lease.id}
-              unitId={lease.unit_id}
+              propertyId={lease.property_id}
               onSaved={() => { setShowInspectionForm(false); fetchLease() }}
               onCancel={() => setShowInspectionForm(false)}
             />

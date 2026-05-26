@@ -7,7 +7,6 @@ from sqlalchemy.orm import selectinload
 
 from app.models.payment import Payment, PaymentStatus
 from app.models.lease import Lease
-from app.models.unit import Unit
 from app.models.tenant import Tenant
 from app.models.property import Property
 from app.schemas.payment import (
@@ -79,7 +78,6 @@ class PaymentService:
 
         payment = Payment(
             lease_id=lease.id,
-            unit_id=lease.unit_id,
             tenant_id=lease.tenant_id,
             period_year=year,
             period_month=month,
@@ -185,7 +183,6 @@ class PaymentService:
                 select(Payment)
                 .options(
                     selectinload(Payment.tenant),
-                    selectinload(Payment.unit),
                     selectinload(Payment.lease).selectinload(Lease.parent_property),
                 )
                 .where(Payment.id == payment_id)
@@ -213,12 +210,10 @@ class PaymentService:
         base_q = (
             select(Payment)
             .join(Tenant, Payment.tenant_id == Tenant.id)
-            .join(Unit, Payment.unit_id == Unit.id)
             .join(Lease, Payment.lease_id == Lease.id)
             .join(Property, Lease.property_id == Property.id)
             .options(
                 selectinload(Payment.tenant),
-                selectinload(Payment.unit),
                 selectinload(Payment.lease).selectinload(Lease.parent_property),
             )
         )
@@ -240,7 +235,6 @@ class PaymentService:
                 or_(
                     func.lower(Tenant.first_name).like(s),
                     func.lower(Tenant.last_name).like(s),
-                    func.lower(Unit.unit_ref).like(s),
                     func.lower(Property.name).like(s),
                 )
             )
@@ -266,7 +260,6 @@ class PaymentService:
         return PaymentListItem(
             id=p.id,
             tenant_full_name=p.tenant.full_name if p.tenant else str(p.tenant_id),
-            unit_ref=p.unit.unit_ref if p.unit else str(p.unit_id),
             property_name=property_name,
             period_label=p.period_label,
             period_year=p.period_year,
@@ -332,10 +325,10 @@ class PaymentService:
         ).scalar_one()
 
         occupied_units = (
-            await db.execute(select(func.count(Unit.id)).where(Unit.is_occupied == True))
+            await db.execute(select(func.count(Property.id)).where(Property.is_occupied == True))
         ).scalar_one()
 
-        total_units = (await db.execute(select(func.count(Unit.id)))).scalar_one()
+        total_units = (await db.execute(select(func.count(Property.id)))).scalar_one()
 
         total_tenants = (await db.execute(select(func.count(Tenant.id)))).scalar_one()
 

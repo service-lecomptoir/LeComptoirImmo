@@ -3,7 +3,7 @@ import type { Inspection, InspectionListResponse } from '@/types/inspection'
 
 interface ListParams {
   lease_id?: string
-  unit_id?: string
+  property_id?: string
   skip?: number
   limit?: number
 }

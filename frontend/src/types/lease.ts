@@ -22,14 +22,6 @@ export interface TenantInLease {
   phone?: string
 }
 
-export interface UnitInLease {
-  id: string
-  unit_ref: string
-  unit_type: string
-  area_sqm?: number
-  floor?: number
-}
-
 export interface PropertyInLease {
   id: string
   name: string
@@ -39,7 +31,6 @@ export interface PropertyInLease {
 export interface Lease {
   id: string
   property_id: string
-  unit_id: string
   tenant_id: string
   lease_type: LeaseType
   start_date: string
@@ -63,7 +54,6 @@ export interface Lease {
   tenant?: TenantInLease
   co_tenants?: TenantInLease[]
   all_tenant_names?: string
-  unit?: UnitInLease
   parent_property?: PropertyInLease
   created_at: string
   updated_at: string
@@ -72,10 +62,8 @@ export interface Lease {
 export interface LeaseListItem {
   id: string
   property_id: string
-  unit_id: string
   tenant_id: string
   tenant_full_name: string
-  unit_ref: string
   property_name: string
   lease_type: LeaseType
   start_date: string

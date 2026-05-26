@@ -10,7 +10,6 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.property import Property
-    from app.models.unit import Unit
 
 
 class EntretienType(str, Enum):
@@ -85,9 +84,6 @@ class Entretien(Base, TimestampMixin):
     property_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("properties.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    unit_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("units.id", ondelete="SET NULL"), nullable=True
-    )
     prestataire_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("prestataires.id", ondelete="SET NULL"), nullable=True
     )
@@ -95,7 +91,6 @@ class Entretien(Base, TimestampMixin):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     property: Mapped[Optional["Property"]] = relationship("Property", lazy="select")
-    unit: Mapped[Optional["Unit"]] = relationship("Unit", lazy="select")
     prestataire: Mapped[Optional["Prestataire"]] = relationship("Prestataire", back_populates="entretiens", lazy="select")
 
     def __repr__(self) -> str:

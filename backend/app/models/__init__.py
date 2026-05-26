@@ -1,7 +1,6 @@
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.property import Property
-from app.models.unit import Unit
 from app.models.document import Document
 from app.models.lease import Lease
 from app.models.inspection import Inspection
@@ -18,7 +17,7 @@ from app.models.audit_log import AuditLog
 from app.models.app_setting import AppSetting
 
 __all__ = [
-    "User", "Tenant", "Property", "Unit", "Document",
+    "User", "Tenant", "Property", "Document",
     "Lease", "Inspection", "Payment", "Notification", "AvisEcheance",
     "Contact", "AutomationRule", "CommunicationLog", "DocumentTemplate",
     "Ticket", "TicketMessage", "Prestataire", "Entretien",

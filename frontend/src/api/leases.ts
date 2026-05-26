@@ -5,7 +5,6 @@ interface ListParams {
   is_active?: boolean
   property_id?: string
   tenant_id?: string
-  unit_id?: string
   search?: string
   skip?: number
   limit?: number

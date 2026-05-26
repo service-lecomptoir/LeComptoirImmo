@@ -95,9 +95,9 @@ export default function ProprietaireDashboard() {
         />
         <StatCard
           icon={Home}
-          label={totalUnits > 1 ? 'Logements' : 'Logement'}
-          value={isLoading ? '…' : totalUnits}
-          sub={totalUnits > 0 ? `${occupiedUnits} occupé${occupiedUnits > 1 ? 's' : ''}` : undefined}
+          label={occupiedUnits > 1 ? 'Biens occupés' : 'Bien occupé'}
+          value={isLoading ? '…' : occupiedUnits}
+          sub={totalUnits > 0 ? `${totalUnits} au total` : undefined}
           color="green"
           onClick={() => navigate('/proprietaire/biens')}
         />
@@ -155,8 +155,10 @@ export default function ProprietaireDashboard() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500">
-                    {p.occupied_count ?? '?'}/{p.unit_count ?? '?'} logement{(p.unit_count ?? 0) > 1 ? 's' : ''}
+                  <p className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    p.is_occupied ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                  }`}>
+                    {p.is_occupied ? 'Occupé' : 'Disponible'}
                   </p>
                 </div>
               </div>

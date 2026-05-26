@@ -25,7 +25,7 @@ export const CONDITION_VARIANTS: Record<OverallCondition, 'green' | 'blue' | 'ye
 export interface Inspection {
   id: string
   lease_id?: string
-  unit_id: string
+  property_id?: string
   inspection_type: InspectionType
   inspection_date: string
   inspector_name?: string

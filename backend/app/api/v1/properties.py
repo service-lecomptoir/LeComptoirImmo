@@ -11,23 +11,18 @@ from app.api.v1._isolation import gp_property_ids
 from app.models.user import User
 from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertyUpdate, PropertyResponse, PropertyListItem
-from app.schemas.unit import UnitResponse, UnitListItem
 from app.services.property_service import PropertyService
-from app.services.unit_service import UnitService
 
 router = APIRouter(prefix="/properties", tags=["Biens immobiliers"])
 
 
 async def _enrich_properties(db, properties):
-    """Ajoute unit_count et occupied_count à chaque bien."""
+    """Un bien = un logement : unit_count=1, occupied_count selon is_occupied."""
     items = []
     for prop in properties:
-        units = await UnitService.list_by_property(db, prop.id)
-        occupied = sum(1 for u in units if u.is_occupied)
-        item = PropertyListItem.model_validate(prop)
-        item_dict = item.model_dump()
-        item_dict["unit_count"] = len(units)
-        item_dict["occupied_count"] = occupied
+        item_dict = PropertyListItem.model_validate(prop).model_dump()
+        item_dict["unit_count"] = 1
+        item_dict["occupied_count"] = 1 if prop.is_occupied else 0
         items.append(item_dict)
     return items
 
@@ -134,11 +129,9 @@ async def get_property(
     _: User = Depends(get_current_user),
 ):
     prop = await PropertyService.get_by_id(db, property_id)
-    units = await UnitService.list_by_property(db, property_id)
-    occupied = sum(1 for u in units if u.is_occupied)
     resp = PropertyResponse.model_validate(prop)
-    resp.unit_count = len(units)
-    resp.occupied_count = occupied
+    resp.unit_count = 1
+    resp.occupied_count = 1 if prop.is_occupied else 0
     return resp
 
 
@@ -161,29 +154,10 @@ async def delete_property(
     await PropertyService.delete(db, property_id)
 
 
-@router.get("/{property_id}/units", response_model=List[UnitListItem], summary="Logements du bien")
-async def list_property_units(
-    property_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
-):
-    await PropertyService.get_by_id(db, property_id)
-    return await UnitService.list_by_property(db, property_id)
-
-
 @router.get("/{property_id}/occupancy", summary="Taux d'occupation")
 async def get_occupancy(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    await PropertyService.get_by_id(db, property_id)
-    units = await UnitService.list_by_property(db, property_id)
-    total = len(units)
-    occupied = sum(1 for u in units if u.is_occupied)
-    return {
-        "total": total,
-        "occupied": occupied,
-        "vacant": total - occupied,
-        "rate": round((occupied / total * 100), 1) if total > 0 else 0.0,
-    }
+    return await PropertyService.get_occupancy(db, property_id)

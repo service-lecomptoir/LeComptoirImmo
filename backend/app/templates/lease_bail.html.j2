@@ -233,23 +233,23 @@
   <table class="row-table">
     <tr>
       <td style="width:25%">
-        <div class="label">Référence logement</div>
-        <div class="value">{{ lease.unit.unit_ref if lease.unit else '—' }}</div>
+        <div class="label">Référence du bien</div>
+        <div class="value">{{ lease.parent_property.name if lease.parent_property else '—' }}</div>
       </td>
       <td style="width:25%">
         <div class="label">Type</div>
-        <div class="value">{{ lease.unit.unit_type if lease.unit else '—' }}</div>
+        <div class="value">{{ lease.parent_property.property_type if lease.parent_property else '—' }}</div>
       </td>
-      {% if lease.unit and lease.unit.floor is not none %}
+      {% if lease.parent_property and lease.parent_property.floor is not none %}
       <td style="width:25%">
         <div class="label">Étage</div>
-        <div class="value">{{ lease.unit.floor }}</div>
+        <div class="value">{{ lease.parent_property.floor }}</div>
       </td>
       {% endif %}
-      {% if lease.unit and lease.unit.area_sqm %}
+      {% if lease.parent_property and lease.parent_property.area_sqm %}
       <td style="width:25%">
         <div class="label">Surface</div>
-        <div class="value">{{ "%.2f" | format(lease.unit.area_sqm) }} m²</div>
+        <div class="value">{{ "%.2f" | format(lease.parent_property.area_sqm) }} m²</div>
       </td>
       {% endif %}
     </tr>

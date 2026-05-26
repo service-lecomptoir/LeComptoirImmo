@@ -11,7 +11,6 @@ from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.core.permissions import Role
 from app.models.property import Property
-from app.models.unit import Unit
 from app.models.lease import Lease
 from app.models.payment import Payment, PaymentStatus
 from app.models.tenant import Tenant
@@ -89,22 +88,22 @@ async def get_dashboard_stats(
             )
         return q
 
-    # ── Propriétés & Unités ───────────────────────────────────────────────────
+    # ── Biens (un bien = un logement) ──────────────────────────────────────────
     if is_gp:
         total_units_res = await db.execute(
-            select(func.count(Unit.id)).where(Unit.property_id.in_(prop_ids_filter))
+            select(func.count(Property.id)).where(Property.id.in_(prop_ids_filter))
         )
     elif is_mandataire and excluded_prop_ids:
         total_units_res = await db.execute(
-            select(func.count(Unit.id)).where(Unit.property_id.notin_(excluded_prop_ids))
+            select(func.count(Property.id)).where(Property.id.notin_(excluded_prop_ids))
         )
     else:
-        total_units_res = await db.execute(select(func.count(Unit.id)))
+        total_units_res = await db.execute(select(func.count(Property.id)))
     total_units = total_units_res.scalar_one() or 0
 
     occupied_units_res = await db.execute(
         _lease_scope(
-            select(func.count(func.distinct(Lease.unit_id))).where(Lease.is_active.is_(True))
+            select(func.count(func.distinct(Lease.property_id))).where(Lease.is_active.is_(True))
         )
     )
     occupied_units = occupied_units_res.scalar_one() or 0
@@ -212,10 +211,7 @@ async def get_dashboard_stats(
 
     top_properties = []
     for prop in properties:
-        units_res = await db.execute(
-            select(func.count(Unit.id)).where(Unit.property_id == prop.id)
-        )
-        units_count = units_res.scalar_one() or 0
+        units_count = 1  # un bien = un logement
 
         occ_res = await db.execute(
             select(func.count(Lease.id)).where(

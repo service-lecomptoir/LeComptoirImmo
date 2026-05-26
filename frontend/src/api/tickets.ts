@@ -10,7 +10,6 @@ export interface Ticket {
   tenant_id: string
   tenant_name?: string
   lease_id?: string
-  unit_id?: string
   assigned_to_id?: string
   assigned_to_name?: string
   closed_at?: string

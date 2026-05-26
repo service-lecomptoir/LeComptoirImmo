@@ -12,7 +12,6 @@ from app.api.v1._isolation import gp_lease_ids
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.property import Property
-from app.models.unit import Unit
 from app.schemas.lease import (
     LeaseCreate,
     LeaseUpdate,
@@ -30,7 +29,6 @@ router = APIRouter(prefix="/leases", tags=["Leases"])
 @router.get("", response_model=LeaseListResponse)
 async def list_leases(
     search: Optional[str] = Query(None),
-    unit_id: Optional[uuid.UUID] = Query(None),
     tenant_id: Optional[uuid.UUID] = Query(None),
     property_id: Optional[uuid.UUID] = Query(None),
     is_active: Optional[bool] = Query(None),
@@ -68,16 +66,7 @@ async def list_leases(
         if property_id and property_id not in prop_ids:
             raise HTTPException(status_code=403, detail="Accès non autorisé")
         if not property_id:
-            # On ne peut pas passer tous les property_ids comme filtre directement
-            # → on passe par les unit_ids des biens du proprio
-            units = (await db.execute(
-                select(Unit).where(Unit.property_id.in_(prop_ids))
-            )).scalars().all()
-            unit_ids_proprio = [u.id for u in units]
-            if not unit_ids_proprio:
-                return LeaseListResponse(items=[], total=0, skip=skip, limit=limit)
-            # Pour filtrer on va utiliser une liste — on passe property_ids directement
-            # en filtrant dans le service (ou on boucle)
+            # Tous les biens du proprio : on boucle sur ses property_ids
             leases_all = []
             for pid in prop_ids:
                 l2, _ = await LeaseService.list_all(
@@ -91,7 +80,7 @@ async def list_leases(
     if role == Role.GESTIONNAIRE:
         excluded = await gp_lease_ids(db)
         all_leases, _ = await LeaseService.list_all(
-            db, search=search, unit_id=unit_id, tenant_id=tenant_id,
+            db, search=search, tenant_id=tenant_id,
             property_id=property_id, is_active=is_active, skip=0, limit=2000,
         )
         filtered = [l for l in all_leases if l.id not in excluded]
@@ -102,7 +91,6 @@ async def list_leases(
     leases, total = await LeaseService.list_all(
         db,
         search=search,
-        unit_id=unit_id,
         tenant_id=tenant_id,
         property_id=property_id,
         is_active=is_active,

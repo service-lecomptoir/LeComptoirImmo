@@ -10,7 +10,7 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.lease import Lease
-    from app.models.unit import Unit
+    from app.models.property import Property
 
 
 class InspectionType(str, Enum):
@@ -41,10 +41,10 @@ class Inspection(Base, TimestampMixin):
         nullable=True,
         index=True,
     )
-    unit_id: Mapped[uuid.UUID] = mapped_column(
+    property_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("units.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("properties.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
 
@@ -74,7 +74,7 @@ class Inspection(Base, TimestampMixin):
 
     # ── Relations ─────────────────────────────────────────────────────────────
     lease: Mapped[Optional["Lease"]] = relationship("Lease", back_populates="inspections")
-    unit: Mapped["Unit"] = relationship("Unit", lazy="select")
+    parent_property: Mapped[Optional["Property"]] = relationship("Property", lazy="select")
 
     def __repr__(self) -> str:
         return f"<Inspection {self.inspection_type} — {self.inspection_date}>"

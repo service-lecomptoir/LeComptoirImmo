@@ -50,7 +50,6 @@ class EntretienCreate(BaseModel):
     next_date: Optional[date] = None
     cost: Optional[float] = None
     property_id: Optional[uuid.UUID] = None
-    unit_id: Optional[uuid.UUID] = None
     prestataire_id: Optional[uuid.UUID] = None
     notes: Optional[str] = None
 
@@ -66,7 +65,6 @@ class EntretienUpdate(BaseModel):
     next_date: Optional[date] = None
     cost: Optional[float] = None
     property_id: Optional[uuid.UUID] = None
-    unit_id: Optional[uuid.UUID] = None
     prestataire_id: Optional[uuid.UUID] = None
     notes: Optional[str] = None
 
@@ -84,8 +82,6 @@ class EntretienResponse(BaseModel):
     cost: Optional[float] = None
     property_id: Optional[uuid.UUID] = None
     property_label: Optional[str] = None
-    unit_id: Optional[uuid.UUID] = None
-    unit_label: Optional[str] = None
     prestataire_id: Optional[uuid.UUID] = None
     prestataire_name: Optional[str] = None
     notes: Optional[str] = None

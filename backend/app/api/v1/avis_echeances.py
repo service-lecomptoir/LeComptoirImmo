@@ -56,10 +56,9 @@ def _avis_to_summary(avis: AvisEcheance) -> dict:
         "sent_at": avis.sent_at,
         "is_auto_generated": avis.generated_by is None,
         "tenant_full_name": avis.tenant.full_name if avis.tenant else "",
-        "unit_ref": avis.unit.unit_ref if avis.unit else "",
+        "property_name": (avis.lease.parent_property.name if getattr(avis, "lease", None) and getattr(avis.lease, "parent_property", None) else ""),
         "lease_id": avis.lease_id,
         "tenant_id": avis.tenant_id,
-        "unit_id": avis.unit_id,
         "notes": avis.notes,
         "pdf_path": avis.pdf_path,
         "generated_by": avis.generated_by,
@@ -100,19 +99,14 @@ async def list_avis(
     elif current_user.role in (Role.PROPRIETAIRE, Role.GESTIONNAIRE_PROPRIO):
         # Le propriétaire voit les avis de ses biens
         from app.models.property import Property
-        from app.models.unit import Unit
         props = (await db.execute(
             select(Property).where(Property.owner_user_id == current_user.id)
         )).scalars().all()
         prop_ids = [p.id for p in props]
         if not prop_ids:
             return []
-        units = (await db.execute(
-            select(Unit).where(Unit.property_id.in_(prop_ids))
-        )).scalars().all()
-        unit_ids = [u.id for u in units]
         leases = (await db.execute(
-            select(Lease).where(Lease.unit_id.in_(unit_ids), Lease.is_active == True)
+            select(Lease).where(Lease.property_id.in_(prop_ids), Lease.is_active == True)
         )).scalars().all()
         lease_ids = [l.id for l in leases]
         if not lease_ids:
@@ -133,8 +127,7 @@ async def list_avis(
         from sqlalchemy.orm import selectinload
         q = q.options(
             selectinload(AvisEcheance.tenant),
-            selectinload(AvisEcheance.unit),
-            selectinload(AvisEcheance.lease),
+            selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
         ).order_by(
             AvisEcheance.period_year.desc(),
             AvisEcheance.period_month.desc(),

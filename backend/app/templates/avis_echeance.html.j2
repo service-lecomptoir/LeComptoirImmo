@@ -48,7 +48,7 @@
           {% elif block == 'recipient' %}
           <div class="recipient-name-left">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '—') }}</div>
           <div class="recipient-info-left">
-            {{ avis.unit.unit_ref if avis.unit else '' }}<br>{% if property %}{{ property.full_address }}{% endif %}
+            {% if property %}{{ property.name }}<br>{{ property.full_address }}{% endif %}
           </div>
           {% elif block == 'citydate' %}
           <div class="city-date-left">{% if property and property.city %}{{ property.city }}, {% endif %}le {{ today }}</div>
@@ -66,7 +66,7 @@
           {% elif block == 'recipient' %}
           <div class="recipient-name">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '—') }}</div>
           <div class="recipient-info">
-            {{ avis.unit.unit_ref if avis.unit else '' }}<br>{% if property %}{{ property.full_address }}{% endif %}
+            {% if property %}{{ property.name }}<br>{{ property.full_address }}{% endif %}
           </div>
           {% elif block == 'citydate' %}
           <div class="city-date">{% if property and property.city %}{{ property.city }}, {% endif %}le {{ today }}</div>

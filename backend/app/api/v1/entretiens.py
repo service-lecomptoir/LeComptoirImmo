@@ -32,8 +32,6 @@ def _enrich_entretien(e) -> dict:
         "cost": float(e.cost) if e.cost else None,
         "property_id": e.property_id,
         "property_label": e.property.address if e.property else None,
-        "unit_id": e.unit_id,
-        "unit_label": e.unit.label if e.unit else None,
         "prestataire_id": e.prestataire_id,
         "prestataire_name": e.prestataire.name if e.prestataire else None,
         "notes": e.notes,

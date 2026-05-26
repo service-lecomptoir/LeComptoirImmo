@@ -14,7 +14,6 @@ from sqlalchemy.orm import selectinload
 from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
 from app.models.lease import Lease
 from app.models.tenant import Tenant
-from app.models.unit import Unit
 from app.models.property import Property
 from app.models.payment import Payment, PaymentStatus
 from app.core.exceptions import ConflictException, NotFoundException
@@ -84,7 +83,6 @@ class AvisEcheanceService:
             id=uuid.uuid4(),
             lease_id=lease.id,
             tenant_id=lease.tenant_id,
-            unit_id=lease.unit_id,
             period_year=year,
             period_month=month,
             due_date=due,
@@ -143,7 +141,6 @@ class AvisEcheanceService:
         if existing is None:
             payment = Payment(
                 lease_id=lease.id,
-                unit_id=lease.unit_id,
                 tenant_id=lease.tenant_id,
                 period_year=year,
                 period_month=month,
@@ -216,8 +213,7 @@ class AvisEcheanceService:
     ) -> list[AvisEcheance]:
         q = select(AvisEcheance).options(
             selectinload(AvisEcheance.tenant),
-            selectinload(AvisEcheance.unit),
-            selectinload(AvisEcheance.lease),
+            selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
         )
         if lease_id:
             q = q.where(AvisEcheance.lease_id == lease_id)
@@ -241,8 +237,7 @@ class AvisEcheanceService:
             select(AvisEcheance)
             .options(
                 selectinload(AvisEcheance.tenant),
-                selectinload(AvisEcheance.unit),
-                selectinload(AvisEcheance.lease),
+                selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
             )
             .where(AvisEcheance.id == avis_id)
         )).scalar_one_or_none()

@@ -8,7 +8,7 @@ from app.models.inspection import InspectionType, OverallCondition
 
 class InspectionCreate(BaseModel):
     lease_id: Optional[uuid.UUID] = None
-    unit_id: uuid.UUID
+    property_id: Optional[uuid.UUID] = None
     inspection_type: InspectionType
     inspection_date: date
     inspector_name: Optional[str] = None
@@ -30,7 +30,7 @@ class InspectionUpdate(BaseModel):
 class InspectionResponse(BaseModel):
     id: uuid.UUID
     lease_id: Optional[uuid.UUID] = None
-    unit_id: uuid.UUID
+    property_id: Optional[uuid.UUID] = None
     inspection_type: InspectionType
     inspection_date: date
     inspector_name: Optional[str] = None

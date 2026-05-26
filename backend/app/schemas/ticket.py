@@ -52,7 +52,6 @@ class TicketResponse(BaseModel):
     tenant_id: uuid.UUID
     tenant_name: Optional[str] = None
     lease_id: Optional[uuid.UUID] = None
-    unit_id: Optional[uuid.UUID] = None
     assigned_to_id: Optional[uuid.UUID] = None
     assigned_to_name: Optional[str] = None
     closed_at: Optional[datetime] = None
@@ -71,7 +70,6 @@ class TicketListItem(BaseModel):
     priority: str
     tenant_id: uuid.UUID
     tenant_name: Optional[str] = None
-    unit_label: Optional[str] = None
     message_count: int = 0
     created_at: datetime
     updated_at: datetime

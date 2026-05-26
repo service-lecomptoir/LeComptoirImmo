@@ -129,7 +129,6 @@ export default function LeaseList() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm text-gray-900">{lease.property_name}</div>
-                    <div className="text-xs text-gray-500">{lease.unit_ref}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-xs text-gray-600">{LEASE_TYPE_LABELS[lease.lease_type]}</span>

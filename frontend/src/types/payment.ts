@@ -24,15 +24,9 @@ export interface TenantInPayment {
   full_name: string
 }
 
-export interface UnitInPayment {
-  id: string
-  unit_ref: string
-}
-
 export interface Payment {
   id: string
   lease_id: string
-  unit_id: string
   tenant_id: string
   period_year: number
   period_month: number
@@ -49,7 +43,6 @@ export interface Payment {
   status: PaymentStatus
   notes?: string
   tenant?: TenantInPayment
-  unit?: UnitInPayment
   created_at: string
   updated_at: string
 }
@@ -57,7 +50,6 @@ export interface Payment {
 export interface PaymentListItem {
   id: string
   tenant_full_name: string
-  unit_ref: string
   property_name: string
   period_label: string
   period_year: number

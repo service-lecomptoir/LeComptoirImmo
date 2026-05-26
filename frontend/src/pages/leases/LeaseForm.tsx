@@ -7,23 +7,12 @@ import { Modal } from '@/components/common/Modal'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
 import { tenantsApi } from '@/api/tenants'
-import { apiClient } from '@/api/client'
 import type { Lease } from '@/types/lease'
 import type { PropertyListItem } from '@/types/property'
 import type { TenantListItem } from '@/types/tenant'
 
-interface UnitOption {
-  id: string
-  unit_ref: string
-  unit_type: string
-  base_rent: number
-  charges_amount: number
-  is_occupied: boolean
-}
-
 const schema = z.object({
   property_id: z.string().min(1, 'Bien immobilier requis'),
-  unit_id: z.string().min(1, 'Logement requis'),
   tenant_id: z.string().min(1, 'Locataire requis'),
   lease_type: z.enum(['vide', 'meuble', 'mobilite', 'commercial']),
   start_date: z.string().min(1, 'Date d\'entrée requise'),
@@ -119,9 +108,7 @@ interface Props {
 export function LeaseForm({ lease, onClose, onSaved }: Props) {
   const isEdit = !!lease
   const [properties, setProperties] = useState<PropertyListItem[]>([])
-  const [units, setUnits] = useState<UnitOption[]>([])
   const [tenants, setTenants] = useState<TenantListItem[]>([])
-  const [loadingUnits, setLoadingUnits] = useState(false)
   const [showCreateTenant, setShowCreateTenant] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [secondaryIds, setSecondaryIds] = useState<string[]>(
@@ -132,7 +119,6 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
     resolver: zodResolver(schema),
     defaultValues: lease ? {
       property_id: lease.property_id,
-      unit_id: lease.unit_id,
       tenant_id: lease.tenant_id,
       lease_type: lease.lease_type,
       start_date: lease.start_date,
@@ -168,18 +154,19 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
     tenantsApi.list({ limit: 200, available_only: !isEdit }).then(r => setTenants(r.data.items))
   }, [])
 
+  // À la sélection d'un bien (en création), pré-remplir loyer / charges / dépôt
+  // depuis les caractéristiques du bien.
   useEffect(() => {
-    if (!selectedPropertyId) { setUnits([]); return }
-    setLoadingUnits(true)
-    apiClient.get<UnitOption[]>(`/properties/${selectedPropertyId}/units`)
+    if (!selectedPropertyId || isEdit) return
+    propertiesApi.get(selectedPropertyId)
       .then(r => {
-        setUnits(r.data)
-        if (!isEdit) {
-          const first = r.data.find(u => !u.is_occupied) ?? r.data[0]
-          setValue('unit_id', first?.id ?? '', { shouldValidate: true })
-        }
+        const p = r.data
+        if (p.base_rent != null) setValue('rent_amount', p.base_rent, { shouldValidate: true })
+        if (p.charges_amount != null) setValue('charges_amount', p.charges_amount)
+        const months = p.deposit_months ?? 1
+        if (p.base_rent != null) setValue('deposit_amount', Math.round((p.base_rent || 0) * months * 100) / 100)
       })
-      .finally(() => setLoadingUnits(false))
+      .catch(() => {})
   }, [selectedPropertyId, isEdit, setValue])
 
   const handleTenantCreated = (tenant: TenantListItem) => {
@@ -250,23 +237,11 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               ))}
             </select>
             {errors.property_id && <p className={err}>{errors.property_id.message}</p>}
-            {/* Logement auto-sélectionné ou choix si plusieurs */}
-            {selectedPropertyId && !loadingUnits && units.length > 1 && (
-              <div className="mt-2">
-                <label className={lbl}>Logement</label>
-                <select {...register('unit_id')} className={inp} disabled={isEdit}>
-                  {units.map(u => (
-                    <option key={u.id} value={u.id} disabled={u.is_occupied && u.id !== lease?.unit_id}>
-                      {u.unit_ref} ({u.unit_type}){u.is_occupied && u.id !== lease?.unit_id ? ' — Occupé' : ` — ${u.base_rent} €/mois`}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {!isEdit && selectedPropertyId && (
+              <p className="mt-1 text-xs text-gray-400">
+                Le loyer, les charges et le dépôt sont pré-remplis depuis le bien — vous pouvez les ajuster ci-dessous.
+              </p>
             )}
-            {selectedPropertyId && loadingUnits && (
-              <p className="mt-1 text-xs text-gray-400">Chargement du logement…</p>
-            )}
-            {errors.unit_id && <p className={err}>{errors.unit_id.message}</p>}
           </div>
         </div>
 

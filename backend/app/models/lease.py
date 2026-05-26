@@ -10,7 +10,6 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.tenant import Tenant
-    from app.models.unit import Unit
     from app.models.property import Property
     from app.models.inspection import Inspection
 
@@ -50,12 +49,6 @@ class Lease(Base, TimestampMixin):
     property_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("properties.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    unit_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("units.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -116,7 +109,6 @@ class Lease(Base, TimestampMixin):
     co_tenants: Mapped[list["Tenant"]] = relationship(
         "Tenant", secondary=lease_tenants, lazy="selectin",
     )
-    unit: Mapped["Unit"] = relationship("Unit", back_populates="leases")
     parent_property: Mapped["Property"] = relationship("Property", back_populates="leases")
     inspections: Mapped[list["Inspection"]] = relationship(
         "Inspection", back_populates="lease", lazy="select", cascade="all, delete-orphan"

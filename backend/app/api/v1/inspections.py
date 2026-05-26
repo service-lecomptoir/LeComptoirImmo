@@ -22,14 +22,14 @@ router = APIRouter(prefix="/inspections", tags=["Inspections"])
 @router.get("", response_model=InspectionListResponse)
 async def list_inspections(
     lease_id: Optional[uuid.UUID] = Query(None),
-    unit_id: Optional[uuid.UUID] = Query(None),
+    property_id: Optional[uuid.UUID] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(Role.LECTURE)),
 ):
     items, total = await InspectionService.list_all(
-        db, lease_id=lease_id, unit_id=unit_id, skip=skip, limit=limit
+        db, lease_id=lease_id, property_id=property_id, skip=skip, limit=limit
     )
     return InspectionListResponse(items=items, total=total, skip=skip, limit=limit)
 

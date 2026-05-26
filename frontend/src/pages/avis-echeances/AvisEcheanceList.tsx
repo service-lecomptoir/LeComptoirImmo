@@ -229,7 +229,7 @@ function GenerateModal({
       setLeases(
         r.data.items.map((l: any) => ({
           id: l.id,
-          label: `${l.tenant_full_name} — ${l.property_name} ${l.unit_ref}`,
+          label: `${l.tenant_full_name} — ${l.property_name}`,
         }))
       )
     })
@@ -644,7 +644,7 @@ export default function AvisEcheanceList() {
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-sm font-medium text-gray-900">{a.tenant_full_name}</p>
-                    <p className="text-xs text-gray-500">{a.unit_ref}</p>
+                    <p className="text-xs text-gray-500">{a.property_name}</p>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <p className="text-sm font-semibold text-gray-900">{fmtEuro(a.amount_total)}</p>

@@ -2,18 +2,10 @@ import uuid
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
-from sqlalchemy.orm import selectinload
 
-from app.models.property import Property, PropertyType
-from app.models.unit import Unit, UnitType
+from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertyUpdate
 from app.core.exceptions import NotFoundException
-
-_PROPERTY_TO_UNIT_TYPE: dict[str, str] = {
-    PropertyType.MAISON.value:          UnitType.MAISON.value,
-    PropertyType.APPARTEMENT.value:     UnitType.T2.value,
-    PropertyType.LOCAL_COMMERCIAL.value: UnitType.LOCAL.value,
-}
 
 
 class PropertyService:
@@ -40,29 +32,14 @@ class PropertyService:
         prop = Property(**data_dict, created_by=created_by)
         db.add(prop)
         await db.flush()
-        # Pour tout bien non-immeuble, créer automatiquement un logement principal
-        unit_type = _PROPERTY_TO_UNIT_TYPE.get(prop.property_type)
-        if unit_type:
-            unit = Unit(
-                property_id=prop.id,
-                unit_ref="Principal",
-                unit_type=unit_type,
-                base_rent=0,
-                charges_amount=0,
-                deposit_months=1,
-            )
-            db.add(unit)
-            await db.flush()
+        await db.refresh(prop)
         return prop
 
     @staticmethod
     async def get_by_id(
         db: AsyncSession, property_id: uuid.UUID, load_units: bool = False
     ) -> Property:
-        query = select(Property).where(Property.id == property_id)
-        if load_units:
-            query = query.options(selectinload(Property.units))
-        result = await db.execute(query)
+        result = await db.execute(select(Property).where(Property.id == property_id))
         prop = result.scalar_one_or_none()
         if not prop:
             raise NotFoundException("Bien immobilier", str(property_id))
@@ -88,8 +65,7 @@ class PropertyService:
             query = query.where(filter_expr)
             count_query = count_query.where(filter_expr)
 
-        query = query.order_by(Property.name)
-        query = query.offset(skip).limit(limit)
+        query = query.order_by(Property.name).offset(skip).limit(limit)
 
         results = await db.execute(query)
         count_result = await db.execute(count_query)
@@ -115,20 +91,13 @@ class PropertyService:
         await db.flush()
 
     @staticmethod
-    async def get_occupancy(
-        db: AsyncSession, property_id: uuid.UUID
-    ) -> dict:
-        """Retourne le taux d'occupation du bien."""
-        result = await db.execute(
-            select(
-                func.count(Unit.id).label("total"),
-                func.sum(
-                    func.cast(Unit.is_occupied, db.bind.dialect.colspecs.get(bool, func.cast(Unit.is_occupied, func.Integer)))
-                ).label("occupied"),
-            ).where(Unit.property_id == property_id)
-        )
-        row = result.one()
-        total = row.total or 0
-        occupied = int(row.occupied or 0)
-        rate = round((occupied / total * 100), 1) if total > 0 else 0.0
-        return {"total": total, "occupied": occupied, "vacant": total - occupied, "rate": rate}
+    async def get_occupancy(db: AsyncSession, property_id: uuid.UUID) -> dict:
+        """Occupation du bien (un bien = un logement)."""
+        prop = await PropertyService.get_by_id(db, property_id)
+        occupied = 1 if prop.is_occupied else 0
+        return {
+            "total": 1,
+            "occupied": occupied,
+            "vacant": 1 - occupied,
+            "rate": 100.0 if occupied else 0.0,
+        }

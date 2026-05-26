@@ -51,7 +51,6 @@ async def list_documents(
     # ── Propriétaire ───────────────────────────────────────────────────────────
     if role == Role.PROPRIETAIRE:
         from app.models.property import Property
-        from app.models.unit import Unit
         from app.models.lease import Lease
         props = (await db.execute(
             select(Property).where(Property.owner_user_id == current_user.id)
@@ -59,20 +58,15 @@ async def list_documents(
         prop_ids = [p.id for p in props]
         if not prop_ids:
             return []
-        units = (await db.execute(
-            select(Unit).where(Unit.property_id.in_(prop_ids))
-        )).scalars().all()
-        unit_ids = [u.id for u in units]
         leases = (await db.execute(
-            select(Lease).where(Lease.unit_id.in_(unit_ids))
+            select(Lease).where(Lease.property_id.in_(prop_ids))
         )).scalars().all()
-        entity_ids = prop_ids + unit_ids + [l.id for l in leases]
+        entity_ids = prop_ids + [l.id for l in leases]
         return await DocumentService.list_for_entities(db, entity_ids, entity_type, limit, skip)
 
     # ── Gestionnaire propriétaire : uniquement ses propres entités ────────────
     if role == Role.GESTIONNAIRE_PROPRIO:
         from app.models.property import Property
-        from app.models.unit import Unit
         from app.models.lease import Lease
         from app.models.tenant import Tenant
 
@@ -80,11 +74,8 @@ async def list_documents(
             select(Property.id).where(Property.created_by == current_user.id)
         )).scalars().all()
 
-        unit_ids, lease_ids = [], []
+        lease_ids = []
         if prop_ids:
-            unit_ids = (await db.execute(
-                select(Unit.id).where(Unit.property_id.in_(prop_ids))
-            )).scalars().all()
             lease_ids = (await db.execute(
                 select(Lease.id).where(Lease.property_id.in_(prop_ids))
             )).scalars().all()
@@ -93,19 +84,18 @@ async def list_documents(
             select(Tenant.id).where(Tenant.created_by == current_user.id)
         )).scalars().all()
 
-        entity_ids = list(prop_ids) + list(unit_ids) + list(lease_ids) + list(tenant_ids)
+        entity_ids = list(prop_ids) + list(lease_ids) + list(tenant_ids)
         if not entity_ids:
             return []
         return await DocumentService.list_for_entities(db, entity_ids, entity_type, limit, skip)
 
     # ── Gestionnaire mandataire : exclure les entités GP ──────────────────────
     if role == Role.GESTIONNAIRE:
-        from app.api.v1._isolation import gp_property_ids, gp_unit_ids, gp_tenant_ids, gp_lease_ids
+        from app.api.v1._isolation import gp_property_ids, gp_tenant_ids, gp_lease_ids
         excl_props = await gp_property_ids(db)
-        excl_units = await gp_unit_ids(db)
         excl_tenants = await gp_tenant_ids(db)
         excl_leases = await gp_lease_ids(db)
-        excluded = excl_props | excl_units | excl_tenants | excl_leases
+        excluded = excl_props | excl_tenants | excl_leases
         return await DocumentService.list_excluding_entities(db, excluded, entity_type, limit, skip)
 
     # ── Admin ──────────────────────────────────────────────────────────────────

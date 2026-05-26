@@ -33,7 +33,6 @@ def _enrich_ticket(ticket, include_messages: bool = False) -> dict:
         "tenant_id": ticket.tenant_id,
         "tenant_name": ticket.tenant.full_name if ticket.tenant else None,
         "lease_id": ticket.lease_id,
-        "unit_id": ticket.unit_id,
         "assigned_to_id": ticket.assigned_to_id,
         "assigned_to_name": ticket.assigned_to.full_name if ticket.assigned_to else None,
         "closed_at": ticket.closed_at,

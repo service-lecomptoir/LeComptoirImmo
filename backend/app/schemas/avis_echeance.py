@@ -54,7 +54,6 @@ class AvisEcheanceOut(AvisEcheanceBase):
     id: uuid.UUID
     lease_id: uuid.UUID
     tenant_id: uuid.UUID
-    unit_id: uuid.UUID
     sent_at: Optional[datetime] = None
     pdf_path: Optional[str] = None
     generated_by: Optional[uuid.UUID] = None
@@ -63,7 +62,6 @@ class AvisEcheanceOut(AvisEcheanceBase):
 
     # Champs calculés depuis les relations
     tenant_full_name: Optional[str] = None
-    unit_ref: Optional[str] = None
     property_name: Optional[str] = None
     period_label: Optional[str] = None
     is_auto_generated: Optional[bool] = None
@@ -79,7 +77,6 @@ class AvisEcheanceSummary(BaseModel):
     amount_total: float
     status: AvisEcheanceStatus
     tenant_full_name: str
-    unit_ref: str
     property_name: str
     sent_at: Optional[datetime] = None
     is_auto_generated: bool

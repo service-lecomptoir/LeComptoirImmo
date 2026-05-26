@@ -53,8 +53,7 @@
           {% elif block == 'recipient' %}
           <div class="recipient-name-left">{{ tenant_names if tenant_names else (payment.tenant.full_name if payment.tenant else '—') }}</div>
           <div class="recipient-info-left">
-            {{ payment.unit.unit_ref if payment.unit else '' }}<br>
-            {% if payment.lease and payment.lease.parent_property %}{{ payment.lease.parent_property.full_address }}{% endif %}
+            {% if payment.lease and payment.lease.parent_property %}{{ payment.lease.parent_property.name }}<br>{{ payment.lease.parent_property.full_address }}{% endif %}
           </div>
           {% elif block == 'citydate' %}
           <div class="city-date-left">
@@ -76,8 +75,7 @@
           {% elif block == 'recipient' %}
           <div class="recipient-name">{{ tenant_names if tenant_names else (payment.tenant.full_name if payment.tenant else '—') }}</div>
           <div class="recipient-info">
-            {{ payment.unit.unit_ref if payment.unit else '' }}<br>
-            {% if payment.lease and payment.lease.parent_property %}{{ payment.lease.parent_property.full_address }}{% endif %}
+            {% if payment.lease and payment.lease.parent_property %}{{ payment.lease.parent_property.name }}<br>{{ payment.lease.parent_property.full_address }}{% endif %}
           </div>
           {% elif block == 'citydate' %}
           <div class="city-date">

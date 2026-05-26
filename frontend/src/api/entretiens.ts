@@ -25,8 +25,6 @@ export interface Entretien {
   cost?: number
   property_id?: string
   property_label?: string
-  unit_id?: string
-  unit_label?: string
   prestataire_id?: string
   prestataire_name?: string
   notes?: string
@@ -48,7 +46,7 @@ export const prestatairesApi = {
 export const entretiensApi = {
   list: (params?: { status?: string; property_id?: string; limit?: number }) =>
     apiClient.get<{ total: number; items: Entretien[] }>('/entretiens', { params }),
-  create: (data: Omit<Entretien, 'id' | 'created_at' | 'updated_at' | 'property_label' | 'unit_label' | 'prestataire_name'>) =>
+  create: (data: Omit<Entretien, 'id' | 'created_at' | 'updated_at' | 'property_label' | 'prestataire_name'>) =>
     apiClient.post<{ id: string }>('/entretiens', data),
   get: (id: string) =>
     apiClient.get<Entretien>(`/entretiens/${id}`),

@@ -11,7 +11,6 @@ from app.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.lease import Lease
     from app.models.tenant import Tenant
-    from app.models.unit import Unit
 
 
 class AvisEcheanceStatus(str, Enum):
@@ -41,11 +40,6 @@ class AvisEcheance(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("tenants.id", ondelete="CASCADE"),
         nullable=False, index=True,
-    )
-    unit_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("units.id", ondelete="CASCADE"),
-        nullable=False,
     )
 
     # ── Période ───────────────────────────────────────────────────────────────
@@ -78,7 +72,6 @@ class AvisEcheance(Base, TimestampMixin):
     # ── Relations ─────────────────────────────────────────────────────────────
     lease: Mapped["Lease"] = relationship("Lease", lazy="select")
     tenant: Mapped["Tenant"] = relationship("Tenant", lazy="select")
-    unit: Mapped["Unit"] = relationship("Unit", lazy="select")
 
     @property
     def period_label(self) -> str:

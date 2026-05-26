@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from app.api.v1 import (
-    auth, users, tenants, properties, units, documents,
+    auth, users, tenants, properties, documents,
     leases, inspections, payments, letters, notifications,
     avis_echeances, contacts, automation, templates, dashboard,
     tickets, entretiens, messages, proprietaire_perf, offers, subscription,
@@ -13,7 +13,6 @@ api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(tenants.router)
 api_router.include_router(properties.router)
-api_router.include_router(units.router)
 api_router.include_router(documents.router)
 api_router.include_router(leases.router)
 api_router.include_router(inspections.router)

@@ -1,49 +1,31 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Edit, Trash2, Plus, Building2,
-  MapPin, Home, DoorOpen, Layers
+  ArrowLeft, Edit, Trash2,
+  MapPin, Home, Ruler, BedDouble, Bath, Layers, Euro
 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
-import { apiClient } from '@/api/client'
 import { PropertyForm } from './PropertyForm'
-import { UnitForm } from './UnitForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
-import type { Property, Unit } from '@/types/property'
-
-const PROPERTY_TYPE_LABELS: Record<string, string> = {
-  immeuble: 'Immeuble',
-  maison: 'Maison',
-  appartement: 'Appartement',
-  local_commercial: 'Local commercial',
-  autre: 'Autre',
-}
+import type { Property } from '@/types/property'
+import { PROPERTY_TYPE_LABELS } from '@/types/property'
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [property, setProperty] = useState<Property | null>(null)
-  const [units, setUnits] = useState<Unit[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showEditProp, setShowEditProp] = useState(false)
   const [showDeleteProp, setShowDeleteProp] = useState(false)
   const [isDeletingProp, setIsDeletingProp] = useState(false)
-  const [showUnitForm, setShowUnitForm] = useState(false)
-  const [editingUnit, setEditingUnit] = useState<Unit | undefined>()
-  const [deleteUnitId, setDeleteUnitId] = useState<string | null>(null)
-  const [isDeletingUnit, setIsDeletingUnit] = useState(false)
 
   const fetchData = async () => {
     if (!id) return
     setIsLoading(true)
     try {
-      const [propRes, unitsRes] = await Promise.all([
-        propertiesApi.get(id),
-        apiClient.get<Unit[]>(`/properties/${id}/units`),
-      ])
+      const propRes = await propertiesApi.get(id)
       setProperty(propRes.data)
-      setUnits(unitsRes.data)
     } finally {
       setIsLoading(false)
     }
@@ -62,22 +44,11 @@ export default function PropertyDetail() {
     }
   }
 
-  const handleDeleteUnit = async () => {
-    if (!deleteUnitId) return
-    setIsDeletingUnit(true)
-    try {
-      await apiClient.delete(`/units/${deleteUnitId}`)
-      setDeleteUnitId(null)
-      fetchData()
-    } finally {
-      setIsDeletingUnit(false)
-    }
-  }
-
   if (isLoading) return <div className="p-6 text-sm text-gray-500">Chargement...</div>
   if (!property) return <div className="p-6 text-sm text-red-600">Bien introuvable</div>
 
-  const occupiedCount = units.filter(u => u.is_occupied).length
+  const totalMonthly = (property.base_rent ?? 0) + (property.charges_amount ?? 0)
+  const fmt = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2 })
 
   return (
     <div className="p-6 max-w-5xl">
@@ -90,6 +61,11 @@ export default function PropertyDetail() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
             <StatusBadge label={PROPERTY_TYPE_LABELS[property.property_type] ?? property.property_type} variant="blue" />
+            <StatusBadge
+              label={property.is_occupied ? 'Occupé' : 'Disponible'}
+              variant={property.is_occupied ? 'yellow' : 'green'}
+              dot
+            />
           </div>
           <div className="flex items-center gap-1 text-sm text-gray-500 mt-0.5">
             <MapPin size={13} />
@@ -112,114 +88,57 @@ export default function PropertyDetail() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-            <Layers size={18} className="text-blue-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{units.length}</p>
-            <p className="text-xs text-gray-500">Logements</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-            <Home size={18} className="text-green-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{occupiedCount}</p>
-            <p className="text-xs text-gray-500">Occupés</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
-            <DoorOpen size={18} className="text-orange-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{units.length - occupiedCount}</p>
-            <p className="text-xs text-gray-500">Disponibles</p>
-          </div>
+      {/* Caractéristiques */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Caractéristiques</h2>
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
+          <Stat icon={<Ruler size={16} className="text-blue-600" />} label="Surface"
+            value={property.area_sqm ? `${property.area_sqm} m²` : '—'} />
+          <Stat icon={<Layers size={16} className="text-blue-600" />} label="Étage"
+            value={property.floor != null ? String(property.floor) : '—'} />
+          <Stat icon={<Home size={16} className="text-blue-600" />} label="Pièces"
+            value={property.rooms != null ? String(property.rooms) : '—'} />
+          <Stat icon={<BedDouble size={16} className="text-blue-600" />} label="Chambres"
+            value={property.bedrooms != null ? String(property.bedrooms) : '—'} />
+          <Stat icon={<Bath size={16} className="text-blue-600" />} label="Salles de bain"
+            value={property.bathrooms != null ? String(property.bathrooms) : '—'} />
         </div>
       </div>
 
-      {/* Logements */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900">Logements</h2>
-          {property.property_type === 'immeuble' && (
-            <button
-              onClick={() => { setEditingUnit(undefined); setShowUnitForm(true) }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700"
-            >
-              <Plus size={13} /> Ajouter un logement
-            </button>
-          )}
-        </div>
-
-        {units.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-            <Building2 size={28} className="text-gray-300 mb-2" />
-            <p className="text-sm">Aucun logement enregistré</p>
+      {/* Loyer & charges */}
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+          <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
+            <Euro size={18} className="text-green-600" />
           </div>
-        ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-5 py-3">Référence</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Type</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Surface</th>
-                <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Loyer HC</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Statut</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {units.map(unit => (
-                <tr key={unit.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-5 py-3 text-sm font-medium text-gray-900">{unit.unit_ref}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{unit.unit_type}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {unit.area_sqm ? `${unit.area_sqm} m²` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                    {unit.base_rent.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge
-                      label={unit.is_occupied ? 'Occupé' : 'Disponible'}
-                      variant={unit.is_occupied ? 'yellow' : 'green'}
-                      dot
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
-                      <button
-                        onClick={() => { setEditingUnit(unit); setShowUnitForm(true) }}
-                        className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-700"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteUnitId(unit.id)}
-                        disabled={unit.is_occupied}
-                        className="p-1.5 hover:bg-red-50 rounded text-gray-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={unit.is_occupied ? 'Logement occupé, résiliez le bail d\'abord' : 'Supprimer'}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{fmt(property.base_rent ?? 0)} €</p>
+            <p className="text-xs text-gray-500">Loyer hors charges</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+            <Euro size={18} className="text-blue-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{fmt(property.charges_amount ?? 0)} €</p>
+            <p className="text-xs text-gray-500">Charges</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+          <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
+            <Euro size={18} className="text-purple-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-gray-900">{fmt(totalMonthly)} €</p>
+            <p className="text-xs text-gray-500">Total mensuel</p>
+          </div>
+        </div>
       </div>
 
       {/* Propriétaire */}
       {(property.owner_name || property.owner_email || property.owner_phone) && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 mt-5">
+        <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-3">Propriétaire</h2>
           <div className="grid grid-cols-3 gap-4">
             {property.owner_name && (
@@ -244,6 +163,14 @@ export default function PropertyDetail() {
         </div>
       )}
 
+      {/* Notes */}
+      {property.notes && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-2">Notes</h2>
+          <p className="text-sm text-gray-600 whitespace-pre-line">{property.notes}</p>
+        </div>
+      )}
+
       {/* Modales */}
       {showEditProp && (
         <PropertyForm
@@ -252,30 +179,26 @@ export default function PropertyDetail() {
           onSaved={() => { setShowEditProp(false); fetchData() }}
         />
       )}
-      {showUnitForm && id && (
-        <UnitForm
-          propertyId={id}
-          unit={editingUnit}
-          onClose={() => setShowUnitForm(false)}
-          onSaved={() => { setShowUnitForm(false); fetchData() }}
-        />
-      )}
       <ConfirmDialog
         isOpen={showDeleteProp}
         onClose={() => setShowDeleteProp(false)}
         onConfirm={handleDeleteProperty}
         title="Supprimer le bien"
-        message="Cette action supprimera définitivement ce bien et tous ses logements. Êtes-vous sûr ?"
+        message="Cette action supprimera définitivement ce bien. Êtes-vous sûr ?"
         isLoading={isDeletingProp}
       />
-      <ConfirmDialog
-        isOpen={!!deleteUnitId}
-        onClose={() => setDeleteUnitId(null)}
-        onConfirm={handleDeleteUnit}
-        title="Supprimer le logement"
-        message="Voulez-vous vraiment supprimer ce logement ?"
-        isLoading={isDeletingUnit}
-      />
+    </div>
+  )
+}
+
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-9 h-9 bg-gray-50 rounded-lg flex items-center justify-center">{icon}</div>
+      <div>
+        <p className="text-xs text-gray-500">{label}</p>
+        <p className="text-sm font-medium text-gray-900">{value}</p>
+      </div>
     </div>
   )
 }
