@@ -8,10 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dépendances système : build (gcc/libpq) + runtime WeasyPrint (Pango/Cairo/GDK-Pixbuf) + polices
+# Dépendances système : toolchain de build (pycairo via xhtml2pdf→svglib) + libs PDF + polices
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl \
-    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi8 \
+    build-essential libpq-dev pkg-config curl \
+    libcairo2-dev libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi8 \
     libcairo2 libgdk-pixbuf-2.0-0 libjpeg62-turbo libopenjp2-7 \
     shared-mime-info fonts-dejavu-core fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
