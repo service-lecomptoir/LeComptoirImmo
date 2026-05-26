@@ -6,6 +6,8 @@ export interface User {
   full_name: string
   role: Role
   is_active: boolean
+  phone?: string | null
+  address?: string | null
   created_at: string
   updated_at: string
 }

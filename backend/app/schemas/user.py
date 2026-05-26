@@ -26,6 +26,13 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 
+class ProfileUpdate(BaseModel):
+    """Mise à jour de son propre profil (utilisateur connecté)."""
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+
 class UserRoleUpdate(BaseModel):
     role: Role
 
@@ -48,6 +55,8 @@ class UserResponse(BaseModel):
     full_name: str
     role: Role
     is_active: bool
+    phone: Optional[str] = None
+    address: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

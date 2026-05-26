@@ -9,7 +9,6 @@ import {
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
-import { apiClient } from '@/api/client'
 import type { Role } from '@/types/auth'
 import clsx from 'clsx'
 import { useState, useEffect } from 'react'
@@ -39,6 +38,7 @@ const navGestionnaire: NavItem[] = [
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
   { label: 'Mon compte', isSeparator: true },
+  { to: '/profil', icon: User, label: 'Mon profil' },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
@@ -76,6 +76,7 @@ const navGestionnairePropio: NavItem[] = [
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
   { label: 'Mon compte', isSeparator: true },
+  { to: '/profil', icon: User, label: 'Mon profil' },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
@@ -178,23 +179,6 @@ function useProprietaireInfo(active: boolean, userName: string): ProprietaireInf
   return info
 }
 
-// ── Hook : adresse de l'agence (depuis le template de documents) ──────────────
-
-function useAgencyAddress(active: boolean): string {
-  const [addr, setAddr] = useState('')
-  useEffect(() => {
-    if (!active) return
-    apiClient.get<Array<{ company_address?: string }>>('/templates')
-      .then(r => {
-        const list = r.data ?? []
-        const withAddr = list.find(t => t.company_address) ?? list[0]
-        setAddr(withAddr?.company_address ?? '')
-      })
-      .catch(() => { /* silently ignore */ })
-  }, [active])
-  return addr
-}
-
 // ── Bloc d'info affiché en haut de sidebar ────────────────────────────────────
 
 interface SidebarInfoBlockProps {
@@ -242,7 +226,7 @@ export function Sidebar() {
   const isGestionnaire = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
   const leaseInfo = useLocataireLeaseInfo(isLocataire)
   const proprietaireInfo = useProprietaireInfo(isProprietaire, user?.full_name ?? '')
-  const agencyAddress = useAgencyAddress(isGestionnaire)
+  const agencyAddress = isGestionnaire ? (user?.address ?? '') : ''
 
   const getNavItems = (): NavItem[] => {
     if (!user) return []

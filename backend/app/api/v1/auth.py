@@ -5,7 +5,7 @@ from app.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, AccessTokenResponse
-from app.schemas.user import UserMeResponse
+from app.schemas.user import UserMeResponse, ProfileUpdate
 from app.services.auth_service import AuthService
 from app.services import audit_service
 from app.core.exceptions import UnauthorizedException
@@ -56,4 +56,19 @@ async def get_me(
     current_user: User = Depends(get_current_user),
 ):
     """Retourne les informations de l'utilisateur actuellement authentifié."""
+    return current_user
+
+
+@router.patch("/me", response_model=UserMeResponse, summary="Mettre à jour son profil")
+async def update_me(
+    data: ProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Met à jour le profil de l'utilisateur connecté (nom, téléphone, adresse)."""
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(current_user, field, value)
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
     return current_user
