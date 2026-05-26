@@ -8,12 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dépendances système : build (gcc/libpq) + runtime WeasyPrint (Pango/Cairo/GDK-Pixbuf) + polices
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl \
-    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi8 \
-    libcairo2 libgdk-pixbuf-2.0-0 libjpeg62-turbo libopenjp2-7 \
-    shared-mime-info fonts-dejavu-core fonts-liberation \
+    gcc curl \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
@@ -21,17 +17,10 @@ FROM base AS deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ── Development ───────────────────────────────────────────────────────────────
-FROM deps AS development
-ENV APP_ENV=development
-COPY . .
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
 # ── Production ────────────────────────────────────────────────────────────────
 FROM deps AS production
 ENV APP_ENV=production
 
-# Crée un utilisateur non-root pour la sécurité
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
 COPY . .
@@ -39,8 +28,8 @@ RUN chown -R appuser:appgroup /app
 
 USER appuser
 
-# Bootstrap idempotent du schéma (create_all) une fois, puis démarrage des workers
-CMD ["sh", "-c", "python bootstrap_db.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"]
+# Les tables ProxyGen sont créées au démarrage (create_all dans lifespan)
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 2"]
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8001/health || exit 1

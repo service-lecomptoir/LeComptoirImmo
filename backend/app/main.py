@@ -77,32 +77,44 @@ async def _seed_default_users() -> None:
     from app.core.security import hash_password, verify_password
     from app.core.permissions import Role
 
+    # Admin réel (toujours créé) depuis la config FIRST_ADMIN_*
     default_users = [
         UserCreate(
-            email="gestionnaire@cabinet.fr",
-            password="Gestionnaire1!",
-            full_name="Gestionnaire Demo",
-            role=Role.GESTIONNAIRE,
-        ),
-        UserCreate(
-            email="gestionnaire-proprio@cabinet.fr",
-            password="GestionnaireProprio1!",
-            full_name="Gestionnaire-Propriétaire Demo",
-            role=Role.GESTIONNAIRE_PROPRIO,
-        ),
-        UserCreate(
-            email="proprietaire@email.fr",
-            password="Proprietaire1!",
-            full_name="Propriétaire Demo",
-            role=Role.PROPRIETAIRE,
-        ),
-        UserCreate(
-            email="locataire@email.fr",
-            password="Locataire1!",
-            full_name="Locataire Demo",
-            role=Role.LOCATAIRE,
+            email=settings.FIRST_ADMIN_EMAIL,
+            password=settings.FIRST_ADMIN_PASSWORD,
+            full_name=settings.FIRST_ADMIN_NAME,
+            role=Role.ADMIN,
         ),
     ]
+
+    # Comptes de démonstration : UNIQUEMENT hors production (mots de passe publics)
+    if not settings.is_production:
+        default_users += [
+            UserCreate(
+                email="gestionnaire@cabinet.fr",
+                password="Gestionnaire1!",
+                full_name="Gestionnaire Demo",
+                role=Role.GESTIONNAIRE,
+            ),
+            UserCreate(
+                email="gestionnaire-proprio@cabinet.fr",
+                password="GestionnaireProprio1!",
+                full_name="Gestionnaire-Propriétaire Demo",
+                role=Role.GESTIONNAIRE_PROPRIO,
+            ),
+            UserCreate(
+                email="proprietaire@email.fr",
+                password="Proprietaire1!",
+                full_name="Propriétaire Demo",
+                role=Role.PROPRIETAIRE,
+            ),
+            UserCreate(
+                email="locataire@email.fr",
+                password="Locataire1!",
+                full_name="Locataire Demo",
+                role=Role.LOCATAIRE,
+            ),
+        ]
 
     loop = asyncio.get_event_loop()
     executor = ThreadPoolExecutor(max_workers=1)

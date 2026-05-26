@@ -1,7 +1,12 @@
-version: "3.9"
-
 # ── Production VPS ────────────────────────────────────────────────────────────
-# Usage : docker compose -f docker/docker-compose.prod.yml up -d
+# Usage : docker compose -f docker/docker-compose.prod.yml up -d --build
+#
+# Stack : PostgreSQL (base partagée) + LeComptoirImmo (backend 8000 / frontend)
+#         + ProxyGen (backend 8001 / frontend) + Nginx reverse proxy + Certbot
+#
+# Les secrets viennent des fichiers .env (hors git) :
+#   - backend/.env           → POSTGRES_*, SECRET_KEY, DATABASE_URL, PROXYGEN_*
+#   - proxygen/backend/.env   → SECRET_KEY, DATABASE_URL (même base), INTERNAL_API_KEY
 
 services:
 
@@ -9,23 +14,23 @@ services:
     image: postgres:16-alpine
     container_name: locataire_postgres
     restart: always
+    env_file:
+      - ../backend/.env                # POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
     expose:
-      - "5432"                        # Non exposé publiquement en prod
+      - "5432"                          # Non exposé publiquement
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - locataire_net
 
+  # ── LeComptoirImmo backend ────────────────────────────────────────────────────
   backend:
     build:
       context: ../backend
@@ -49,12 +54,51 @@ services:
     networks:
       - locataire_net
 
+  # ── LeComptoirImmo frontend ───────────────────────────────────────────────────
   frontend:
     build:
       context: ../frontend
       dockerfile: ../docker/Dockerfile.frontend
       target: production
+      args:
+        VITE_API_URL: "https://immo.lecomptoir.services"
     container_name: locataire_frontend
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - locataire_net
+
+  # ── ProxyGen backend (même base de données) ─────────────────────────────────
+  proxygen-backend:
+    build:
+      context: ../proxygen/backend
+      dockerfile: ../../docker/Dockerfile.proxygen-backend
+      target: production
+    container_name: proxygen_backend
+    restart: always
+    env_file:
+      - ../proxygen/backend/.env
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8001"
+    networks:
+      - locataire_net
+
+  # ── ProxyGen frontend ─────────────────────────────────────────────────────────
+  proxygen-frontend:
+    build:
+      context: ../proxygen/frontend
+      dockerfile: ../../docker/Dockerfile.proxygen-frontend
+      target: production
+      args:
+        VITE_API_URL: "https://proxygen.lecomptoir.services"
+    container_name: proxygen_frontend
     restart: always
     expose:
       - "80"
@@ -77,6 +121,8 @@ services:
     depends_on:
       - backend
       - frontend
+      - proxygen-backend
+      - proxygen-frontend
     networks:
       - locataire_net
 
@@ -87,8 +133,7 @@ services:
     volumes:
       - certbot_www:/var/www/certbot
       - certbot_certs:/etc/letsencrypt
-    # Renouvellement automatique : à exécuter manuellement ou via cron
-    # docker compose run certbot renew
+    # Émission/renouvellement à exécuter manuellement (voir deploy.sh --ssl)
 
 volumes:
   postgres_data:
