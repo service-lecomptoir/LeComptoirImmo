@@ -26,9 +26,17 @@ class LeciUser(LeciBase):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    # user_role est un enum PostgreSQL dans LeCI.
-    # On le mappe en String pour la lecture; les WHERE utilisent ::text cast.
-    role: Mapped[str] = mapped_column(String(50), nullable=False)
+    # user_role est un enum PostgreSQL dans LeCI. On le mappe sur le MÊME type enum
+    # (create_type=False) pour que les INSERT émettent le bon cast ::user_role.
+    # Les WHERE continuent d'utiliser cast(..., String) via role_eq().
+    role: Mapped[str] = mapped_column(
+        SAEnum(
+            "admin", "gestionnaire", "gestionnaire_proprio",
+            "proprietaire", "locataire", "lecture",
+            name="user_role", create_type=False,
+        ),
+        nullable=False,
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
