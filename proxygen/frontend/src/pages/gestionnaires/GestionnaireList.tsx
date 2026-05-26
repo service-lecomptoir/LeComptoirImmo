@@ -54,6 +54,8 @@ function CreateModal({ plans, onClose, onCreated }: CreateModalProps) {
     property_limit_override: null,
     monthly_price_override: null,
     notes: null,
+    phone: null,
+    address: null,
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -146,6 +148,26 @@ function CreateModal({ plans, onClose, onCreated }: CreateModalProps) {
                 placeholder="Minimum 8 caracteres"
                 required
                 minLength={8}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Telephone</label>
+              <input
+                type="tel"
+                value={form.phone || ''}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value || null }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="06 12 34 56 78"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Adresse</label>
+              <textarea
+                value={form.address || ''}
+                onChange={e => setForm(f => ({ ...f, address: e.target.value || null }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                rows={2}
+                placeholder="12 rue de la Republique, 75001 Paris"
               />
             </div>
             <div className="col-span-2">

@@ -30,6 +30,9 @@ class ProxygenLicense(Base, TimestampMixin):
 
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Coordonnées du gestionnaire
+    phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # IDs des users bloqués en cascade (pour pouvoir unblock proprement)
     blocked_user_ids: Mapped[list] = mapped_column(JSONB, default=list, nullable=False, server_default="[]")
 

@@ -16,6 +16,8 @@ class GestionnaireCreate(BaseModel):
     property_limit_override: Optional[int] = Field(None, ge=1)
     monthly_price_override: Optional[float] = Field(None, ge=0)
     notes: Optional[str] = None
+    phone: Optional[str] = Field(None, max_length=30)
+    address: Optional[str] = None
 
 
 class GestionnaireUpdate(BaseModel):
@@ -25,6 +27,8 @@ class GestionnaireUpdate(BaseModel):
     property_limit_override: Optional[int] = Field(None, ge=1)
     monthly_price_override: Optional[float] = Field(None, ge=0)
     notes: Optional[str] = None
+    phone: Optional[str] = Field(None, max_length=30)
+    address: Optional[str] = None
 
 
 class GestionnaireOut(BaseModel):

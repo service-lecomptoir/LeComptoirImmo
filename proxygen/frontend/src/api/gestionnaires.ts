@@ -10,6 +10,8 @@ export interface GestionnaireCreateData {
   property_limit_override?: number | null
   monthly_price_override?: number | null
   notes?: string | null
+  phone?: string | null
+  address?: string | null
 }
 
 export interface GestionnaireUpdateData {
@@ -19,6 +21,8 @@ export interface GestionnaireUpdateData {
   property_limit_override?: number | null
   monthly_price_override?: number | null
   notes?: string | null
+  phone?: string | null
+  address?: string | null
 }
 
 export const gestionnairesApi = {

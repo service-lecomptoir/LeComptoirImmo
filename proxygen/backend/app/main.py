@@ -36,6 +36,16 @@ async def lifespan(app: FastAPI):
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Tables ProxyGen verifiees / creees")
 
+    # Migrations légères : colonnes ajoutées après coup (idempotent)
+    from sqlalchemy import text
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE proxygen_licenses ADD COLUMN IF NOT EXISTS phone VARCHAR(30)"))
+            await conn.execute(text("ALTER TABLE proxygen_licenses ADD COLUMN IF NOT EXISTS address TEXT"))
+        logger.info("Migrations colonnes ProxyGen appliquees")
+    except Exception as exc:
+        logger.warning("Migration colonnes ProxyGen ignoree : %s", exc)
+
     # Seed superadmin si absent
     await _seed_superadmin()
 

@@ -173,6 +173,8 @@ async def create_gestionnaire(
         property_limit_override=data.property_limit_override,
         monthly_price_override=data.monthly_price_override,
         notes=data.notes,
+        phone=data.phone,
+        address=data.address,
         is_blocked=False,
         blocked_user_ids=[],
     )
@@ -255,7 +257,7 @@ async def update_gestionnaire(
         getattr(data, f, None) is not None
         for f in ("plan_id", "property_limit_override", "monthly_price_override")
     )
-    for field in ("plan_id", "property_limit_override", "monthly_price_override", "notes"):
+    for field in ("plan_id", "property_limit_override", "monthly_price_override", "notes", "phone", "address"):
         value = getattr(data, field, None)
         if value is not None:
             setattr(license, field, value)
