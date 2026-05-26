@@ -95,9 +95,9 @@ export default function ProprietaireDashboard() {
         />
         <StatCard
           icon={Home}
-          label="Logements"
+          label={totalUnits > 1 ? 'Logements' : 'Logement'}
           value={isLoading ? '…' : totalUnits}
-          sub={totalUnits > 0 ? `${occupiedUnits} occupés` : undefined}
+          sub={totalUnits > 0 ? `${occupiedUnits} occupé${occupiedUnits > 1 ? 's' : ''}` : undefined}
           color="green"
           onClick={() => navigate('/proprietaire/biens')}
         />
@@ -156,7 +156,7 @@ export default function ProprietaireDashboard() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-500">
-                    {p.occupied_count ?? '?'}/{p.unit_count ?? '?'} logements
+                    {p.occupied_count ?? '?'}/{p.unit_count ?? '?'} logement{(p.unit_count ?? 0) > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>

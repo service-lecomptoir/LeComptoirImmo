@@ -150,12 +150,12 @@ export default function Dashboard() {
           <div className="flex flex-wrap gap-2">
             {stats.alerts.leases_expiring_30d > 0 && (
               <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-medium">
-                {stats.alerts.leases_expiring_30d} bail(s) expirent dans 30 jours
+                {stats.alerts.leases_expiring_30d} {stats.alerts.leases_expiring_30d > 1 ? 'baux expirent' : 'bail expire'} dans 30 jours
               </span>
             )}
             {stats.alerts.leases_expiring_90d > 0 && (
               <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-medium">
-                {stats.alerts.leases_expiring_90d} bail(s) expirent dans 90 jours
+                {stats.alerts.leases_expiring_90d} {stats.alerts.leases_expiring_90d > 1 ? 'baux expirent' : 'bail expire'} dans 90 jours
               </span>
             )}
             {stats.alerts.overdue_payments > 0 && (
@@ -174,7 +174,7 @@ export default function Dashboard() {
         <KPICard title={stats.total_tenants > 1 ? 'Locataires actifs' : 'Locataire actif'} value={fmt(stats.total_tenants)}
           sub={`${stats.total_leases_active} contrat${stats.total_leases_active > 1 ? 's' : ''} actif${stats.total_leases_active > 1 ? 's' : ''}`} icon={Users} color="green" />
         <KPICard title="Taux d'occupation" value={`${stats.occupancy.occupancy_rate}%`}
-          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} unités`}
+          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`}
           icon={Home} color="purple" />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
           sub={`${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''}`} icon={AlertTriangle}

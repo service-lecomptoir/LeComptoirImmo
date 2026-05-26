@@ -127,7 +127,7 @@ export default function ProprietaireBiens() {
             </p>
             <p className="text-2xl font-bold text-gray-800">{fmtEuro(perfData.total_theoretical)}</p>
             <p className="text-xs text-gray-400 mt-1">
-              Sur {perfData.months_elapsed} mois écoulés
+              Sur {perfData.months_elapsed} mois écoulé{perfData.months_elapsed > 1 ? 's' : ''}
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
@@ -193,7 +193,7 @@ export default function ProprietaireBiens() {
                         )}
                         <div className="flex items-center gap-2 mt-1.5">
                           <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
-                            {prop.occupied_count ?? 0}/{prop.unit_count ?? 0} logements occupés
+                            {prop.occupied_count ?? 0}/{prop.unit_count ?? 0} logement{(prop.unit_count ?? 0) > 1 ? 's' : ''} occupé{(prop.unit_count ?? 0) > 1 ? 's' : ''}
                           </span>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                             occupancyRate >= 80 ? 'bg-green-100 text-green-700' :

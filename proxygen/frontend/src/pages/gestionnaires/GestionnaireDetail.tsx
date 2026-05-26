@@ -255,7 +255,7 @@ export default function GestionnaireDetail() {
                   {plans.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.name} — {p.monthly_price}€/mois
-                      {p.property_limit ? ` (${p.property_limit} biens max)` : ' (illimite)'}
+                      {p.property_limit ? ` (${p.property_limit} bien${p.property_limit > 1 ? 's' : ''} max)` : ' (illimite)'}
                     </option>
                   ))}
                 </select>
@@ -317,7 +317,7 @@ export default function GestionnaireDetail() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-semibold text-gray-800">Biens geres</h2>
-              <span className="text-sm text-gray-500">{properties.length} bien(s)</span>
+              <span className="text-sm text-gray-500">{properties.length} bien{properties.length > 1 ? 's' : ''}</span>
             </div>
             {properties.length === 0 ? (
               <p className="text-sm text-gray-400">Aucun bien cree par ce gestionnaire</p>

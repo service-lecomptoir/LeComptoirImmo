@@ -136,8 +136,8 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
                 value={form.trigger_days}
                 onChange={e => setForm({ ...form, trigger_days: parseInt(e.target.value) || 0 })} />
               <span className="text-sm text-gray-500">
-                {form.trigger_days > 0 ? `${form.trigger_days} jour(s) avant` :
-                 form.trigger_days < 0 ? `${Math.abs(form.trigger_days)} jour(s) après` :
+                {form.trigger_days > 0 ? `${form.trigger_days} jour${form.trigger_days > 1 ? 's' : ''} avant` :
+                 form.trigger_days < 0 ? `${Math.abs(form.trigger_days)} jour${Math.abs(form.trigger_days) > 1 ? 's' : ''} après` :
                  'Le jour J'}
               </span>
             </div>
@@ -240,7 +240,7 @@ function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
           <div className="p-6 text-center">
             <CheckCircle size={48} className="mx-auto text-green-500 mb-3" />
             <p className="text-lg font-semibold text-gray-900">{result.message}</p>
-            <p className="text-sm text-gray-500 mt-1">{result.sent_count} / {result.total_targets} destinataires</p>
+            <p className="text-sm text-gray-500 mt-1">{result.sent_count} / {result.total_targets} destinataire{result.total_targets > 1 ? 's' : ''}</p>
             <button onClick={onClose}
               className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
               Fermer

@@ -88,7 +88,7 @@ export default function NotificationList() {
     try {
       const { data } = await notificationsApi.generateAlerts()
       setAlertMsg(
-        `Alertes générées : ${data.late_payment_alerts} retard(s), ${data.expiring_lease_alerts} expiration(s)`
+        `Alertes générées : ${data.late_payment_alerts} retard${data.late_payment_alerts > 1 ? 's' : ''}, ${data.expiring_lease_alerts} expiration${data.expiring_lease_alerts > 1 ? 's' : ''}`
       )
       await load()
     } catch {

@@ -135,7 +135,7 @@ export default function MonAbonnement() {
           <ProgressBar value={info?.property_count ?? 0} max={info?.property_limit ?? null} />
           {info?.property_limit != null && (
             <p className="text-xs text-gray-400 mt-1.5">
-              {info.property_limit - (info.property_count ?? 0)} emplacement(s) restant(s)
+              {info.property_limit - (info.property_count ?? 0)} emplacement{(info.property_limit - (info.property_count ?? 0)) > 1 ? 's' : ''} restant{(info.property_limit - (info.property_count ?? 0)) > 1 ? 's' : ''}
             </p>
           )}
           {info?.property_limit === null && (

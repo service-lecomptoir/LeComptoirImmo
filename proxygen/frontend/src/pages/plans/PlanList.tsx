@@ -176,7 +176,7 @@ export default function PlanList() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Plans tarifaires</h1>
-          <p className="text-gray-500 text-sm mt-1">{plans.length} plan(s) actif(s)</p>
+          <p className="text-gray-500 text-sm mt-1">{plans.length} plan{plans.length > 1 ? 's' : ''} actif{plans.length > 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => setModal({ open: true, plan: null })}
@@ -223,7 +223,7 @@ export default function PlanList() {
                     </td>
                     <td className="px-6 py-4">
                       {plan.property_limit !== null ? (
-                        <span className="text-sm font-medium text-gray-700">{plan.property_limit} biens</span>
+                        <span className="text-sm font-medium text-gray-700">{plan.property_limit} bien{(plan.property_limit ?? 0) > 1 ? 's' : ''}</span>
                       ) : (
                         <div className="flex items-center gap-1 text-indigo-600">
                           <Infinity size={14} />

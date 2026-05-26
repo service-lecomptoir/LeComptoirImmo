@@ -85,7 +85,7 @@ export default function QuittanceList() {
       setTimeout(() => setSuccessMsg(''), 3000)
       return
     }
-    if (!confirm(`Marquer ${unsent.length} quittance(s) comme envoyée(s) ?`)) return
+    if (!confirm(`Marquer ${unsent.length} quittance${unsent.length > 1 ? 's' : ''} comme envoyée${unsent.length > 1 ? 's' : ''} ?`)) return
 
     let count = 0
     for (const p of unsent) {
@@ -94,7 +94,7 @@ export default function QuittanceList() {
         count++
       } catch { /* skip */ }
     }
-    setSuccessMsg(`${count} quittance(s) marquée(s) comme envoyée(s)`)
+    setSuccessMsg(`${count} quittance${count > 1 ? 's' : ''} marquée${count > 1 ? 's' : ''} comme envoyée${count > 1 ? 's' : ''}`)
     setTimeout(() => setSuccessMsg(''), 4000)
     fetchPayments(search, filterYear, filterMonth)
   }
