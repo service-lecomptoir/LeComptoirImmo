@@ -79,16 +79,16 @@ export default function Dashboard() {
           bg="bg-red-50"
         />
         <KpiCard
-          label={stats.total_proprietaires > 1 ? 'Proprietaires' : 'Proprietaire'}
-          value={stats.total_proprietaires}
-          icon={Key}
+          label="Total gestionnaires"
+          value={stats.total_gestionnaires}
+          icon={Users}
           color="text-indigo-600"
           bg="bg-indigo-50"
         />
         <KpiCard
-          label={stats.total_locataires > 1 ? 'Locataires' : 'Locataire'}
-          value={stats.total_locataires}
-          icon={Home}
+          label="Plans actifs"
+          value={stats.plans_distribution.length}
+          icon={Key}
           color="text-violet-600"
           bg="bg-violet-50"
         />
@@ -130,12 +130,6 @@ export default function Dashboard() {
                 {stats.total_gestionnaires > 0
                   ? Math.round((stats.gestionnaires_bloques / stats.total_gestionnaires) * 100)
                   : 0}%
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-50">
-              <span className="text-sm text-gray-600">Total utilisateurs</span>
-              <span className="font-semibold text-gray-900">
-                {stats.total_gestionnaires + stats.total_proprietaires + stats.total_locataires}
               </span>
             </div>
           </div>
