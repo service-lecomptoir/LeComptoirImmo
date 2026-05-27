@@ -59,7 +59,7 @@ export default function Dashboard() {
     <div className="p-8 max-w-6xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Vue globale de la plateforme LeComptoirImmo</p>
+        <p className="text-gray-500 text-sm mt-1">Vue globale de la plateforme Le Comptoir Immo</p>
       </div>
 
       {/* KPI Cards */}

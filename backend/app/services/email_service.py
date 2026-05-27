@@ -81,9 +81,9 @@ def _base_template(title: str, content: str) -> str:
 </head>
 <body>
 <div class="wrapper">
-  <div class="header"><h1>LeComptoirImmo — {title}</h1></div>
+  <div class="header"><h1>Le Comptoir Immo — {title}</h1></div>
   <div class="body">{content}</div>
-  <div class="footer">LeComptoirImmo · Gestion locative · Ce message est automatique, merci de ne pas y répondre.</div>
+  <div class="footer">Le Comptoir Immo · Gestion locative · Ce message est automatique, merci de ne pas y répondre.</div>
 </div>
 </body>
 </html>

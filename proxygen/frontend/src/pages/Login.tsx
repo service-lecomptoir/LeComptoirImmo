@@ -70,7 +70,7 @@ export default function Login() {
           </div>
           <h1 className="text-white text-3xl font-bold leading-snug mb-4">
             Administration SaaS<br />
-            <span className="text-indigo-300">LeComptoirImmo</span>
+            <span className="text-indigo-300">Le Comptoir Immo</span>
           </h1>
           <p className="text-indigo-200 text-sm leading-relaxed max-w-xs">
             Gerez les comptes gestionnaires, les formules tarifaires et les licences depuis un espace centralise.

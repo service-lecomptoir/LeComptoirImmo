@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_EMAIL: str = "noreply@lecomptoirimmo.fr"
-    SMTP_FROM_NAME: str = "LeComptoirImmo"
+    SMTP_FROM_NAME: str = "Le Comptoir Immo"
     SMTP_TLS: bool = True
 
     @property

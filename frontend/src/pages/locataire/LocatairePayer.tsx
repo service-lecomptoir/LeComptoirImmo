@@ -235,7 +235,7 @@ export default function LocatairePayer() {
           {method === 'cheque' && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
               <p className="font-semibold mb-1">Envoyez votre chèque à l'ordre de :</p>
-              <p className="font-mono text-xs">LeComptoirImmo — 12 rue de la Gestion, 75001 Paris</p>
+              <p className="font-mono text-xs">Le Comptoir Immo — 12 rue de la Gestion, 75001 Paris</p>
             </div>
           )}
           {method === 'especes' && (

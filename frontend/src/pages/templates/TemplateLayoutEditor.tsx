@@ -50,7 +50,7 @@ const BLOCKS: Block[] = [
   {
     id: 'logo',
     label: 'Logo / Entête',
-    description: '"LeComptoirImmo" avec bordure bleue',
+    description: '"Le Comptoir Immo" avec bordure bleue',
     color: 'text-blue-700',
     bgColor: 'bg-blue-50 border-blue-200',
   },

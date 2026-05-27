@@ -47,7 +47,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-gray-700">
-        <p className="text-gray-500 text-xs text-center">LeComptoirImmo SaaS</p>
+        <p className="text-gray-500 text-xs text-center">Le Comptoir Immo SaaS</p>
       </div>
     </aside>
   )
