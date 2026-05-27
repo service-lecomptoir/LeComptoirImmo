@@ -24,6 +24,10 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
+    # RIB — un gestionnaire peut renseigner le RIB d'un propriétaire à sa place
+    iban: Optional[str] = None
+    bic: Optional[str] = None
+    bank_holder: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):

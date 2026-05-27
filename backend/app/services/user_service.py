@@ -71,6 +71,13 @@ class UserService:
             user.full_name = data.full_name
         if data.is_active is not None:
             user.is_active = data.is_active
+        # RIB (coordonnées bancaires du propriétaire)
+        if data.iban is not None:
+            user.iban = data.iban or None
+        if data.bic is not None:
+            user.bic = data.bic or None
+        if data.bank_holder is not None:
+            user.bank_holder = data.bank_holder or None
 
         await db.flush()
         await db.refresh(user)
