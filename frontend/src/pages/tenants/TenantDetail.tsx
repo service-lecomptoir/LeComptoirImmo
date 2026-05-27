@@ -49,10 +49,10 @@ export default function TenantDetail() {
   // Tous les champs sont affichés ; les valeurs vides sont signalées « Non renseigné »
   // (jamais un tiret — convention projet).
   const Field = ({ label, value }: { label: string; value: string | null | undefined }) => (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-gray-500">{label}</p>
       {value
-        ? <p className="text-sm text-gray-900">{value}</p>
+        ? <p className="text-sm text-gray-900 break-words">{value}</p>
         : <p className="text-sm text-gray-300 italic">Non renseigné</p>}
     </div>
   )

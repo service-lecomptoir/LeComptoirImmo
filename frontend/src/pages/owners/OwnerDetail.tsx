@@ -56,10 +56,10 @@ export default function OwnerDetail() {
 
   // Tous les champs affichés ; vide → « Non renseigné » (jamais un tiret — convention projet).
   const Field = ({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) => (
-    <div>
+    <div className="min-w-0">
       <p className="text-xs text-gray-500">{label}</p>
       {value
-        ? <p className={`text-sm text-gray-900 ${mono ? 'font-mono' : ''}`}>{value}</p>
+        ? <p className={`text-sm text-gray-900 break-words ${mono ? 'font-mono' : ''}`}>{value}</p>
         : <p className="text-sm text-gray-300 italic">Non renseigné</p>}
     </div>
   )
