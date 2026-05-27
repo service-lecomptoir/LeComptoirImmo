@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { Eye, EyeOff, Mail, Lock, ChevronRight } from 'lucide-react'
 import { useAuthStore, roleHomePath } from '@/store/authStore'
 import type { AccountType } from '@/store/authStore'
+import SubscriptionModal from './SubscriptionModal'
 
 const ACCOUNT_TYPES: {
   id: AccountType
@@ -183,6 +184,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [accountType, setAccountType] = useState<AccountType>('gestionnaire')
+  const [showSubscribe, setShowSubscribe] = useState(false)
 
   const activeType = ACCOUNT_TYPES.find(t => t.id === accountType)!
 
@@ -451,6 +453,15 @@ export default function Login() {
             </svg>
             <span className="text-xs text-gray-400">Connexion sécurisée · Espace {activeType.label}</span>
           </div>
+
+          {/* CTA souscription — discret, sans dénaturer la page */}
+          <p className="mt-4 text-center text-xs text-gray-400">
+            Pas encore client ?{' '}
+            <button type="button" onClick={() => setShowSubscribe(true)}
+              className="font-medium hover:underline" style={{ color: '#F07800' }}>
+              Demander une démo
+            </button>
+          </p>
         </div>
 
         {/* Footer mobile */}
@@ -460,6 +471,8 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      <SubscriptionModal open={showSubscribe} onClose={() => setShowSubscribe(false)} />
     </div>
   )
 }

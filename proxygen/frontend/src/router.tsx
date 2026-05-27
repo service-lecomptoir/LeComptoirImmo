@@ -7,6 +7,7 @@ import Dashboard from '@/pages/Dashboard'
 import GestionnaireList from '@/pages/gestionnaires/GestionnaireList'
 import GestionnaireDetail from '@/pages/gestionnaires/GestionnaireDetail'
 import PlanList from '@/pages/plans/PlanList'
+import SubscriptionList from '@/pages/subscriptions/SubscriptionList'
 
 function AppLayout() {
   const { isAuthenticated } = useAuthStore()
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'gestionnaires', element: <GestionnaireList /> },
       { path: 'gestionnaires/:id', element: <GestionnaireDetail /> },
       { path: 'plans', element: <PlanList /> },
+      { path: 'demandes', element: <SubscriptionList /> },
     ],
   },
   { path: '*', element: <Navigate to="/dashboard" replace /> },

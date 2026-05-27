@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Users, CreditCard } from 'lucide-react'
+import { LayoutDashboard, Users, CreditCard, Inbox } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/gestionnaires', icon: Users, label: 'Gestionnaires' },
   { to: '/plans', icon: CreditCard, label: 'Plans tarifaires' },
+  { to: '/demandes', icon: Inbox, label: 'Demandes' },
 ]
 
 export function Sidebar() {

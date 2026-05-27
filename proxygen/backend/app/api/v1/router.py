@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, dashboard, gestionnaires, plans, internal
+from app.api.v1 import auth, dashboard, gestionnaires, plans, internal, subscriptions
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -8,3 +8,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(gestionnaires.router)
 api_router.include_router(plans.router)
 api_router.include_router(internal.router)
+api_router.include_router(subscriptions.router)
