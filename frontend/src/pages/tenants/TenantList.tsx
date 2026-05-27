@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, UserRound, Mail, Phone, ShieldCheck, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Search, UserRound, ShieldCheck, Pencil, Trash2 } from 'lucide-react'
 import { tenantsApi } from '@/api/tenants'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -100,7 +100,6 @@ export default function TenantList() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nom</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Contact</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ajouté le</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -127,12 +126,6 @@ export default function TenantList() {
                           </span>
                         )}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-0.5 text-gray-600">
-                      {tenant.email && <span className="flex items-center gap-1.5"><Mail size={12} />{tenant.email}</span>}
-                      {tenant.phone && <span className="flex items-center gap-1.5"><Phone size={12} />{tenant.phone}</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-500">

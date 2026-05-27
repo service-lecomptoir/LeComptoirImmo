@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Building2, MapPin, User, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Search, Building2, User, Pencil, Trash2 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
-import type { PropertyListItem } from '@/types/property'
+import type { Property, PropertyListItem } from '@/types/property'
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   maison: 'Maison',
@@ -28,7 +28,7 @@ export default function PropertyList() {
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [editProperty, setEditProperty] = useState<PropertyListItem | null>(null)
+  const [editProperty, setEditProperty] = useState<Property | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -47,6 +47,16 @@ export default function PropertyList() {
     const t = setTimeout(() => fetchProperties(search), 300)
     return () => clearTimeout(t)
   }, [search, fetchProperties])
+
+  const openEdit = async (id: string) => {
+    try {
+      const { data } = await propertiesApi.get(id)
+      setEditProperty(data)
+      setShowForm(true)
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -104,7 +114,6 @@ export default function PropertyList() {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nom du bien</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Adresse</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Propriétaire</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
                 <th className="px-4 py-3" />
@@ -132,12 +141,6 @@ export default function PropertyList() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 text-gray-500 text-xs">
-                      <MapPin size={11} />
-                      <span>{prop.full_address}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
                     {prop.owner_name ? (
                       <div className="flex items-center gap-1.5 text-gray-700 text-xs">
                         <User size={12} className="text-gray-400" />
@@ -157,7 +160,7 @@ export default function PropertyList() {
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={() => { setEditProperty(prop); setShowForm(true) }}
+                        onClick={() => openEdit(prop.id)}
                         className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
                         title="Modifier"
                       >
@@ -182,7 +185,7 @@ export default function PropertyList() {
       {/* Modals */}
       {showForm && (
         <PropertyForm
-          property={editProperty as any}
+          property={editProperty ?? undefined}
           onClose={() => { setShowForm(false); setEditProperty(null) }}
           onSaved={() => { setShowForm(false); setEditProperty(null); fetchProperties(search) }}
         />
