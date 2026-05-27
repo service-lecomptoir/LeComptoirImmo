@@ -158,6 +158,10 @@ async def _apply_column_migrations() -> None:
         # Coordonnées profil utilisateur (gestionnaire/agence)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
+        # RIB propriétaire/GP (sert au virement du locataire)
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS iban VARCHAR(34)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bic VARCHAR(11)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_holder VARCHAR(150)",
         # Fusion bien/logement : caractéristiques du logement portées par le bien
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS floor INTEGER",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS area_sqm NUMERIC(8,2)",

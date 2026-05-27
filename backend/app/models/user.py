@@ -32,6 +32,11 @@ class User(Base, TimestampMixin):
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
 
+    # ── Coordonnées bancaires (RIB du propriétaire/GP, sert au virement locataire) ─
+    iban: Mapped[Optional[str]] = mapped_column(String(34), nullable=True)
+    bic: Mapped[Optional[str]] = mapped_column(String(11), nullable=True)
+    bank_holder: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+
     # Audit : qui a créé cet utilisateur (utile pour l'isolation GP)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True

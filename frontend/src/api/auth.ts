@@ -11,6 +11,13 @@ export const authApi = {
   me: () =>
     apiClient.get<User>('/auth/me'),
 
-  updateProfile: (data: { full_name?: string; phone?: string | null; address?: string | null }) =>
+  updateProfile: (data: {
+    full_name?: string
+    phone?: string | null
+    address?: string | null
+    iban?: string | null
+    bic?: string | null
+    bank_holder?: string | null
+  }) =>
     apiClient.patch<User>('/auth/me', data),
 }

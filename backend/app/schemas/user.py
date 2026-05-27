@@ -31,6 +31,10 @@ class ProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    # Coordonnées bancaires (propriétaire/GP) — servent au virement du locataire
+    iban: Optional[str] = None
+    bic: Optional[str] = None
+    bank_holder: Optional[str] = None
 
 
 class UserRoleUpdate(BaseModel):
@@ -57,6 +61,9 @@ class UserResponse(BaseModel):
     is_active: bool
     phone: Optional[str] = None
     address: Optional[str] = None
+    iban: Optional[str] = None
+    bic: Optional[str] = None
+    bank_holder: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

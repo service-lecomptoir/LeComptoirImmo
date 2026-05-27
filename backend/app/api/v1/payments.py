@@ -91,6 +91,7 @@ async def locataire_current_payment(
 
     from sqlalchemy.orm import selectinload
     from app.models.lease import Lease
+    from app.models.property import Property
     result = await db.execute(
         select(PaymentModel)
         .options(
@@ -103,9 +104,26 @@ async def locataire_current_payment(
         .limit(1)
     )
     payment = result.scalar_one_or_none()
+
+    # ── RIB du bénéficiaire (propriétaire / GP du bien loué) ─────────────────────
+    payee = None
+    prop = getattr(getattr(payment, "lease", None), "parent_property", None) if payment else None
+    owner_user_id = getattr(prop, "owner_user_id", None) if prop else None
+    if owner_user_id:
+        owner = (await db.execute(
+            select(User).where(User.id == owner_user_id)
+        )).scalar_one_or_none()
+        if owner and owner.iban:
+            payee = {
+                "name": owner.bank_holder or owner.full_name,
+                "iban": owner.iban,
+                "bic": owner.bic,
+            }
+
     return {
         "payment": PaymentService.to_list_item(payment).__dict__ if payment else None,
         "tenant_name": tenant.full_name,
+        "payee": payee,
     }
 
 

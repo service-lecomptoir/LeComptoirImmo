@@ -57,6 +57,7 @@ const MONTHS = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
 
 export default function LocatairePayer() {
   const [payment, setPayment] = useState<any>(null)
+  const [payee, setPayee] = useState<{ name?: string; iban?: string; bic?: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [method, setMethod] = useState<string | null>(null)
   const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select')
@@ -64,7 +65,7 @@ export default function LocatairePayer() {
 
   useEffect(() => {
     apiClient.get('/payments/locataire/current')
-      .then(r => setPayment(r.data.payment))
+      .then(r => { setPayment(r.data.payment); setPayee(r.data.payee ?? null) })
       .catch(() => { })
       .finally(() => setIsLoading(false))
   }, [])
@@ -214,14 +215,22 @@ export default function LocatairePayer() {
 
           {/* Informations contextuelles selon méthode */}
           {method === 'virement' && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5 text-sm">
-              <p className="font-semibold text-green-800 mb-2">Coordonnées bancaires pour le virement</p>
-              <div className="space-y-1 text-green-700 font-mono text-xs">
-                <p>IBAN : FR76 3000 4028 3798 7654 3210 943</p>
-                <p>BIC  : BNPAFRPPXXX</p>
-                <p className="font-sans text-xs text-green-600 mt-2">Référence : LOYER-{payment.period_month?.toString().padStart(2,'0')}-{payment.period_year}</p>
+            payee?.iban ? (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5 text-sm">
+                <p className="font-semibold text-green-800 mb-2">Coordonnées bancaires pour le virement</p>
+                <div className="space-y-1 text-green-700 font-mono text-xs">
+                  {payee.name && <p className="font-sans text-green-700">Titulaire : {payee.name}</p>}
+                  <p>IBAN : {payee.iban}</p>
+                  {payee.bic && <p>BIC&nbsp;&nbsp;: {payee.bic}</p>}
+                  <p className="font-sans text-xs text-green-600 mt-2">Référence : LOYER-{payment.period_month?.toString().padStart(2,'0')}-{payment.period_year}</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
+                <p className="font-semibold mb-1">Coordonnées bancaires non disponibles</p>
+                <p>Le RIB de votre bailleur n'est pas encore renseigné. Contactez votre gestionnaire pour obtenir les coordonnées du virement.</p>
+              </div>
+            )
           )}
           {method === 'cheque' && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
