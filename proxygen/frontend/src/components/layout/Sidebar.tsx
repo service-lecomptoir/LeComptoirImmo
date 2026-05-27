@@ -1,6 +1,8 @@
-import { NavLink } from 'react-router-dom'
+import { useEffect, useState, useCallback } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Users, CreditCard, Inbox } from 'lucide-react'
 import clsx from 'clsx'
+import { subscriptionsApi } from '@/api/subscriptions'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -9,7 +11,28 @@ const navItems = [
   { to: '/demandes', icon: Inbox, label: 'Demandes' },
 ]
 
+const POLL_MS = 60000
+
 export function Sidebar() {
+  const [newLeads, setNewLeads] = useState(0)
+  const location = useLocation()
+
+  const refresh = useCallback(async () => {
+    try {
+      const { data } = await subscriptionsApi.stats()
+      setNewLeads(data.nouveau ?? 0)
+    } catch {
+      /* silencieux */
+    }
+  }, [])
+
+  // Au montage, à chaque navigation, et toutes les 60 s
+  useEffect(() => { refresh() }, [refresh, location.pathname])
+  useEffect(() => {
+    const t = setInterval(refresh, POLL_MS)
+    return () => clearInterval(t)
+  }, [refresh])
+
   return (
     <aside className="w-64 min-h-screen bg-gray-900 flex flex-col">
       {/* Logo */}
@@ -27,23 +50,31 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
-                isActive
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              )
-            }
-          >
-            <Icon size={18} />
-            <span>{label}</span>
-          </NavLink>
-        ))}
+        {navItems.map(({ to, icon: Icon, label }) => {
+          const badge = to === '/demandes' && newLeads > 0 ? newLeads : 0
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                clsx(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
+                  isActive
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                )
+              }
+            >
+              <Icon size={18} />
+              <span className="flex-1">{label}</span>
+              {badge > 0 && (
+                <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-semibold flex items-center justify-center">
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
+            </NavLink>
+          )
+        })}
       </nav>
 
       {/* Footer */}

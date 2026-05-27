@@ -141,6 +141,41 @@ async def send_quittance(
     )
 
 
+async def send_subscription_lead_notification(
+    to: str,
+    full_name: str,
+    email: str,
+    phone: Optional[str] = None,
+    company: Optional[str] = None,
+    message: Optional[str] = None,
+) -> bool:
+    """Notifie l'équipe d'une nouvelle demande de souscription (page d'accueil)."""
+    def _row(label: str, value: Optional[str]) -> str:
+        if not value:
+            return ""
+        return (
+            f'<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280">{label}</td>'
+            f'<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-weight:600">{value}</td></tr>'
+        )
+
+    content = f"""
+<p>Une nouvelle demande de souscription vient d'être déposée depuis la page d'accueil.</p>
+<table style="width:100%;border-collapse:collapse;margin:16px 0">
+  {_row("Nom", full_name)}
+  {_row("Email", email)}
+  {_row("Téléphone", phone)}
+  {_row("Société", company)}
+</table>
+{f'<p style="color:#6b7280;margin:0 0 4px">Besoin exprimé :</p><p style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px">{message}</p>' if message else ''}
+<p style="margin-top:16px">À traiter dans ProxyGen → <strong>Demandes</strong>.</p>
+"""
+    return await send_email(
+        to=to,
+        subject=f"Nouvelle demande de souscription — {full_name}",
+        html_body=_base_template("Nouvelle demande de souscription", content),
+    )
+
+
 async def send_group_message(
     to: str,
     subject: str,

@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "Le Comptoir Immo"
     SMTP_TLS: bool = True
 
+    # Destinataire des notifications de nouvelles demandes de souscription
+    # (vide → repli sur FIRST_ADMIN_EMAIL).
+    LEADS_NOTIFY_EMAIL: str = ""
+
     @property
     def smtp_enabled(self) -> bool:
         return bool(self.SMTP_HOST)
