@@ -71,6 +71,11 @@ class UserService:
             user.full_name = data.full_name
         if data.is_active is not None:
             user.is_active = data.is_active
+        # Coordonnées (servent au règlement du locataire)
+        if data.phone is not None:
+            user.phone = data.phone or None
+        if data.address is not None:
+            user.address = data.address or None
         # RIB (coordonnées bancaires du propriétaire)
         if data.iban is not None:
             user.iban = data.iban or None

@@ -105,7 +105,8 @@ async def locataire_current_payment(
     )
     payment = result.scalar_one_or_none()
 
-    # ── RIB du bénéficiaire (propriétaire / GP du bien loué) ─────────────────────
+    # ── Bénéficiaire = propriétaire / GP du bien loué (jamais le mandataire,
+    #    qui ne reçoit pas les règlements à la place du propriétaire) ────────────
     payee = None
     prop = getattr(getattr(payment, "lease", None), "parent_property", None) if payment else None
     owner_user_id = getattr(prop, "owner_user_id", None) if prop else None
@@ -113,9 +114,10 @@ async def locataire_current_payment(
         owner = (await db.execute(
             select(User).where(User.id == owner_user_id)
         )).scalar_one_or_none()
-        if owner and owner.iban:
+        if owner:
             payee = {
                 "name": owner.bank_holder or owner.full_name,
+                "address": owner.address,
                 "iban": owner.iban,
                 "bic": owner.bic,
             }

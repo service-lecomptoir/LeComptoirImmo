@@ -57,7 +57,7 @@ const MONTHS = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
 
 export default function LocatairePayer() {
   const [payment, setPayment] = useState<any>(null)
-  const [payee, setPayee] = useState<{ name?: string; iban?: string; bic?: string } | null>(null)
+  const [payee, setPayee] = useState<{ name?: string; address?: string; iban?: string; bic?: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [method, setMethod] = useState<string | null>(null)
   const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select')
@@ -233,17 +233,36 @@ export default function LocatairePayer() {
             )
           )}
           {method === 'cheque' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
-              <p className="font-semibold mb-1">Envoyez votre chèque à l'ordre de :</p>
-              <p className="font-mono text-xs">Le Comptoir Immo — 12 rue de la Gestion, 75001 Paris</p>
-            </div>
+            payee?.name ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
+                <p className="font-semibold mb-1">Établissez votre chèque à l'ordre de :</p>
+                <p className="font-mono text-xs">{payee.name}</p>
+                {payee.address && (
+                  <p className="mt-2">À envoyer à : <span className="font-mono text-xs">{payee.address}</span></p>
+                )}
+              </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
+                <p className="font-semibold mb-1">Coordonnées non disponibles</p>
+                <p>Les coordonnées de votre bailleur ne sont pas encore renseignées. Contactez votre gestionnaire pour l'ordre et l'adresse d'envoi du chèque.</p>
+              </div>
+            )
           )}
           {method === 'especes' && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-sm text-red-800">
-              <p className="font-semibold mb-1">Règlement en espèces à l'accueil :</p>
-              <p>Du lundi au vendredi, 9h–17h</p>
-              <p className="font-mono text-xs mt-1">12 rue de la Gestion, 75001 Paris</p>
-            </div>
+            payee?.name ? (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-sm text-red-800">
+                <p className="font-semibold mb-1">Règlement en espèces auprès de :</p>
+                <p className="font-mono text-xs">{payee.name}</p>
+                {payee.address && (
+                  <p className="mt-1 font-mono text-xs">{payee.address}</p>
+                )}
+              </div>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-sm text-red-800">
+                <p className="font-semibold mb-1">Coordonnées non disponibles</p>
+                <p>Les coordonnées de votre bailleur ne sont pas encore renseignées. Contactez votre gestionnaire.</p>
+              </div>
+            )
           )}
           {method === 'carte' && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 text-sm text-blue-800">

@@ -24,7 +24,10 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
-    # RIB — un gestionnaire peut renseigner le RIB d'un propriétaire à sa place
+    # Coordonnées + RIB — un gestionnaire peut les renseigner pour un propriétaire
+    # à sa place (servent au règlement du locataire : virement / chèque / espèces)
+    phone: Optional[str] = None
+    address: Optional[str] = None
     iban: Optional[str] = None
     bic: Optional[str] = None
     bank_holder: Optional[str] = None
