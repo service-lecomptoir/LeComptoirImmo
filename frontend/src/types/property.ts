@@ -27,7 +27,7 @@ export type AmenityKey =
 export const AMENITIES: { key: AmenityKey; label: string }[] = [
   { key: 'furnished', label: 'Meublé' },
   { key: 'kitchen_equipped', label: 'Cuisine équipée' },
-  { key: 'has_fiber', label: 'Fibre' },
+  { key: 'has_fiber', label: 'Fibre internet' },
   { key: 'has_elevator', label: 'Ascenseur' },
   { key: 'has_balcony', label: 'Balcon' },
   { key: 'has_terrace', label: 'Terrasse' },
