@@ -162,11 +162,11 @@
     <tr>
       <td style="width:50%">
         <div class="label">Bailleur (bien)</div>
-        <div class="value">{{ lease.parent_property.name if lease.parent_property else '—' }}</div>
+        <div class="value">{{ lease.parent_property.name if lease.parent_property else '' }}</div>
       </td>
       <td style="width:50%">
         <div class="label">Adresse du bien</div>
-        <div class="value">{{ lease.parent_property.full_address if lease.parent_property else '—' }}</div>
+        <div class="value">{{ lease.parent_property.full_address if lease.parent_property else '' }}</div>
       </td>
     </tr>
   </table>
@@ -175,15 +175,15 @@
     <tr>
       <td style="width:34%">
         <div class="label">Locataire principal</div>
-        <div class="value">{{ lease.tenant.full_name if lease.tenant else '—' }}</div>
+        <div class="value">{{ lease.tenant.full_name if lease.tenant else '' }}</div>
       </td>
       <td style="width:33%">
         <div class="label">Email</div>
-        <div class="value">{{ lease.tenant.email if lease.tenant and lease.tenant.email else '—' }}</div>
+        <div class="value">{{ lease.tenant.email if lease.tenant and lease.tenant.email else '' }}</div>
       </td>
       <td style="width:33%">
         <div class="label">Téléphone</div>
-        <div class="value">{{ lease.tenant.phone if lease.tenant and lease.tenant.phone else '—' }}</div>
+        <div class="value">{{ lease.tenant.phone if lease.tenant and lease.tenant.phone else '' }}</div>
       </td>
     </tr>
   </table>
@@ -234,11 +234,11 @@
     <tr>
       <td style="width:25%">
         <div class="label">Référence du bien</div>
-        <div class="value">{{ lease.parent_property.name if lease.parent_property else '—' }}</div>
+        <div class="value">{{ lease.parent_property.name if lease.parent_property else '' }}</div>
       </td>
       <td style="width:25%">
         <div class="label">Type</div>
-        <div class="value">{{ lease.parent_property.property_type if lease.parent_property else '—' }}</div>
+        <div class="value">{{ lease.parent_property.property_type if lease.parent_property else '' }}</div>
       </td>
       {% if lease.parent_property and lease.parent_property.floor is not none %}
       <td style="width:25%">

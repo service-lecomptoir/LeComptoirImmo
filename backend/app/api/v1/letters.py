@@ -55,9 +55,9 @@ async def lettre_relance(
 
     ctx = {
         "property_name": property_obj.name if property_obj else "Le bailleur",
-        "property_address": property_obj.full_address if property_obj else "—",
+        "property_address": property_obj.full_address if property_obj else "",
         "city": (property_obj.city if property_obj else ""),
-        "tenant_name": payment.tenant.full_name if payment.tenant else "—",
+        "tenant_name": payment.tenant.full_name if payment.tenant else "",
         "period_label": payment.period_label,
         "due_date": payment.due_date.strftime("%d/%m/%Y"),
         "amount_due": f"{payment.balance:.2f}",
@@ -93,12 +93,12 @@ async def attestation_caf(
 
     ctx = {
         "bailleur_name": current_user.full_name,
-        "property_address": prop.full_address if prop else "—",
+        "property_address": prop.full_address if prop else "",
         "property_city": prop.city if prop and prop.city else "",
-        "unit_ref": prop.name if prop else "—",
-        "unit_type": prop.property_type if prop else "—",
+        "unit_ref": prop.name if prop else "",
+        "unit_type": prop.property_type if prop else "",
         "area_sqm": f"{float(prop.area_sqm):.0f}" if prop and prop.area_sqm else None,
-        "tenant_name": tenant.full_name if tenant else "—",
+        "tenant_name": tenant.full_name if tenant else "",
         "tenant_birth_date": (
             tenant.birth_date.strftime("%d/%m/%Y") if tenant and tenant.birth_date else None
         ),

@@ -51,7 +51,7 @@
             {% else %}Gestion locative{% endif %}
           </div>
           {% elif block == 'recipient' %}
-          <div class="recipient-name-left">{{ tenant_names if tenant_names else (payment.tenant.full_name if payment.tenant else '—') }}</div>
+          <div class="recipient-name-left">{{ tenant_names if tenant_names else (payment.tenant.full_name if payment.tenant else '') }}</div>
           <div class="recipient-info-left">
             {% if payment.lease and payment.lease.parent_property %}{{ payment.lease.parent_property.name }}<br>{{ payment.lease.parent_property.full_address }}{% endif %}
           </div>
@@ -73,7 +73,7 @@
             {% else %}Gestion locative{% endif %}
           </div>
           {% elif block == 'recipient' %}
-          <div class="recipient-name">{{ tenant_names if tenant_names else (payment.tenant.full_name if payment.tenant else '—') }}</div>
+          <div class="recipient-name">{{ tenant_names if tenant_names else (payment.tenant.full_name if payment.tenant else '') }}</div>
           <div class="recipient-info">
             {% if payment.lease and payment.lease.parent_property %}{{ payment.lease.parent_property.name }}<br>{{ payment.lease.parent_property.full_address }}{% endif %}
           </div>

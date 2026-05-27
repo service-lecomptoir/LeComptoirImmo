@@ -46,7 +46,7 @@
             {% if property %}{{ property.owner_name }}<br>{{ property.full_address }}{% else %}Gestion locative{% endif %}
           </div>
           {% elif block == 'recipient' %}
-          <div class="recipient-name-left">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '—') }}</div>
+          <div class="recipient-name-left">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '') }}</div>
           <div class="recipient-info-left">
             {% if property %}{{ property.name }}<br>{{ property.full_address }}{% endif %}
           </div>
@@ -64,7 +64,7 @@
             {% if property %}{{ property.owner_name }}<br>{{ property.full_address }}{% else %}Gestion locative{% endif %}
           </div>
           {% elif block == 'recipient' %}
-          <div class="recipient-name">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '—') }}</div>
+          <div class="recipient-name">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '') }}</div>
           <div class="recipient-info">
             {% if property %}{{ property.name }}<br>{{ property.full_address }}{% endif %}
           </div>
