@@ -12,7 +12,38 @@ class PropertyService:
 
     @staticmethod
     async def _enrich_owner(db: AsyncSession, data_dict: dict) -> dict:
-        """Auto-remplit owner_name/owner_email depuis le compte lié si non fournis."""
+        """Synchronise les champs dénormalisés du propriétaire depuis la fiche Owner.
+
+        La fiche (`owner_id`) est la source de vérité : on en dérive `owner_user_id`
+        (compte de connexion), `owner_name`, `owner_email`, `owner_phone` — utilisés
+        pour l'isolation et les modèles PDF. À défaut de fiche, on retombe sur l'ancien
+        comportement (compte lié `owner_user_id`)."""
+        from sqlalchemy import select
+        from app.models.owner import Owner
+
+        owner_id = data_dict.get("owner_id")
+        # Pas de fiche fournie mais un compte propriétaire (cas gestionnaire-propriétaire
+        # ou flux historique) : rattacher à la fiche de ce compte si elle existe.
+        if not owner_id:
+            owner_user_id = data_dict.get("owner_user_id")
+            if owner_user_id:
+                owner = (await db.execute(
+                    select(Owner).where(Owner.user_id == owner_user_id)
+                )).scalars().first()
+                if owner:
+                    data_dict["owner_id"] = owner.id
+                    owner_id = owner.id
+
+        if owner_id:
+            owner = await db.get(Owner, owner_id)
+            if owner:
+                data_dict["owner_user_id"] = owner.user_id
+                data_dict["owner_name"] = owner.full_name
+                data_dict["owner_email"] = owner.email
+                data_dict["owner_phone"] = owner.phone
+            return data_dict
+
+        # Aucun propriétaire identifiable — comportement historique (compte direct).
         owner_user_id = data_dict.get("owner_user_id")
         if owner_user_id:
             from app.models.user import User

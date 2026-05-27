@@ -10,6 +10,7 @@ from app.database import Base, TimestampMixin
 
 class EntityType(str, Enum):
     TENANT = "tenant"
+    OWNER = "owner"
     LEASE = "lease"
     UNIT = "unit"
     PROPERTY = "property"

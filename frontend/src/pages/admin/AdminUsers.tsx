@@ -6,10 +6,21 @@ import {
   Users, Plus, Pencil, Trash2, ShieldCheck, CheckCircle, XCircle,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import { tenantsApi } from '@/api/tenants'
+import { ownersApi } from '@/api/owners'
 import { Modal } from '@/components/common/Modal'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import type { User, Role } from '@/types/auth'
 import { useAuthStore } from '@/store/authStore'
+
+/** Fiche (locataire ou propriétaire) candidate au rattachement d'un compte. */
+interface FicheOption {
+  id: string
+  full_name: string
+  email: string | null
+  user_id: string | null
+}
+const NEW_FICHE = '__new__'
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -98,6 +109,10 @@ export default function AdminUsers() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  // Rattachement d'une fiche (locataire / propriétaire) au nouveau compte
+  const [fiches, setFiches] = useState<FicheOption[]>([])
+  const [linkFicheId, setLinkFicheId] = useState<string>('')
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -118,14 +133,64 @@ export default function AdminUsers() {
     defaultValues: { role: 'gestionnaire' },
   })
 
+  const watchedRole = createForm.watch('role')
+  const needsFiche = watchedRole === 'locataire' || watchedRole === 'proprietaire'
+
+  // Charge les fiches (sans compte) à rattacher, selon le rôle choisi.
+  useEffect(() => {
+    if (!showCreate || !needsFiche) { setFiches([]); return }
+    let cancelled = false
+    const loader = watchedRole === 'locataire' ? tenantsApi.list({ limit: 500 }) : ownersApi.list({ limit: 500 })
+    loader
+      .then(r => {
+        if (cancelled) return
+        const items = (r.data.items ?? []) as FicheOption[]
+        setFiches(items.filter(f => !f.user_id))
+      })
+      .catch(() => { if (!cancelled) setFiches([]) })
+    return () => { cancelled = true }
+  }, [showCreate, watchedRole, needsFiche])
+
   const handleCreate = async (values: CreateUserForm) => {
     setSubmitting(true)
     setFormError(null)
     try {
-      await apiClient.post('/users', values)
+      const isLoc = values.role === 'locataire'
+      const isProp = values.role === 'proprietaire'
+      if ((isLoc || isProp) && !linkFicheId) {
+        setFormError(`Choisissez une fiche ${isLoc ? 'locataire' : 'propriétaire'} à rattacher, ou créez-en une.`)
+        setSubmitting(false)
+        return
+      }
+
+      // 1) Créer le compte utilisateur
+      const { data: newUser } = await apiClient.post<User>('/users', values)
+
+      // 2) Rattacher / créer la fiche correspondante
+      if (isLoc) {
+        if (linkFicheId === NEW_FICHE) {
+          const [first, ...rest] = values.full_name.trim().split(/\s+/)
+          await apiClient.post('/tenants', {
+            first_name: first, last_name: rest.join(' ') || first,
+            email: values.email, user_id: newUser.id,
+          })
+        } else {
+          await apiClient.put(`/tenants/${linkFicheId}`, { user_id: newUser.id })
+        }
+      } else if (isProp) {
+        if (linkFicheId === NEW_FICHE) {
+          await apiClient.post('/owners', {
+            last_name: values.full_name.trim(), email: values.email, user_id: newUser.id,
+          })
+        } else {
+          await apiClient.put(`/owners/${linkFicheId}`, { user_id: newUser.id })
+        }
+      }
+
       await load()
       setShowCreate(false)
       createForm.reset()
+      setLinkFicheId('')
     } catch (e: any) {
       setFormError(e?.response?.data?.detail || 'Erreur lors de la création.')
     } finally {
@@ -209,12 +274,12 @@ export default function AdminUsers() {
         <button
           onClick={() => {
             const defaultRole = me?.role === 'gestionnaire_proprio' ? 'locataire' : 'gestionnaire'
-            setShowCreate(true); setFormError(null); createForm.reset({ role: defaultRole as Role })
+            setShowCreate(true); setFormError(null); setLinkFicheId(''); createForm.reset({ role: defaultRole as Role })
           }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
         >
           <Plus size={16} />
-          {me?.role === 'gestionnaire_proprio' ? 'Nouveau locataire' : 'Nouvel utilisateur'}
+          Nouvel utilisateur
         </button>
       </div>
 
@@ -369,7 +434,7 @@ export default function AdminUsers() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Rôle *</label>
             <select
-              {...createForm.register('role')}
+              {...createForm.register('role', { onChange: () => setLinkFicheId('') })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {getCreatableRoles(me?.role).map(([value, label]) => (
@@ -377,6 +442,32 @@ export default function AdminUsers() {
               ))}
             </select>
           </div>
+
+          {/* Rattachement à une fiche locataire / propriétaire */}
+          {needsFiche && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-1.5">
+              <label className="block text-sm font-medium text-blue-800">
+                Fiche {watchedRole === 'locataire' ? 'locataire' : 'propriétaire'} à rattacher *
+              </label>
+              <p className="text-xs text-blue-700/80">
+                Ce compte donnera accès à l'espace en ligne de cette fiche. Choisissez une fiche
+                existante, ou créez-en une à partir du nom et de l'email saisis ci-dessus.
+              </p>
+              <select
+                value={linkFicheId}
+                onChange={e => setLinkFicheId(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">— Choisir une fiche —</option>
+                {fiches.map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.full_name}{f.email ? ` (${f.email})` : ''}
+                  </option>
+                ))}
+                <option value={NEW_FICHE}>➕ Créer une nouvelle fiche (depuis le nom / email)</option>
+              </select>
+            </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button

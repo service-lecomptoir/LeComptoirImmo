@@ -9,6 +9,7 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.lease import Lease
+    from app.models.owner import Owner
 
 
 class PropertyType(str, Enum):
@@ -76,8 +77,18 @@ class Property(Base, TimestampMixin):
     is_occupied: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    # ── Propriétaire (fiche) ──────────────────────────────────────────────────
+    # Lien vers la fiche propriétaire (entité Owner). Source de vérité de l'identité
+    # et des coordonnées (RIB) du bailleur — peut exister sans compte de connexion.
+    owner_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("owners.id", ondelete="SET NULL"),
+        nullable=True, index=True
+    )
+
     # ── Propriétaire connecté ─────────────────────────────────────────────────
-    # Lien vers le compte utilisateur du propriétaire (rôle "proprietaire")
+    # Copie dénormalisée de owner.user_id (= compte de connexion du propriétaire).
+    # Maintenue par PropertyService/OwnerService. Sert à l'isolation et aux vues
+    # propriétaire ; n'est jamais saisie directement.
     owner_user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True, index=True
@@ -91,6 +102,10 @@ class Property(Base, TimestampMixin):
     # ── Relations ─────────────────────────────────────────────────────────────
     leases: Mapped[list["Lease"]] = relationship(
         "Lease", back_populates="parent_property", lazy="select"
+    )
+    owner: Mapped[Optional["Owner"]] = relationship(
+        "Owner", back_populates="properties", lazy="select",
+        foreign_keys=[owner_id],
     )
 
     @property

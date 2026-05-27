@@ -6,6 +6,7 @@ import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import TenantList from '@/pages/tenants/TenantList'
 import TenantDetail from '@/pages/tenants/TenantDetail'
+import OwnerList from '@/pages/owners/OwnerList'
 import PropertyList from '@/pages/properties/PropertyList'
 import PropertyDetail from '@/pages/properties/PropertyDetail'
 import LeaseList from '@/pages/leases/LeaseList'
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'tenants', element: <TenantList /> },
       { path: 'tenants/:id', element: <TenantDetail /> },
+      { path: 'owners', element: <OwnerList /> },
       { path: 'properties', element: <PropertyList /> },
       { path: 'properties/:id', element: <PropertyDetail /> },
       { path: 'leases', element: <LeaseList /> },

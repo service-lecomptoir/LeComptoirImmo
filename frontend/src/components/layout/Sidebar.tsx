@@ -4,7 +4,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  MapPin, Hash, User, ShoppingBag, Package,
+  MapPin, Hash, User, ShoppingBag, Package, KeyRound,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
@@ -25,6 +25,8 @@ interface NavItem {
 const navGestionnaire: NavItem[] = [
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
   { to: '/properties', icon: Building2, label: 'Propriétés' },
+  { to: '/tenants', icon: Users, label: 'Locataires' },
+  { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
@@ -57,6 +59,7 @@ const navProprietaire: NavItem[] = [
 const navGestionnairePropio: NavItem[] = [
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
   { to: '/properties', icon: Building2, label: 'Propriétés' },
+  { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },

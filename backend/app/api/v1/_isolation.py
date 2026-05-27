@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.models.property import Property
 from app.models.tenant import Tenant
+from app.models.owner import Owner
 from app.models.lease import Lease
 from app.core.permissions import Role
 
@@ -56,6 +57,17 @@ async def gp_tenant_ids(db: AsyncSession) -> set[uuid.UUID]:
         return set()
     result = await db.execute(
         select(Tenant.id).where(Tenant.created_by.in_(gp_ids))
+    )
+    return set(result.scalars().all())
+
+
+async def gp_owner_ids(db: AsyncSession) -> set[uuid.UUID]:
+    """IDs des fiches propriétaire créées par des gestionnaire_proprio (via created_by)."""
+    gp_ids = await _gp_user_ids(db)
+    if not gp_ids:
+        return set()
+    result = await db.execute(
+        select(Owner.id).where(Owner.created_by.in_(gp_ids))
     )
     return set(result.scalars().all())
 

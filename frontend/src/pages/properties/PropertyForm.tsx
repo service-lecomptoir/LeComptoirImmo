@@ -5,11 +5,11 @@ import { z } from 'zod'
 import { UserRound, Plus, X } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import { propertiesApi } from '@/api/properties'
-import { usersApi } from '@/api/users'
+import { ownersApi } from '@/api/owners'
 import { useAuthStore } from '@/store/authStore'
 import type { Property } from '@/types/property'
 import { TYPOLOGY_OPTIONS, HEATING_OPTIONS, ENERGY_CLASSES, AMENITIES } from '@/types/property'
-import type { User } from '@/types/auth'
+import type { Owner, OwnerListItem } from '@/types/owner'
 
 const schema = z.object({
   name: z.string().min(1, 'Nom requis'),
@@ -18,7 +18,8 @@ const schema = z.object({
   zip_code: z.string().min(1, 'Code postal requis'),
   city: z.string().min(1, 'Ville requise'),
   country: z.string().default('France'),
-  owner_user_id: z.string().uuid('Propriétaire requis').min(1, 'Propriétaire requis'),
+  owner_id: z.string().optional(),
+  owner_user_id: z.string().optional(),
   // ── Caractéristiques du bien ──────────────────────────────────────────────
   typology: z.string().optional(),
   area_sqm: z.coerce.number().min(0).optional(),
@@ -48,26 +49,32 @@ interface Props {
   onSaved: () => void
 }
 
-// ─── Create-owner panel — at module level to avoid focus-loss re-mounts ───────
+// ─── Create-owner panel — crée une FICHE propriétaire (compte de connexion
+//     optionnel, à ajouter ensuite depuis Administration). Module-level pour
+//     éviter les pertes de focus au re-render. ───────────────────────────────
 interface CreateOwnerPanelProps {
-  onCreated: (user: User) => void
+  onCreated: (owner: Owner) => void
   onCancel: () => void
 }
 function CreateOwnerPanel({ onCreated, onCancel }: CreateOwnerPanelProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handle = async () => {
-    if (!name.trim() || !email.trim() || !password.trim()) {
-      setError('Tous les champs sont requis')
+    if (!name.trim()) {
+      setError('Le nom / la dénomination est requis')
       return
     }
     setLoading(true); setError(null)
     try {
-      const { data } = await usersApi.create({ full_name: name, email, password, role: 'proprietaire' })
+      const { data } = await ownersApi.create({
+        last_name: name.trim(),
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+      })
       onCreated(data)
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Erreur lors de la création')
@@ -80,22 +87,22 @@ function CreateOwnerPanel({ onCreated, onCancel }: CreateOwnerPanelProps) {
     <div className="border border-blue-200 rounded-lg p-3 bg-blue-50 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-blue-700 flex items-center gap-1">
-          <UserRound size={13} /> Créer un compte propriétaire
+          <UserRound size={13} /> Créer une fiche propriétaire
         </span>
         <button type="button" onClick={onCancel} className="text-gray-400 hover:text-gray-600">
           <X size={14} />
         </button>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Nom complet *"
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Nom / SCI *"
         className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email *" type="email"
+      <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
         className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
-      <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe *" type="password"
+      <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Téléphone"
         className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
       <button type="button" onClick={handle} disabled={loading}
         className="w-full py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-        {loading ? 'Création...' : 'Créer et lier le compte'}
+        {loading ? 'Création...' : 'Créer et lier la fiche'}
       </button>
     </div>
   )
@@ -106,10 +113,10 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
   const isEdit = !!property
   const { user: currentUser } = useAuthStore()
   const isGestionnairePropio = currentUser?.role === 'gestionnaire_proprio'
-  const [proprietaires, setProprietaires] = useState<User[]>([])
+  const [owners, setOwners] = useState<OwnerListItem[]>([])
   const [showCreateOwner, setShowCreateOwner] = useState(false)
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: property ? {
       name: property.name,
@@ -118,7 +125,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       zip_code: property.zip_code,
       city: property.city,
       country: property.country ?? 'France',
-      owner_user_id: property.owner_user_id ?? (isGestionnairePropio ? (currentUser?.id ?? '') : ''),
+      owner_id: property.owner_id ?? '',
       typology: property.typology ?? '',
       area_sqm: property.area_sqm ?? undefined,
       floor: property.floor ?? undefined,
@@ -139,7 +146,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
     } : {
       property_type: 'appartement',
       country: 'France',
-      owner_user_id: isGestionnairePropio ? (currentUser?.id ?? '') : '',
+      owner_id: '',
       furnished: false,
       kitchen_equipped: false,
       has_elevator: false,
@@ -151,22 +158,29 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
     },
   })
 
-  const selectedOwnerId = watch('owner_user_id')
+  const selectedOwnerId = watch('owner_id')
 
   useEffect(() => {
     if (isGestionnairePropio) return
-    usersApi.list({ role: 'proprietaire' })
-      .then(r => setProprietaires(r.data))
+    ownersApi.list({ limit: 500 })
+      .then(r => setOwners(r.data.items))
       .catch(() => {})
   }, [isGestionnairePropio])
 
-  const handleOwnerCreated = (user: User) => {
-    setProprietaires(prev => [...prev, user])
-    setValue('owner_user_id', user.id, { shouldValidate: true })
+  const handleOwnerCreated = (owner: Owner) => {
+    setOwners(prev => [{ ...owner } as OwnerListItem, ...prev])
+    setValue('owner_id', owner.id, { shouldValidate: true })
+    clearErrors('owner_id')
     setShowCreateOwner(false)
   }
 
   const onSubmit = async (data: FormData) => {
+    // Le gestionnaire-propriétaire est lui-même le propriétaire (rattaché côté
+    // serveur à sa propre fiche). Sinon une fiche propriétaire est obligatoire.
+    if (!isGestionnairePropio && !data.owner_id) {
+      setError('owner_id', { message: 'Propriétaire requis' })
+      return
+    }
     const payload = {
       name: data.name,
       property_type: data.property_type,
@@ -174,7 +188,9 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       zip_code: data.zip_code,
       city: data.city,
       country: data.country,
-      owner_user_id: data.owner_user_id,
+      ...(isGestionnairePropio
+        ? { owner_user_id: currentUser?.id }
+        : { owner_id: data.owner_id }),
       typology: data.typology || null,
       area_sqm: data.area_sqm ?? null,
       floor: data.floor ?? null,
@@ -342,12 +358,12 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
               <div className="flex gap-2">
                 <select
                   value={selectedOwnerId || ''}
-                  onChange={e => setValue('owner_user_id', e.target.value, { shouldValidate: true })}
+                  onChange={e => { setValue('owner_id', e.target.value, { shouldValidate: true }); clearErrors('owner_id') }}
                   className={`flex-1 ${inp}`}
                 >
                   <option value="">— Sélectionner un propriétaire —</option>
-                  {proprietaires.map(u => (
-                    <option key={u.id} value={u.id}>{u.full_name} ({u.email})</option>
+                  {owners.map(o => (
+                    <option key={o.id} value={o.id}>{o.full_name}{o.email ? ` (${o.email})` : ''}</option>
                   ))}
                 </select>
                 <button type="button" onClick={() => setShowCreateOwner(true)}
@@ -362,12 +378,12 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
               />
             )}
 
-            {errors.owner_user_id && !showCreateOwner && (
-              <p className={err}>{errors.owner_user_id.message}</p>
+            {errors.owner_id && !showCreateOwner && (
+              <p className={err}>{errors.owner_id.message}</p>
             )}
             {selectedOwnerId && !showCreateOwner && (
               <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
-                <UserRound size={11} /> Le propriétaire pourra se connecter et voir ce bien
+                <UserRound size={11} /> Fiche propriétaire rattachée à ce bien
               </p>
             )}
           </div>

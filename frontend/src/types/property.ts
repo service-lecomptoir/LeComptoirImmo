@@ -49,6 +49,7 @@ export interface Property {
   country: string
   property_type: PropertyType
   full_address: string
+  owner_id: string | null
   owner_user_id: string | null
   owner_name: string | null
   owner_email: string | null
@@ -88,6 +89,7 @@ export interface PropertyListItem {
   city: string
   property_type: PropertyType
   full_address: string
+  owner_id: string | null
   owner_user_id: string | null
   owner_name: string | null
   typology: string | null

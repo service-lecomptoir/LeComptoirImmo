@@ -52,8 +52,16 @@ async def _gp_tenant_ids(db: AsyncSession, owner_id: uuid.UUID) -> set[str]:
 
 
 async def _require_gp_scope(db: AsyncSession, current_user: User, target_id: uuid.UUID):
-    """Pour gestionnaire_proprio : vérifie que la cible est un de ses locataires (ou lui-même)."""
+    """Pour gestionnaire_proprio : la cible doit être lui-même, un compte qu'il a
+    créé (`created_by`), ou un de ses locataires (lié à un de ses biens).
+
+    NB : on s'aligne sur `list_users` (qui montre soi-même + les comptes créés) afin
+    qu'un GP puisse modifier/supprimer un compte qu'il vient d'ajouter — y compris
+    avant qu'il ne soit rattaché à un bail."""
     if str(target_id) == str(current_user.id):
+        return
+    target = await db.get(User, target_id)
+    if target is not None and str(target.created_by) == str(current_user.id):
         return
     tenant_ids = await _gp_tenant_ids(db, current_user.id)
     if str(target_id) not in tenant_ids:

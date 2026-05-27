@@ -266,6 +266,48 @@ async def _apply_column_migrations() -> None:
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_day', '1') ON CONFLICT DO NOTHING",
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_hour', '7') ON CONFLICT DO NOTHING",
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_minute', '30') ON CONFLICT DO NOTHING",
+        # ── 016 : Entité propriétaire (fiche Owner) + lien sur le bien ───────────
+        # La table `owners` est créée par create_all. On ajoute la colonne de lien
+        # puis on rapatrie les propriétaires existants (comptes + owner_name) en
+        # fiches, et on relie les biens. Idempotent (NOT EXISTS / owner_id IS NULL).
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES owners(id) ON DELETE SET NULL",
+        # Fiches depuis les comptes propriétaire / gestionnaire-propriétaire
+        """
+        INSERT INTO owners (id, last_name, email, phone, address, iban, bic, bank_holder, user_id, created_by)
+        SELECT gen_random_uuid(), u.full_name, u.email, u.phone, u.address,
+               u.iban, u.bic, u.bank_holder, u.id, u.created_by
+        FROM users u
+        WHERE (u.role IN ('proprietaire', 'gestionnaire_proprio')
+               OR u.id IN (SELECT DISTINCT owner_user_id FROM properties WHERE owner_user_id IS NOT NULL))
+          AND NOT EXISTS (SELECT 1 FROM owners o WHERE o.user_id = u.id)
+        """,
+        # Relier les biens à la fiche de leur propriétaire-utilisateur
+        """
+        UPDATE properties p SET owner_id = o.id
+        FROM owners o
+        WHERE o.user_id = p.owner_user_id
+          AND p.owner_user_id IS NOT NULL
+          AND p.owner_id IS NULL
+        """,
+        # Fiches depuis les biens à propriétaire "texte" (sans compte ni fiche)
+        """
+        DO $$
+        DECLARE r RECORD; new_id uuid;
+        BEGIN
+          FOR r IN SELECT id, owner_name, owner_email, owner_phone, created_by
+                   FROM properties
+                   WHERE owner_id IS NULL AND owner_user_id IS NULL
+                     AND owner_name IS NOT NULL AND btrim(owner_name) <> ''
+          LOOP
+            INSERT INTO owners (id, last_name, email, phone, created_by)
+            VALUES (gen_random_uuid(), r.owner_name,
+                    NULLIF(btrim(r.owner_email), ''), NULLIF(btrim(r.owner_phone), ''),
+                    r.created_by)
+            RETURNING id INTO new_id;
+            UPDATE properties SET owner_id = new_id WHERE id = r.id;
+          END LOOP;
+        END $$;
+        """,
     ]
     try:
         async with engine.begin() as conn:
