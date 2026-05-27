@@ -39,7 +39,7 @@ const navGestionnaire: NavItem[] = [
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
   { label: 'Mon compte', isSeparator: true },
-  { to: '/profil', icon: User, label: 'Mes coordonnées' },
+  { to: '/profil', icon: User, label: 'Mes informations' },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
@@ -77,7 +77,7 @@ const navGestionnairePropio: NavItem[] = [
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
   { label: 'Mon compte', isSeparator: true },
-  { to: '/profil', icon: User, label: 'Mes coordonnées' },
+  { to: '/profil', icon: User, label: 'Mes informations' },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
