@@ -205,7 +205,7 @@ export default function QuittanceList() {
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Locataire</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Logement</th>
+              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Bien</th>
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Période</th>
               <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Dû</th>
               <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Payé</th>

@@ -31,8 +31,8 @@ const VAR_CATEGORIES = [
   {
     label: 'Bien', color: '#059669', bg: '#d1fae5', text: '#047857',
     vars: [
-      { key: '{{property_name}}', label: 'Propriété' },
-      { key: '{{unit_ref}}', label: 'Logement' },
+      { key: '{{property_name}}', label: 'Bien' },
+      { key: '{{unit_ref}}', label: 'Référence du bien' },
       { key: '{{property_address}}', label: 'Adresse' },
     ],
   },
