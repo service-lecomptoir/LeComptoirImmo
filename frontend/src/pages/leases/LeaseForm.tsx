@@ -145,7 +145,6 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
     },
   })
 
-  const selectedPropertyId = watch('property_id')
   const aplTiersPayant = watch('apl_tiers_payant')
   const hasGuarantor = watch('has_guarantor')
 
@@ -153,21 +152,6 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
     propertiesApi.list({ limit: 200 }).then(r => setProperties(r.data.items as PropertyListItem[]))
     tenantsApi.list({ limit: 200, available_only: !isEdit }).then(r => setTenants(r.data.items))
   }, [])
-
-  // À la sélection d'un bien (en création), pré-remplir loyer / charges / dépôt
-  // depuis les caractéristiques du bien.
-  useEffect(() => {
-    if (!selectedPropertyId || isEdit) return
-    propertiesApi.get(selectedPropertyId)
-      .then(r => {
-        const p = r.data
-        if (p.base_rent != null) setValue('rent_amount', p.base_rent, { shouldValidate: true })
-        if (p.charges_amount != null) setValue('charges_amount', p.charges_amount)
-        const months = p.deposit_months ?? 1
-        if (p.base_rent != null) setValue('deposit_amount', Math.round((p.base_rent || 0) * months * 100) / 100)
-      })
-      .catch(() => {})
-  }, [selectedPropertyId, isEdit, setValue])
 
   const handleTenantCreated = (tenant: TenantListItem) => {
     setTenants(prev => [...prev, tenant])
@@ -237,11 +221,6 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               ))}
             </select>
             {errors.property_id && <p className={err}>{errors.property_id.message}</p>}
-            {!isEdit && selectedPropertyId && (
-              <p className="mt-1 text-xs text-gray-400">
-                Le loyer, les charges et le dépôt sont pré-remplis depuis le bien — vous pouvez les ajuster ci-dessous.
-              </p>
-            )}
           </div>
         </div>
 

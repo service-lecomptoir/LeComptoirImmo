@@ -52,17 +52,23 @@ class Property(Base, TimestampMixin):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     year_built: Mapped[Optional[int]] = mapped_column(nullable=True)
 
-    # ── Caractéristiques du logement (fusionnées dans le bien) ─────────────────
+    # ── Caractéristiques du logement ──────────────────────────────────────────
+    typology: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)   # T1 … T10
     floor: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     area_sqm: Mapped[Optional[float]] = mapped_column(Numeric(8, 2), nullable=True)
-    rooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    bedrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    bathrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    bathrooms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)    # salles d'eau / de bain
+    heating_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    energy_class: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)  # DPE A..G
 
-    # ── Finances (loyer de référence du bien) ─────────────────────────────────
-    base_rent: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
-    charges_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
-    deposit_months: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # ── Équipements & extérieurs ──────────────────────────────────────────────
+    furnished: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    kitchen_equipped: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_elevator: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_balcony: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_terrace: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_garden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_parking: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_cellar: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # ── État d'occupation ──────────────────────────────────────────────────────
     is_occupied: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -89,14 +95,6 @@ class Property(Base, TimestampMixin):
     def full_address(self) -> str:
         parts = [self.address, self.zip_code, self.city]
         return ", ".join(p for p in parts if p)
-
-    @property
-    def total_monthly(self) -> float:
-        return float(self.base_rent or 0) + float(self.charges_amount or 0)
-
-    @property
-    def deposit_amount(self) -> float:
-        return float(self.base_rent or 0) * (self.deposit_months or 1)
 
     def __repr__(self) -> str:
         return f"<Property {self.name} — {self.city}>"

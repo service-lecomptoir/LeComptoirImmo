@@ -7,6 +7,34 @@ export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   autre: 'Autre',
 }
 
+export const TYPOLOGY_OPTIONS = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10'] as const
+
+export const HEATING_OPTIONS: { value: string; label: string }[] = [
+  { value: 'individuel_gaz', label: 'Individuel gaz' },
+  { value: 'individuel_elec', label: 'Individuel électrique' },
+  { value: 'collectif', label: 'Collectif' },
+  { value: 'pompe_chaleur', label: 'Pompe à chaleur' },
+  { value: 'autre', label: 'Autre' },
+]
+
+export const ENERGY_CLASSES = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const
+
+export type AmenityKey =
+  | 'furnished' | 'kitchen_equipped' | 'has_elevator' | 'has_balcony'
+  | 'has_terrace' | 'has_garden' | 'has_parking' | 'has_cellar'
+
+// Équipements / extérieurs — clé technique → libellé affiché
+export const AMENITIES: { key: AmenityKey; label: string }[] = [
+  { key: 'furnished', label: 'Meublé' },
+  { key: 'kitchen_equipped', label: 'Cuisine équipée' },
+  { key: 'has_elevator', label: 'Ascenseur' },
+  { key: 'has_balcony', label: 'Balcon' },
+  { key: 'has_terrace', label: 'Terrasse' },
+  { key: 'has_garden', label: 'Jardin' },
+  { key: 'has_parking', label: 'Parking / garage' },
+  { key: 'has_cellar', label: 'Cave' },
+]
+
 export interface Property {
   id: string
   name: string
@@ -25,15 +53,22 @@ export interface Property {
   description: string | null
   notes: string | null
   year_built: number | null
-  // ── Caractéristiques du bien (fusionnées depuis le logement) ───────────────
+  // ── Caractéristiques du bien ───────────────────────────────────────────────
+  typology: string | null          // T1 … T10
   floor: number | null
   area_sqm: number | null
-  rooms: number | null
-  bedrooms: number | null
-  bathrooms: number | null
-  base_rent: number
-  charges_amount: number
-  deposit_months: number
+  bathrooms: number | null         // salles d'eau / de bain
+  heating_type: string | null
+  energy_class: string | null
+  // ── Équipements & extérieurs ───────────────────────────────────────────────
+  furnished: boolean
+  kitchen_equipped: boolean
+  has_elevator: boolean
+  has_balcony: boolean
+  has_terrace: boolean
+  has_garden: boolean
+  has_parking: boolean
+  has_cellar: boolean
   is_occupied: boolean
   is_available: boolean
   unit_count: number
@@ -50,8 +85,8 @@ export interface PropertyListItem {
   full_address: string
   owner_user_id: string | null
   owner_name: string | null
+  typology: string | null
   area_sqm: number | null
-  base_rent: number
   is_occupied: boolean
   unit_count: number
   occupied_count: number

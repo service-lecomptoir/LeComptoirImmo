@@ -8,6 +8,7 @@ import { propertiesApi } from '@/api/properties'
 import { usersApi } from '@/api/users'
 import { useAuthStore } from '@/store/authStore'
 import type { Property } from '@/types/property'
+import { TYPOLOGY_OPTIONS, HEATING_OPTIONS, ENERGY_CLASSES, AMENITIES } from '@/types/property'
 import type { User } from '@/types/auth'
 
 const schema = z.object({
@@ -19,14 +20,21 @@ const schema = z.object({
   country: z.string().default('France'),
   owner_user_id: z.string().uuid('Propriétaire requis').min(1, 'Propriétaire requis'),
   // ── Caractéristiques du bien ──────────────────────────────────────────────
+  typology: z.string().optional(),
   area_sqm: z.coerce.number().min(0).optional(),
   floor: z.coerce.number().int().optional(),
-  rooms: z.coerce.number().int().min(0).optional(),
-  bedrooms: z.coerce.number().int().min(0).optional(),
   bathrooms: z.coerce.number().int().min(0).optional(),
-  base_rent: z.coerce.number().min(0).default(0),
-  charges_amount: z.coerce.number().min(0).default(0),
-  deposit_months: z.coerce.number().min(0).default(1),
+  heating_type: z.string().optional(),
+  energy_class: z.string().optional(),
+  // ── Équipements & extérieurs ──────────────────────────────────────────────
+  furnished: z.boolean().default(false),
+  kitchen_equipped: z.boolean().default(false),
+  has_elevator: z.boolean().default(false),
+  has_balcony: z.boolean().default(false),
+  has_terrace: z.boolean().default(false),
+  has_garden: z.boolean().default(false),
+  has_parking: z.boolean().default(false),
+  has_cellar: z.boolean().default(false),
   notes: z.string().optional(),
 })
 
@@ -109,22 +117,33 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       city: property.city,
       country: property.country ?? 'France',
       owner_user_id: property.owner_user_id ?? (isGestionnairePropio ? (currentUser?.id ?? '') : ''),
+      typology: property.typology ?? '',
       area_sqm: property.area_sqm ?? undefined,
       floor: property.floor ?? undefined,
-      rooms: property.rooms ?? undefined,
-      bedrooms: property.bedrooms ?? undefined,
       bathrooms: property.bathrooms ?? undefined,
-      base_rent: property.base_rent ?? 0,
-      charges_amount: property.charges_amount ?? 0,
-      deposit_months: property.deposit_months ?? 1,
+      heating_type: property.heating_type ?? '',
+      energy_class: property.energy_class ?? '',
+      furnished: property.furnished ?? false,
+      kitchen_equipped: property.kitchen_equipped ?? false,
+      has_elevator: property.has_elevator ?? false,
+      has_balcony: property.has_balcony ?? false,
+      has_terrace: property.has_terrace ?? false,
+      has_garden: property.has_garden ?? false,
+      has_parking: property.has_parking ?? false,
+      has_cellar: property.has_cellar ?? false,
       notes: property.notes ?? '',
     } : {
       property_type: 'appartement',
       country: 'France',
       owner_user_id: isGestionnairePropio ? (currentUser?.id ?? '') : '',
-      base_rent: 0,
-      charges_amount: 0,
-      deposit_months: 1,
+      furnished: false,
+      kitchen_equipped: false,
+      has_elevator: false,
+      has_balcony: false,
+      has_terrace: false,
+      has_garden: false,
+      has_parking: false,
+      has_cellar: false,
     },
   })
 
@@ -152,14 +171,20 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       city: data.city,
       country: data.country,
       owner_user_id: data.owner_user_id,
+      typology: data.typology || null,
       area_sqm: data.area_sqm ?? null,
       floor: data.floor ?? null,
-      rooms: data.rooms ?? null,
-      bedrooms: data.bedrooms ?? null,
       bathrooms: data.bathrooms ?? null,
-      base_rent: data.base_rent ?? 0,
-      charges_amount: data.charges_amount ?? 0,
-      deposit_months: data.deposit_months ?? 1,
+      heating_type: data.heating_type || null,
+      energy_class: data.energy_class || null,
+      furnished: data.furnished,
+      kitchen_equipped: data.kitchen_equipped,
+      has_elevator: data.has_elevator,
+      has_balcony: data.has_balcony,
+      has_terrace: data.has_terrace,
+      has_garden: data.has_garden,
+      has_parking: data.has_parking,
+      has_cellar: data.has_cellar,
       notes: data.notes || undefined,
     }
     if (isEdit) {
@@ -244,6 +269,13 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Caractéristiques</h3>
           <div className="grid grid-cols-3 gap-3">
             <div>
+              <label className={lbl}>Type (nombre de pièces)</label>
+              <select {...register('typology')} className={inp}>
+                <option value="">—</option>
+                {TYPOLOGY_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
               <label className={lbl}>Surface (m²)</label>
               <input type="number" step="0.01" {...register('area_sqm')} className={inp} placeholder="ex. 45" />
             </div>
@@ -252,36 +284,39 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
               <input type="number" {...register('floor')} className={inp} placeholder="ex. 2" />
             </div>
             <div>
-              <label className={lbl}>Pièces</label>
-              <input type="number" {...register('rooms')} className={inp} placeholder="ex. 3" />
+              <label className={lbl}>Salle d'eau / salle de bain</label>
+              <select {...register('bathrooms')} className={inp}>
+                <option value="">—</option>
+                {[0, 1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
             </div>
             <div>
-              <label className={lbl}>Chambres</label>
-              <input type="number" {...register('bedrooms')} className={inp} placeholder="ex. 2" />
+              <label className={lbl}>Chauffage</label>
+              <select {...register('heating_type')} className={inp}>
+                <option value="">—</option>
+                {HEATING_OPTIONS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
+              </select>
             </div>
             <div>
-              <label className={lbl}>Salles de bain</label>
-              <input type="number" {...register('bathrooms')} className={inp} placeholder="ex. 1" />
+              <label className={lbl}>Classe énergie (DPE)</label>
+              <select {...register('energy_class')} className={inp}>
+                <option value="">—</option>
+                {ENERGY_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Loyer & charges */}
+        {/* Équipements & extérieurs */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Loyer & charges</h3>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className={lbl}>Loyer de base (€)</label>
-              <input type="number" step="0.01" {...register('base_rent')} className={inp} placeholder="ex. 800" />
-            </div>
-            <div>
-              <label className={lbl}>Charges (€)</label>
-              <input type="number" step="0.01" {...register('charges_amount')} className={inp} placeholder="ex. 80" />
-            </div>
-            <div>
-              <label className={lbl}>Dépôt (mois)</label>
-              <input type="number" {...register('deposit_months')} className={inp} placeholder="ex. 1" />
-            </div>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Équipements & extérieurs</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {AMENITIES.map(a => (
+              <label key={a.key} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 text-sm text-gray-700">
+                <input type="checkbox" {...register(a.key)} className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                {a.label}
+              </label>
+            ))}
           </div>
         </div>
 

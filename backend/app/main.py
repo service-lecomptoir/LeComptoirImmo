@@ -173,6 +173,18 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS deposit_months INTEGER NOT NULL DEFAULT 1",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS is_occupied BOOLEAN NOT NULL DEFAULT false",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS is_available BOOLEAN NOT NULL DEFAULT true",
+        # Caractéristiques étendues du bien (typologie, équipements, extérieurs)
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS typology VARCHAR(8)",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS heating_type VARCHAR(30)",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS energy_class VARCHAR(2)",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS furnished BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS kitchen_equipped BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_elevator BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_balcony BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_terrace BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_garden BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_parking BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_cellar BOOLEAN NOT NULL DEFAULT false",
         "UPDATE properties SET property_type='appartement' WHERE property_type='immeuble'",
         # Inspections rattachées au bien (remplace unit_id)
         "ALTER TABLE inspections ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL",

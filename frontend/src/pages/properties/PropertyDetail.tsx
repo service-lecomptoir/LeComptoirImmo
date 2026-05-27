@@ -2,14 +2,18 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Edit, Trash2,
-  MapPin, Home, Ruler, BedDouble, Bath, Layers, Euro
+  MapPin, Home, Ruler, Bath, Layers, Flame, Zap, Check
 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import type { Property } from '@/types/property'
-import { PROPERTY_TYPE_LABELS } from '@/types/property'
+import { PROPERTY_TYPE_LABELS, AMENITIES, HEATING_OPTIONS } from '@/types/property'
+
+const HEATING_LABELS: Record<string, string> = Object.fromEntries(
+  HEATING_OPTIONS.map(h => [h.value, h.label])
+)
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>()
@@ -46,9 +50,6 @@ export default function PropertyDetail() {
 
   if (isLoading) return <div className="p-6 text-sm text-gray-500">Chargement...</div>
   if (!property) return <div className="p-6 text-sm text-red-600">Bien introuvable</div>
-
-  const totalMonthly = (property.base_rent ?? 0) + (property.charges_amount ?? 0)
-  const fmt = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2 })
 
   return (
     <div className="p-6 max-w-5xl">
@@ -92,48 +93,33 @@ export default function PropertyDetail() {
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Caractéristiques</h2>
         <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
+          <Stat icon={<Home size={16} className="text-blue-600" />} label="Type"
+            value={property.typology || '—'} />
           <Stat icon={<Ruler size={16} className="text-blue-600" />} label="Surface"
             value={property.area_sqm ? `${property.area_sqm} m²` : '—'} />
           <Stat icon={<Layers size={16} className="text-blue-600" />} label="Étage"
             value={property.floor != null ? String(property.floor) : '—'} />
-          <Stat icon={<Home size={16} className="text-blue-600" />} label="Pièces"
-            value={property.rooms != null ? String(property.rooms) : '—'} />
-          <Stat icon={<BedDouble size={16} className="text-blue-600" />} label="Chambres"
-            value={property.bedrooms != null ? String(property.bedrooms) : '—'} />
-          <Stat icon={<Bath size={16} className="text-blue-600" />} label="Salles de bain"
+          <Stat icon={<Bath size={16} className="text-blue-600" />} label="Salle d'eau / bain"
             value={property.bathrooms != null ? String(property.bathrooms) : '—'} />
+          <Stat icon={<Flame size={16} className="text-blue-600" />} label="Chauffage"
+            value={HEATING_LABELS[property.heating_type ?? ''] ?? '—'} />
+          <Stat icon={<Zap size={16} className="text-blue-600" />} label="DPE"
+            value={property.energy_class || '—'} />
         </div>
-      </div>
 
-      {/* Loyer & charges */}
-      <div className="grid grid-cols-3 gap-4 mb-5">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center">
-            <Euro size={18} className="text-green-600" />
+        {/* Équipements & extérieurs */}
+        {AMENITIES.some(a => property[a.key]) && (
+          <div className="mt-5 pt-4 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Équipements & extérieurs</p>
+            <div className="flex flex-wrap gap-2">
+              {AMENITIES.filter(a => property[a.key]).map(a => (
+                <span key={a.key} className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                  <Check size={12} /> {a.label}
+                </span>
+              ))}
+            </div>
           </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{fmt(property.base_rent ?? 0)} €</p>
-            <p className="text-xs text-gray-500">Loyer hors charges</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-            <Euro size={18} className="text-blue-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{fmt(property.charges_amount ?? 0)} €</p>
-            <p className="text-xs text-gray-500">Charges</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
-            <Euro size={18} className="text-purple-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-gray-900">{fmt(totalMonthly)} €</p>
-            <p className="text-xs text-gray-500">Total mensuel</p>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Propriétaire */}
