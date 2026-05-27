@@ -35,7 +35,7 @@ export default function OwnerDetail() {
 
   useEffect(() => {
     if (!id) return
-    propertiesApi.list({ limit: 500 })
+    propertiesApi.list({ limit: 200 })
       .then(r => setProperties((r.data.items ?? []).filter(p => p.owner_id === id)))
       .catch(() => {})
   }, [id])

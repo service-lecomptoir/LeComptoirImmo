@@ -162,7 +162,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (isGestionnairePropio) return
-    ownersApi.list({ limit: 500 })
+    ownersApi.list({ limit: 200 })
       .then(r => setOwners(r.data.items))
       .catch(() => {})
   }, [isGestionnairePropio])

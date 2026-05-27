@@ -249,9 +249,9 @@ export default function ProprietaireFiscal() {
               {showDetails ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
             </button>
 
-            {showDetails && (
-              <div className="border-t">
-                {data.properties.length === 0 ? (
+            {/* Toujours dans le DOM : masqué à l'écran si replié, mais TOUJOURS imprimé */}
+            <div className={`border-t ${showDetails ? '' : 'hidden print:block'}`}>
+              {data.properties.length === 0 ? (
                   <p className="p-5 text-sm text-gray-400 text-center">Aucun bien rattaché</p>
                 ) : (
                   <table className="w-full text-sm">
@@ -286,8 +286,7 @@ export default function ProprietaireFiscal() {
                     </tfoot>
                   </table>
                 )}
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Note légale */}

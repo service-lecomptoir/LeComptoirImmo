@@ -135,7 +135,7 @@ export default function AdminUsers() {
   useEffect(() => {
     if (!showCreate || !needsFiche) { setFiches([]); return }
     let cancelled = false
-    const loader = watchedRole === 'locataire' ? tenantsApi.list({ limit: 500 }) : ownersApi.list({ limit: 500 })
+    const loader = watchedRole === 'locataire' ? tenantsApi.list({ limit: 200 }) : ownersApi.list({ limit: 200 })
     loader
       .then(r => {
         if (cancelled) return
