@@ -1,6 +1,6 @@
 import uuid
 from typing import List, Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -67,7 +67,8 @@ async def update_request(
     if data.status is not None:
         req.status = data.status
         if data.status in ("traite", "rejete") and req.processed_at is None:
-            req.processed_at = datetime.now(timezone.utc)
+            # Colonne TIMESTAMP WITHOUT TIME ZONE → datetime naïf (convention du projet)
+            req.processed_at = datetime.utcnow()
     if data.notes is not None:
         req.notes = data.notes
 
