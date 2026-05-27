@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, UserRound, Mail, Phone, ShieldCheck } from 'lucide-react'
+import { Plus, Search, UserRound, Mail, Phone, ShieldCheck, Pencil, Trash2 } from 'lucide-react'
 import { tenantsApi } from '@/api/tenants'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import type { TenantListItem } from '@/types/tenant'
+import type { Tenant, TenantListItem } from '@/types/tenant'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -15,6 +15,7 @@ export default function TenantList() {
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editTenant, setEditTenant] = useState<Tenant | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -35,6 +36,15 @@ export default function TenantList() {
     const t = setTimeout(() => fetchTenants(search), 300)
     return () => clearTimeout(t)
   }, [search, fetchTenants])
+
+  const openEdit = async (id: string) => {
+    try {
+      const { data } = await tenantsApi.get(id)
+      setEditTenant(data)
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -128,13 +138,23 @@ export default function TenantList() {
                   <td className="px-4 py-3 text-gray-500">
                     {format(new Date(tenant.created_at), 'd MMM yyyy', { locale: fr })}
                   </td>
-                  <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                    <button
-                      onClick={() => setDeleteId(tenant.id)}
-                      className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors"
-                    >
-                      Supprimer
-                    </button>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => openEdit(tenant.id)}
+                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Modifier"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(tenant.id)}
+                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -148,6 +168,13 @@ export default function TenantList() {
         <TenantForm
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); fetchTenants(search) }}
+        />
+      )}
+      {editTenant && (
+        <TenantForm
+          tenant={editTenant}
+          onClose={() => setEditTenant(null)}
+          onSaved={() => { setEditTenant(null); fetchTenants(search) }}
         />
       )}
       <ConfirmDialog

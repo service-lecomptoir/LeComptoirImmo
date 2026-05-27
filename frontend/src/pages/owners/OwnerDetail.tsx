@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import {
-  ArrowLeft, Edit, Mail, Phone, MapPin, Building2, Landmark,
-  StickyNote, ShieldCheck, Hash,
-} from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, Building2, Landmark, ShieldCheck } from 'lucide-react'
 import { ownersApi } from '@/api/owners'
 import { propertiesApi } from '@/api/properties'
 import { OwnerForm } from './OwnerForm'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import type { Owner } from '@/types/owner'
 import type { PropertyListItem } from '@/types/property'
+
+const CIVILITY_LABELS: Record<string, string> = { M: 'M.', Mme: 'Mme', Autre: 'Autre' }
 
 export default function OwnerDetail() {
   const { id } = useParams<{ id: string }>()
@@ -17,6 +17,8 @@ export default function OwnerDetail() {
   const [properties, setProperties] = useState<PropertyListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showEdit, setShowEdit] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchOwner = async () => {
     if (!id) return
@@ -31,7 +33,6 @@ export default function OwnerDetail() {
 
   useEffect(() => { fetchOwner() }, [id])
 
-  // Biens rattachés à ce propriétaire
   useEffect(() => {
     if (!id) return
     propertiesApi.list({ limit: 500 })
@@ -39,21 +40,29 @@ export default function OwnerDetail() {
       .catch(() => {})
   }, [id])
 
+  const handleDelete = async () => {
+    if (!id) return
+    setIsDeleting(true)
+    try {
+      await ownersApi.delete(id)
+      navigate('/owners')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   if (isLoading) return <div className="p-6 text-sm text-gray-500">Chargement...</div>
   if (!owner) return <div className="p-6 text-sm text-red-600">Propriétaire introuvable</div>
 
-  const InfoRow = ({ icon: Icon, label, value, mono }: { icon: any; label: string; value: string | null | undefined; mono?: boolean }) =>
-    value ? (
-      <div className="flex items-start gap-3 py-2">
-        <Icon size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="text-xs text-gray-500">{label}</p>
-          <p className={`text-sm text-gray-900 ${mono ? 'font-mono' : ''}`}>{value}</p>
-        </div>
-      </div>
-    ) : null
-
-  const hasRib = owner.iban || owner.bic || owner.bank_holder
+  // Tous les champs affichés ; vide → « Non renseigné » (jamais un tiret — convention projet).
+  const Field = ({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) => (
+    <div>
+      <p className="text-xs text-gray-500">{label}</p>
+      {value
+        ? <p className={`text-sm text-gray-900 ${mono ? 'font-mono' : ''}`}>{value}</p>
+        : <p className="text-sm text-gray-300 italic">Non renseigné</p>}
+    </div>
+  )
 
   return (
     <div className="p-6 max-w-4xl">
@@ -73,62 +82,66 @@ export default function OwnerDetail() {
           </div>
           <p className="text-sm text-gray-500">Fiche propriétaire</p>
         </div>
-        <button
-          onClick={() => setShowEdit(true)}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
-        >
-          <Edit size={15} /> Modifier
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowEdit(true)}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            <Edit size={15} /> Modifier
+          </button>
+          <button
+            onClick={() => setShowDelete(true)}
+            className="flex items-center gap-2 px-3 py-2 border border-red-300 text-sm text-red-600 rounded-lg hover:bg-red-50"
+          >
+            <Trash2 size={15} /> Supprimer
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Identité */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">Identité</h2>
-          <div className="divide-y divide-gray-50">
-            <InfoRow icon={Building2} label="Société / SCI" value={owner.company_name} />
-            <InfoRow icon={Hash} label="SIRET / N° pièce" value={owner.national_id} />
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Identité</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Civilité" value={owner.civility ? CIVILITY_LABELS[owner.civility] : null} />
+            <Field label="Société / SCI" value={owner.company_name} />
+            <Field label="Prénom" value={owner.first_name} />
+            <Field label="Nom" value={owner.last_name} />
+            <Field label="SIRET / N° pièce" value={owner.national_id} />
           </div>
-          {!owner.company_name && !owner.national_id && (
-            <p className="text-sm text-gray-400">Personne physique</p>
-          )}
         </div>
 
         {/* Contact */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">Contact</h2>
-          <div className="divide-y divide-gray-50">
-            <InfoRow icon={Mail} label="Email" value={owner.email} />
-            <InfoRow icon={Phone} label="Téléphone" value={owner.phone} />
-            <InfoRow icon={Phone} label="Téléphone 2" value={owner.phone2} />
-            <InfoRow icon={MapPin} label="Adresse" value={owner.address} />
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Contact</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Email" value={owner.email} />
+            <Field label="Téléphone" value={owner.phone} />
+            <Field label="Téléphone 2" value={owner.phone2} />
+            <Field label="Adresse" value={owner.address} />
           </div>
         </div>
 
         {/* Coordonnées bancaires */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-4">
             <Landmark size={15} className="text-blue-600" />
             <h2 className="text-sm font-semibold text-gray-900">Coordonnées bancaires (RIB)</h2>
           </div>
-          {hasRib ? (
-            <div className="divide-y divide-gray-50">
-              <InfoRow icon={Landmark} label="Titulaire" value={owner.bank_holder} />
-              <InfoRow icon={Landmark} label="IBAN" value={owner.iban} mono />
-              <InfoRow icon={Landmark} label="BIC" value={owner.bic} mono />
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">Aucun RIB renseigné</p>
-          )}
+          <div className="grid grid-cols-1 gap-4">
+            <Field label="Titulaire du compte" value={owner.bank_holder} />
+            <Field label="IBAN" value={owner.iban} mono />
+            <Field label="BIC" value={owner.bic} mono />
+          </div>
         </div>
 
         {/* Biens rattachés */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">
             Biens rattachés {properties.length > 0 && <span className="text-gray-400 font-normal">({properties.length})</span>}
           </h2>
           {properties.length === 0 ? (
-            <p className="text-sm text-gray-400">Aucun bien rattaché</p>
+            <p className="text-sm text-gray-300 italic">Aucun bien rattaché</p>
           ) : (
             <ul className="divide-y divide-gray-50">
               {properties.map(p => (
@@ -150,15 +163,12 @@ export default function OwnerDetail() {
         </div>
 
         {/* Notes */}
-        {owner.notes && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">
-            <div className="flex items-center gap-2 mb-3">
-              <StickyNote size={15} className="text-gray-500" />
-              <h2 className="text-sm font-semibold text-gray-900">Notes</h2>
-            </div>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{owner.notes}</p>
-          </div>
-        )}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">
+          <h2 className="text-sm font-semibold text-gray-900 mb-2">Notes</h2>
+          {owner.notes
+            ? <p className="text-sm text-gray-700 whitespace-pre-wrap">{owner.notes}</p>
+            : <p className="text-sm text-gray-300 italic">Non renseigné</p>}
+        </div>
       </div>
 
       {showEdit && (
@@ -168,6 +178,14 @@ export default function OwnerDetail() {
           onSaved={() => { setShowEdit(false); fetchOwner() }}
         />
       )}
+      <ConfirmDialog
+        isOpen={showDelete}
+        onClose={() => setShowDelete(false)}
+        onConfirm={handleDelete}
+        title="Supprimer le propriétaire"
+        message="Cette action est irréversible. Êtes-vous sûr de vouloir supprimer ce propriétaire ?"
+        isLoading={isDeleting}
+      />
     </div>
   )
 }
