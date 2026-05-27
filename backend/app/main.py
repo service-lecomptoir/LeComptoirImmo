@@ -158,10 +158,6 @@ async def _apply_column_migrations() -> None:
         # Coordonnées profil utilisateur (gestionnaire/agence)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
-        # RIB propriétaire/GP (sert au virement du locataire)
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS iban VARCHAR(34)",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bic VARCHAR(11)",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_holder VARCHAR(150)",
         # Fusion bien/logement : caractéristiques du logement portées par le bien
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS floor INTEGER",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS area_sqm NUMERIC(8,2)",
@@ -271,11 +267,12 @@ async def _apply_column_migrations() -> None:
         # puis on rapatrie les propriétaires existants (comptes + owner_name) en
         # fiches, et on relie les biens. Idempotent (NOT EXISTS / owner_id IS NULL).
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS owner_id UUID REFERENCES owners(id) ON DELETE SET NULL",
-        # Fiches depuis les comptes propriétaire / gestionnaire-propriétaire
+        # Fiches depuis les comptes propriétaire / gestionnaire-propriétaire.
+        # NB : le RIB a été migré vers la fiche lors du premier déploiement ; il vit
+        # désormais uniquement sur owners (colonnes users.iban/bic/bank_holder supprimées).
         """
-        INSERT INTO owners (id, last_name, email, phone, address, iban, bic, bank_holder, user_id, created_by)
-        SELECT gen_random_uuid(), u.full_name, u.email, u.phone, u.address,
-               u.iban, u.bic, u.bank_holder, u.id, u.created_by
+        INSERT INTO owners (id, last_name, email, phone, address, user_id, created_by)
+        SELECT gen_random_uuid(), u.full_name, u.email, u.phone, u.address, u.id, u.created_by
         FROM users u
         WHERE (u.role IN ('proprietaire', 'gestionnaire_proprio')
                OR u.id IN (SELECT DISTINCT owner_user_id FROM properties WHERE owner_user_id IS NOT NULL))
@@ -308,6 +305,12 @@ async def _apply_column_migrations() -> None:
           END LOOP;
         END $$;
         """,
+        # ── 017 : RIB désormais porté UNIQUEMENT par la fiche propriétaire ───────
+        # Le RIB a été rapatrié vers `owners` (backfill ci-dessus) lors du 1er déploiement.
+        # On retire les colonnes devenues inutiles du compte utilisateur.
+        "ALTER TABLE users DROP COLUMN IF EXISTS iban",
+        "ALTER TABLE users DROP COLUMN IF EXISTS bic",
+        "ALTER TABLE users DROP COLUMN IF EXISTS bank_holder",
     ]
     try:
         async with engine.begin() as conn:

@@ -15,9 +15,6 @@ export const authApi = {
     full_name?: string
     phone?: string | null
     address?: string | null
-    iban?: string | null
-    bic?: string | null
-    bank_holder?: string | null
   }) =>
     apiClient.patch<User>('/auth/me', data),
 }

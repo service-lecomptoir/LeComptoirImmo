@@ -8,9 +8,6 @@ export interface User {
   is_active: boolean
   phone?: string | null
   address?: string | null
-  iban?: string | null
-  bic?: string | null
-  bank_holder?: string | null
   created_at: string
   updated_at: string
 }

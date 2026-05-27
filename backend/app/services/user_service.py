@@ -71,18 +71,12 @@ class UserService:
             user.full_name = data.full_name
         if data.is_active is not None:
             user.is_active = data.is_active
-        # Coordonnées (servent au règlement du locataire)
+        # Coordonnées du compte (agence/gestionnaire). Le RIB du bailleur est
+        # désormais porté par la fiche propriétaire (table owners), pas le compte.
         if data.phone is not None:
             user.phone = data.phone or None
         if data.address is not None:
             user.address = data.address or None
-        # RIB (coordonnées bancaires du propriétaire)
-        if data.iban is not None:
-            user.iban = data.iban or None
-        if data.bic is not None:
-            user.bic = data.bic or None
-        if data.bank_holder is not None:
-            user.bank_holder = data.bank_holder or None
 
         await db.flush()
         await db.refresh(user)
