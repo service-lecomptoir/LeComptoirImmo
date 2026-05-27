@@ -323,7 +323,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 min-h-screen bg-gray-900 flex flex-col">
+    <aside className="w-64 min-h-screen bg-gray-900 flex flex-col no-print">
       {renderHeader()}
 
       {/* ── Navigation ── */}

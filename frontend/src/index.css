@@ -7,3 +7,13 @@
     @apply text-gray-900 antialiased;
   }
 }
+
+/* ── Impression ────────────────────────────────────────────────────────────────
+   Sur une page imprimée, on masque l'habillage de l'app (barre latérale, en-tête,
+   et tout élément marqué .no-print) pour n'imprimer que le contenu utile. */
+@media print {
+  .no-print { display: none !important; }
+  /* Le contenu prend toute la largeur (la sidebar est masquée) et n'est pas tronqué */
+  main { overflow: visible !important; }
+  body { background: #fff !important; }
+}

@@ -63,7 +63,7 @@ export function Header() {
   const initials = user?.full_name?.charAt(0).toUpperCase() ?? '?'
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 px-6 flex items-center justify-between">
+    <header className="h-14 bg-white border-b border-gray-200 px-6 flex items-center justify-between no-print">
       <div />
       <div className="flex items-center gap-3">
         {/* Notifications */}
