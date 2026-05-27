@@ -63,7 +63,7 @@ export default function ProprietaireLocataires() {
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-sm text-gray-700">
-                      {l.start_date ? new Date(l.start_date).toLocaleDateString('fr-FR') : '—'}
+                      {l.start_date ? new Date(l.start_date).toLocaleDateString('fr-FR') : ''}
                     </p>
                   </td>
                 </tr>

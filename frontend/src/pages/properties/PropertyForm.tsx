@@ -36,6 +36,7 @@ const schema = z.object({
   has_parking: z.boolean().default(false),
   has_cellar: z.boolean().default(false),
   has_fiber: z.boolean().default(false),
+  has_air_conditioning: z.boolean().default(false),
   notes: z.string().optional(),
 })
 
@@ -133,6 +134,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       has_parking: property.has_parking ?? false,
       has_cellar: property.has_cellar ?? false,
       has_fiber: property.has_fiber ?? false,
+      has_air_conditioning: property.has_air_conditioning ?? false,
       notes: property.notes ?? '',
     } : {
       property_type: 'appartement',
@@ -188,6 +190,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       has_parking: data.has_parking,
       has_cellar: data.has_cellar,
       has_fiber: data.has_fiber,
+      has_air_conditioning: data.has_air_conditioning,
       notes: data.notes || undefined,
     }
     if (isEdit) {

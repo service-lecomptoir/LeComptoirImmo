@@ -70,6 +70,7 @@ class Property(Base, TimestampMixin):
     has_parking: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     has_cellar: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     has_fiber: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)  # fibre internet
+    has_air_conditioning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)  # climatisation
 
     # ── État d'occupation ──────────────────────────────────────────────────────
     is_occupied: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

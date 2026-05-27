@@ -110,7 +110,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
                style={{ background: '#F07800' }}>
             <span className="text-white font-bold text-sm">LC</span>
           </div>
-          <span className="text-white font-bold text-lg tracking-wide">LeComptoirImmo</span>
+          <span className="text-white font-bold text-lg tracking-wide">Le Comptoir Immo</span>
         </div>
       </div>
 
@@ -167,7 +167,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
       {/* Footer */}
       <div className="relative z-10 px-12 pb-10">
         <p className="text-blue-300 text-xs">
-          © {new Date().getFullYear()} LeComptoirImmo · Gestion locative professionnelle
+          © {new Date().getFullYear()} Le Comptoir Immo · Gestion locative professionnelle
         </p>
       </div>
     </div>
@@ -227,7 +227,7 @@ export default function Login() {
                  style={{ background: '#0D2F5C' }}>
               <span className="text-white font-bold text-xs">LC</span>
             </div>
-            <span className="font-bold text-lg" style={{ color: '#0D2F5C' }}>LeComptoirImmo</span>
+            <span className="font-bold text-lg" style={{ color: '#0D2F5C' }}>Le Comptoir Immo</span>
           </div>
         </div>
 
@@ -456,7 +456,7 @@ export default function Login() {
         {/* Footer mobile */}
         <div className="lg:hidden mt-10 text-center">
           <p className="text-xs text-gray-400">
-            © {new Date().getFullYear()} LeComptoirImmo · Gestion locative
+            © {new Date().getFullYear()} Le Comptoir Immo · Gestion locative
           </p>
         </div>
       </div>

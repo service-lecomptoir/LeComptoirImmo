@@ -143,9 +143,7 @@ export default function PropertyList() {
                         <User size={12} className="text-gray-400" />
                         <span>{prop.owner_name}</span>
                       </div>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">—</span>
-                    )}
+                    ) : null}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${

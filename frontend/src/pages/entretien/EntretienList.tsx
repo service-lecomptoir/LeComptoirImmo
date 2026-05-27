@@ -252,9 +252,9 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                   {prestataires.map(p => (
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{p.specialty ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{p.phone ?? '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{p.email ?? '—'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{p.specialty ?? ''}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{p.phone ?? ''}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{p.email ?? ''}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.is_active ? 'text-green-700 bg-green-100' : 'text-gray-500 bg-gray-100'}`}>
                           {p.is_active ? 'Actif' : 'Inactif'}
@@ -393,8 +393,8 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                         <td className="px-4 py-3 text-sm text-gray-600">
                           {format(new Date(e.scheduled_date), 'd MMM yyyy', { locale: fr })}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{e.prestataire_name ?? '—'}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{e.cost ? fmtEuro(e.cost) : '—'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{e.prestataire_name ?? ''}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{e.cost ? fmtEuro(e.cost) : ''}</td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full"
                             style={{ color: sc.color, background: sc.bg }}>{sc.label}</span>

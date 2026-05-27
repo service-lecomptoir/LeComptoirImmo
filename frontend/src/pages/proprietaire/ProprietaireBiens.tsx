@@ -275,7 +275,7 @@ export default function ProprietaireBiens() {
                                 <td className={`py-2.5 text-right font-semibold tabular-nums ${
                                   m.received > 0 ? 'text-green-700' : 'text-gray-300'
                                 }`}>
-                                  {m.received > 0 ? fmtEuro(m.received) : '—'}
+                                  {m.received > 0 ? fmtEuro(m.received) : ''}
                                 </td>
                                 <td className="py-2.5 text-right">
                                   {ok

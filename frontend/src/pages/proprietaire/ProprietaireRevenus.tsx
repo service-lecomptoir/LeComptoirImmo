@@ -96,7 +96,7 @@ export default function ProprietaireRevenus() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm text-gray-900">{p.tenant_full_name ?? '—'}</p>
+                    <p className="text-sm text-gray-900">{p.tenant_full_name ?? ''}</p>
                     <p className="text-xs text-gray-400">{p.property_name ?? ''}</p>
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-gray-700">{fmtEuro(p.amount_due)}</td>

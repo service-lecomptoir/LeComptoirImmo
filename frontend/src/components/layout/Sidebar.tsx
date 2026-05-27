@@ -313,7 +313,7 @@ export function Sidebar() {
             <span className="text-white font-bold text-xs">LC</span>
           </div>
           <div>
-            <p className="text-white font-semibold text-sm">LeComptoirImmo</p>
+            <p className="text-white font-semibold text-sm">Le Comptoir Immo</p>
             <p className="text-gray-400 text-xs">Gestion locative</p>
           </div>
         </div>

@@ -100,9 +100,7 @@ export default function LocatairePaiements() {
                           <Download size={11} />
                           PDF
                         </button>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
+                      ) : null}
                     </td>
                   </tr>
                 )

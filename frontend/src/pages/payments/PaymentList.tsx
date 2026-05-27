@@ -220,7 +220,7 @@ export default function PaymentList() {
                   <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(p.amount_due)}</td>
                   <td className="px-4 py-3 text-sm text-right text-green-700">{fmtEuro(p.amount_paid)}</td>
                   <td className={`px-4 py-3 text-sm text-right font-semibold ${p.balance > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                    {p.balance > 0 ? fmtEuro(p.balance) : '—'}
+                    {p.balance > 0 ? fmtEuro(p.balance) : ''}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge
@@ -276,9 +276,7 @@ export default function PaymentList() {
                           <span className="text-xs text-green-600 whitespace-nowrap">Envoyée</span>
                         )}
                       </div>
-                    ) : (
-                      <span className="text-xs text-gray-300">—</span>
-                    )}
+                    ) : null}
                   </td>
 
                   {/* Actions */}

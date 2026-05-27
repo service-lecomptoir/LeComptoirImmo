@@ -265,7 +265,7 @@ export default function LocataireDocuments() {
       <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">
         {doc.created_at
           ? format(new Date(doc.created_at), 'd MMM yyyy', { locale: fr })
-          : '—'}
+          : ''}
       </td>
       <td className="px-4 py-2.5 text-right">
         <button

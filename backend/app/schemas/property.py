@@ -38,6 +38,7 @@ class PropertyCreate(BaseModel):
     has_parking: bool = False
     has_cellar: bool = False
     has_fiber: bool = False
+    has_air_conditioning: bool = False
 
 
 class PropertyUpdate(BaseModel):
@@ -71,6 +72,7 @@ class PropertyUpdate(BaseModel):
     has_parking: Optional[bool] = None
     has_cellar: Optional[bool] = None
     has_fiber: Optional[bool] = None
+    has_air_conditioning: Optional[bool] = None
 
 
 class PropertyResponse(BaseModel):
@@ -106,6 +108,7 @@ class PropertyResponse(BaseModel):
     has_parking: bool = False
     has_cellar: bool = False
     has_fiber: bool = False
+    has_air_conditioning: bool = False
     is_occupied: bool = False
     is_available: bool = True
     unit_count: int = 0
