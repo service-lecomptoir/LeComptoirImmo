@@ -139,7 +139,7 @@ export default function LocataireDashboard() {
                 <span className="font-medium text-gray-900">
                   {lease.start_date
                     ? format(new Date(lease.start_date), 'd MMM yyyy', { locale: fr })
-                    : '—'}
+                    : ''}
                 </span>
               </div>
               {lease.payment_day && (

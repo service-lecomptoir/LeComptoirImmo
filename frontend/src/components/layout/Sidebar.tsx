@@ -132,9 +132,9 @@ function useLocataireLeaseInfo(active: boolean): LeaseInfo | null {
         } catch { /* silently ignore */ }
 
         setInfo({
-          propertyName: lease.property_name ?? '—',
+          propertyName: lease.property_name ?? '',
           propertyAddress: fullAddress,
-          tenantName: lease.tenant_full_name ?? '—',
+          tenantName: lease.tenant_full_name ?? '',
           leaseRef: String(lease.id).slice(0, 8).toUpperCase(),
         })
       } catch { /* silently ignore */ }
@@ -166,7 +166,7 @@ function useProprietaireInfo(active: boolean, userName: string): ProprietaireInf
 
         setInfo({
           fullName: userName,
-          propertyAddress: prop?.full_address ?? '—',
+          propertyAddress: prop?.full_address ?? '',
           contractRef: prop?.reference
             ? String(prop.reference).toUpperCase()
             : String(prop?.id ?? '').slice(0, 8).toUpperCase(),

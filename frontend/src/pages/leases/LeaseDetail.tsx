@@ -132,7 +132,7 @@ function InspectionForm({ leaseId, propertyId, onSaved, onCancel }: {
 }
 
 const fmtDate = (d?: string | null) =>
-  d ? format(new Date(d), 'd MMMM yyyy', { locale: fr }) : '—'
+  d ? format(new Date(d), 'd MMMM yyyy', { locale: fr }) : ''
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
 
@@ -236,7 +236,7 @@ export default function LeaseDetail() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">
-              {lease.tenant?.full_name ?? '—'}
+              {lease.tenant?.full_name ?? ''}
             </h1>
             <StatusBadge
               label={lease.is_active ? 'Actif' : 'Résilié'}

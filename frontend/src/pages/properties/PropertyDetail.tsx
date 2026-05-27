@@ -94,17 +94,17 @@ export default function PropertyDetail() {
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Caractéristiques</h2>
         <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
           <Stat icon={<Home size={16} className="text-blue-600" />} label="Type"
-            value={property.typology || '—'} />
+            value={property.typology || ''} />
           <Stat icon={<Ruler size={16} className="text-blue-600" />} label="Surface"
-            value={property.area_sqm ? `${property.area_sqm} m²` : '—'} />
+            value={property.area_sqm ? `${property.area_sqm} m²` : ''} />
           <Stat icon={<Layers size={16} className="text-blue-600" />} label="Étage"
-            value={property.floor != null ? String(property.floor) : '—'} />
+            value={property.floor != null ? String(property.floor) : ''} />
           <Stat icon={<Bath size={16} className="text-blue-600" />} label="Salle d'eau / bain"
-            value={property.bathrooms != null ? String(property.bathrooms) : '—'} />
+            value={property.bathrooms != null ? String(property.bathrooms) : ''} />
           <Stat icon={<Flame size={16} className="text-blue-600" />} label="Chauffage"
-            value={HEATING_LABELS[property.heating_type ?? ''] ?? '—'} />
+            value={HEATING_LABELS[property.heating_type ?? ''] ?? ''} />
           <Stat icon={<Zap size={16} className="text-blue-600" />} label="DPE"
-            value={property.energy_class || '—'} />
+            value={property.energy_class || ''} />
         </div>
 
         {/* Équipements & extérieurs */}

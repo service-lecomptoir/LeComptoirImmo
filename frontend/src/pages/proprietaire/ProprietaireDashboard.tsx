@@ -112,7 +112,7 @@ export default function ProprietaireDashboard() {
         <StatCard
           icon={TrendingUp}
           label="Taux d'occupation"
-          value={isLoading ? '…' : totalUnits > 0 ? `${Math.round((occupiedUnits / totalUnits) * 100)} %` : '— %'}
+          value={isLoading ? '…' : totalUnits > 0 ? `${Math.round((occupiedUnits / totalUnits) * 100)} %` : ''}
           color="orange"
         />
       </div>

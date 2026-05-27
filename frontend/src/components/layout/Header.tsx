@@ -86,7 +86,7 @@ function ProfileModal({ user, onClose, onSaved }: ProfileModalProps) {
               </span>
             </div>
             <div>
-              <p className="font-semibold text-gray-800">{fullName || '—'}</p>
+              <p className="font-semibold text-gray-800">{fullName || ''}</p>
               <p className="text-sm text-gray-500">{email}</p>
             </div>
           </div>
