@@ -35,24 +35,27 @@ async def list_tenants(
 
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         from app.models.property import Property
-        prop_ids = [p.id for p in (await db.execute(
-            select(Property).where(Property.owner_user_id == current_user.id)
+        # Ses locataires = ceux qu'il a créés (created_by) OU rattachés à un bail
+        # sur l'un de ses biens. (On s'aligne sur list_users : un locataire créé
+        # mais pas encore sous contrat doit rester visible.)
+        prop_ids = [p for p in (await db.execute(
+            select(Property.id).where(Property.owner_user_id == current_user.id)
         )).scalars().all()]
-        if not prop_ids:
-            return {"items": [], "total": 0, "skip": skip, "limit": limit}
-        tenant_ids = {l.tenant_id for l in (await db.execute(
-            select(Lease).where(Lease.property_id.in_(prop_ids), Lease.tenant_id.isnot(None))
-        )).scalars().all()}
-        if not tenant_ids:
-            return {"items": [], "total": 0, "skip": skip, "limit": limit}
-        all_tenants, _ = await TenantService.list_all(db, search=search, skip=0, limit=500)
-        own = [t for t in all_tenants if t.id in tenant_ids]
+        lease_tenant_ids: set = set()
+        if prop_ids:
+            lease_tenant_ids = {tid for tid in (await db.execute(
+                select(Lease.tenant_id).where(Lease.property_id.in_(prop_ids), Lease.tenant_id.isnot(None))
+            )).scalars().all()}
+        all_tenants, _ = await TenantService.list_all(db, search=search, skip=0, limit=2000)
+        own = [t for t in all_tenants if t.created_by == current_user.id or t.id in lease_tenant_ids]
         if available_only:
             active_ids = {l.tenant_id for l in (await db.execute(
                 select(Lease).where(Lease.is_active.is_(True), Lease.tenant_id.isnot(None))
             )).scalars().all()}
             own = [t for t in own if t.id not in active_ids]
-        return {"items": [TenantListItem.model_validate(t) for t in own], "total": len(own), "skip": 0, "limit": limit}
+        total = len(own)
+        page = own[skip: skip + limit]
+        return {"items": [TenantListItem.model_validate(t) for t in page], "total": total, "skip": skip, "limit": limit}
 
     tenants, total = await TenantService.list_all(db, search=search, skip=0, limit=2000)
 
