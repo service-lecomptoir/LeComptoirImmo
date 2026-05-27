@@ -10,7 +10,7 @@ PROPERTY_PAYLOAD = {
     "zip_code": "75001",
     "city": "Paris",
     "country": "France",
-    "property_type": "immeuble",
+    "property_type": "appartement",
 }
 
 
@@ -45,11 +45,10 @@ class TestPropertyCRUD:
         assert "items" in data
         assert data["total"] >= 1
 
-    async def test_locataire_gets_empty_list(self, client, locataire_token):
+    async def test_locataire_cannot_list_properties(self, client, locataire_token):
+        # Un locataire n'a pas à parcourir la liste des biens → accès interdit.
         resp = await client.get("/api/v1/properties", headers=auth(locataire_token))
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["items"] == []
+        assert resp.status_code == 403
 
     async def test_gestionnaire_gets_property_detail(self, client, gestionnaire_token):
         created = await _create_property(client, gestionnaire_token)
@@ -117,5 +116,7 @@ class TestPropertyOccupancy:
         assert "total" in data
         assert "occupied" in data
         assert "rate" in data
-        assert data["total"] == 0
+        # Un bien = un logement : total=1, non occupé tant qu'aucun bail actif
+        assert data["total"] == 1
+        assert data["occupied"] == 0
         assert data["rate"] == 0.0

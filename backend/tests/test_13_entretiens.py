@@ -21,7 +21,7 @@ async def _create_property(client, gestionnaire_token):
         "zip_code": "75000",
         "city": "Paris",
         "country": "France",
-        "property_type": "immeuble",
+        "property_type": "appartement",
     })
     assert resp.status_code == 201
     return resp.json()["id"]

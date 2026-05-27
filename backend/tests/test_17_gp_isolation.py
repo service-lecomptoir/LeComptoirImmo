@@ -24,7 +24,7 @@ async def _get_user_id(client, token):
 
 
 async def _create_full_chain(client, token):
-    """Crée propriété → unité → locataire → bail. Retourne les IDs.
+    """Crée bien → locataire → bail. Retourne les IDs.
 
     Pour GESTIONNAIRE_PROPRIO, on passe owner_user_id pour que les
     endpoints de liste (qui filtrent par owner_user_id) fonctionnent.
@@ -37,21 +37,11 @@ async def _create_full_chain(client, token):
         "zip_code": "75001",
         "city": "Paris",
         "country": "France",
-        "property_type": "immeuble",
+        "property_type": "appartement",
         "owner_user_id": user_id,
     })
     assert prop.status_code == 201, prop.text
     prop_id = prop.json()["id"]
-
-    unit = await client.post("/api/v1/units", headers=auth(token), json={
-        "property_id": prop_id,
-        "unit_ref": "A1",
-        "unit_type": "T2",
-        "base_rent": 800.0,
-        "charges_amount": 80.0,
-    })
-    assert unit.status_code == 201, unit.text
-    unit_id = unit.json()["id"]
 
     tenant = await client.post("/api/v1/tenants", headers=auth(token), json={
         "first_name": "Test",
@@ -62,7 +52,6 @@ async def _create_full_chain(client, token):
     tenant_id = tenant.json()["id"]
 
     lease = await client.post("/api/v1/leases", headers=auth(token), json={
-        "unit_id": unit_id,
         "tenant_id": tenant_id,
         "property_id": prop_id,
         "start_date": "2026-01-01",
@@ -74,7 +63,6 @@ async def _create_full_chain(client, token):
 
     return {
         "prop_id": prop_id,
-        "unit_id": unit_id,
         "tenant_id": tenant_id,
         "lease_id": lease.json()["id"],
     }

@@ -8,22 +8,14 @@ from tests.conftest import auth
 
 async def _setup_active_lease(db):
     from app.models.property import Property
-    from app.models.unit import Unit
     from app.models.tenant import Tenant
     from app.models.lease import Lease
 
     prop = Property(
         name="Prop Avis", address="9 Rue", zip_code="13001",
-        city="Marseille", country="France", property_type="immeuble",
+        city="Marseille", country="France", property_type="appartement",
     )
     db.add(prop)
-    await db.flush()
-
-    unit = Unit(
-        property_id=prop.id, unit_ref="AV-01",
-        unit_type="T2", base_rent=700.00, charges_amount=90.00,
-    )
-    db.add(unit)
     await db.flush()
 
     tenant = Tenant(
@@ -34,7 +26,7 @@ async def _setup_active_lease(db):
     await db.flush()
 
     lease = Lease(
-        unit_id=unit.id, tenant_id=tenant.id, property_id=prop.id,
+        tenant_id=tenant.id, property_id=prop.id,
         start_date=date.today(), rent_amount=700.00, charges_amount=90.00,
         lease_type="vide", payment_day=1, is_active=True,
     )
@@ -141,7 +133,6 @@ class TestAvisWorkflow:
 class TestAvisAccessControl:
     async def test_locataire_only_sees_own_avis(self, client, locataire_token, locataire_user, gestionnaire_token, db):
         from app.models.property import Property
-        from app.models.unit import Unit
         from app.models.tenant import Tenant
         from app.models.lease import Lease
         from app.models.avis_echeance import AvisEcheance
@@ -154,13 +145,6 @@ class TestAvisAccessControl:
         db.add(prop)
         await db.flush()
 
-        unit = Unit(
-            property_id=prop.id, unit_ref="LA-01",
-            unit_type="T2", base_rent=900.00, charges_amount=100.00,
-        )
-        db.add(unit)
-        await db.flush()
-
         tenant = Tenant(
             first_name="Loc", last_name="Avis2",
             email="loc.avis2@test.fr",
@@ -170,7 +154,7 @@ class TestAvisAccessControl:
         await db.flush()
 
         lease = Lease(
-            unit_id=unit.id, tenant_id=tenant.id, property_id=prop.id,
+            tenant_id=tenant.id, property_id=prop.id,
             start_date=date.today(), rent_amount=900.00, charges_amount=100.00,
             lease_type="vide", payment_day=1, is_active=True,
         )
@@ -180,7 +164,6 @@ class TestAvisAccessControl:
         avis = AvisEcheance(
             lease_id=lease.id,
             tenant_id=tenant.id,
-            unit_id=unit.id,
             period_year=2026,
             period_month=3,
             due_date=date.today(),

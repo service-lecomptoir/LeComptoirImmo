@@ -8,7 +8,6 @@ from tests.conftest import auth
 
 async def _setup_lease(db, gestionnaire_user):
     from app.models.property import Property
-    from app.models.unit import Unit
     from app.models.tenant import Tenant
     from app.models.lease import Lease
 
@@ -19,13 +18,6 @@ async def _setup_lease(db, gestionnaire_user):
     db.add(prop)
     await db.flush()
 
-    unit = Unit(
-        property_id=prop.id, unit_ref="U1",
-        unit_type="T2", base_rent=800.00, charges_amount=100.00,
-    )
-    db.add(unit)
-    await db.flush()
-
     tenant = Tenant(
         first_name="Paul", last_name="Payment",
         email=f"paul.pay@test.fr",
@@ -34,7 +26,7 @@ async def _setup_lease(db, gestionnaire_user):
     await db.flush()
 
     lease = Lease(
-        unit_id=unit.id, tenant_id=tenant.id, property_id=prop.id,
+        tenant_id=tenant.id, property_id=prop.id,
         start_date=date.today(), rent_amount=800.00, charges_amount=100.00,
         lease_type="vide", payment_day=1, is_active=True,
     )
@@ -75,7 +67,6 @@ class TestPaymentList:
         self, client, locataire_token, locataire_user, gestionnaire_user, db
     ):
         from app.models.property import Property
-        from app.models.unit import Unit
         from app.models.tenant import Tenant
         from app.models.lease import Lease
         from app.models.payment import Payment, PaymentStatus
@@ -87,13 +78,6 @@ class TestPaymentList:
         db.add(prop)
         await db.flush()
 
-        unit = Unit(
-            property_id=prop.id, unit_ref="U-LOC",
-            unit_type="T2", base_rent=600.00, charges_amount=50.00,
-        )
-        db.add(unit)
-        await db.flush()
-
         tenant = Tenant(
             first_name="Alice", last_name="Loc2",
             email="alice.loc2@test.fr",
@@ -103,7 +87,7 @@ class TestPaymentList:
         await db.flush()
 
         lease = Lease(
-            unit_id=unit.id, tenant_id=tenant.id, property_id=prop.id,
+            tenant_id=tenant.id, property_id=prop.id,
             start_date=date.today(), rent_amount=600.00, charges_amount=50.00,
             lease_type="vide", payment_day=1, is_active=True,
         )
@@ -113,7 +97,6 @@ class TestPaymentList:
         payment = Payment(
             lease_id=lease.id,
             tenant_id=tenant.id,
-            unit_id=unit.id,
             period_year=2026,
             period_month=5,
             due_date=date.today(),

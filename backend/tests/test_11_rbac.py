@@ -90,7 +90,6 @@ class TestRBACLeases:
         self, client, locataire_token, proprietaire_token
     ):
         payload = {
-            "unit_id": "00000000-0000-0000-0000-000000000001",
             "tenant_id": "00000000-0000-0000-0000-000000000002",
             "property_id": "00000000-0000-0000-0000-000000000003",
             "start_date": "2026-01-01",
@@ -128,7 +127,6 @@ class TestRBACCrossData:
     ):
         """Un locataire ne peut pas accéder au bail d'un autre locataire."""
         from app.models.property import Property
-        from app.models.unit import Unit
         from app.models.tenant import Tenant
         from app.models.lease import Lease
         from datetime import date
@@ -141,13 +139,6 @@ class TestRBACCrossData:
         db.add(prop)
         await db.flush()
 
-        unit = Unit(
-            property_id=prop.id, unit_ref="X99",
-            unit_type="T2", base_rent=500.00, charges_amount=50.00,
-        )
-        db.add(unit)
-        await db.flush()
-
         # Tenant sans lien avec locataire_user
         other_tenant = Tenant(
             first_name="Autre", last_name="Locataire",
@@ -157,7 +148,7 @@ class TestRBACCrossData:
         await db.flush()
 
         other_lease = Lease(
-            unit_id=unit.id, tenant_id=other_tenant.id, property_id=prop.id,
+            tenant_id=other_tenant.id, property_id=prop.id,
             start_date=date.today(), rent_amount=500.00, charges_amount=50.00,
             lease_type="vide", payment_day=1, is_active=True,
         )

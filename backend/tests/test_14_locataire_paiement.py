@@ -7,9 +7,8 @@ from tests.conftest import auth
 
 
 async def _setup_locataire_with_payment(db, locataire_user):
-    """Crée Property → Unit → Tenant (lié au locataire) → Lease → Payment pending."""
+    """Crée Property → Tenant (lié au locataire) → Lease → Payment pending."""
     from app.models.property import Property
-    from app.models.unit import Unit
     from app.models.tenant import Tenant
     from app.models.lease import Lease
     from app.models.payment import Payment, PaymentStatus
@@ -21,13 +20,6 @@ async def _setup_locataire_with_payment(db, locataire_user):
     db.add(prop)
     await db.flush()
 
-    unit = Unit(
-        property_id=prop.id, unit_ref="PL-01",
-        unit_type="T2", base_rent=700.00, charges_amount=80.00,
-    )
-    db.add(unit)
-    await db.flush()
-
     tenant = Tenant(
         first_name="René", last_name="Payer",
         email="rene.pay.test@test.fr",
@@ -37,7 +29,7 @@ async def _setup_locataire_with_payment(db, locataire_user):
     await db.flush()
 
     lease = Lease(
-        unit_id=unit.id, tenant_id=tenant.id, property_id=prop.id,
+        tenant_id=tenant.id, property_id=prop.id,
         start_date=date.today(), rent_amount=700.00, charges_amount=80.00,
         lease_type="vide", payment_day=5, is_active=True,
     )
@@ -45,7 +37,7 @@ async def _setup_locataire_with_payment(db, locataire_user):
     await db.flush()
 
     payment = Payment(
-        lease_id=lease.id, tenant_id=tenant.id, unit_id=unit.id,
+        lease_id=lease.id, tenant_id=tenant.id,
         period_year=2026, period_month=5,
         due_date=date.today(),
         amount_rent=700.00, amount_charges=80.00,
