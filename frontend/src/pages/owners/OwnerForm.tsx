@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -59,6 +60,7 @@ interface Props {
 
 export function OwnerForm({ owner, onClose, onSaved }: Props) {
   const isEdit = !!owner
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -80,18 +82,41 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
   })
 
   const onSubmit = async (data: FormData) => {
+    setSubmitError(null)
+    const clean = (v?: string) => {
+      const t = (v ?? '').trim()
+      return t === '' ? undefined : t
+    }
     const payload: OwnerCreate = {
-      ...data,
-      email: data.email || undefined,
+      civility: (data.civility as OwnerCreate['civility']) || undefined,
+      first_name: clean(data.first_name),
+      last_name: (data.last_name ?? '').trim(),
+      company_name: clean(data.company_name),
+      national_id: clean(data.national_id),
+      email: clean(data.email),
+      phone: clean(data.phone),
+      phone2: clean(data.phone2),
+      address: clean(data.address),
       iban: data.iban ? data.iban.replace(/\s+/g, '').toUpperCase() : undefined,
       bic: data.bic ? data.bic.replace(/\s+/g, '').toUpperCase() : undefined,
+      bank_holder: clean(data.bank_holder),
+      notes: clean(data.notes),
     }
-    if (isEdit) {
-      await ownersApi.update(owner.id, payload)
-    } else {
-      await ownersApi.create(payload)
+    try {
+      if (isEdit) {
+        await ownersApi.update(owner.id, payload)
+      } else {
+        await ownersApi.create(payload)
+      }
+      onSaved()
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail
+      setSubmitError(
+        Array.isArray(detail)
+          ? detail.map((d: any) => `${d.loc?.slice(-1)[0] ?? ''} : ${d.msg}`).join(' · ')
+          : (detail || "Erreur lors de l'enregistrement du propriétaire.")
+      )
     }
-    onSaved()
   }
 
   return (
@@ -116,6 +141,11 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       }
     >
       <form className="space-y-4">
+        {submitError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {submitError}
+          </div>
+        )}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
           <Building2 size={14} />
           Fiche propriétaire (bailleur). Le compte de connexion en ligne est facultatif et se crée

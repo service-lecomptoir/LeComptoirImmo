@@ -69,6 +69,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
   const [newUserPassword, setNewUserPassword] = useState('')
   const [creatingUser, setCreatingUser] = useState(false)
   const [createUserError, setCreateUserError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -128,18 +129,45 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
   }
 
   const onSubmit = async (data: FormData) => {
+    setSubmitError(null)
+    // Les champs optionnels vides doivent être OMIS (un "" envoyé sur birth_date —
+    // un champ date — déclenche une 422 côté API). On nettoie tout en chaîne vide → undefined.
+    const clean = (v?: string) => {
+      const t = (v ?? '').trim()
+      return t === '' ? undefined : t
+    }
     const payload: TenantCreate = {
-      ...data,
-      email: data.email || undefined,
+      civility: (data.civility as TenantCreate['civility']) || undefined,
+      first_name: data.first_name.trim(),
+      last_name: data.last_name.trim(),
+      birth_date: clean(data.birth_date),
+      birth_place: clean(data.birth_place),
+      national_id: clean(data.national_id),
+      email: clean(data.email),
+      phone: clean(data.phone),
+      phone2: clean(data.phone2),
+      employer: clean(data.employer),
+      employer_phone: clean(data.employer_phone),
       monthly_income: data.monthly_income ? Number(data.monthly_income) : undefined,
-      user_id: data.user_id || undefined,
+      income_source: clean(data.income_source),
+      notes: clean(data.notes),
+      user_id: clean(data.user_id as string),
     }
-    if (isEdit) {
-      await tenantsApi.update(tenant.id, payload)
-    } else {
-      await tenantsApi.create(payload)
+    try {
+      if (isEdit) {
+        await tenantsApi.update(tenant.id, payload)
+      } else {
+        await tenantsApi.create(payload)
+      }
+      onSaved()
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail
+      setSubmitError(
+        Array.isArray(detail)
+          ? detail.map((d: any) => `${d.loc?.slice(-1)[0] ?? ''} : ${d.msg}`).join(' · ')
+          : (detail || "Erreur lors de l'enregistrement du locataire.")
+      )
     }
-    onSaved()
   }
 
   return (
@@ -164,6 +192,11 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       }
     >
       <form className="space-y-4">
+        {submitError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {submitError}
+          </div>
+        )}
         {/* Compte locataire */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <h3 className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2 flex items-center gap-1">
