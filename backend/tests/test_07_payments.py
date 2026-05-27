@@ -129,3 +129,39 @@ class TestDashboardStats:
             headers=auth(gestionnaire_token),
         )
         assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+class TestQuittance:
+    async def test_quittance_refused_when_unpaid(self, client, gestionnaire_token, gestionnaire_user, db):
+        """Une quittance ne peut pas être émise pour un loyer impayé (règle métier)."""
+        from app.models.payment import Payment, PaymentStatus
+        lease = await _setup_lease(db, gestionnaire_user)
+        payment = Payment(
+            lease_id=lease.id, tenant_id=lease.tenant_id,
+            period_year=2026, period_month=4, due_date=date.today(),
+            amount_rent=800.00, amount_charges=100.00, amount_due=900.00,
+            status=PaymentStatus.PENDING,
+        )
+        db.add(payment)
+        await db.flush()
+        resp = await client.get(f"/api/v1/payments/{payment.id}/quittance", headers=auth(gestionnaire_token))
+        assert resp.status_code == 400
+
+    async def test_quittance_pdf_generated_when_paid(self, client, gestionnaire_token, gestionnaire_user, db):
+        """Régression : la quittance PDF doit se générer (200, application/pdf) une fois payé.
+        Garde-fou contre le NameError 'select' détecté en recette."""
+        from app.models.payment import Payment, PaymentStatus
+        lease = await _setup_lease(db, gestionnaire_user)
+        payment = Payment(
+            lease_id=lease.id, tenant_id=lease.tenant_id,
+            period_year=2026, period_month=4, due_date=date.today(),
+            amount_rent=800.00, amount_charges=100.00, amount_due=900.00,
+            amount_paid=900.00, payment_date=date.today(), payment_method="virement",
+            status=PaymentStatus.PAID,
+        )
+        db.add(payment)
+        await db.flush()
+        resp = await client.get(f"/api/v1/payments/{payment.id}/quittance", headers=auth(gestionnaire_token))
+        assert resp.status_code == 200, resp.text
+        assert "pdf" in resp.headers.get("content-type", "")

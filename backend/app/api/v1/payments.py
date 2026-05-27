@@ -376,10 +376,11 @@ async def download_quittance(
     # Noms de tous les co-titulaires (principal + secondaires) du bail
     tenant_names = ""
     if getattr(payment, "lease_id", None):
+        from sqlalchemy import select as _select
         from sqlalchemy.orm import selectinload as _selectinload
         from app.models.lease import Lease as _Lease
         _lease_obj = (await db.execute(
-            select(_Lease)
+            _select(_Lease)
             .options(_selectinload(_Lease.tenant), _selectinload(_Lease.co_tenants))
             .where(_Lease.id == payment.lease_id)
         )).scalar_one_or_none()
