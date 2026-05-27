@@ -19,4 +19,12 @@ export const ownersApi = {
 
   listDocuments: (id: string) =>
     apiClient.get(`/owners/${id}/documents`),
+
+  /** Fiche propriétaire liée au compte connecté (null si aucune). */
+  me: () =>
+    apiClient.get<Owner | null>('/owners/me'),
+
+  /** Met à jour ma propre fiche (coordonnées + RIB). */
+  updateMe: (data: Partial<OwnerCreate>) =>
+    apiClient.patch<Owner>('/owners/me', data),
 }

@@ -9,6 +9,7 @@ from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
 from app.api.v1._isolation import gp_owner_ids as _gp_owner_ids
 from app.models.user import User
+from app.models.owner import Owner
 from app.models.document import EntityType
 from app.schemas.owner import OwnerCreate, OwnerUpdate, OwnerResponse, OwnerListItem
 from app.schemas.document import DocumentResponse
@@ -67,6 +68,38 @@ async def create_owner(
     current_user: User = Depends(get_current_gestionnaire),
 ):
     return await OwnerService.create(db, data, created_by=current_user.id)
+
+
+@router.get("/me", response_model=Optional[OwnerResponse], summary="Ma fiche propriétaire")
+async def get_my_owner(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Fiche propriétaire liée au compte connecté (ou null). Sert au propriétaire/GP
+    pour consulter et éditer ses coordonnées de règlement (RIB) depuis son profil."""
+    owner = (await db.execute(
+        select(Owner).where(Owner.user_id == current_user.id)
+    )).scalars().first()
+    return owner
+
+
+@router.patch("/me", response_model=OwnerResponse, summary="Modifier ma fiche propriétaire")
+async def update_my_owner(
+    data: OwnerUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Le propriétaire/GP met à jour sa propre fiche (coordonnées + RIB)."""
+    owner = (await db.execute(
+        select(Owner).where(Owner.user_id == current_user.id)
+    )).scalars().first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="Aucune fiche propriétaire liée à ce compte")
+    # Un propriétaire ne change pas son propre rattachement de compte via son profil.
+    data.user_id = None
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("user_id", None)
+    return await OwnerService.update(db, owner.id, OwnerUpdate(**payload))
 
 
 @router.get("/{owner_id}", response_model=OwnerResponse, summary="Fiche propriétaire")

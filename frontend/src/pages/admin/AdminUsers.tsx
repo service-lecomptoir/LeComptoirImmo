@@ -36,11 +36,6 @@ const editUserSchema = z.object({
   email: z.string().email('Email invalide'),
   is_active: z.boolean(),
   role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'gestionnaire_proprio', 'admin', 'lecture', 'comptable']),
-  iban: z.string().optional(),
-  bic: z.string().optional(),
-  bank_holder: z.string().optional(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
 })
 
 type CreateUserForm = z.infer<typeof createUserSchema>
@@ -207,8 +202,6 @@ export default function AdminUsers() {
     setEditTarget(u)
     editForm.reset({
       full_name: u.full_name, email: u.email, is_active: u.is_active, role: u.role,
-      iban: u.iban ?? '', bic: u.bic ?? '', bank_holder: u.bank_holder ?? '',
-      phone: u.phone ?? '', address: u.address ?? '',
     })
     setFormError(null)
   }
@@ -218,21 +211,12 @@ export default function AdminUsers() {
     setSubmitting(true)
     setFormError(null)
     try {
-      // RIB : pertinent uniquement pour les comptes qui encaissent (propriétaire / GP)
-      const ribRoles = values.role === 'proprietaire' || values.role === 'gestionnaire_proprio'
-      const ribFields = ribRoles ? {
-        iban: values.iban ? values.iban.replace(/\s+/g, '').toUpperCase() : null,
-        bic: values.bic ? values.bic.replace(/\s+/g, '').toUpperCase() : null,
-        bank_holder: values.bank_holder || null,
-        phone: values.phone || null,
-        address: values.address || null,
-      } : {}
-      // Update basic info (+ RIB le cas échéant)
+      // Coordonnées + RIB du propriétaire = sur la fiche (onglet Propriétaires),
+      // plus sur le compte : ici on ne touche qu'aux infos de compte.
       await apiClient.put(`/users/${editTarget.id}`, {
         full_name: values.full_name,
         email: values.email,
         is_active: values.is_active,
-        ...ribFields,
       })
       // Update role if changed
       if (values.role !== editTarget.role) {
@@ -554,60 +538,11 @@ export default function AdminUsers() {
             </label>
           </div>
 
-          {/* ── Coordonnées + RIB du propriétaire (renseignés par le gestionnaire) ── */}
+          {/* Coordonnées + RIB du propriétaire : gérés sur la fiche (onglet Propriétaires). */}
           {(editForm.watch('role') === 'proprietaire' || editForm.watch('role') === 'gestionnaire_proprio') && (
-            <div className="pt-3 border-t border-gray-100 space-y-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Coordonnées du bailleur
-              </p>
-              <p className="text-xs text-gray-400 -mt-1">
-                Communiquées aux locataires pour le règlement du loyer (virement, chèque, espèces).
-                Le mandataire ne reçoit pas les règlements à la place du propriétaire.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Adresse (chèque / espèces)</label>
-                  <input
-                    {...editForm.register('address')}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="12 rue de la République, 75001 Paris"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                  <input
-                    {...editForm.register('phone')}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="06 12 34 56 78"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Titulaire du compte (RIB)</label>
-                <input
-                  {...editForm.register('bank_holder')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nom figurant sur le compte"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">IBAN</label>
-                  <input
-                    {...editForm.register('iban')}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="FR76 3000 4028 3798 7654 3210 943"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">BIC</label>
-                  <input
-                    {...editForm.register('bic')}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="BNPAFRPPXXX"
-                  />
-                </div>
-              </div>
+            <div className="px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+              Les coordonnées et le RIB du propriétaire se renseignent sur sa fiche, dans l'onglet
+              <span className="font-semibold"> Propriétaires</span>.
             </div>
           )}
 

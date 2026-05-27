@@ -107,38 +107,24 @@ async def locataire_current_payment(
 
     # ── Bénéficiaire = propriétaire / GP du bien loué (jamais le mandataire,
     #    qui ne reçoit pas les règlements à la place du propriétaire) ────────────
-    #    Si le propriétaire a un compte (qu'il édite via /profil), ses coordonnées
-    #    font foi. Sinon on lit la fiche propriétaire (Owner) — fonctionne même
-    #    sans compte de connexion.
+    #    Source UNIQUE des coordonnées de règlement : la fiche propriétaire (Owner),
+    #    éditée soit par le gestionnaire (onglet Propriétaires) soit par le
+    #    propriétaire lui-même (/profil → PATCH /owners/me). Fonctionne sans compte.
     payee = None
     prop = getattr(getattr(payment, "lease", None), "parent_property", None) if payment else None
-    owner = None
     owner_id = getattr(prop, "owner_id", None) if prop else None
     if owner_id:
         from app.models.owner import Owner
         owner = (await db.execute(
             select(Owner).where(Owner.id == owner_id)
         )).scalar_one_or_none()
-
-    login_user_id = (owner.user_id if owner else None) or (getattr(prop, "owner_user_id", None) if prop else None)
-    if login_user_id:
-        owner_u = (await db.execute(
-            select(User).where(User.id == login_user_id)
-        )).scalar_one_or_none()
-        if owner_u and (owner_u.iban or owner_u.address or owner_u.bank_holder):
+        if owner:
             payee = {
-                "name": owner_u.bank_holder or owner_u.full_name,
-                "address": owner_u.address,
-                "iban": owner_u.iban,
-                "bic": owner_u.bic,
+                "name": owner.bank_holder or owner.full_name,
+                "address": owner.address,
+                "iban": owner.iban,
+                "bic": owner.bic,
             }
-    if payee is None and owner:
-        payee = {
-            "name": owner.bank_holder or owner.full_name,
-            "address": owner.address,
-            "iban": owner.iban,
-            "bic": owner.bic,
-        }
 
     return {
         "payment": PaymentService.to_list_item(payment).__dict__ if payment else None,

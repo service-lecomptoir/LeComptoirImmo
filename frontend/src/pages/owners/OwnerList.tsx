@@ -1,19 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Building2, Mail, Phone, ShieldCheck } from 'lucide-react'
 import { ownersApi } from '@/api/owners'
 import { OwnerForm } from './OwnerForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import type { Owner, OwnerListItem } from '@/types/owner'
+import type { OwnerListItem } from '@/types/owner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 export default function OwnerList() {
+  const navigate = useNavigate()
   const [owners, setOwners] = useState<OwnerListItem[]>([])
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [editOwner, setEditOwner] = useState<Owner | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -34,15 +35,6 @@ export default function OwnerList() {
     const t = setTimeout(() => fetchOwners(search), 300)
     return () => clearTimeout(t)
   }, [search, fetchOwners])
-
-  const openEdit = async (id: string) => {
-    try {
-      const { data } = await ownersApi.get(id)
-      setEditOwner(data)
-    } catch (e) {
-      console.error(e)
-    }
-  }
 
   const handleDelete = async () => {
     if (!deleteId) return
@@ -110,7 +102,7 @@ export default function OwnerList() {
               {owners.map(owner => (
                 <tr
                   key={owner.id}
-                  onClick={() => openEdit(owner.id)}
+                  onClick={() => navigate(`/owners/${owner.id}`)}
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3">
@@ -157,13 +149,6 @@ export default function OwnerList() {
         <OwnerForm
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); fetchOwners(search) }}
-        />
-      )}
-      {editOwner && (
-        <OwnerForm
-          owner={editOwner}
-          onClose={() => setEditOwner(null)}
-          onSaved={() => { setEditOwner(null); fetchOwners(search) }}
         />
       )}
       <ConfirmDialog

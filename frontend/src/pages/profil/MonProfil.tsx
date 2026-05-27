@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Save, Landmark, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { apiClient } from '@/api/client'
+import { ownersApi } from '@/api/owners'
 
 export default function MonProfil() {
   const { user, fetchMe } = useAuthStore()
@@ -9,9 +10,10 @@ export default function MonProfil() {
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [address, setAddress] = useState(user?.address ?? '')
-  const [iban, setIban] = useState(user?.iban ?? '')
-  const [bic, setBic] = useState(user?.bic ?? '')
-  const [bankHolder, setBankHolder] = useState(user?.bank_holder ?? '')
+  const [iban, setIban] = useState('')
+  const [bic, setBic] = useState('')
+  const [bankHolder, setBankHolder] = useState('')
+  const [ownerId, setOwnerId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -24,23 +26,49 @@ export default function MonProfil() {
   const [pwdMsg, setPwdMsg] = useState<string | null>(null)
   const [pwdErr, setPwdErr] = useState<string | null>(null)
 
-  // Le RIB n'est utile que pour les comptes qui encaissent le loyer (propriétaire / GP)
+  // Le RIB n'est utile que pour les comptes qui encaissent le loyer (propriétaire / GP).
+  // Source UNIQUE des coordonnées de règlement : la fiche propriétaire (entité Owner).
   const showRib = user?.role === 'proprietaire' || user?.role === 'gestionnaire_proprio'
+
+  // Charge la fiche propriétaire liée au compte : coordonnées de règlement + RIB.
+  useEffect(() => {
+    if (!showRib) return
+    let cancelled = false
+    ownersApi.me()
+      .then(r => {
+        if (cancelled || !r.data) return
+        const o = r.data
+        setOwnerId(o.id)
+        setPhone(o.phone ?? '')
+        setAddress(o.address ?? '')
+        setIban(o.iban ?? '')
+        setBic(o.bic ?? '')
+        setBankHolder(o.bank_holder ?? '')
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [showRib])
 
   const save = async () => {
     setSaving(true); setMsg(null); setErr(null)
     try {
+      // Compte : nom + email (identifiant). Pour un gestionnaire/admin, le téléphone
+      // et l'adresse (agence) restent sur le compte.
       await apiClient.patch('/users/me', {
         full_name: fullName,
         email: email.trim() || undefined,
-        phone: phone || null,
-        address: address || null,
-        ...(showRib ? {
+        ...(showRib ? {} : { phone: phone || null, address: address || null }),
+      })
+      // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
+      if (showRib && ownerId) {
+        await ownersApi.updateMe({
+          phone: phone || null,
+          address: address || null,
           iban: iban ? iban.replace(/\s+/g, '').toUpperCase() : null,
           bic: bic ? bic.replace(/\s+/g, '').toUpperCase() : null,
           bank_holder: bankHolder || null,
-        } : {}),
-      })
+        } as any)
+      }
       await fetchMe()
       setMsg('Profil mis à jour.')
     } catch (e: any) {
