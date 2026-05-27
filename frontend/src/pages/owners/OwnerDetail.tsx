@@ -55,8 +55,8 @@ export default function OwnerDetail() {
   if (!owner) return <div className="p-6 text-sm text-red-600">Propriétaire introuvable</div>
 
   // Tous les champs affichés ; vide → « Non renseigné » (jamais un tiret — convention projet).
-  const Field = ({ label, value, mono }: { label: string; value: string | null | undefined; mono?: boolean }) => (
-    <div className="min-w-0">
+  const Field = ({ label, value, mono, full }: { label: string; value: string | null | undefined; mono?: boolean; full?: boolean }) => (
+    <div className={`min-w-0 ${full ? 'col-span-2' : ''}`}>
       <p className="text-xs text-gray-500">{label}</p>
       {value
         ? <p className={`text-sm text-gray-900 break-words ${mono ? 'font-mono' : ''}`}>{value}</p>
@@ -115,10 +115,10 @@ export default function OwnerDetail() {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Contact</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Email" value={owner.email} />
+            <Field label="Email" value={owner.email} full />
             <Field label="Téléphone" value={owner.phone} />
             <Field label="Téléphone 2" value={owner.phone2} />
-            <Field label="Adresse" value={owner.address} />
+            <Field label="Adresse" value={owner.address} full />
           </div>
         </div>
 

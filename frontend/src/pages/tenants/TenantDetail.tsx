@@ -48,8 +48,8 @@ export default function TenantDetail() {
 
   // Tous les champs sont affichés ; les valeurs vides sont signalées « Non renseigné »
   // (jamais un tiret — convention projet).
-  const Field = ({ label, value }: { label: string; value: string | null | undefined }) => (
-    <div className="min-w-0">
+  const Field = ({ label, value, full }: { label: string; value: string | null | undefined; full?: boolean }) => (
+    <div className={`min-w-0 ${full ? 'col-span-2' : ''}`}>
       <p className="text-xs text-gray-500">{label}</p>
       {value
         ? <p className="text-sm text-gray-900 break-words">{value}</p>
@@ -116,7 +116,7 @@ export default function TenantDetail() {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Contact</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Email" value={tenant.email} />
+            <Field label="Email" value={tenant.email} full />
             <Field label="Téléphone" value={tenant.phone} />
             <Field label="Téléphone 2" value={tenant.phone2} />
           </div>
