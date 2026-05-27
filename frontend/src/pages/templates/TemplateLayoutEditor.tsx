@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Save, Eye, RotateCcw, GripVertical, CheckCircle, Loader2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Save, Eye, RotateCcw, GripVertical, CheckCircle, Loader2, ArrowLeft } from 'lucide-react'
 import { apiClient } from '@/api/client'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -184,6 +185,7 @@ function Slider({ label, value, min, max, step, unit = '', onChange }: SliderPro
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function TemplateLayoutEditor() {
+  const navigate = useNavigate()
   const [config, setConfig] = useState<LayoutConfig>(DEFAULT_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -311,6 +313,10 @@ export default function TemplateLayoutEditor() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* ── En-tête ── */}
+      <button onClick={() => navigate('/templates')}
+        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-3">
+        <ArrowLeft size={16} /> Retour aux templates
+      </button>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mise en page des documents</h1>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Save, X, Star, Check, RefreshCw, Download,
-  Plus, Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal,
+  Plus, Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal, Layout,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
 
@@ -103,10 +104,35 @@ interface FormData {
   is_default: boolean
 }
 
+// Contenu de départ par type — pour que changer de type produise un effet visible.
+const DEFAULT_CONTENT: Record<string, string> = {
+  avis_echeance:
+    "Cher(e) {{tenant_name}},\n\nNous vous informons que le loyer du bien {{property_name}} ({{property_address}}) " +
+    "pour le mois de {{month}} s'élève à {{total_due}} € (loyer {{rent_amount}} € + charges {{charges_amount}} €).\n" +
+    "Merci de bien vouloir procéder au règlement avant le {{due_date}}.\n\nCordialement,\n{{company_name}}",
+  quittance:
+    "Quittance de loyer — {{month}}\n\nJe soussigné(e) {{company_name}}, atteste que {{tenant_name}} s'est acquitté(e) " +
+    "de la somme de {{amount_paid}} € pour le bien {{property_name}} ({{property_address}}).\n\n" +
+    "Fait pour valoir ce que de droit.\nLe {{date}}",
+  lettre_relance:
+    "Cher(e) {{tenant_name}},\n\nSauf erreur de notre part, le loyer du mois de {{month}} ({{total_due}} €) pour " +
+    "{{property_name}} demeure impayé à ce jour.\nNous vous remercions de régulariser votre situation dans les meilleurs délais.\n\n" +
+    "Cordialement,\n{{company_name}}",
+  lettre_resiliation:
+    "Cher(e) {{tenant_name}},\n\nLa présente fait suite au bail portant sur le bien {{property_name}} ({{property_address}}).\n\n" +
+    "Le {{date}}\n{{company_name}}",
+  contrat_bail:
+    "Contrat de bail — {{property_name}}\n\nEntre {{company_name}} (bailleur) et {{tenant_name}} (locataire), " +
+    "pour le bien situé {{property_address}}.\nLoyer mensuel : {{rent_amount}} € + charges {{charges_amount}} €.\n\nLe {{date}}",
+  etat_des_lieux:
+    "État des lieux — {{property_name}}\n\nBien : {{property_address}}\nLocataire : {{tenant_name}}\nDate : {{date}}\n\n" +
+    "(Décrivez l'état de chaque pièce.)",
+}
+
 const EMPTY_FORM: FormData = {
   name: '', template_type: 'avis_echeance', header_color: '#1E3A5F',
   company_name: '', company_address: '', company_phone: '',
-  company_email: '', company_siret: '', content_html: '', footer_text: '', is_default: false,
+  company_email: '', company_siret: '', content_html: DEFAULT_CONTENT.avis_echeance, footer_text: '', is_default: false,
 }
 
 // ── Helpers preview ───────────────────────────────────────────────────────────
@@ -158,6 +184,19 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
 
   const set = (field: keyof FormData, value: string | boolean) =>
     setForm(f => ({ ...f, [field]: value }))
+
+  // Changer le type : remplace le contenu par le starter du type tant que
+  // l'utilisateur n'a pas écrit son propre contenu (vide ou starter connu).
+  const STARTERS = Object.values(DEFAULT_CONTENT)
+  const changeType = (newType: string) =>
+    setForm(f => {
+      const replaceable = !f.content_html?.trim() || STARTERS.includes(f.content_html)
+      return {
+        ...f,
+        template_type: newType,
+        content_html: replaceable ? (DEFAULT_CONTENT[newType] ?? '') : f.content_html,
+      }
+    })
 
   // ── Logo ────────────────────────────────────────────────────────────────────
 
@@ -276,16 +315,9 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
           className="flex-1 min-w-0 text-sm font-semibold text-gray-800 bg-transparent border-b-2 border-transparent focus:border-blue-500 outline-none px-1 py-0.5 placeholder-gray-400"
         />
 
-        {template ? (
-          <span className="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
-            {typeLabel(form.template_type)}
-          </span>
-        ) : (
-          <select value={form.template_type} onChange={e => set('template_type', e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 shrink-0">
-            {TEMPLATE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-        )}
+        <span className="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-100 shrink-0">
+          {typeLabel(form.template_type)}
+        </span>
 
         {/* Couleur header */}
         <div className="flex items-center gap-1 shrink-0">
@@ -328,6 +360,17 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
         {/* ── Colonne gauche : paramètres ─────────────────────────────────── */}
         <div className="w-72 shrink-0 border-r overflow-y-auto bg-gray-50">
           <div className="p-4 space-y-5">
+
+            {/* Type de document (modifiable uniquement à la création) */}
+            {!template && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Type de document</p>
+                <select className={inp} value={form.template_type} onChange={e => changeType(e.target.value)}>
+                  {TEMPLATE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">Choisissez le type : un contenu de départ est pré-rempli.</p>
+              </div>
+            )}
 
             {/* Logo */}
             <div>
@@ -575,6 +618,7 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
 // ── Page liste des templates ──────────────────────────────────────────────────
 
 export default function TemplateEditor() {
+  const navigate = useNavigate()
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [editTemplate, setEditTemplate] = useState<Template | null>(null)
@@ -649,6 +693,12 @@ export default function TemplateEditor() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => navigate('/templates/layout')}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50"
+            title="Régler les marges, polices et espacements des PDF générés">
+            <Layout size={15} />
+            Mise en page PDF
+          </button>
           <button onClick={initDefaults} disabled={initLoading}
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
             {initLoading ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}

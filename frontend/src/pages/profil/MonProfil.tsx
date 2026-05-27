@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Save, Landmark } from 'lucide-react'
+import { Save, Landmark, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { authApi } from '@/api/auth'
+import { apiClient } from '@/api/client'
 
 export default function MonProfil() {
   const { user, fetchMe } = useAuthStore()
   const [fullName, setFullName] = useState(user?.full_name ?? '')
+  const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [address, setAddress] = useState(user?.address ?? '')
   const [iban, setIban] = useState(user?.iban ?? '')
@@ -15,14 +16,23 @@ export default function MonProfil() {
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
+  // Mot de passe
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
+  const [pwdSaving, setPwdSaving] = useState(false)
+  const [pwdMsg, setPwdMsg] = useState<string | null>(null)
+  const [pwdErr, setPwdErr] = useState<string | null>(null)
+
   // Le RIB n'est utile que pour les comptes qui encaissent le loyer (propriétaire / GP)
   const showRib = user?.role === 'proprietaire' || user?.role === 'gestionnaire_proprio'
 
   const save = async () => {
     setSaving(true); setMsg(null); setErr(null)
     try {
-      await authApi.updateProfile({
+      await apiClient.patch('/users/me', {
         full_name: fullName,
+        email: email.trim() || undefined,
         phone: phone || null,
         address: address || null,
         ...(showRib ? {
@@ -40,27 +50,47 @@ export default function MonProfil() {
     }
   }
 
+  const changePassword = async () => {
+    if (!currentPassword || !newPassword) { setPwdErr('Remplissez les deux champs.'); return }
+    if (newPassword.length < 8) { setPwdErr('Le nouveau mot de passe doit contenir au moins 8 caractères.'); return }
+    setPwdSaving(true); setPwdMsg(null); setPwdErr(null)
+    try {
+      await apiClient.patch('/users/me/password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      })
+      setPwdMsg('Mot de passe modifié.')
+      setCurrentPassword(''); setNewPassword('')
+    } catch (e: any) {
+      setPwdErr(e?.response?.data?.detail || 'Mot de passe actuel incorrect.')
+    } finally {
+      setPwdSaving(false)
+    }
+  }
+
   const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
   const lbl = 'block text-xs font-medium text-gray-600 mb-1'
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Mon profil</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Vos coordonnées d'agence — affichées dans la barre latérale.
+          Vos informations et coordonnées — utilisées dans la barre latérale et sur vos documents.
         </p>
       </div>
+
+      {/* ── Informations & coordonnées ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         {msg && <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{msg}</div>}
         {err && <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{err}</div>}
         <div>
-          <label className={lbl}>Email</label>
-          <input className={`${inp} bg-gray-50 text-gray-500`} value={user?.email ?? ''} disabled />
-        </div>
-        <div>
           <label className={lbl}>Nom complet</label>
           <input className={inp} value={fullName} onChange={e => setFullName(e.target.value)} />
+        </div>
+        <div>
+          <label className={lbl}>Email (identifiant de connexion)</label>
+          <input className={inp} type="email" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
         <div>
           <label className={lbl}>Téléphone</label>
@@ -106,6 +136,40 @@ export default function MonProfil() {
           <button onClick={save} disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
             <Save size={15} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Sécurité : mot de passe ── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 mt-5">
+        <div className="flex items-center gap-2">
+          <KeyRound size={16} className="text-gray-600" />
+          <h2 className="text-sm font-semibold text-gray-900">Changer le mot de passe</h2>
+        </div>
+        {pwdMsg && <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{pwdMsg}</div>}
+        {pwdErr && <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{pwdErr}</div>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={lbl}>Mot de passe actuel</label>
+            <div className="relative">
+              <input className={`${inp} pr-9`} type={showPwd ? 'text' : 'password'} value={currentPassword}
+                onChange={e => setCurrentPassword(e.target.value)} placeholder="••••••••" />
+              <button type="button" onClick={() => setShowPwd(v => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showPwd ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className={lbl}>Nouveau mot de passe</label>
+            <input className={inp} type={showPwd ? 'text' : 'password'} value={newPassword}
+              onChange={e => setNewPassword(e.target.value)} placeholder="8 caractères min." />
+          </div>
+        </div>
+        <div className="flex justify-end">
+          <button onClick={changePassword} disabled={pwdSaving || !currentPassword || !newPassword}
+            className="px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-900 disabled:opacity-50">
+            {pwdSaving ? 'Modification…' : 'Modifier le mot de passe'}
           </button>
         </div>
       </div>

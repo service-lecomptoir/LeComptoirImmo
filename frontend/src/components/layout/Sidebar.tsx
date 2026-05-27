@@ -4,7 +4,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  MapPin, Hash, User, ShoppingBag, Package, Layout,
+  MapPin, Hash, User, ShoppingBag, Package,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
@@ -33,12 +33,11 @@ const navGestionnaire: NavItem[] = [
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
-  { to: '/templates/layout', icon: Layout, label: 'Mise en page PDF' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
   { label: 'Mon compte', isSeparator: true },
-  { to: '/profil', icon: User, label: 'Mon profil' },
+  { to: '/profil', icon: User, label: 'Mes coordonnées' },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
@@ -71,12 +70,11 @@ const navGestionnairePropio: NavItem[] = [
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
-  { to: '/templates/layout', icon: Layout, label: 'Mise en page PDF' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
   { label: 'Mon compte', isSeparator: true },
-  { to: '/profil', icon: User, label: 'Mon profil' },
+  { to: '/profil', icon: User, label: 'Mes coordonnées' },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
