@@ -21,12 +21,13 @@ export const ENERGY_CLASSES = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const
 
 export type AmenityKey =
   | 'furnished' | 'kitchen_equipped' | 'has_elevator' | 'has_balcony'
-  | 'has_terrace' | 'has_garden' | 'has_parking' | 'has_cellar'
+  | 'has_terrace' | 'has_garden' | 'has_parking' | 'has_cellar' | 'has_fiber'
 
 // Équipements / extérieurs — clé technique → libellé affiché
 export const AMENITIES: { key: AmenityKey; label: string }[] = [
   { key: 'furnished', label: 'Meublé' },
   { key: 'kitchen_equipped', label: 'Cuisine équipée' },
+  { key: 'has_fiber', label: 'Fibre' },
   { key: 'has_elevator', label: 'Ascenseur' },
   { key: 'has_balcony', label: 'Balcon' },
   { key: 'has_terrace', label: 'Terrasse' },
@@ -69,6 +70,7 @@ export interface Property {
   has_garden: boolean
   has_parking: boolean
   has_cellar: boolean
+  has_fiber: boolean
   is_occupied: boolean
   is_available: boolean
   unit_count: number

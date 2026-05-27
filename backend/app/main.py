@@ -185,6 +185,7 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_garden BOOLEAN NOT NULL DEFAULT false",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_parking BOOLEAN NOT NULL DEFAULT false",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_cellar BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_fiber BOOLEAN NOT NULL DEFAULT false",
         "UPDATE properties SET property_type='appartement' WHERE property_type='immeuble'",
         # Inspections rattachées au bien (remplace unit_id)
         "ALTER TABLE inspections ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL",
