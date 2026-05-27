@@ -6,7 +6,7 @@ import { UserRound, Plus, X } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import { tenantsApi } from '@/api/tenants'
 import { usersApi } from '@/api/users'
-import type { Tenant, TenantCreate } from '@/types/tenant'
+import type { Tenant } from '@/types/tenant'
 import type { User } from '@/types/auth'
 
 const schema = z.object({
@@ -130,14 +130,15 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null)
-    // Les champs optionnels vides doivent être OMIS (un "" envoyé sur birth_date —
-    // un champ date — déclenche une 422 côté API). On nettoie tout en chaîne vide → undefined.
-    const clean = (v?: string) => {
+    // Champ vidé → on envoie `null` (et non `undefined`) : undefined est omis du JSON
+    // par axios → côté API (exclude_unset) le champ n'est pas mis à jour, donc l'ancienne
+    // valeur persiste. `null` efface explicitement ET évite la 422 d'un "" sur une date/email.
+    const clean = (v?: string): string | null => {
       const t = (v ?? '').trim()
-      return t === '' ? undefined : t
+      return t === '' ? null : t
     }
-    const payload: TenantCreate = {
-      civility: (data.civility as TenantCreate['civility']) || undefined,
+    const payload: any = {
+      civility: data.civility || null,
       first_name: data.first_name.trim(),
       last_name: data.last_name.trim(),
       birth_date: clean(data.birth_date),
@@ -148,7 +149,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       phone2: clean(data.phone2),
       employer: clean(data.employer),
       employer_phone: clean(data.employer_phone),
-      monthly_income: data.monthly_income ? Number(data.monthly_income) : undefined,
+      monthly_income: data.monthly_income ? Number(data.monthly_income) : null,
       income_source: clean(data.income_source),
       notes: clean(data.notes),
       user_id: clean(data.user_id as string),

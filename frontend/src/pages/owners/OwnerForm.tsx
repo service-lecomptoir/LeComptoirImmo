@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { Building2 } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import { ownersApi } from '@/api/owners'
-import type { Owner, OwnerCreate } from '@/types/owner'
+import type { Owner } from '@/types/owner'
 
 const schema = z.object({
   civility: z.enum(['M', 'Mme', 'Autre']).optional(),
@@ -83,12 +83,13 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null)
-    const clean = (v?: string) => {
+    // Champ vidé → `null` (jamais `undefined` : axios l'omet et l'API garde l'ancienne valeur).
+    const clean = (v?: string): string | null => {
       const t = (v ?? '').trim()
-      return t === '' ? undefined : t
+      return t === '' ? null : t
     }
-    const payload: OwnerCreate = {
-      civility: (data.civility as OwnerCreate['civility']) || undefined,
+    const payload: any = {
+      civility: data.civility || null,
       first_name: clean(data.first_name),
       last_name: (data.last_name ?? '').trim(),
       company_name: clean(data.company_name),
@@ -97,8 +98,8 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       phone: clean(data.phone),
       phone2: clean(data.phone2),
       address: clean(data.address),
-      iban: data.iban ? data.iban.replace(/\s+/g, '').toUpperCase() : undefined,
-      bic: data.bic ? data.bic.replace(/\s+/g, '').toUpperCase() : undefined,
+      iban: data.iban ? data.iban.replace(/\s+/g, '').toUpperCase() : null,
+      bic: data.bic ? data.bic.replace(/\s+/g, '').toUpperCase() : null,
       bank_holder: clean(data.bank_holder),
       notes: clean(data.notes),
     }
