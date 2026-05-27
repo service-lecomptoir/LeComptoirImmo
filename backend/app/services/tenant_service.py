@@ -66,6 +66,10 @@ class TenantService:
         for field, value in update_data.items():
             setattr(tenant, field, value)
         await db.flush()
+        # Recharge toutes les colonnes (dont updated_at, server-onupdate, qui est
+        # expirée après le flush) dans le contexte async, pour éviter un lazy-load
+        # pendant la sérialisation sync de la réponse (→ ResponseValidationError 500).
+        await db.refresh(tenant)
         return tenant
 
     @staticmethod
