@@ -159,14 +159,10 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
         # Fusion bien/logement : caractéristiques du logement portées par le bien
+        # (loyer/charges/dépôt sont sur le contrat, pas le bien → colonnes supprimées plus bas)
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS floor INTEGER",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS area_sqm NUMERIC(8,2)",
-        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS rooms INTEGER",
-        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS bedrooms INTEGER",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS bathrooms INTEGER",
-        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS base_rent NUMERIC(10,2) NOT NULL DEFAULT 0",
-        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS charges_amount NUMERIC(10,2) NOT NULL DEFAULT 0",
-        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS deposit_months INTEGER NOT NULL DEFAULT 1",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS is_occupied BOOLEAN NOT NULL DEFAULT false",
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS is_available BOOLEAN NOT NULL DEFAULT true",
         # Caractéristiques étendues du bien (typologie, équipements, extérieurs)
@@ -186,56 +182,11 @@ async def _apply_column_migrations() -> None:
         "UPDATE properties SET property_type='appartement' WHERE property_type='immeuble'",
         # Inspections rattachées au bien (remplace unit_id)
         "ALTER TABLE inspections ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL",
-        # Fusion bien/logement : reprendre les caractéristiques de l'ancien logement
-        # unique sur le bien (uniquement si la table units existe encore).
-        """
-        DO $$
-        BEGIN
-          IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='units') THEN
-            UPDATE properties p SET
-              area_sqm       = COALESCE(p.area_sqm, u.area_sqm),
-              floor          = COALESCE(p.floor, u.floor),
-              rooms          = COALESCE(p.rooms, u.rooms),
-              bedrooms       = COALESCE(p.bedrooms, u.bedrooms),
-              bathrooms      = COALESCE(p.bathrooms, u.bathrooms),
-              base_rent      = CASE WHEN p.base_rent = 0 THEN u.base_rent ELSE p.base_rent END,
-              charges_amount = CASE WHEN p.charges_amount = 0 THEN u.charges_amount ELSE p.charges_amount END,
-              deposit_months = CASE WHEN p.deposit_months = 1 THEN COALESCE(u.deposit_months, 1) ELSE p.deposit_months END
-            FROM (
-              SELECT DISTINCT ON (property_id) property_id, area_sqm, floor, rooms,
-                     bedrooms, bathrooms, base_rent, charges_amount, deposit_months
-              FROM units ORDER BY property_id, created_at
-            ) u
-            WHERE u.property_id = p.id;
-          END IF;
-        END $$;
-        """,
         # Occupation du bien dérivée des baux actifs
         """
         UPDATE properties p SET
           is_occupied = EXISTS (SELECT 1 FROM leases l WHERE l.property_id = p.id AND l.is_active = true),
           is_available = NOT EXISTS (SELECT 1 FROM leases l WHERE l.property_id = p.id AND l.is_active = true)
-        """,
-        # Rendre nullable les anciennes colonnes unit_id (suppression de l'entité logement)
-        """
-        DO $$
-        BEGIN
-          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='leases' AND column_name='unit_id') THEN
-            ALTER TABLE leases ALTER COLUMN unit_id DROP NOT NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='unit_id') THEN
-            ALTER TABLE payments ALTER COLUMN unit_id DROP NOT NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='avis_echeances' AND column_name='unit_id') THEN
-            ALTER TABLE avis_echeances ALTER COLUMN unit_id DROP NOT NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='inspections' AND column_name='unit_id') THEN
-            ALTER TABLE inspections ALTER COLUMN unit_id DROP NOT NULL;
-          END IF;
-          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='entretiens' AND column_name='unit_id') THEN
-            ALTER TABLE entretiens ALTER COLUMN unit_id DROP NOT NULL;
-          END IF;
-        END $$;
         """,
         # Isolation contacts/automatisation (013)
         "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL",
@@ -311,6 +262,22 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users DROP COLUMN IF EXISTS iban",
         "ALTER TABLE users DROP COLUMN IF EXISTS bic",
         "ALTER TABLE users DROP COLUMN IF EXISTS bank_holder",
+        # ── 018 : nettoyage des reliques de la fusion bien/logement ─────────────
+        # Loyer/charges/dépôt sont portés par le contrat (leases), plus par le bien.
+        "ALTER TABLE properties DROP COLUMN IF EXISTS base_rent",
+        "ALTER TABLE properties DROP COLUMN IF EXISTS charges_amount",
+        "ALTER TABLE properties DROP COLUMN IF EXISTS deposit_months",
+        "ALTER TABLE properties DROP COLUMN IF EXISTS rooms",
+        "ALTER TABLE properties DROP COLUMN IF EXISTS bedrooms",
+        # Entité logement (units) supprimée : on retire d'abord les colonnes de lien
+        # (ce qui supprime aussi leurs contraintes FK), puis la table elle-même.
+        "ALTER TABLE leases DROP COLUMN IF EXISTS unit_id",
+        "ALTER TABLE payments DROP COLUMN IF EXISTS unit_id",
+        "ALTER TABLE avis_echeances DROP COLUMN IF EXISTS unit_id",
+        "ALTER TABLE inspections DROP COLUMN IF EXISTS unit_id",
+        "ALTER TABLE entretiens DROP COLUMN IF EXISTS unit_id",
+        "ALTER TABLE tickets DROP COLUMN IF EXISTS unit_id",
+        "DROP TABLE IF EXISTS units",
     ]
     try:
         async with engine.begin() as conn:
