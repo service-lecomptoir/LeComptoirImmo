@@ -29,6 +29,8 @@ export default function MonProfil() {
   // Le RIB n'est utile que pour les comptes qui encaissent le loyer (propriétaire / GP).
   // Source UNIQUE des coordonnées de règlement : la fiche propriétaire (entité Owner).
   const showRib = user?.role === 'proprietaire' || user?.role === 'gestionnaire_proprio'
+  // Le locataire n'a pas d'adresse propre (son adresse = le bien loué) → champ masqué.
+  const isLocataire = user?.role === 'locataire'
 
   // Charge la fiche propriétaire liée au compte : coordonnées de règlement + RIB.
   useEffect(() => {
@@ -57,7 +59,7 @@ export default function MonProfil() {
       await apiClient.patch('/users/me', {
         full_name: fullName,
         email: email.trim() || undefined,
-        ...(showRib ? {} : { phone: phone || null, address: address || null }),
+        ...(showRib ? {} : { phone: phone || null, ...(isLocataire ? {} : { address: address || null }) }),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
       if (showRib && ownerId) {
@@ -124,11 +126,13 @@ export default function MonProfil() {
           <label className={lbl}>Téléphone</label>
           <input className={inp} value={phone} onChange={e => setPhone(e.target.value)} placeholder="06 12 34 56 78" />
         </div>
-        <div>
-          <label className={lbl}>Adresse</label>
-          <textarea className={`${inp} resize-none`} rows={2} value={address}
-            onChange={e => setAddress(e.target.value)} placeholder="12 rue de la République, 75001 Paris" />
-        </div>
+        {!isLocataire && (
+          <div>
+            <label className={lbl}>Adresse</label>
+            <textarea className={`${inp} resize-none`} rows={2} value={address}
+              onChange={e => setAddress(e.target.value)} placeholder="12 rue de la République, 75001 Paris" />
+          </div>
+        )}
 
         {/* ── Coordonnées bancaires (RIB) — propriétaire / GP ── */}
         {showRib && (
