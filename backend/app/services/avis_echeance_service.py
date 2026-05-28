@@ -4,7 +4,7 @@ Service AvisEcheance — Génération des avis d'échéances (manuelle et automa
 import uuid
 import calendar
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 from sqlalchemy import select, and_
@@ -16,7 +16,7 @@ from app.models.lease import Lease
 from app.models.tenant import Tenant
 from app.models.property import Property
 from app.models.payment import Payment, PaymentStatus
-from app.core.exceptions import ConflictException, NotFoundException
+from app.core.exceptions import ConflictException, NotFoundException, BadRequestException
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,51 @@ class AvisEcheanceService:
     def _due_date(year: int, month: int, payment_day: int) -> date:
         max_day = calendar.monthrange(year, month)[1]
         return date(year, month, min(payment_day, max_day))
+
+    @staticmethod
+    def _first_of_next_month(year: int, month: int) -> date:
+        return date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+
+    @classmethod
+    def _period_and_factor(cls, lease, year: int, month: int):
+        """Calcule la période réellement couverte et le facteur de prorata pour
+        (bail, année, mois), selon la règle d'appel de loyer.
+
+        - calendrier   : période = mois civil borné aux dates du bail ; prorata au
+                         nombre de jours pour les mois d'entrée/sortie partiels.
+        - contractuelle: période = du jour d'entrée (date à date) ; loyer plein.
+
+        Retourne (period_start, period_end, factor). (None, None, 0.0) si le bail ne
+        couvre pas ce mois."""
+        days_in_month = calendar.monthrange(year, month)[1]
+        month_start = date(year, month, 1)
+        month_end = date(year, month, days_in_month)
+        lease_start: date = lease.start_date
+        lease_end: Optional[date] = lease.end_date
+        rule = (getattr(lease, "rent_call_rule", None) or "calendrier")
+
+        if rule == "contractuelle":
+            anniv = lease_start.day
+            p_start = date(year, month, min(anniv, days_in_month))
+            nxt = cls._first_of_next_month(year, month)
+            nxt_days = calendar.monthrange(nxt.year, nxt.month)[1]
+            p_end = date(nxt.year, nxt.month, min(anniv, nxt_days)) - timedelta(days=1)
+            p_start = max(p_start, lease_start)
+            if lease_end:
+                p_end = min(p_end, lease_end)
+            if p_start > p_end:
+                return None, None, 0.0
+            # Période contractuelle = loyer plein, pas de prorata.
+            return p_start, p_end, 1.0
+
+        # calendrier
+        p_start = max(month_start, lease_start)
+        p_end = min(month_end, lease_end) if lease_end else month_end
+        if p_start > p_end:
+            return None, None, 0.0
+        covered = (p_end - p_start).days + 1
+        factor = 1.0 if covered >= days_in_month else round(covered / days_in_month, 6)
+        return p_start, p_end, factor
 
     @staticmethod
     def _compute_total(rent: float, charges: float, apl: Optional[float]) -> float:
@@ -68,6 +113,13 @@ class AvisEcheanceService:
                 f"{month:02d}/{year} (bail {lease.id})"
             )
 
+        # ── Période couverte + prorata selon la règle d'appel de loyer ───────
+        period_start, period_end, factor = cls._period_and_factor(lease, year, month)
+        if period_start is None:
+            raise BadRequestException(
+                f"Le bail ne couvre pas la période {month:02d}/{year}."
+            )
+
         # APL : override mensuel prioritaire sur la valeur du bail
         if apl_override is not None:
             apl = float(apl_override) if apl_override > 0 else None
@@ -76,7 +128,10 @@ class AvisEcheanceService:
         else:
             apl = None
 
-        total = cls._compute_total(lease.rent_amount, lease.charges_amount, apl)
+        # Loyer et charges proratisés (facteur = 1.0 pour un mois plein / contractuel)
+        amount_rent = round(float(lease.rent_amount) * factor, 2)
+        amount_charges = round(float(lease.charges_amount) * factor, 2)
+        total = cls._compute_total(amount_rent, amount_charges, apl)
         due = cls._due_date(year, month, lease.payment_day)
 
         avis = AvisEcheance(
@@ -85,9 +140,11 @@ class AvisEcheanceService:
             tenant_id=lease.tenant_id,
             period_year=year,
             period_month=month,
+            period_start=period_start,
+            period_end=period_end,
             due_date=due,
-            amount_rent=float(lease.rent_amount),
-            amount_charges=float(lease.charges_amount),
+            amount_rent=amount_rent,
+            amount_charges=amount_charges,
             amount_apl=apl,
             amount_total=total,
             status=AvisEcheanceStatus.BROUILLON,
@@ -96,9 +153,9 @@ class AvisEcheanceService:
         db.add(avis)
         await db.flush()
 
-        # ── Créer le paiement du mois (systématique) ─────────────────────────
+        # ── Créer le paiement du mois (systématique, montants proratisés) ────
         # APL tiers-payant : pré-créditer le montant CAF ; sinon PENDING à 0.
-        await cls._ensure_payment(db, lease, year, month, apl, due)
+        await cls._ensure_payment(db, lease, year, month, apl, due, amount_rent, amount_charges)
 
         return avis
 
@@ -111,8 +168,10 @@ class AvisEcheanceService:
         month: int,
         apl: Optional[float],
         due_date: date,
+        amount_rent: float,
+        amount_charges: float,
     ) -> None:
-        """Crée ou met à jour le paiement du mois.
+        """Crée ou met à jour le paiement du mois (montants déjà proratisés).
 
         Sans APL : paiement PENDING, montant dû = loyer + charges, rien d'encaissé.
         Avec APL tiers-payant : APL pré-créditée, solde restant à la charge du locataire.
@@ -125,8 +184,8 @@ class AvisEcheanceService:
             )
         )).scalar_one_or_none()
 
-        amount_rent = float(lease.rent_amount)
-        amount_charges = float(lease.charges_amount)
+        amount_rent = float(amount_rent)
+        amount_charges = float(amount_charges)
         amount_due = amount_rent + amount_charges
 
         if apl and apl > 0:
@@ -193,6 +252,8 @@ class AvisEcheanceService:
                 count += 1
             except ConflictException:
                 pass  # Déjà existant, on ignore
+            except BadRequestException:
+                pass  # Le bail ne couvre pas ce mois (pas encore commencé / déjà fini)
             except Exception as exc:
                 logger.error(f"Erreur génération avis bail {lease.id}: {exc}")
 

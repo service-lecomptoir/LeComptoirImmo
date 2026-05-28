@@ -10,6 +10,8 @@ from app.models.avis_echeance import AvisEcheanceStatus
 class AvisEcheanceBase(BaseModel):
     period_year: int
     period_month: int
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
     due_date: date
     amount_rent: float
     amount_charges: float
@@ -64,6 +66,7 @@ class AvisEcheanceOut(AvisEcheanceBase):
     tenant_full_name: Optional[str] = None
     property_name: Optional[str] = None
     period_label: Optional[str] = None
+    period_range_label: Optional[str] = None
     is_auto_generated: Optional[bool] = None
 
 

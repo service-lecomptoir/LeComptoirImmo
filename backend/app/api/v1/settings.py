@@ -165,9 +165,13 @@ async def preview_template(
             tenant=mock_tenant,
             lease=mock_lease,
             period_label="Juin 2026",
+            period_start=date(2026, 6, 1),
+            period_end=date(2026, 6, 30),
+            period_range_label="du 01/06/2026 au 30/06/2026",
             amount_rent=800.0,
             amount_charges=80.0,
             amount_apl=0.0,
+            amount_total=880.0,
             amount_due=880.0,
             due_date=None,
         )

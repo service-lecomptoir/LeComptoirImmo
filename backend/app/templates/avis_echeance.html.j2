@@ -85,6 +85,13 @@
   <h1>Avis d'échéance</h1>
   <p class="subtitle">{{ avis.period_label if avis.period_label else '' }}</p>
 
+  {% if avis.period_start and avis.period_end %}
+  <div class="sec">Période concernée</div>
+  <table class="amt">
+    <tr><td>Période de location</td><td class="r">{{ avis.period_range_label }}</td></tr>
+  </table>
+  {% endif %}
+
   <div class="sec">Détail du loyer</div>
   <table class="amt">
     <tr><td>Loyer hors charges</td><td class="r">{{ "%.2f" | format(avis.amount_rent | float) }} €</td></tr>
@@ -92,7 +99,7 @@
     {% if avis.amount_apl and avis.amount_apl | float > 0 %}
     <tr><td>Déduction APL (tiers-payant CAF)</td><td class="r">- {{ "%.2f" | format(avis.amount_apl | float) }} €</td></tr>
     {% endif %}
-    <tr class="tot"><td>Total à régler</td><td class="r">{{ "%.2f" | format(avis.amount_due | float) }} €</td></tr>
+    <tr class="tot"><td>Total à régler</td><td class="r">{{ "%.2f" | format(avis.amount_total | float) }} €</td></tr>
   </table>
 
   {% if avis.due_date %}

@@ -45,6 +45,10 @@ class AvisEcheance(Base, TimestampMixin):
     # ── Période ───────────────────────────────────────────────────────────────
     period_year: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     period_month: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # Période réellement couverte (selon la règle d'appel + prorata d'entrée/sortie).
+    # Nullable pour compat avec les avis générés avant cette fonctionnalité.
+    period_start: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    period_end: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
 
     # ── Montants ──────────────────────────────────────────────────────────────
@@ -78,6 +82,15 @@ class AvisEcheance(Base, TimestampMixin):
         months = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
                   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
         return f"{months[self.period_month]} {self.period_year}"
+
+    @property
+    def period_range_label(self) -> str:
+        """Période réellement couverte, ex. « du 15/01/2026 au 14/02/2026 »
+        (ou le mois si les dates ne sont pas renseignées — anciens avis)."""
+        if self.period_start and self.period_end:
+            return (f"du {self.period_start.strftime('%d/%m/%Y')} "
+                    f"au {self.period_end.strftime('%d/%m/%Y')}")
+        return self.period_label
 
     @property
     def is_auto_generated(self) -> bool:
