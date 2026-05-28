@@ -395,6 +395,8 @@ async def download_quittance(
                 tenant_names = ""
     if not tenant_names and payment.tenant:
         tenant_names = payment.tenant.full_name
+    # Espaces insécables : co-titulaires sur la même ligne que le principal (bloc étroit)
+    tenant_names = tenant_names.replace(" ", " ")
 
     html = render_template("quittance.html.j2", {
         "payment": payment,

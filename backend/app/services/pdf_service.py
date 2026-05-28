@@ -96,6 +96,9 @@ class AvisEcheancePDFService:
                 tenant_names = ""
         if not tenant_names and getattr(avis_full, "tenant", None):
             tenant_names = avis_full.tenant.full_name
+        # Espaces insécables : garde les co-titulaires sur la même ligne que le principal
+        # (le bloc destinataire est étroit → sinon le 2e nom passe à la ligne).
+        tenant_names = tenant_names.replace(" ", " ")
 
         # Récupérer le bien lié au contrat
         property_obj = None
