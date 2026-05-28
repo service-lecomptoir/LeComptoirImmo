@@ -97,7 +97,7 @@
     <tr><td>Loyer hors charges</td><td class="r">{{ "%.2f" | format(avis.amount_rent | float) }} €</td></tr>
     <tr><td>Charges récupérables</td><td class="r">{{ "%.2f" | format(avis.amount_charges | float) }} €</td></tr>
     {% if avis.amount_apl and avis.amount_apl | float > 0 %}
-    <tr><td>Déduction aide personnelle au logement (tiers-payant CAF)</td><td class="r">- {{ "%.2f" | format(avis.amount_apl | float) }} €</td></tr>
+    <tr><td>Déduction aide personnelle au logement</td><td class="r">- {{ "%.2f" | format(avis.amount_apl | float) }} €</td></tr>
     {% endif %}
     <tr class="tot"><td>Total à régler</td><td class="r">{{ "%.2f" | format(avis.amount_total | float) }} €</td></tr>
   </table>
