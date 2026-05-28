@@ -114,6 +114,24 @@ DEFAULT_TEMPLATES = {
 }
 
 
+async def backfill_all_managers(db: AsyncSession) -> int:
+    """Seed les templates par défaut pour TOUS les comptes gestionnaire existants qui
+    n'en ont pas encore (comptes créés avant l'auto-seed). Idempotent. Retourne le
+    nombre de gestionnaires nouvellement dotés."""
+    from app.models.user import User
+    users = (await db.execute(
+        select(User.id, User.role)
+    )).all()
+    seeded = 0
+    for uid, role in users:
+        role_val = role.value if hasattr(role, "value") else str(role)
+        if role_val in TEMPLATE_OWNER_ROLES:
+            n = await ensure_default_templates(db, uid)
+            if n:
+                seeded += 1
+    return seeded
+
+
 async def refresh_default_bodies(db: AsyncSession) -> int:
     """Met à jour le contenu des templates PAR DÉFAUT (avis / quittance) vers le modèle
     canonique courant, pour propager une refonte de mise en page aux comptes existants.

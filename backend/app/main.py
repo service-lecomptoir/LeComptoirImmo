@@ -42,16 +42,19 @@ async def lifespan(app: FastAPI):
     # ── Migrations légères (colonnes manquantes) ───────────────────────────────
     await _apply_column_migrations()
 
-    # ── Propage la refonte des modèles par défaut (avis / quittance) ───────────
+    # ── Modèles par défaut : seed des comptes existants + refonte de mise en page ─
     try:
-        from app.services.document_template_service import refresh_default_bodies
+        from app.services.document_template_service import (
+            backfill_all_managers, refresh_default_bodies,
+        )
         async with AsyncSessionLocal() as _db:
-            n = await refresh_default_bodies(_db)
+            seeded = await backfill_all_managers(_db)
+            updated = await refresh_default_bodies(_db)
             await _db.commit()
-        if n:
-            logger.info(f"Modèles par défaut mis à jour : {n}")
+        if seeded or updated:
+            logger.info(f"Modèles par défaut : {seeded} compte(s) dotés, {updated} mis à jour")
     except Exception as _exc:
-        logger.warning(f"Refresh modèles par défaut ignoré : {_exc}")
+        logger.warning(f"Backfill modèles par défaut ignoré : {_exc}")
 
     # Crée les comptes de démonstration s'ils sont absents
     logger.info("Vérification des comptes par défaut...")
