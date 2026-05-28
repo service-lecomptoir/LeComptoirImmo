@@ -16,36 +16,36 @@ TEMPLATE_OWNER_ROLES = {"admin", "gestionnaire", "gestionnaire_proprio"}
 DEFAULT_TEMPLATES = {
     TemplateType.AVIS_ECHEANCE: {
         "name": "Avis d'échéance standard",
-        "content_html": """<h2>AVIS D'ÉCHÉANCE</h2>
-<p>Cher(e) {{tenant_name}},</p>
-<p>Nous vous rappelons que votre loyer du mois de <strong>{{month}}</strong> est à régler avant le <strong>{{due_date}}</strong>.</p>
+        "content_html": """<h2>Avis d'échéance</h2>
+<p style="text-align:center;color:#6b7280;margin-top:0;">Loyer · {{month}}</p>
+<p>Madame, Monsieur,</p>
+<p>Nous vous prions de bien vouloir procéder au règlement de votre loyer, selon le détail ci-dessous, à échéance du <strong>{{due_date}}</strong>.</p>
+<h3>Détail du loyer</h3>
 <table>
-  <tr><td>Loyer :</td><td>{{rent_amount}} €</td></tr>
-  <tr><td>Charges :</td><td>{{charges_amount}} €</td></tr>
-  {{#if apl_amount}}<tr><td>Aide personnelle au logement :</td><td>- {{apl_amount}} €</td></tr>{{/if}}
-  <tr><td><strong>Total à payer :</strong></td><td><strong>{{total_due}} €</strong></td></tr>
+  <tr><td>Loyer hors charges</td><td style="text-align:right;">{{rent_amount}} €</td></tr>
+  <tr><td>Provision pour charges</td><td style="text-align:right;">{{charges_amount}} €</td></tr>
+  {{#if apl_amount}}<tr><td>Aide personnelle au logement</td><td style="text-align:right;">&minus; {{apl_amount}} €</td></tr>{{/if}}
+  <tr><td style="border-top:2px solid #0d2f5c;"><strong>Total à payer</strong></td><td style="text-align:right;border-top:2px solid #0d2f5c;"><strong>{{total_due}} €</strong></td></tr>
 </table>
-<p>Bien :</p>
-<p>{{property_name}} — {{property_address}}</p>
-<p>Cordialement,<br>{{company_name}}</p>""",
-        "footer_text": "Ce document est généré automatiquement. Pour toute question, contactez votre gestionnaire.",
+<p style="color:#6b7280;">Nous vous remercions de votre confiance et restons à votre disposition pour toute question.</p>""",
+        "footer_text": "Document généré par Le Comptoir Immo. Pour toute question, contactez votre gestionnaire.",
     },
     TemplateType.QUITTANCE: {
         "name": "Quittance de loyer standard",
-        "content_html": """<h2>QUITTANCE DE LOYER</h2>
-<p>Je soussigné(e) {{company_name}}, gestionnaire du bien sis <strong>{{property_address}}</strong>,</p>
-<p>déclare avoir reçu de <strong>{{tenant_name}}</strong>, locataire dudit bien,</p>
-<p>la somme de <strong>{{amount_paid}} €</strong> au titre du loyer et charges du mois de <strong>{{month}}</strong>.</p>
-<br/>
+        "content_html": """<h2>Quittance de loyer</h2>
+<p style="text-align:center;color:#6b7280;margin-top:0;">{{month}}</p>
+<p>Madame, Monsieur,</p>
+<p>Nous accusons réception de la somme de <strong>{{amount_paid}} €</strong> au titre du loyer et des charges du mois de <strong>{{month}}</strong>, et vous en donnons quittance.</p>
+<h3>Détail</h3>
 <table>
-  <tr><td>Loyer :</td><td>{{rent_amount}} €</td></tr>
-  <tr><td>Charges :</td><td>{{charges_amount}} €</td></tr>
-  {{#if apl_amount}}<tr><td>Aide personnelle au logement :</td><td>- {{apl_amount}} €</td></tr>{{/if}}
-  <tr><td><strong>Montant reçu :</strong></td><td><strong>{{amount_paid}} €</strong></td></tr>
+  <tr><td>Loyer hors charges</td><td style="text-align:right;">{{rent_amount}} €</td></tr>
+  <tr><td>Provision pour charges</td><td style="text-align:right;">{{charges_amount}} €</td></tr>
+  {{#if apl_amount}}<tr><td>Aide personnelle au logement</td><td style="text-align:right;">&minus; {{apl_amount}} €</td></tr>{{/if}}
+  <tr><td style="border-top:2px solid #0d2f5c;"><strong>Montant réglé</strong></td><td style="text-align:right;border-top:2px solid #0d2f5c;"><strong>{{amount_paid}} €</strong></td></tr>
 </table>
-<p>Et lui en donne bonne et valable quittance.</p>
-<p>Fait le {{date}}</p>""",
-        "footer_text": "Cette quittance est valable sous réserve d'encaissement.",
+<p>La présente quittance annule tous les reçus établis précédemment pour la même période.</p>
+<p style="color:#6b7280;">Fait le {{date}}.</p>""",
+        "footer_text": "Quittance délivrée conformément à l'article 21 de la loi n°89-462 du 6 juillet 1989. Valable sous réserve d'encaissement.",
     },
     TemplateType.LETTRE_RELANCE: {
         "name": "Lettre de relance standard",
@@ -112,6 +112,30 @@ DEFAULT_TEMPLATES = {
         "footer_text": "Cet état des lieux a été établi contradictoirement entre le bailleur et le locataire.",
     },
 }
+
+
+async def refresh_default_bodies(db: AsyncSession) -> int:
+    """Met à jour le contenu des templates PAR DÉFAUT (avis / quittance) vers le modèle
+    canonique courant, pour propager une refonte de mise en page aux comptes existants.
+    Idempotent (n'écrit que si le contenu diffère). Ne touche QUE les templates is_default
+    de ces 2 types ; les templates personnalisés (non-défaut) ne sont jamais modifiés."""
+    updated = 0
+    for ttype in (TemplateType.AVIS_ECHEANCE, TemplateType.QUITTANCE):
+        d = DEFAULT_TEMPLATES[ttype]
+        rows = (await db.execute(
+            select(DocumentTemplate).where(
+                DocumentTemplate.template_type == ttype,
+                DocumentTemplate.is_default.is_(True),
+            )
+        )).scalars().all()
+        for t in rows:
+            if t.content_html != d["content_html"] or t.footer_text != d["footer_text"]:
+                t.content_html = d["content_html"]
+                t.footer_text = d["footer_text"]
+                updated += 1
+    if updated:
+        await db.flush()
+    return updated
 
 
 async def ensure_default_templates(db: AsyncSession, gestionnaire_id: uuid.UUID) -> int:

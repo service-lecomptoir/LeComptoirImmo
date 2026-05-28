@@ -2,15 +2,23 @@
 (table document_templates, éditeur « Templates docs »).
 
 Le contenu (`content_html`) utilise une syntaxe type Handlebars :
-  - {{variable}}                  → substitution
+  - {{variable}}                  → substitution (valeur échappée)
   - {{#if variable}}...{{/if}}    → bloc conditionnel (gardé si la variable est non vide)
 
+Mise en page (commune à tous les documents) — cadre « pro » sur fond blanc :
+  • En-tête GAUCHE  : logo (icône) du gestionnaire puis son adresse.
+  • En-tête DROITE  : les locataires empilés, puis l'adresse du bien en dessous.
+  • CORPS (centre)  : les données du document (montants, etc.).
+  • PIED DE PAGE    : mentions légales / coordonnées.
+
 Si aucun template par défaut n'existe pour le gestionnaire + type, on retourne None
-→ l'appelant retombe sur le fichier .j2 historique (comportement inchangé).
+→ l'appelant retombe sur le fichier .j2 historique.
 """
 from __future__ import annotations
 
 import re
+import os
+import base64
 import html as _html
 import uuid
 from typing import Optional
@@ -51,15 +59,45 @@ def substitute(content_html: str, variables: dict) -> str:
     return _VAR_RE.sub(_var_repl, out)
 
 
-def _wrap(template: DocumentTemplate, body_html: str, recipient_lines: list[str], layout: dict) -> str:
+def _logo_data_uri(logo_path: Optional[str]) -> Optional[str]:
+    """Encode le logo en data-URI base64 (xhtml2pdf n'a pas de link_callback)."""
+    try:
+        if logo_path and os.path.exists(logo_path):
+            ext = logo_path.rsplit(".", 1)[-1].lower()
+            mime = {
+                "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                "svg": "image/svg+xml", "webp": "image/webp", "gif": "image/gif",
+            }.get(ext, "image/png")
+            with open(logo_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            return f"data:{mime};base64,{b64}"
+    except Exception:
+        pass
+    return None
+
+
+def _wrap(
+    template: DocumentTemplate,
+    body_html: str,
+    recipient_lines: list[str],
+    property_address: str,
+    layout: dict,
+) -> str:
     sp = (layout or {}).get("spacing", {}) if isinstance(layout, dict) else {}
-    page_margin = sp.get("page_margin", "2cm 2.5cm")
-    font_size = sp.get("font_size", 10)
+    fs = int(sp.get("font_size", 10) or 10)
     line_height = sp.get("line_height", 1.5)
-    header_color = template.header_color or "#1e3a5f"
+    accent = template.header_color or "#0d2f5c"
     company = _html.escape(template.company_name or "Le Comptoir Immo")
-    company_addr = _html.escape(template.company_address or "")
+    company_addr = _html.escape(template.company_address or "").replace("\n", "<br/>")
     footer = _html.escape(template.footer_text or "")
+    prop = _html.escape(property_address or "").replace("\n", "<br/>")
+
+    # En-tête gauche : logo (icône) du gestionnaire OU son nom en wordmark.
+    logo_uri = _logo_data_uri(getattr(template, "logo_path", None))
+    if logo_uri:
+        sender_brand = f'<img src="{logo_uri}" style="max-height:48px;" alt="logo"/>'
+    else:
+        sender_brand = f'<div class="sender-name">{company}</div>'
 
     recipient = "".join(
         f'<div class="rc-name">{_html.escape(n)}</div>' for n in (recipient_lines or [])
@@ -67,25 +105,37 @@ def _wrap(template: DocumentTemplate, body_html: str, recipient_lines: list[str]
 
     return f"""<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"><style>
-  @page {{ size: A4; margin: {page_margin}; }}
-  body {{ font-family: Arial, sans-serif; font-size: {font_size}pt; color: #111; line-height: {line_height}; }}
-  .doc-header {{ border-bottom: 3px solid {header_color}; padding-bottom: 8px; margin-bottom: 16px; }}
-  .company {{ font-size: {int(font_size) + 3}pt; font-weight: bold; color: {header_color}; }}
-  .company-addr {{ font-size: {int(font_size) - 1}pt; color: #555; }}
-  .recipient {{ text-align: right; margin-bottom: 18px; }}
-  .rc-name {{ font-weight: bold; font-size: {int(font_size) + 1}pt; color: #111; }}
-  .doc-body table {{ width: 100%; border-collapse: collapse; }}
-  .doc-body td {{ padding: 4px 8px; }}
-  .doc-footer {{ margin-top: 20px; border-top: 1px solid #e5e5e5; padding-top: 6px; font-size: 8pt; color: #888; }}
-  h1, h2, h3 {{ color: {header_color}; }}
+  @page {{ size: A4; margin: 1.6cm 1.8cm; }}
+  body {{ font-family: Helvetica, Arial, sans-serif; font-size: {fs}pt; color: #1f2937; line-height: {line_height}; background: #ffffff; }}
+  .hdr {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
+  .hdr td {{ vertical-align: top; }}
+  .sender-name {{ font-size: {fs + 4}pt; font-weight: bold; color: {accent}; }}
+  .sender-addr {{ font-size: {fs - 1}pt; color: #6b7280; margin-top: 6px; }}
+  .recipient {{ text-align: right; }}
+  .rc-name {{ font-weight: bold; font-size: {fs + 1}pt; color: #111827; }}
+  .rc-prop {{ font-size: {fs - 1}pt; color: #6b7280; margin-top: 8px; }}
+  .rule {{ border: 0; border-top: 2px solid {accent}; margin: 6px 0 20px 0; }}
+  .body {{ font-size: {fs}pt; }}
+  .body h1, .body h2 {{ font-size: {fs + 6}pt; color: {accent}; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 2px 0; }}
+  .body h3 {{ font-size: {fs + 1}pt; color: {accent}; border-left: 3px solid {accent}; padding-left: 7px; margin: 16px 0 6px 0; }}
+  .body p {{ margin: 8px 0; }}
+  .body table {{ width: 100%; border-collapse: collapse; margin: 8px 0; }}
+  .body td {{ padding: 7px 10px; border-bottom: 1px solid #eef2f7; font-size: {fs}pt; }}
+  .footer {{ margin-top: 28px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 8pt; color: #9ca3af; text-align: center; }}
 </style></head><body>
-  <div class="doc-header">
-    <div class="company">{company}</div>
-    {f'<div class="company-addr">{company_addr}</div>' if company_addr else ''}
-  </div>
-  {f'<div class="recipient">{recipient}</div>' if recipient else ''}
-  <div class="doc-body">{body_html}</div>
-  {f'<div class="doc-footer">{footer}</div>' if footer else ''}
+  <table class="hdr"><tr>
+    <td style="width: 55%;">
+      {sender_brand}
+      {f'<div class="sender-addr">{company_addr}</div>' if company_addr else ''}
+    </td>
+    <td style="width: 45%;" class="recipient">
+      {recipient}
+      {f'<div class="rc-prop">{prop}</div>' if prop else ''}
+    </td>
+  </tr></table>
+  <hr class="rule"/>
+  <div class="body">{body_html}</div>
+  {f'<div class="footer">{footer}</div>' if footer else ''}
 </body></html>"""
 
 
@@ -96,6 +146,7 @@ async def render_saved_document(
     gestionnaire_id: Optional[uuid.UUID],
     variables: dict,
     recipient_lines: list[str],
+    property_address: str = "",
     layout: dict,
 ) -> Optional[str]:
     """Rend le HTML d'un document à partir du template par défaut enregistré.
@@ -113,4 +164,4 @@ async def render_saved_document(
     if not tmpl or not tmpl.content_html:
         return None
     body = substitute(tmpl.content_html, variables)
-    return _wrap(tmpl, body, recipient_lines, layout)
+    return _wrap(tmpl, body, recipient_lines, property_address, layout)

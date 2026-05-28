@@ -542,7 +542,9 @@ async def download_quittance(
     }
     custom = await render_saved_document(
         db, template_type="quittance", gestionnaire_id=_gid,
-        variables=variables, recipient_lines=names[1:], layout=layout,
+        variables=variables, recipient_lines=names,
+        property_address=_prop_obj.full_address if _prop_obj else "",
+        layout=layout,
     )
     if custom:
         pdf_bytes = html_to_pdf(custom)

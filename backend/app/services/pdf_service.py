@@ -141,7 +141,9 @@ class AvisEcheancePDFService:
         custom = await render_saved_document(
             db, template_type="avis_echeance",
             gestionnaire_id=getattr(_lease_rel, "created_by", None),
-            variables=variables, recipient_lines=names[1:], layout=layout,
+            variables=variables, recipient_lines=names,
+            property_address=property_obj.full_address if property_obj else "",
+            layout=layout,
         )
         if custom:
             return html_to_pdf(custom)
