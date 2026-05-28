@@ -306,6 +306,9 @@ class PaymentService:
             status=p.status,
             quittance_generated_at=p.quittance_generated_at,
             quittance_sent_at=p.quittance_sent_at,
+            declared_at=p.declared_at,
+            declared_method=p.declared_method,
+            declared_amount=float(p.declared_amount) if p.declared_amount is not None else None,
         )
 
     @staticmethod

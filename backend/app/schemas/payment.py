@@ -82,6 +82,9 @@ class PaymentListItem(BaseModel):
     status: PaymentStatus
     quittance_generated_at: Optional[datetime] = None
     quittance_sent_at: Optional[datetime] = None
+    declared_at: Optional[datetime] = None
+    declared_method: Optional[str] = None
+    declared_amount: Optional[float] = None
 
 
 class PaymentListResponse(BaseModel):

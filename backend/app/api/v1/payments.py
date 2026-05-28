@@ -139,37 +139,59 @@ async def locataire_declare_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """Le locataire déclare avoir payé son loyer (virement/espèces).
+    On marque le paiement comme « déclaré, à valider » et on notifie le gestionnaire,
+    qui devra valider le règlement pour qu'il soit enregistré."""
+    from datetime import datetime as _dt, timezone as _tz
     from sqlalchemy import select
     from app.models.tenant import Tenant
     from app.models.notification import Notification, NotificationType, NotificationPriority
-    from app.schemas.notification import NotificationCreate
-    from app.services.notification_service import NotificationService
+    from app.core.exceptions import BadRequestException, NotFoundException
 
     tenant_res = await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
     tenant = tenant_res.scalar_one_or_none()
     if not tenant:
-        from app.core.exceptions import BadRequestException
         raise BadRequestException("Profil locataire introuvable")
 
     method_labels = {
-        "carte": "Carte bancaire",
         "virement": "Virement bancaire",
-        "prelevement": "Prélèvement automatique",
-        "cheque": "Chèque",
         "especes": "Espèces",
     }
     method = data.get("method", "virement")
-    amount = data.get("amount", 0)
+    payment_id = data.get("payment_id")
+    if not payment_id:
+        raise BadRequestException("Paiement non précisé")
+
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    if payment.tenant_id != tenant.id:
+        raise HTTPException(status_code=403, detail="Accès non autorisé")
+    if payment.status == PaymentStatus.PAID:
+        raise BadRequestException("Ce loyer est déjà réglé")
+
+    amount = data.get("amount") or float(payment.balance)
     label = method_labels.get(method, method)
 
-    notif = NotificationCreate(
-        title=f"Déclaration de paiement — {tenant.full_name}",
-        message=f"{tenant.full_name} a déclaré un paiement de {amount} € par {label}. Veuillez valider le règlement.",
+    # Marque le paiement comme déclaré (à valider par le gestionnaire)
+    payment.declared_at = _dt.now(_tz.utc)
+    payment.declared_method = method
+    payment.declared_amount = amount
+
+    # Notifie le gestionnaire en charge du bail (created_by), liée au paiement
+    manager_id = getattr(payment.lease, "created_by", None) if payment.lease else None
+    notif = Notification(
+        title=f"Paiement à valider — {tenant.full_name}",
+        message=(
+            f"{tenant.full_name} a déclaré avoir réglé le loyer de {payment.period_label} "
+            f"({amount:.2f} € par {label}). Validez le règlement pour l'enregistrer."
+        ),
         notification_type=NotificationType.PAIEMENT_RECU,
         priority=NotificationPriority.HIGH,
-        user_id=None,
+        entity_type="payment",
+        entity_id=payment.id,
+        user_id=manager_id,
     )
-    await NotificationService.create(db, notif)
+    db.add(notif)
+    await db.flush()
     await db.commit()
     return {"status": "declared", "method": method}
 
@@ -321,6 +343,64 @@ async def record_payment(
         entity_type="payment", entity_id=payment.id,
         details={"amount_paid": float(data.amount_paid), "method": data.payment_method},
     )
+    await db.commit()
+    return await PaymentService.get_by_id(db, payment.id, load_relations=True)
+
+
+@router.post("/{payment_id}/validate-declaration", response_model=PaymentResponse)
+async def validate_declaration(
+    payment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.COMPTABLE)),
+):
+    """Valide la déclaration de paiement faite par le locataire → enregistre l'encaissement."""
+    from datetime import date as _date
+    from sqlalchemy import select as _select
+    from app.models.notification import Notification, NotificationType, NotificationPriority
+    from app.models.tenant import Tenant as _Tenant
+    from app.core.exceptions import BadRequestException
+
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    if not payment.declared_at:
+        raise BadRequestException("Aucune déclaration de paiement à valider pour ce loyer")
+
+    amount = float(payment.declared_amount) if payment.declared_amount else float(payment.balance)
+    method = payment.declared_method or "virement"
+
+    payment = await PaymentService.record_payment(
+        db, payment_id,
+        PaymentRecordIn(amount_paid=amount, payment_date=_date.today(), payment_method=method),
+    )
+    # Déclaration consommée
+    payment.declared_at = None
+    payment.declared_method = None
+    payment.declared_amount = None
+
+    # Notifie le locataire que son règlement est validé
+    tenant = (await db.execute(
+        _select(_Tenant).where(_Tenant.id == payment.tenant_id)
+    )).scalar_one_or_none()
+    if tenant and tenant.user_id:
+        db.add(Notification(
+            title="Paiement validé",
+            message=(
+                f"Votre règlement du loyer de {payment.period_label} a été validé "
+                f"par votre gestionnaire. Votre quittance est disponible."
+            ),
+            notification_type=NotificationType.PAIEMENT_RECU,
+            priority=NotificationPriority.NORMAL,
+            entity_type="payment",
+            entity_id=payment.id,
+            user_id=tenant.user_id,
+        ))
+
+    await audit_service.log(
+        db, action=audit_service.PAYMENT_RECORD,
+        user_id=current_user.id, user_email=current_user.email,
+        entity_type="payment", entity_id=payment.id,
+        details={"amount_paid": amount, "method": method, "validated_declaration": True},
+    )
+    await db.flush()
     await db.commit()
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
 

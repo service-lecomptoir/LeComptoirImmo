@@ -31,6 +31,7 @@ export default function PaymentList() {
 
   const [sendingQuittanceId, setSendingQuittanceId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [validatingId, setValidatingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')
 
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<RecordForm>({
@@ -111,6 +112,23 @@ export default function PaymentList() {
       setSendingQuittanceId(null)
     }
   }
+
+  const handleValidateDeclaration = async (p: PaymentListItem) => {
+    setValidatingId(p.id)
+    try {
+      await paymentsApi.validateDeclaration(p.id)
+      setSuccessMsg(`Paiement validé — ${p.tenant_full_name} (${p.period_label})`)
+      setTimeout(() => setSuccessMsg(''), 4000)
+      fetchPayments(search, filterStatus, filterYear, filterMonth)
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors de la validation')
+    } finally {
+      setValidatingId(null)
+    }
+  }
+
+  const declaredMethodLabel = (m?: string | null) =>
+    m === 'especes' ? 'Espèces' : m === 'virement' ? 'Virement' : (m ?? '')
 
   const fmtEuro = (n: number) =>
     n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
@@ -236,6 +254,11 @@ export default function PaymentList() {
                       variant={PAYMENT_STATUS_VARIANTS[p.status]}
                       dot
                     />
+                    {p.declared_at && p.status !== 'paid' && (
+                      <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
+                        Déclaré · {declaredMethodLabel(p.declared_method)}
+                      </div>
+                    )}
                   </td>
 
                   {/* Colonne quittance */}
@@ -290,6 +313,19 @@ export default function PaymentList() {
                   {/* Actions */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
+                      {p.declared_at && ['pending', 'partial', 'late'].includes(p.status) && (
+                        <button
+                          onClick={() => handleValidateDeclaration(p)}
+                          disabled={validatingId === p.id}
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                          title={`Valider le règlement déclaré par le locataire (${declaredMethodLabel(p.declared_method)})`}
+                        >
+                          {validatingId === p.id
+                            ? <RefreshCw size={12} className="animate-spin" />
+                            : <CheckCircle2 size={12} />}
+                          Valider
+                        </button>
+                      )}
                       {['pending', 'partial', 'late'].includes(p.status) && (
                         <button
                           onClick={() => { setRecordingId(p.id); reset({ payment_date: format(today, 'yyyy-MM-dd'), payment_method: 'virement' }) }}

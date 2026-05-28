@@ -81,6 +81,13 @@ class Payment(Base, TimestampMixin):
     )
     notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
 
+    # ── Déclaration de paiement par le locataire (à valider par le gestionnaire) ─
+    declared_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    declared_method: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    declared_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
+
     # ── Quittance ─────────────────────────────────────────────────────────────
     quittance_generated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

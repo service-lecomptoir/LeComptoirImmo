@@ -35,6 +35,9 @@ export const paymentsApi = {
   cancel: (id: string) =>
     apiClient.post<Payment>(`/payments/${id}/cancel`),
 
+  validateDeclaration: (id: string) =>
+    apiClient.post<Payment>(`/payments/${id}/validate-declaration`),
+
   delete: (id: string) =>
     apiClient.delete(`/payments/${id}`),
 
