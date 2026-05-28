@@ -69,8 +69,14 @@ async def lettre_relance(
     html = render_template("lettre_relance.html.j2", ctx)
     pdf = html_to_pdf(html)
 
-    tenant_name = payment.tenant.full_name.replace(" ", "_") if payment.tenant else str(payment_id)
-    filename = f"relance_{tenant_name}_{payment.period_year}_{payment.period_month:02d}.pdf"
+    from app.utils.filename import doc_filename
+    filename = doc_filename(
+        "relance",
+        tenant=payment.tenant.full_name if payment.tenant else None,
+        property_name=property_obj.name if property_obj else None,
+        month=payment.period_month,
+        year=payment.period_year,
+    )
     return Response(
         content=pdf,
         media_type="application/pdf",
@@ -114,8 +120,13 @@ async def attestation_caf(
     html = render_template("attestation_caf.html.j2", ctx)
     pdf = html_to_pdf(html)
 
-    tenant_name = tenant.full_name.replace(" ", "_") if tenant else str(lease_id)
-    filename = f"attestation_caf_{tenant_name}_{today.year}.pdf"
+    from app.utils.filename import doc_filename
+    filename = doc_filename(
+        "attestation_caf",
+        tenant=tenant.full_name if tenant else None,
+        property_name=prop.name if prop else None,
+        year=today.year,
+    )
     return Response(
         content=pdf,
         media_type="application/pdf",

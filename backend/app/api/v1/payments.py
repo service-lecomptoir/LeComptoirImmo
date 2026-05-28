@@ -404,10 +404,17 @@ async def download_quittance(
     })
     pdf_bytes = html_to_pdf(html)
 
-    tenant_name = (
-        payment.tenant.full_name.replace(" ", "_") if payment.tenant else str(payment_id)
+    from app.utils.filename import doc_filename
+    _prop = (payment.lease.parent_property.name
+             if getattr(payment, "lease", None) and getattr(payment.lease, "parent_property", None)
+             else None)
+    filename = doc_filename(
+        "quittance",
+        tenant=payment.tenant.full_name if payment.tenant else None,
+        property_name=_prop,
+        month=payment.period_month,
+        year=payment.period_year,
     )
-    filename = f"quittance_{tenant_name}_{payment.period_year}_{payment.period_month:02d}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

@@ -198,12 +198,13 @@ async def download_lease_pdf(
             raise HTTPException(status_code=403, detail="Accès non autorisé")
 
     pdf_bytes = generate_lease_pdf(lease)
-    tenant_name = (
-        lease.tenant.full_name.replace(" ", "_")
-        if lease.tenant
-        else str(lease_id)
+    from app.utils.filename import doc_filename
+    _prop = lease.parent_property.name if getattr(lease, "parent_property", None) else None
+    filename = doc_filename(
+        "bail",
+        tenant=lease.tenant.full_name if lease.tenant else None,
+        property_name=_prop,
     )
-    filename = f"bail_{tenant_name}_{lease.start_date}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

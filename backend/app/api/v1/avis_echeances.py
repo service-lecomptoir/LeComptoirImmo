@@ -391,9 +391,17 @@ async def download_pdf(
     from fastapi.responses import Response
 
     pdf_bytes = await AvisEcheancePDFService.generate(db, avis)
-    months = ["", "janvier", "février", "mars", "avril", "mai", "juin",
-              "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
-    filename = f"avis-echeance-{months[avis.period_month]}-{avis.period_year}.pdf"
+    from app.utils.filename import doc_filename
+    _prop = (avis.lease.parent_property.name
+             if getattr(avis, "lease", None) and getattr(avis.lease, "parent_property", None)
+             else None)
+    filename = doc_filename(
+        "avis_echeance",
+        tenant=avis.tenant.full_name if avis.tenant else None,
+        property_name=_prop,
+        month=avis.period_month,
+        year=avis.period_year,
+    )
 
     return Response(
         content=pdf_bytes,
