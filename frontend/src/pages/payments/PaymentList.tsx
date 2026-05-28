@@ -127,6 +127,21 @@ export default function PaymentList() {
     }
   }
 
+  const handleRefuseDeclaration = async (p: PaymentListItem) => {
+    if (!confirm(`Refuser la déclaration de paiement de ${p.tenant_full_name} — ${p.period_label} ?\nLe locataire en sera informé.`)) return
+    setValidatingId(p.id)
+    try {
+      await paymentsApi.refuseDeclaration(p.id)
+      setSuccessMsg(`Déclaration refusée — ${p.tenant_full_name} (${p.period_label})`)
+      setTimeout(() => setSuccessMsg(''), 4000)
+      fetchPayments(search, filterStatus, filterYear, filterMonth)
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors du refus')
+    } finally {
+      setValidatingId(null)
+    }
+  }
+
   const declaredMethodLabel = (m?: string | null) =>
     m === 'especes' ? 'Espèces' : m === 'virement' ? 'Virement' : (m ?? '')
 
@@ -245,8 +260,14 @@ export default function PaymentList() {
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(p.amount_due)}</td>
                   <td className="px-4 py-3 text-sm text-right text-green-700">{fmtEuro(p.amount_paid)}</td>
-                  <td className={`px-4 py-3 text-sm text-right font-semibold ${p.balance > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                    {p.balance > 0 ? fmtEuro(p.balance) : ''}
+                  <td className="px-4 py-3 text-sm text-right font-semibold">
+                    {p.balance > 0 ? (
+                      <span className="text-red-600">{fmtEuro(p.balance)}</span>
+                    ) : p.amount_paid > p.amount_due ? (
+                      <span className="text-green-600" title="Trop-perçu (avance)">+{fmtEuro(p.amount_paid - p.amount_due)}</span>
+                    ) : (
+                      <span className="text-gray-400"></span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge
@@ -257,6 +278,7 @@ export default function PaymentList() {
                     {p.declared_at && p.status !== 'paid' && (
                       <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
                         Déclaré · {declaredMethodLabel(p.declared_method)}
+                        {p.declared_amount != null && ` · ${fmtEuro(p.declared_amount)}`}
                       </div>
                     )}
                   </td>
@@ -314,17 +336,27 @@ export default function PaymentList() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
                       {p.declared_at && ['pending', 'partial', 'late'].includes(p.status) && (
-                        <button
-                          onClick={() => handleValidateDeclaration(p)}
-                          disabled={validatingId === p.id}
-                          className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                          title={`Valider le règlement déclaré par le locataire (${declaredMethodLabel(p.declared_method)})`}
-                        >
-                          {validatingId === p.id
-                            ? <RefreshCw size={12} className="animate-spin" />
-                            : <CheckCircle2 size={12} />}
-                          Valider
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleValidateDeclaration(p)}
+                            disabled={validatingId === p.id}
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                            title={`Valider le règlement déclaré par le locataire (${declaredMethodLabel(p.declared_method)})`}
+                          >
+                            {validatingId === p.id
+                              ? <RefreshCw size={12} className="animate-spin" />
+                              : <CheckCircle2 size={12} />}
+                            Valider
+                          </button>
+                          <button
+                            onClick={() => handleRefuseDeclaration(p)}
+                            disabled={validatingId === p.id}
+                            className="px-2 py-1 text-xs font-medium text-red-600 border border-red-200 rounded hover:bg-red-50 disabled:opacity-50"
+                            title="Refuser la déclaration de paiement"
+                          >
+                            Refuser
+                          </button>
+                        </>
                       )}
                       {['pending', 'partial', 'late'].includes(p.status) && (
                         <button

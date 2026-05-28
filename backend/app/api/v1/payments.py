@@ -405,6 +405,49 @@ async def validate_declaration(
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
 
 
+@router.post("/{payment_id}/refuse-declaration", response_model=PaymentResponse)
+async def refuse_declaration(
+    payment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.COMPTABLE)),
+):
+    """Refuse la déclaration de paiement faite par le locataire (le règlement n'est
+    pas enregistré ; le locataire est invité à reprendre contact)."""
+    from sqlalchemy import select as _select
+    from app.models.notification import Notification, NotificationType, NotificationPriority
+    from app.models.tenant import Tenant as _Tenant
+    from app.core.exceptions import BadRequestException
+
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    if not payment.declared_at:
+        raise BadRequestException("Aucune déclaration de paiement à refuser pour ce loyer")
+
+    payment.declared_at = None
+    payment.declared_method = None
+    payment.declared_amount = None
+
+    tenant = (await db.execute(
+        _select(_Tenant).where(_Tenant.id == payment.tenant_id)
+    )).scalar_one_or_none()
+    if tenant and tenant.user_id:
+        db.add(Notification(
+            title="Déclaration de paiement refusée",
+            message=(
+                f"Votre déclaration de paiement du loyer de {payment.period_label} "
+                f"n'a pas été validée par votre gestionnaire. Merci de le contacter."
+            ),
+            notification_type=NotificationType.PAIEMENT_RECU,
+            priority=NotificationPriority.HIGH,
+            entity_type="payment",
+            entity_id=payment.id,
+            user_id=tenant.user_id,
+        ))
+
+    await db.flush()
+    await db.commit()
+    return await PaymentService.get_by_id(db, payment.id, load_relations=True)
+
+
 @router.post("/{payment_id}/cancel", response_model=PaymentResponse)
 async def cancel_payment(
     payment_id: uuid.UUID,

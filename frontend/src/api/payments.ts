@@ -38,6 +38,9 @@ export const paymentsApi = {
   validateDeclaration: (id: string) =>
     apiClient.post<Payment>(`/payments/${id}/validate-declaration`),
 
+  refuseDeclaration: (id: string) =>
+    apiClient.post<Payment>(`/payments/${id}/refuse-declaration`),
+
   delete: (id: string) =>
     apiClient.delete(`/payments/${id}`),
 

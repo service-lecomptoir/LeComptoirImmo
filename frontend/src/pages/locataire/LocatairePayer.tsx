@@ -39,23 +39,28 @@ export default function LocatairePayer() {
   const [payee, setPayee] = useState<{ name?: string; address?: string; iban?: string; bic?: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [method, setMethod] = useState<string | null>(null)
+  const [amount, setAmount] = useState<number>(0)
   const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select')
   const [isSending, setIsSending] = useState(false)
 
   useEffect(() => {
     apiClient.get('/payments/locataire/current')
-      .then(r => { setPayment(r.data.payment); setPayee(r.data.payee ?? null) })
+      .then(r => {
+        setPayment(r.data.payment)
+        setPayee(r.data.payee ?? null)
+        if (r.data.payment) setAmount(Number(r.data.payment.amount_due) || 0)
+      })
       .catch(() => { })
       .finally(() => setIsLoading(false))
   }, [])
 
   const handleDeclare = async () => {
-    if (!method || !payment) return
+    if (!method || !payment || amount <= 0) return
     setIsSending(true)
     try {
       await apiClient.post('/payments/locataire/declare', {
         method,
-        amount: payment.amount_due,
+        amount,
         payment_id: payment.id,
       })
       setStep('success')
@@ -105,7 +110,7 @@ export default function LocatairePayer() {
             Votre déclaration de paiement par <strong>{selectedMethod?.label}</strong> a été transmise à votre gestionnaire.
             Il la validera dès réception du règlement.
           </p>
-          <p className="text-xs text-gray-400">Montant déclaré : <strong>{fmtEuro(payment.amount_due)}</strong></p>
+          <p className="text-xs text-gray-400">Montant déclaré : <strong>{fmtEuro(amount)}</strong></p>
         </div>
       </div>
     )
@@ -228,9 +233,37 @@ export default function LocatairePayer() {
             )
           )}
 
+          {/* Montant à régler — modifiable (partiel ou avance) */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-5">
+            <label className="text-sm font-medium text-gray-700">Montant que vous réglez</label>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="number" min="0" step="0.01"
+                value={amount}
+                onChange={e => setAmount(Number(e.target.value))}
+                className="w-44 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-500">€</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Montant dû : <strong>{fmtEuro(payment.amount_due)}</strong>. Vous pouvez régler un
+              montant différent — partiel (le solde restera dû) ou supérieur (avance en votre faveur).
+            </p>
+            {amount > 0 && amount < payment.amount_due && (
+              <p className="text-xs text-amber-600 mt-1">
+                Paiement partiel : il restera {fmtEuro(payment.amount_due - amount)} à régler.
+              </p>
+            )}
+            {amount > payment.amount_due && (
+              <p className="text-xs text-green-600 mt-1">
+                Avance : {fmtEuro(amount - payment.amount_due)} en votre faveur.
+              </p>
+            )}
+          </div>
+
           <button
             onClick={() => setStep('confirm')}
-            disabled={!method}
+            disabled={!method || !amount || amount <= 0}
             className="w-full py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
             style={{ background: '#0D2F5C' }}
           >
@@ -244,9 +277,15 @@ export default function LocatairePayer() {
           <h3 className="font-semibold text-gray-900 mb-4">Confirmer la déclaration</h3>
           <div className="space-y-3 text-sm mb-6">
             <div className="flex justify-between">
-              <span className="text-gray-500">Montant</span>
-              <span className="font-semibold text-gray-900">{fmtEuro(payment.amount_due)}</span>
+              <span className="text-gray-500">Montant déclaré</span>
+              <span className="font-semibold text-gray-900">{fmtEuro(amount)}</span>
             </div>
+            {amount !== payment.amount_due && (
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-400">Montant dû</span>
+                <span className="text-gray-400">{fmtEuro(payment.amount_due)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Période</span>
               <span className="font-medium">{MONTHS[payment.period_month]} {payment.period_year}</span>

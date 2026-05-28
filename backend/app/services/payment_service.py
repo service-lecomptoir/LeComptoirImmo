@@ -166,7 +166,9 @@ class PaymentService:
         new_total = float(payment.amount_paid) + data.amount_paid
         amount_due = float(payment.amount_due)
 
-        payment.amount_paid = min(new_total, amount_due)
+        # Pas de plafonnement : un locataire peut régler plus que le dû (avance →
+        # trop-perçu) ou moins (paiement partiel).
+        payment.amount_paid = new_total
         payment.payment_date = data.payment_date
         if data.payment_method:
             payment.payment_method = data.payment_method
