@@ -129,7 +129,7 @@ export default function Dashboard() {
     stats.alerts.overdue_payments > 0 || stats.alerts.leases_expiring_90d > 0
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>

@@ -102,7 +102,7 @@ export default function MonProfil() {
   const lbl = 'block text-xs font-medium text-gray-600 mb-1'
 
   return (
-    <div className="max-w-2xl p-6">
+    <div className="max-w-2xl p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Mes informations</h1>
         <p className="text-gray-500 text-sm mt-1">

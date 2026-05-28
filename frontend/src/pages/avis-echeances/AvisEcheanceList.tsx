@@ -541,9 +541,9 @@ export default function AvisEcheanceList() {
   const years = Array.from({ length: 6 }, (_, i) => now.getFullYear() - 2 + i)
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Avis d'échéances</h1>
           <p className="text-gray-500 text-sm mt-1">Appels de loyer mensuels</p>

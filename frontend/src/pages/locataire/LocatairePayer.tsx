@@ -133,7 +133,7 @@ export default function LocatairePayer() {
   }
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-4 sm:p-6 max-w-2xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Payer mon loyer</h1>
         <p className="text-gray-500 text-sm mt-1">Choisissez votre mode de règlement</p>

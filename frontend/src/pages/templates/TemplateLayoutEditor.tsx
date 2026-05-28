@@ -311,13 +311,13 @@ export default function TemplateLayoutEditor() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       {/* ── En-tête ── */}
       <button onClick={() => navigate('/templates')}
         className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors mb-3">
         <ArrowLeft size={16} /> Retour aux templates
       </button>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Mise en page des documents</h1>
           <p className="text-sm text-gray-500 mt-0.5">

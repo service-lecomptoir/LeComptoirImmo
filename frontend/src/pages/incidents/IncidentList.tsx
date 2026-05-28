@@ -509,7 +509,7 @@ export default function IncidentList({
   const [activeTab, setActiveTab] = useState<'tickets' | 'messages'>('tickets')
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
         <p className="text-gray-500 text-sm mt-1">{subtitle}</p>

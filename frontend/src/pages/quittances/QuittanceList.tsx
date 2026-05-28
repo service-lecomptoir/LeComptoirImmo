@@ -114,9 +114,9 @@ export default function QuittanceList() {
   const unsentCount = payments.length - sentCount
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* En-tête */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Quittances de loyer</h1>
           <p className="text-sm text-gray-500 mt-0.5">

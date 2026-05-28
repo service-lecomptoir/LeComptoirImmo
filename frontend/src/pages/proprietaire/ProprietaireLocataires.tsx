@@ -14,7 +14,7 @@ export default function ProprietaireLocataires() {
   }, [])
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Mes locataires</h1>
         <p className="text-gray-500 text-sm mt-1">Locataires en cours sur vos biens</p>
