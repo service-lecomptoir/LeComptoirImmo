@@ -102,6 +102,15 @@ class UserService:
         await db.flush()
 
     @staticmethod
+    async def admin_set_password(
+        db: AsyncSession, user_id: uuid.UUID, new_password: str
+    ) -> None:
+        """Réinitialise le mot de passe sans vérifier l'ancien (action gestionnaire/admin)."""
+        user = await UserService.get_by_id(db, user_id)
+        user.hashed_password = hash_password(new_password)
+        await db.flush()
+
+    @staticmethod
     async def delete(db: AsyncSession, user_id: uuid.UUID) -> None:
         user = await UserService.get_by_id(db, user_id)
         await db.delete(user)

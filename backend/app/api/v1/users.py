@@ -11,7 +11,7 @@ from app.api.v1._isolation import gp_tenant_ids as _isolation_gp_tenant_ids
 from app.models.user import User
 from app.schemas.user import (
     UserCreate, UserUpdate, UserRoleUpdate,
-    UserPasswordUpdate, UserResponse
+    UserPasswordUpdate, AdminPasswordReset, UserResponse
 )
 from app.services.user_service import UserService
 
@@ -223,3 +223,29 @@ async def delete_user(
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         await _require_gp_scope(db, current_user, user_id)
     await UserService.delete(db, user_id)
+
+
+@router.patch("/{user_id}/password", status_code=204, summary="Réinitialiser le mot de passe d'un utilisateur")
+async def admin_reset_password(
+    user_id: uuid.UUID,
+    data: AdminPasswordReset,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_admin),
+):
+    """Permet à un gestionnaire/admin de définir un nouveau mot de passe pour un
+    utilisateur (ex. locataire), sans connaître l'ancien — comme le ferait le locataire
+    depuis son profil. Respecte l'isolation :
+    - GP : uniquement les comptes qu'il gère (ses locataires / comptes créés) ;
+    - mandataire : uniquement propriétaires et locataires ;
+    - admin : tout le monde."""
+    role = Role(current_user.role)
+    target = await UserService.get_by_id(db, user_id)
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        await _require_gp_scope(db, current_user, user_id)
+    elif role == Role.GESTIONNAIRE:
+        if Role(target.role) not in _GESTIONNAIRE_ALLOWED_ROLES:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Un gestionnaire ne peut réinitialiser que les comptes propriétaire ou locataire.",
+            )
+    await UserService.admin_set_password(db, user_id, data.new_password)

@@ -52,6 +52,19 @@ class UserPasswordUpdate(BaseModel):
         return v
 
 
+class AdminPasswordReset(BaseModel):
+    """Réinitialisation du mot de passe d'un utilisateur par un gestionnaire/admin
+    (sans connaître l'ancien mot de passe)."""
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Le mot de passe doit contenir au moins 8 caractères")
+        return v
+
+
 class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
