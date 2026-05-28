@@ -242,9 +242,11 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               disabled={isEdit}
             >
               <option value="">— Sélectionner un bien —</option>
-              {properties.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
+              {properties
+                .filter(p => isEdit || !p.is_occupied)
+                .map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
             </select>
             {errors.property_id && <p className={err}>{errors.property_id.message}</p>}
           </div>
