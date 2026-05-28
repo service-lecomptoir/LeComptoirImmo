@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
@@ -53,14 +53,17 @@ function AppLayout() {
   const { isAuthenticated, user } = useAuthStore()
   const location = useLocation()
   const mainRef = useRef<HTMLElement>(null)
+  const [navOpen, setNavOpen] = useState(false)
 
   // À chaque changement de page, on repositionne en haut. Le scroll réel est porté
   // par la fenêtre (conteneur en min-h-screen, pas de hauteur bornée) → window.scrollTo ;
   // on remet aussi <main> à 0 au cas où il deviendrait le conteneur scrollable.
+  // On referme aussi le menu mobile à chaque navigation.
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0 })
     document.documentElement.scrollTop = 0
     mainRef.current?.scrollTo({ top: 0, left: 0 })
+    setNavOpen(false)
   }, [location.pathname])
 
   // Vérification auth AVANT tout rendu de layout — élimine le flash de la sidebar
@@ -70,9 +73,9 @@ function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar mobileOpen={navOpen} onClose={() => setNavOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header />
+        <Header onMenuClick={() => setNavOpen(true)} />
         <main ref={mainRef} className="flex-1 overflow-auto">
           <Outlet />
         </main>

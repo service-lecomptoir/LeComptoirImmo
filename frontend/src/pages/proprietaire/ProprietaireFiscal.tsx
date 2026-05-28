@@ -116,7 +116,7 @@ export default function ProprietaireFiscal() {
             </div>
 
             {/* Résumé fiscal */}
-            <div className="grid grid-cols-3 gap-4 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
               <div className="bg-blue-50 rounded-lg p-3 text-center">
                 <p className="text-xl font-bold text-blue-700">{fmtEur(data.total_gross_revenue)}</p>
                 <p className="text-xs text-blue-600 mt-0.5">Revenus bruts</p>
@@ -254,7 +254,8 @@ export default function ProprietaireFiscal() {
               {data.properties.length === 0 ? (
                   <p className="p-5 text-sm text-gray-400 text-center">Aucun bien rattaché</p>
                 ) : (
-                  <table className="w-full text-sm">
+                  <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-sm">
                     <thead className="bg-gray-50 border-b">
                       <tr>
                         <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Bien</th>
@@ -285,6 +286,7 @@ export default function ProprietaireFiscal() {
                       </tr>
                     </tfoot>
                   </table>
+                  </div>
                 )}
             </div>
           </div>

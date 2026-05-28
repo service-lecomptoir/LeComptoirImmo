@@ -96,7 +96,8 @@ export default function OwnerList() {
             <p className="text-sm">{search ? 'Aucun résultat' : 'Aucun propriétaire enregistré'}</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nom</th>
@@ -146,6 +147,7 @@ export default function OwnerList() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

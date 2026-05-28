@@ -81,7 +81,7 @@ function InspectionForm({ leaseId, propertyId, onSaved, onCancel }: {
     <div className="mt-4 p-4 border border-blue-200 rounded-xl bg-blue-50 space-y-3">
       <p className="text-sm font-semibold text-blue-700">Nouvel état des lieux</p>
       {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className={lbl}>Type</label>
           <select value={form.inspection_type} onChange={e => set('inspection_type', e.target.value)} className={inp}>

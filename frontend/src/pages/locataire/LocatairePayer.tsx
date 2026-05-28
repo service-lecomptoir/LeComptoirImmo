@@ -156,7 +156,7 @@ export default function LocatairePayer() {
           </span>
         </div>
         {payment.amount_due !== payment.amount_rent && (
-          <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-2 gap-2 text-sm text-gray-600">
+          <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
             <span>Loyer nu</span>
             <span className="text-right font-medium">{fmtEuro(payment.amount_rent)}</span>
             {payment.amount_charges > 0 && <>

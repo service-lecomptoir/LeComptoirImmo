@@ -185,7 +185,8 @@ export default function PaymentList() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-gray-100">
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Locataire</th>
@@ -328,6 +329,7 @@ export default function PaymentList() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Modal saisie paiement */}

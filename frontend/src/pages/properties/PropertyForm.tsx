@@ -241,7 +241,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
     >
       <form className="space-y-5">
         {/* Identification */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className={lbl}>Nom du bien <span className="text-red-500">*</span></label>
             <input {...register('name')} className={inp} placeholder="ex. Résidence Les Acacias, Appt 3B..." />
@@ -267,7 +267,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
               <input {...register('address')} className={inp} placeholder="10 rue de la Paix" />
               {errors.address && <p className={err}>{errors.address.message}</p>}
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <label className={lbl}>Code postal <span className="text-red-500">*</span></label>
                 <input {...register('zip_code')} className={inp} />
@@ -289,7 +289,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
         {/* Caractéristiques du bien */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Caractéristiques</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className={lbl}>Type (nombre de pièces)</label>
               <select {...register('typology')} className={inp}>

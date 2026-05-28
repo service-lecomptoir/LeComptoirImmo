@@ -102,7 +102,7 @@ export default function TenantDetail() {
         {/* Identité */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Identité</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Civilité" value={tenant.civility ? CIVILITY_LABELS[tenant.civility] : null} />
             <Field label="Prénom" value={tenant.first_name} />
             <Field label="Nom" value={tenant.last_name} />
@@ -115,7 +115,7 @@ export default function TenantDetail() {
         {/* Contact */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Contact</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" value={tenant.email} full />
             <Field label="Téléphone" value={tenant.phone} />
             <Field label="Téléphone 2" value={tenant.phone2} />
@@ -125,7 +125,7 @@ export default function TenantDetail() {
         {/* Situation professionnelle */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Situation professionnelle</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Employeur" value={tenant.employer} />
             <Field label="Tél. employeur" value={tenant.employer_phone} />
             <Field label="Revenu mensuel" value={income} />

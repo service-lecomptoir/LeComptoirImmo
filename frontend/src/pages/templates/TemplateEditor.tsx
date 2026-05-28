@@ -414,7 +414,7 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
                   onChange={e => set('company_name', e.target.value)} placeholder="Nom de la société" />
                 <input className={inp} value={form.company_address}
                   onChange={e => set('company_address', e.target.value)} placeholder="Adresse" />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input className={inp} value={form.company_phone}
                     onChange={e => set('company_phone', e.target.value)} placeholder="Téléphone" />
                   <input className={inp} value={form.company_email}

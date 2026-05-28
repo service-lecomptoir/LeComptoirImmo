@@ -126,7 +126,7 @@ export default function PropertyDetail() {
       {(property.owner_name || property.owner_email || property.owner_phone) && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-3">Propriétaire</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {property.owner_name && (
               <div>
                 <p className="text-xs text-gray-500">Nom</p>

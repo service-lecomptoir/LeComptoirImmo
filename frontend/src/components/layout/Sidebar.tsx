@@ -217,7 +217,12 @@ function SidebarInfoBlock({ line1, address, personName, refCode }: SidebarInfoBl
 
 // ── Composant Sidebar ─────────────────────────────────────────────────────────
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean
+  onClose?: () => void
+}
+
+export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const { user } = useAuthStore()
   const isLocataire = user?.role === 'locataire'
   const isProprietaire = user?.role === 'proprietaire'
@@ -321,8 +326,25 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 min-h-screen bg-gray-900 flex flex-col no-print">
-      {renderHeader()}
+    <>
+      {/* Voile mobile : ferme le menu au clic en dehors */}
+      {mobileOpen && (
+        <div
+          onClick={onClose}
+          aria-hidden="true"
+          className="fixed inset-0 bg-black/50 z-30 md:hidden no-print"
+        />
+      )}
+
+      <aside
+        className={clsx(
+          'w-64 bg-gray-900 flex flex-col no-print z-40',
+          'fixed inset-y-0 left-0 transition-transform duration-200 ease-in-out',
+          'md:static md:min-h-screen md:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        )}
+      >
+        {renderHeader()}
 
       {/* ── Navigation ── */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -340,6 +362,7 @@ export function Sidebar() {
             <NavLink
               key={to}
               to={to}
+              onClick={onClose}
               end={to === '/proprietaire' || to === '/locataire'}
               className={({ isActive }) =>
                 clsx(
@@ -356,6 +379,7 @@ export function Sidebar() {
           )
         })}
       </nav>
-    </aside>
+      </aside>
+    </>
   )
 }

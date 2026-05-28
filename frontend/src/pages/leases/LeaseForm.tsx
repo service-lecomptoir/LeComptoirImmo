@@ -79,13 +79,13 @@ function CreateTenantPanel({ onCreated, onCancel }: CreateTenantPanelProps) {
         </button>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Prénom *"
           className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" />
         <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Nom *"
           className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" />
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
           className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" />
         <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Téléphone"
@@ -316,7 +316,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
         {/* ── Type et dates ── */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contrat</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className={lbl}>Type de bail <span className="text-red-500">*</span></label>
               <select {...register('lease_type')} className={inp}>
@@ -341,7 +341,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
         {/* ── Finances ── */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Finances</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className={lbl}>Loyer HC (€) <span className="text-red-500">*</span></label>
               <input type="number" step="0.01" min="0" {...register('rent_amount')} className={inp} placeholder="0.00" />
@@ -356,7 +356,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               <input type="number" step="0.01" min="0" {...register('deposit_amount')} className={inp} placeholder="0.00" />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
             <div>
               <label className={lbl}>Jour de paiement</label>
               <input type="number" min="1" max="28" {...register('payment_day')} className={inp} />
@@ -412,7 +412,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
             </label>
           </div>
           {hasGuarantor && (
-            <div className="grid grid-cols-2 gap-3 pl-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-6">
               <div>
                 <label className={lbl}>Nom du garant</label>
                 <input {...register('guarantor_name')} className={inp} />

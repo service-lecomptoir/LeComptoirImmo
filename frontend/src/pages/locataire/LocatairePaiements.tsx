@@ -53,7 +53,8 @@ export default function LocatairePaiements() {
             <p className="text-sm">Aucun paiement enregistré</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Période</th>
@@ -108,6 +109,7 @@ export default function LocatairePaiements() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

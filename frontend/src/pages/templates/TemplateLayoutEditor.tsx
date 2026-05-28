@@ -388,7 +388,7 @@ export default function TemplateLayoutEditor() {
         {/* ── Espacement ── */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-4">Espacement et taille de police</h2>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
             {/* Marges */}
             <div>
               <label className="text-xs text-gray-600 block mb-2">Marges de page</label>

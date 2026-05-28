@@ -155,7 +155,7 @@ function EditAvisModal({
           <span className="font-medium text-gray-700">{avis.period_label} — {avis.tenant_full_name}</span>
         </p>
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Loyer HC (€)</label>
               <input type="number" step="0.01" min="0" className={inp}
@@ -169,7 +169,7 @@ function EditAvisModal({
                 onChange={e => setForm({ ...form, amount_charges: e.target.value })} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Aide personnelle au logement (€) <span className="text-gray-400 font-normal">— vide = aucune</span></label>
               <input type="number" step="0.01" min="0" className={inp}
@@ -630,7 +630,8 @@ export default function AvisEcheanceList() {
             )}
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Période</th>
@@ -741,6 +742,7 @@ export default function AvisEcheanceList() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

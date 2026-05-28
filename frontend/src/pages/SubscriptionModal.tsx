@@ -82,7 +82,7 @@ export default function SubscriptionModal({ open, onClose }: Props) {
                 onChange={e => set('full_name', e.target.value)} />
               <input className={inp} placeholder="Email professionnel *" type="email" value={form.email}
                 onChange={e => set('email', e.target.value)} />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input className={inp} placeholder="Téléphone" value={form.phone}
                   onChange={e => set('phone', e.target.value)} />
                 <input className={inp} placeholder="Société / agence" value={form.company}

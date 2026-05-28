@@ -141,7 +141,7 @@ export default function QuittanceList() {
       )}
 
       {/* Stats rapides */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Total quittances</p>
           <p className="text-2xl font-bold text-gray-900">{payments.length}</p>
@@ -202,7 +202,8 @@ export default function QuittanceList() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50">
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Locataire</th>
@@ -320,6 +321,7 @@ export default function QuittanceList() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Légende */}

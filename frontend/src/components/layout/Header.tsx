@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, ChevronDown } from 'lucide-react'
+import { Bell, User, LogOut, ChevronDown, Menu } from 'lucide-react'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
@@ -8,7 +8,11 @@ const POLL_INTERVAL_MS = 30_000 // 30 secondes
 
 // ── Header principal ──────────────────────────────────────────────────────────
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -63,8 +67,15 @@ export function Header() {
   const initials = user?.full_name?.charAt(0).toUpperCase() ?? '?'
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 px-6 flex items-center justify-between no-print">
-      <div />
+    <header className="h-14 bg-white border-b border-gray-200 px-4 sm:px-6 flex items-center justify-between gap-2 no-print">
+      <button
+        onClick={onMenuClick}
+        className="md:hidden -ml-1 p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+        aria-label="Ouvrir le menu"
+      >
+        <Menu size={20} />
+      </button>
+      <div className="flex-1" />
       <div className="flex items-center gap-3">
         {/* Notifications */}
         <button

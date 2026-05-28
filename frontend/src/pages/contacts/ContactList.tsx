@@ -122,7 +122,7 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
               <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.first_name}
@@ -151,7 +151,7 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input type="email" className="w-full border rounded-lg px-3 py-2 text-sm" value={form.email}
@@ -170,7 +170,7 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
               onChange={e => setForm({ ...form, address: e.target.value })} />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Code postal</label>
               <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.zip_code}
@@ -183,7 +183,7 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
               <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.siret}

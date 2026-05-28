@@ -120,7 +120,7 @@ export default function ProprietaireBiens() {
 
       {/* ── Résumé global ── */}
       {!isLoading && perfData && perfData.total_theoretical > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
               Théorique {year}
@@ -207,7 +207,7 @@ export default function ProprietaireBiens() {
 
                   {/* ── KPIs performance ── */}
                   {perf ? (
-                    <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
                       <div>
                         <p className="text-xs text-gray-400 mb-0.5">Théorique {year}</p>
                         <p className="text-xl font-bold text-gray-700">{fmtEuro(perf.ytd_theoretical)}</p>
@@ -246,7 +246,7 @@ export default function ProprietaireBiens() {
                       Détail mensuel — {year}
                     </p>
                     <div className="overflow-x-auto">
-                      <table className="w-full">
+                      <table className="w-full min-w-[640px]">
                         <thead>
                           <tr className="text-xs text-gray-400 border-b border-gray-200">
                             <th className="text-left pb-2 font-medium">Mois</th>

@@ -106,7 +106,7 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Type d'automatisation</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {RULE_TYPES.map(t => {
                 const Icon = t.icon
                 return (
@@ -414,7 +414,7 @@ export default function Automatisation() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
@@ -545,7 +545,8 @@ export default function Automatisation() {
           {logs.length === 0 ? (
             <div className="text-center py-12 text-gray-400">Aucun envoi enregistré</div>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Date</th>
@@ -583,6 +584,7 @@ export default function Automatisation() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}
@@ -602,7 +604,7 @@ export default function Automatisation() {
               à l'heure configurée. Seuls les baux sans avis existant pour la période sont traités.
             </p>
 
-            <div className="grid grid-cols-3 gap-4 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Jour du mois</label>
                 <select

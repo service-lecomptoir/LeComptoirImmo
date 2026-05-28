@@ -102,7 +102,7 @@ export default function OwnerDetail() {
         {/* Identité */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Identité</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Civilité" value={owner.civility ? CIVILITY_LABELS[owner.civility] : null} />
             <Field label="Société / SCI" value={owner.company_name} />
             <Field label="Prénom" value={owner.first_name} />
@@ -114,7 +114,7 @@ export default function OwnerDetail() {
         {/* Contact */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Contact</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" value={owner.email} full />
             <Field label="Téléphone" value={owner.phone} />
             <Field label="Téléphone 2" value={owner.phone2} />

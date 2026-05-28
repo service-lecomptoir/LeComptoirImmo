@@ -34,7 +34,7 @@ function OfferForm({
 
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className="block text-xs font-medium text-gray-600 mb-1">Titre *</label>
           <input value={form.title} onChange={e => set('title', e.target.value)} className={inp} placeholder="ex. Assurance habitation, Dépannage plomberie…" />

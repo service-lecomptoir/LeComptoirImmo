@@ -259,7 +259,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         {/* Identité */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Identité</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
               <select {...register('civility')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -272,7 +272,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
             <TenantField label="Prénom" name="first_name" required register={register} errors={errors} />
             <TenantField label="Nom" name="last_name" required register={register} errors={errors} />
           </div>
-          <div className="grid grid-cols-3 gap-3 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
             <TenantField label="Date de naissance" name="birth_date" type="date" register={register} errors={errors} />
             <TenantField label="Lieu de naissance" name="birth_place" register={register} errors={errors} />
             <TenantField label="N° pièce d'identité" name="national_id" register={register} errors={errors} />
@@ -285,7 +285,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
           <div className="space-y-3">
             {/* Email en pleine largeur — une adresse longue reste entièrement visible */}
             <TenantField label="Email" name="email" type="email" register={register} errors={errors} />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <TenantField label="Téléphone" name="phone" register={register} errors={errors} />
               <TenantField label="Téléphone 2" name="phone2" register={register} errors={errors} />
             </div>
@@ -295,7 +295,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         {/* Situation professionnelle */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Situation professionnelle</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <TenantField label="Employeur" name="employer" register={register} errors={errors} />
             <TenantField label="Tél. employeur" name="employer_phone" register={register} errors={errors} />
             <TenantField label="Revenu mensuel (€)" name="monthly_income" type="number" register={register} errors={errors} />

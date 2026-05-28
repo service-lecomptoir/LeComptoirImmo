@@ -156,7 +156,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
         {/* Identité */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Identité</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
               <select {...register('civility')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -169,7 +169,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
             <OwnerField label="Prénom" name="first_name" register={register} errors={errors} />
             <OwnerField label="Nom" name="last_name" required register={register} errors={errors} />
           </div>
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             <OwnerField label="Société / SCI (le cas échéant)" name="company_name" placeholder="SCI Les Tilleuls" register={register} errors={errors} />
             <OwnerField label="SIRET / N° pièce" name="national_id" register={register} errors={errors} />
           </div>
@@ -178,7 +178,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
         {/* Contact */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <OwnerField label="Email" name="email" type="email" register={register} errors={errors} />
             <OwnerField label="Téléphone" name="phone" register={register} errors={errors} />
             <OwnerField label="Téléphone 2" name="phone2" register={register} errors={errors} />
@@ -192,7 +192,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Coordonnées bancaires (RIB)</h3>
           <p className="text-xs text-gray-400 mb-3">Communiquées au locataire pour le règlement du loyer.</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="col-span-3">
               <OwnerField label="Titulaire du compte" name="bank_holder" register={register} errors={errors} />
             </div>

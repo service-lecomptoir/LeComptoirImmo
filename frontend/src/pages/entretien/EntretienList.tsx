@@ -200,7 +200,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
           {showPrestForm && !readOnly && (
             <div className="bg-white rounded-xl border border-gray-200 p-5 mb-5">
               <h3 className="font-semibold text-gray-900 mb-4">Nouveau prestataire</h3>
-              <form onSubmit={handleCreatePrest} className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleCreatePrest} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-600 mb-1">Nom *</label>
                   <input value={prestForm.name} onChange={e => setPrestForm(p => ({ ...p, name: e.target.value }))}
@@ -240,7 +240,8 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
             {prestataires.length === 0 ? (
               <div className="py-12 text-center text-gray-400 text-sm">Aucun prestataire</div>
             ) : (
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     {['Nom', 'Spécialité', 'Téléphone', 'Email', 'Statut'].map(h => (
@@ -264,6 +265,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>
@@ -276,7 +278,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                 <h3 className="font-semibold text-gray-900">{editId ? 'Modifier l\'entretien' : 'Nouvel entretien'}</h3>
                 <button onClick={() => { setShowForm(false); setEditId(null) }}><X size={18} className="text-gray-400" /></button>
               </div>
-              <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-gray-600 mb-1">Titre *</label>
                   <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -372,7 +374,8 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                 <p className="text-sm text-gray-400">Aucun entretien planifié</p>
               </div>
             ) : (
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     {['Titre', 'Type', 'Date', 'Prestataire', 'Coût', 'Statut', ...(readOnly ? [] : [''])].map(h => (
@@ -416,6 +419,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                   })}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
 

@@ -300,7 +300,8 @@ export default function AdminUsers() {
             <p className="text-lg font-medium">Aucun utilisateur</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Nom</th>
@@ -373,6 +374,7 @@ export default function AdminUsers() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
