@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CreditCard, Building2, RefreshCw, FileText, Banknote, CheckCircle, AlertCircle } from 'lucide-react'
+import { Building2, Banknote, CheckCircle, AlertCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -9,32 +9,11 @@ const fmtEuro = (n: number) =>
 
 const METHODS = [
   {
-    id: 'carte',
-    icon: CreditCard,
-    label: 'Carte bancaire',
-    desc: 'Visa, Mastercard, CB',
-    color: '#2563EB',
-  },
-  {
     id: 'virement',
     icon: Building2,
     label: 'Virement bancaire',
     desc: 'SEPA, délai 1-2 jours',
     color: '#059669',
-  },
-  {
-    id: 'prelevement',
-    icon: RefreshCw,
-    label: 'Prélèvement automatique',
-    desc: 'Mandat SEPA',
-    color: '#7C3AED',
-  },
-  {
-    id: 'cheque',
-    icon: FileText,
-    label: 'Chèque',
-    desc: 'À envoyer par courrier',
-    color: '#D97706',
   },
   {
     id: 'especes',
@@ -232,22 +211,6 @@ export default function LocatairePayer() {
               </div>
             )
           )}
-          {method === 'cheque' && (
-            payee?.name ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
-                <p className="font-semibold mb-1">Établissez votre chèque à l'ordre de :</p>
-                <p className="font-mono text-xs">{payee.name}</p>
-                {payee.address && (
-                  <p className="mt-2">À envoyer à : <span className="font-mono text-xs">{payee.address}</span></p>
-                )}
-              </div>
-            ) : (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
-                <p className="font-semibold mb-1">Coordonnées non disponibles</p>
-                <p>Les coordonnées de votre bailleur ne sont pas encore renseignées. Contactez votre gestionnaire pour l'ordre et l'adresse d'envoi du chèque.</p>
-              </div>
-            )
-          )}
           {method === 'especes' && (
             payee?.name ? (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-sm text-red-800">
@@ -263,18 +226,6 @@ export default function LocatairePayer() {
                 <p>Les coordonnées de votre bailleur ne sont pas encore renseignées. Contactez votre gestionnaire.</p>
               </div>
             )
-          )}
-          {method === 'carte' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 text-sm text-blue-800">
-              <p className="font-semibold mb-1">Paiement par carte sécurisé</p>
-              <p>En cliquant sur "Confirmer", votre gestionnaire sera notifié et vous contactera pour procéder au paiement.</p>
-            </div>
-          )}
-          {method === 'prelevement' && (
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-5 text-sm text-purple-800">
-              <p className="font-semibold mb-1">Prélèvement automatique</p>
-              <p>En confirmant, vous signalez à votre gestionnaire votre souhait de mettre en place un mandat SEPA. Il vous contactera pour la mise en place.</p>
-            </div>
           )}
 
           <button
