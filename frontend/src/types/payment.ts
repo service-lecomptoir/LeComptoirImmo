@@ -61,10 +61,13 @@ export interface PaymentListItem {
   period_year: number
   period_month: number
   due_date: string
+  amount_apl?: number | null
   amount_due: number
   amount_paid: number
   balance: number
   credit_applied?: number
+  payment_method?: string | null
+  payment_date?: string | null
   status: PaymentStatus
   quittance_generated_at?: string | null
   quittance_sent_at?: string | null

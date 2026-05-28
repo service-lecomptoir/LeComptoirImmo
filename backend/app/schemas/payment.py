@@ -81,6 +81,8 @@ class PaymentListItem(BaseModel):
     amount_paid: float
     balance: float
     credit_applied: float = 0.0
+    payment_method: Optional[str] = None
+    payment_date: Optional[date] = None
     status: PaymentStatus
     quittance_generated_at: Optional[datetime] = None
     quittance_sent_at: Optional[datetime] = None

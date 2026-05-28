@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw } from 'lucide-react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
+import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw, ChevronRight, ChevronDown } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { docFilename } from '@/utils/filename'
 import { isMultiMonth } from '@/utils/period'
@@ -32,6 +32,7 @@ export default function PaymentList() {
   const [sendingQuittanceId, setSendingQuittanceId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [validatingId, setValidatingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')
 
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<RecordForm>({
@@ -145,6 +146,28 @@ export default function PaymentList() {
   const declaredMethodLabel = (m?: string | null) =>
     m === 'especes' ? 'Espèces' : m === 'virement' ? 'Virement' : (m ?? '')
 
+  const methodLabel = (m?: string | null) => {
+    switch (m) {
+      case 'virement': return 'Virement bancaire'
+      case 'cheque': return 'Chèque'
+      case 'prelevement': return 'Prélèvement automatique'
+      case 'especes': return 'Espèces'
+      default: return m || 'Versement'
+    }
+  }
+
+  // Détail des mouvements composant le montant payé (dérivé des champs du paiement)
+  const paymentEntries = (p: PaymentListItem) => {
+    const apl = p.amount_apl ?? 0
+    const credit = p.credit_applied ?? 0
+    const versement = Math.round((p.amount_paid - apl - credit) * 100) / 100
+    const rows: { label: string; date?: string | null; amount: number }[] = []
+    if (apl > 0) rows.push({ label: 'Aide au logement (tiers-payant CAF)', amount: apl })
+    if (credit > 0) rows.push({ label: 'Avance déduite (trop-perçu antérieur)', amount: credit })
+    if (versement > 0.009) rows.push({ label: `Versement — ${methodLabel(p.payment_method)}`, date: p.payment_date, amount: versement })
+    return rows
+  }
+
   const fmtEuro = (n: number) =>
     n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
 
@@ -247,8 +270,20 @@ export default function PaymentList() {
               </tr>
             ) : (
               payments.map(p => (
-                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.tenant_full_name}</td>
+                <Fragment key={p.id}>
+                <tr className="border-b border-gray-50 hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <button
+                      onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
+                      className="inline-flex items-center gap-1.5 text-left hover:text-blue-600"
+                      title="Voir le détail des règlements"
+                    >
+                      {expandedId === p.id
+                        ? <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                        : <ChevronRight size={14} className="text-gray-400 shrink-0" />}
+                      {p.tenant_full_name}
+                    </button>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="text-sm text-gray-900">{p.property_name}</div>
                   </td>
@@ -398,6 +433,49 @@ export default function PaymentList() {
                     </div>
                   </td>
                 </tr>
+                {expandedId === p.id && (
+                  <tr className="bg-blue-50/40">
+                    <td colSpan={9} className="px-4 py-3">
+                      <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">
+                        Détail des règlements
+                      </p>
+                      {paymentEntries(p).length === 0 ? (
+                        <p className="text-sm text-gray-400">Aucun versement enregistré pour l'instant.</p>
+                      ) : (
+                        <div className="space-y-1 max-w-xl">
+                          {paymentEntries(p).map((e, i) => (
+                            <div key={i} className="flex items-center justify-between gap-4 text-sm">
+                              <span className="text-gray-700">
+                                {e.label}
+                                {e.date ? ` · ${format(new Date(e.date), 'd MMM yyyy', { locale: fr })}` : ''}
+                              </span>
+                              <span className="font-medium text-gray-900 whitespace-nowrap">{fmtEuro(e.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-2 pt-2 border-t border-gray-200 space-y-1 max-w-xl">
+                        <div className="flex items-center justify-between gap-4 text-sm">
+                          <span className="text-gray-500">Total dû</span>
+                          <span className="font-medium text-gray-900">{fmtEuro(p.amount_due)}</span>
+                        </div>
+                        {p.balance > 0 && (
+                          <div className="flex items-center justify-between gap-4 text-sm">
+                            <span className="text-red-600">Reste à payer</span>
+                            <span className="font-semibold text-red-600">{fmtEuro(p.balance)}</span>
+                          </div>
+                        )}
+                        {p.amount_paid > p.amount_due && (
+                          <div className="flex items-center justify-between gap-4 text-sm">
+                            <span className="text-green-600">Avance (trop-perçu)</span>
+                            <span className="font-semibold text-green-600">+{fmtEuro(p.amount_paid - p.amount_due)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))
             )}
           </tbody>

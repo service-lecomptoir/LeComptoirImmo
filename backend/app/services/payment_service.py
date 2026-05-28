@@ -340,6 +340,8 @@ class PaymentService:
             amount_paid=float(p.amount_paid),
             balance=p.balance,
             credit_applied=float(p.credit_applied or 0),
+            payment_method=p.payment_method,
+            payment_date=p.payment_date,
             status=p.status,
             quittance_generated_at=p.quittance_generated_at,
             quittance_sent_at=p.quittance_sent_at,
