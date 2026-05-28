@@ -4,6 +4,7 @@ import { fr } from 'date-fns/locale'
 import { Calendar, Download, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { docFilename } from '@/utils/filename'
 
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -35,7 +36,7 @@ export default function LocataireAvis() {
       .then(blob => {
         const el = document.createElement('a')
         el.href = URL.createObjectURL(blob)
-        el.download = `avis-echeance-${a.period_label.toLowerCase().replace(/ /g, '-')}.pdf`
+        el.download = docFilename('avis_echeance', { tenant: a.tenant_full_name, property: a.property_name, month: a.period_month, year: a.period_year })
         el.click()
       })
   }

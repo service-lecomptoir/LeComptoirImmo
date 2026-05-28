@@ -11,6 +11,7 @@ import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { docFilename } from '@/utils/filename'
 
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -104,7 +105,7 @@ export default function LocataireDashboard() {
             </h2>
             {lease && (
               <button
-                onClick={() => leasesApi.downloadPdf(lease.id, `bail_${lease.property_name ?? 'contrat'}.pdf`)}
+                onClick={() => leasesApi.downloadPdf(lease.id, docFilename('bail', { tenant: lease.tenant_full_name, property: lease.property_name }))}
                 className="flex items-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 transition-colors"
               >
                 <Download size={12} />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
+import { docFilename } from '@/utils/filename'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Modal } from '@/components/common/Modal'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_VARIANTS } from '@/types/payment'
@@ -89,7 +90,7 @@ export default function PaymentList() {
     try {
       await paymentsApi.downloadQuittance(
         p.id,
-        `quittance_${p.tenant_full_name.replace(/ /g, '_')}_${p.period_year}_${String(p.period_month).padStart(2, '0')}.pdf`
+        docFilename('quittance', { tenant: p.tenant_full_name, property: p.property_name, month: p.period_month, year: p.period_year })
       )
       // Rafraîchir pour mettre à jour quittance_generated_at
       fetchPayments(search, filterStatus, filterYear, filterMonth)
@@ -292,7 +293,7 @@ export default function PaymentList() {
                       )}
                       {['pending', 'partial', 'late'].includes(p.status) && (
                         <button
-                          onClick={() => lettersApi.downloadRelance(p.id, `relance_${p.tenant_full_name.replace(/ /g, '_')}_${p.period_year}_${String(p.period_month).padStart(2, '0')}.pdf`)}
+                          onClick={() => lettersApi.downloadRelance(p.id, docFilename('relance', { tenant: p.tenant_full_name, property: p.property_name, month: p.period_month, year: p.period_year }))}
                           className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-700"
                           title="Lettre de relance"
                         >

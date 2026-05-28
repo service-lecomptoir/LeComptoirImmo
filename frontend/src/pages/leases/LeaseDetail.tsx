@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/common/StatusBadge'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LeaseForm } from './LeaseForm'
 import { LEASE_TYPE_LABELS, RENT_CALL_RULE_LABELS } from '@/types/lease'
+import { docFilename } from '@/utils/filename'
 import {
   INSPECTION_TYPE_LABELS,
   CONDITION_LABELS,
@@ -186,8 +187,7 @@ export default function LeaseDetail() {
     setPdfLoading(true)
     setDownloadError(null)
     try {
-      const name = lease.tenant?.full_name.replace(/ /g, '_') ?? id
-      await leasesApi.downloadPdf(id, `bail_${name}_${lease.start_date}.pdf`)
+      await leasesApi.downloadPdf(id, docFilename('bail', { tenant: lease.tenant?.full_name, property: lease.parent_property?.name }))
     } catch {
       setDownloadError('Erreur lors de la génération du PDF bail')
     } finally {
@@ -200,8 +200,7 @@ export default function LeaseDetail() {
     setCafLoading(true)
     setDownloadError(null)
     try {
-      const name = lease.tenant?.full_name.replace(/ /g, '_') ?? id
-      await lettersApi.downloadAttestationCaf(id, `attestation_caf_${name}_${new Date().getFullYear()}.pdf`)
+      await lettersApi.downloadAttestationCaf(id, docFilename('attestation_caf', { tenant: lease.tenant?.full_name, property: lease.parent_property?.name, year: new Date().getFullYear() }))
     } catch {
       setDownloadError("Erreur lors de la génération de l'attestation CAF")
     } finally {

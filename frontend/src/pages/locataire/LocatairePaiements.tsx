@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CreditCard, Download } from 'lucide-react'
 import { paymentsApi } from '@/api/payments'
+import { docFilename } from '@/utils/filename'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -93,7 +94,7 @@ export default function LocatairePaiements() {
                         <button
                           onClick={() => paymentsApi.downloadQuittance(
                             p.id,
-                            `quittance_${p.period_year}_${String(p.period_month).padStart(2,'0')}.pdf`
+                            docFilename('quittance', { tenant: p.tenant_full_name, property: p.property_name, month: p.period_month, year: p.period_year })
                           )}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 transition-colors"
                         >

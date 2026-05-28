@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Receipt, Search, FileDown, CheckCircle2, Mail, RefreshCw, Filter } from 'lucide-react'
 import { paymentsApi } from '@/api/payments'
+import { docFilename } from '@/utils/filename'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_VARIANTS } from '@/types/payment'
 import type { PaymentListItem } from '@/types/payment'
@@ -58,7 +59,7 @@ export default function QuittanceList() {
     try {
       await paymentsApi.downloadQuittance(
         p.id,
-        `quittance_${p.tenant_full_name.replace(/ /g, '_')}_${p.period_year}_${String(p.period_month).padStart(2, '0')}.pdf`
+        docFilename('quittance', { tenant: p.tenant_full_name, property: p.property_name, month: p.period_month, year: p.period_year })
       )
       fetchPayments(search, filterYear, filterMonth)
     } finally {

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { leasesApi } from '@/api/leases'
+import { docFilename } from '@/utils/filename'
 import { useAuthStore } from '@/store/authStore'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import type { Lease } from '@/types/lease'
@@ -502,7 +503,8 @@ export default function AvisEcheanceList() {
     load()
   }
 
-  const downloadPdf = async (id: string, label: string) => {
+  const downloadPdf = async (avis: AvisEcheanceSummary) => {
+    const id = avis.id
     const token = localStorage.getItem('access_token')
     const url = avisEcheancesApi.pdfUrl(id)
     setDownloadingId(id)
@@ -517,7 +519,12 @@ export default function AvisEcheanceList() {
       const blob = await response.blob()
       const a = document.createElement('a')
       a.href = URL.createObjectURL(blob)
-      a.download = `avis-${label}.pdf`
+      a.download = docFilename('avis_echeance', {
+        tenant: avis.tenant_full_name,
+        property: avis.property_name,
+        month: avis.period_month,
+        year: avis.period_year,
+      })
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -664,7 +671,7 @@ export default function AvisEcheanceList() {
                     <div className="flex items-center justify-end gap-1">
                       {/* PDF */}
                       <button
-                        onClick={() => downloadPdf(a.id, `${a.period_label}-${a.tenant_full_name}`)}
+                        onClick={() => downloadPdf(a)}
                         title="Télécharger PDF"
                         disabled={downloadingId === a.id}
                         className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
