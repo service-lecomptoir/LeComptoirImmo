@@ -10,13 +10,13 @@
 
     .logo-name { font-size: {{ sp.font_size | int + 3 }}pt; font-weight: bold; color: #1e3a5f; border-left: 4px solid #1e3a5f; padding-left: 8px; }
     .sender-info { font-size: {{ sp.font_size | int - 1 }}pt; color: #444; padding-left: 12px; margin-top: 4px; }
-    .recipient-name { font-size: {{ sp.font_size | int + 1 }}pt; font-weight: bold; color: #111; text-align: right; white-space: nowrap; }
+    .recipient-name { font-size: {{ sp.font_size | int + 1 }}pt; font-weight: bold; color: #111; text-align: right; }
     .recipient-info { font-size: {{ sp.font_size | int - 1 }}pt; color: #444; text-align: right; }
     .city-date { font-size: {{ sp.font_size | int - 1 }}pt; color: #444; text-align: right; margin-top: 6px; }
 
     .logo-name-right { font-size: {{ sp.font_size | int + 3 }}pt; font-weight: bold; color: #1e3a5f; border-right: 4px solid #1e3a5f; padding-right: 8px; text-align: right; }
     .sender-info-right { font-size: {{ sp.font_size | int - 1 }}pt; color: #444; padding-right: 12px; margin-top: 4px; text-align: right; }
-    .recipient-name-left { font-size: {{ sp.font_size | int + 1 }}pt; font-weight: bold; color: #111; white-space: nowrap; }
+    .recipient-name-left { font-size: {{ sp.font_size | int + 1 }}pt; font-weight: bold; color: #111; }
     .recipient-info-left { font-size: {{ sp.font_size | int - 1 }}pt; color: #444; }
     .city-date-left { font-size: {{ sp.font_size | int - 1 }}pt; color: #444; margin-top: 6px; }
 
@@ -46,7 +46,7 @@
             {% if property %}{{ property.owner_name }}<br>{{ property.full_address }}{% else %}Gestion locative{% endif %}
           </div>
           {% elif block == 'recipient' %}
-          <div class="recipient-name-left">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '') }}</div>
+          {% if tenant_names_list %}{% for tn in tenant_names_list %}<div class="recipient-name-left">{{ tn }}</div>{% endfor %}{% else %}<div class="recipient-name-left">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '') }}</div>{% endif %}
           <div class="recipient-info-left">
             {% if property %}{{ property.name }}<br>{{ property.full_address }}{% endif %}
           </div>
@@ -64,7 +64,7 @@
             {% if property %}{{ property.owner_name }}<br>{{ property.full_address }}{% else %}Gestion locative{% endif %}
           </div>
           {% elif block == 'recipient' %}
-          <div class="recipient-name">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '') }}</div>
+          {% if tenant_names_list %}{% for tn in tenant_names_list %}<div class="recipient-name">{{ tn }}</div>{% endfor %}{% else %}<div class="recipient-name">{{ tenant_names if tenant_names else (avis.tenant.full_name if avis.tenant else '') }}</div>{% endif %}
           <div class="recipient-info">
             {% if property %}{{ property.name }}<br>{{ property.full_address }}{% endif %}
           </div>

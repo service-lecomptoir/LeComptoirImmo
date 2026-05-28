@@ -49,6 +49,7 @@ class PaymentResponse(BaseModel):
     amount_due: float
     amount_paid: float
     balance: float
+    credit_applied: float = 0.0
     payment_date: Optional[date] = None
     payment_method: Optional[str] = None
     status: PaymentStatus
@@ -79,6 +80,7 @@ class PaymentListItem(BaseModel):
     amount_due: float
     amount_paid: float
     balance: float
+    credit_applied: float = 0.0
     status: PaymentStatus
     quittance_generated_at: Optional[datetime] = None
     quittance_sent_at: Optional[datetime] = None

@@ -500,8 +500,8 @@ async def download_quittance(
     _d = _date.today()
     today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
 
-    # Noms de tous les co-titulaires (principal + secondaires) du bail
-    tenant_names = ""
+    # Noms de tous les locataires : principal puis co-titulaires, chacun sur sa ligne.
+    names: list[str] = []
     if getattr(payment, "lease_id", None):
         from sqlalchemy import select as _select
         from sqlalchemy.orm import selectinload as _selectinload
@@ -513,21 +513,49 @@ async def download_quittance(
         )).scalar_one_or_none()
         if _lease_obj:
             try:
-                tenant_names = _lease_obj.all_tenant_names
+                names = [t.full_name for t in _lease_obj.all_tenants]
             except Exception:
-                tenant_names = ""
-    if not tenant_names and payment.tenant:
-        tenant_names = payment.tenant.full_name
-    # Espaces insécables : co-titulaires sur la même ligne que le principal (bloc étroit)
-    tenant_names = tenant_names.replace(" ", " ")
+                names = []
+    if not names and payment.tenant:
+        names = [payment.tenant.full_name]
+    tenant_names = " & ".join(names)
+    layout = get_layout()
 
-    html = render_template("quittance.html.j2", {
-        "payment": payment,
-        "today": today_fr,
-        "tenant_names": tenant_names,
-        "layout": get_layout(),
-    })
-    pdf_bytes = html_to_pdf(html)
+    # 1) Template ENREGISTRÉ par le gestionnaire (éditeur) si présent…
+    from app.services.document_render_service import render_saved_document, eur
+    _prop_obj = (payment.lease.parent_property
+                 if getattr(payment, "lease", None) and getattr(payment.lease, "parent_property", None)
+                 else None)
+    _gid = getattr(payment.lease, "created_by", None) if getattr(payment, "lease", None) else None
+    variables = {
+        "tenant_name": " et ".join(names),
+        "company_name": "",
+        "property_name": _prop_obj.name if _prop_obj else "",
+        "unit_ref": _prop_obj.name if _prop_obj else "",
+        "property_address": _prop_obj.full_address if _prop_obj else "",
+        "amount_paid": eur(payment.amount_paid),
+        "rent_amount": eur(payment.amount_rent),
+        "charges_amount": eur(payment.amount_charges),
+        "apl_amount": eur(payment.amount_apl) if payment.amount_apl else "",
+        "month": payment.period_label,
+        "date": today_fr,
+    }
+    custom = await render_saved_document(
+        db, template_type="quittance", gestionnaire_id=_gid,
+        variables=variables, recipient_lines=names, layout=layout,
+    )
+    if custom:
+        pdf_bytes = html_to_pdf(custom)
+    else:
+        # 2) …sinon, modèle .j2 historique (mise en page complète).
+        html = render_template("quittance.html.j2", {
+            "payment": payment,
+            "today": today_fr,
+            "tenant_names": tenant_names,
+            "tenant_names_list": names,
+            "layout": layout,
+        })
+        pdf_bytes = html_to_pdf(html)
 
     from app.utils.filename import doc_filename
     _prop = (payment.lease.parent_property.name

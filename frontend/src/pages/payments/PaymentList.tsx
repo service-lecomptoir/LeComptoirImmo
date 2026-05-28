@@ -259,7 +259,12 @@ export default function PaymentList() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(p.amount_due)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-green-700">{fmtEuro(p.amount_paid)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-green-700">
+                    {fmtEuro(p.amount_paid)}
+                    {p.credit_applied != null && p.credit_applied > 0 && (
+                      <div className="text-[11px] text-blue-500">dont avance {fmtEuro(p.credit_applied)}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-right font-semibold">
                     {p.balance > 0 ? (
                       <span className="text-red-600">{fmtEuro(p.balance)}</span>

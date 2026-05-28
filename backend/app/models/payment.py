@@ -88,6 +88,9 @@ class Payment(Base, TimestampMixin):
     declared_method: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     declared_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
 
+    # Crédit (trop-perçu d'échéances précédentes) déjà consommé par CE paiement.
+    credit_applied: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0, server_default="0")
+
     # ── Quittance ─────────────────────────────────────────────────────────────
     quittance_generated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

@@ -87,18 +87,18 @@ class AvisEcheancePDFService:
         if not avis_full:
             avis_full = avis
 
-        # Noms de tous les co-titulaires (principal + secondaires)
-        tenant_names = ""
-        if getattr(avis_full, "lease", None):
+        # Noms de tous les locataires : principal en premier, puis co-titulaires.
+        # Chacun est affiché sur SA propre ligne dans le bloc destinataire.
+        names: list[str] = []
+        if getattr(avis_full, "tenant", None):
+            names.append(avis_full.tenant.full_name)
+        _lease_rel = getattr(avis_full, "lease", None)
+        if _lease_rel is not None:
             try:
-                tenant_names = avis_full.lease.all_tenant_names
+                names += [ct.full_name for ct in (_lease_rel.co_tenants or [])]
             except Exception:
-                tenant_names = ""
-        if not tenant_names and getattr(avis_full, "tenant", None):
-            tenant_names = avis_full.tenant.full_name
-        # Espaces insécables : garde les co-titulaires sur la même ligne que le principal
-        # (le bloc destinataire est étroit → sinon le 2e nom passe à la ligne).
-        tenant_names = tenant_names.replace(" ", " ")
+                pass
+        tenant_names = " & ".join(names)
 
         # Récupérer le bien lié au contrat
         property_obj = None
@@ -112,16 +112,47 @@ class AvisEcheancePDFService:
 
         from datetime import date as _date
         from app.services.template_layout_service import get_layout
+        from app.services.document_render_service import render_saved_document, eur
         _MONTHS_FR = ["janvier","février","mars","avril","mai","juin",
                       "juillet","août","septembre","octobre","novembre","décembre"]
         _d = _date.today()
         today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
+        layout = get_layout()
 
+        # 1) Template ENREGISTRÉ par le gestionnaire (éditeur) si présent…
+        _month_label = f"{_MONTHS_FR[avis_full.period_month - 1].capitalize()} {avis_full.period_year}"
+        _total = getattr(avis_full, "amount_total", None)
+        if _total is None:
+            _total = float(avis_full.amount_rent) + float(avis_full.amount_charges)
+        variables = {
+            "tenant_name": " et ".join(names),
+            "month": _month_label,
+            "due_date": avis_full.due_date.strftime("%d/%m/%Y") if avis_full.due_date else "",
+            "rent_amount": eur(avis_full.amount_rent),
+            "charges_amount": eur(avis_full.amount_charges),
+            "apl_amount": eur(avis_full.amount_apl) if avis_full.amount_apl else "",
+            "total_due": eur(_total),
+            "property_name": property_obj.name if property_obj else "",
+            "unit_ref": property_obj.name if property_obj else "",
+            "property_address": property_obj.full_address if property_obj else "",
+            "company_name": "",
+            "date": today_fr,
+        }
+        custom = await render_saved_document(
+            db, template_type="avis_echeance",
+            gestionnaire_id=getattr(_lease_rel, "created_by", None),
+            variables=variables, recipient_lines=names, layout=layout,
+        )
+        if custom:
+            return html_to_pdf(custom)
+
+        # 2) …sinon, modèle .j2 historique (mise en page complète).
         html = render_template("avis_echeance.html.j2", {
             "avis": avis_full,
             "property": property_obj,
             "today": today_fr,
             "tenant_names": tenant_names,
-            "layout": get_layout(),
+            "tenant_names_list": names,
+            "layout": layout,
         })
         return html_to_pdf(html)

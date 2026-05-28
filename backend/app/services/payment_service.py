@@ -31,6 +31,20 @@ class PaymentService:
         return date(year, month, day)
 
     @staticmethod
+    async def _available_credit(db: AsyncSession, lease_id: uuid.UUID) -> float:
+        """Crédit (avance / trop-perçu) disponible sur un bail, non encore consommé.
+
+        = Σ trop-perçus (montant payé au-delà du dû) − Σ crédits déjà appliqués.
+        """
+        rows = (await db.execute(
+            select(Payment.amount_paid, Payment.amount_due, Payment.credit_applied)
+            .where(Payment.lease_id == lease_id, Payment.status != PaymentStatus.CANCELLED)
+        )).all()
+        overpaid = sum(max(0.0, float(paid) - float(due)) for paid, due, _ in rows)
+        applied = sum(float(credit or 0) for _, _, credit in rows)
+        return max(0.0, round(overpaid - applied, 2))
+
+    @staticmethod
     async def generate_for_lease(
         db: AsyncSession,
         lease: Lease,
@@ -93,6 +107,25 @@ class PaymentService:
             initial_method = None
             initial_notes = None
 
+        # ── Déduction automatique du crédit (avance / trop-perçu) du bail ──────────
+        credit_applied = 0.0
+        available_credit = await PaymentService._available_credit(db, lease.id)
+        remaining = amount_due - initial_paid
+        if available_credit > 0 and remaining > 0:
+            credit_applied = round(min(available_credit, remaining), 2)
+            initial_paid = round(initial_paid + credit_applied, 2)
+            note = f"Avance déduite : {credit_applied:.2f} €"
+            initial_notes = f"{initial_notes} · {note}" if initial_notes else note
+
+        # Recalcul du statut après APL + crédit
+        if amount_due > 0 and initial_paid >= amount_due:
+            initial_status = PaymentStatus.PAID
+            initial_payment_date = initial_payment_date or due_date
+        elif initial_paid > 0:
+            initial_status = PaymentStatus.PARTIAL
+        else:
+            initial_status = PaymentStatus.PENDING
+
         payment = Payment(
             lease_id=lease.id,
             tenant_id=lease.tenant_id,
@@ -106,6 +139,7 @@ class PaymentService:
             amount_apl=amount_apl,
             amount_due=amount_due,
             amount_paid=initial_paid,
+            credit_applied=credit_applied,
             status=initial_status,
             payment_date=initial_payment_date,
             payment_method=initial_method,
@@ -305,6 +339,7 @@ class PaymentService:
             amount_due=float(p.amount_due),
             amount_paid=float(p.amount_paid),
             balance=p.balance,
+            credit_applied=float(p.credit_applied or 0),
             status=p.status,
             quittance_generated_at=p.quittance_generated_at,
             quittance_sent_at=p.quittance_sent_at,
