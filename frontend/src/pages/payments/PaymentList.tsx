@@ -456,8 +456,8 @@ export default function PaymentList() {
                       )}
                       <div className="mt-2 pt-2 border-t border-gray-200 space-y-1 max-w-xl">
                         <div className="flex items-center justify-between gap-4 text-sm">
-                          <span className="text-gray-500">Total dû</span>
-                          <span className="font-medium text-gray-900">{fmtEuro(p.amount_due)}</span>
+                          <span className="font-semibold text-gray-700">Total versé</span>
+                          <span className="font-bold text-gray-900">{fmtEuro(p.amount_paid)}</span>
                         </div>
                         {p.balance > 0 && (
                           <div className="flex items-center justify-between gap-4 text-sm">
