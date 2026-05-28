@@ -54,9 +54,12 @@ function AppLayout() {
   const location = useLocation()
   const mainRef = useRef<HTMLElement>(null)
 
-  // À chaque changement de page, on repositionne le contenu en haut (le scroll
-  // est porté par <main>, pas par window) — sinon on garde le scroll précédent.
+  // À chaque changement de page, on repositionne en haut. Le scroll réel est porté
+  // par la fenêtre (conteneur en min-h-screen, pas de hauteur bornée) → window.scrollTo ;
+  // on remet aussi <main> à 0 au cas où il deviendrait le conteneur scrollable.
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 })
+    document.documentElement.scrollTop = 0
     mainRef.current?.scrollTo({ top: 0, left: 0 })
   }, [location.pathname])
 
