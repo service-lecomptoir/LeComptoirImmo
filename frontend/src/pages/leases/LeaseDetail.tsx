@@ -305,12 +305,7 @@ export default function LeaseDetail() {
             <Home size={15} className="text-blue-500" /> Bien immobilier
           </h2>
           <InfoRow label="Bien" value={lease.parent_property?.name} />
-          {lease.parent_property?.full_address && (
-            <div className="py-2">
-              <p className="text-xs text-gray-500 mb-0.5">Adresse</p>
-              <p className="text-sm font-medium text-gray-900">{lease.parent_property.full_address}</p>
-            </div>
-          )}
+          <InfoRow label="Adresse" value={lease.parent_property?.full_address} />
         </div>
 
         {/* Finances */}

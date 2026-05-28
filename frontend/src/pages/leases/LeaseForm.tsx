@@ -225,7 +225,12 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bien immobilier</h3>
           <div>
             <label className={lbl}>Bien immobilier <span className="text-red-500">*</span></label>
-            <select {...register('property_id')} className={inp} disabled={isEdit}>
+            <select
+              value={watch('property_id') || ''}
+              onChange={e => setValue('property_id', e.target.value, { shouldValidate: true })}
+              className={inp}
+              disabled={isEdit}
+            >
               <option value="">— Sélectionner un bien —</option>
               {properties.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -240,7 +245,11 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Locataire</h3>
           {!showCreateTenant ? (
             <div className="flex gap-2">
-              <select {...register('tenant_id')} className={`flex-1 ${inp}`}>
+              <select
+                value={watch('tenant_id') || ''}
+                onChange={e => setValue('tenant_id', e.target.value, { shouldValidate: true })}
+                className={`flex-1 ${inp}`}
+              >
                 <option value="">— Sélectionner un locataire —</option>
                 {tenants.map(t => (
                   <option key={t.id} value={t.id}>{t.full_name}</option>
