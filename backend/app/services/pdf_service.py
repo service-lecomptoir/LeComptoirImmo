@@ -125,7 +125,7 @@ class AvisEcheancePDFService:
         if _total is None:
             _total = float(avis_full.amount_rent) + float(avis_full.amount_charges)
         variables = {
-            "tenant_name": " et ".join(names),
+            "tenant_name": names[0] if names else "",
             "month": _month_label,
             "due_date": avis_full.due_date.strftime("%d/%m/%Y") if avis_full.due_date else "",
             "rent_amount": eur(avis_full.amount_rent),
@@ -141,7 +141,7 @@ class AvisEcheancePDFService:
         custom = await render_saved_document(
             db, template_type="avis_echeance",
             gestionnaire_id=getattr(_lease_rel, "created_by", None),
-            variables=variables, recipient_lines=names, layout=layout,
+            variables=variables, recipient_lines=names[1:], layout=layout,
         )
         if custom:
             return html_to_pdf(custom)

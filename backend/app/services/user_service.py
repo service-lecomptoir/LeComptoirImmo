@@ -35,6 +35,19 @@ class UserService:
         db.add(user)
         await db.flush()
         await db.refresh(user)
+
+        # Templates de documents par défaut pour les comptes qui génèrent des documents
+        # (gestionnaire / GP / admin). N'échoue jamais la création de compte.
+        try:
+            from app.services.document_template_service import (
+                TEMPLATE_OWNER_ROLES, ensure_default_templates,
+            )
+            role_val = user.role.value if hasattr(user.role, "value") else str(user.role)
+            if role_val in TEMPLATE_OWNER_ROLES:
+                await ensure_default_templates(db, user.id)
+        except Exception:
+            pass
+
         return user
 
     @staticmethod

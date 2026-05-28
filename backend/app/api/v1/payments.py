@@ -528,7 +528,7 @@ async def download_quittance(
                  else None)
     _gid = getattr(payment.lease, "created_by", None) if getattr(payment, "lease", None) else None
     variables = {
-        "tenant_name": " et ".join(names),
+        "tenant_name": names[0] if names else "",
         "company_name": "",
         "property_name": _prop_obj.name if _prop_obj else "",
         "unit_ref": _prop_obj.name if _prop_obj else "",
@@ -542,7 +542,7 @@ async def download_quittance(
     }
     custom = await render_saved_document(
         db, template_type="quittance", gestionnaire_id=_gid,
-        variables=variables, recipient_lines=names, layout=layout,
+        variables=variables, recipient_lines=names[1:], layout=layout,
     )
     if custom:
         pdf_bytes = html_to_pdf(custom)
