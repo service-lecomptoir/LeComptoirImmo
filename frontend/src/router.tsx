@@ -42,6 +42,7 @@ import LocataireOffres from '@/pages/locataire/LocataireOffres'
 import MonAbonnement from '@/pages/subscription/MonAbonnement'
 import TemplateLayoutEditor from '@/pages/templates/TemplateLayoutEditor'
 import MonProfil from '@/pages/profil/MonProfil'
+import GuideUtilisateur from '@/pages/guide/GuideUtilisateur'
 
 function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
@@ -108,6 +109,7 @@ export const router = createBrowserRouter([
       { path: 'templates', element: <TemplateEditor /> },
       { path: 'templates/layout', element: <TemplateLayoutEditor /> },
       { path: 'profil', element: <MonProfil /> },
+      { path: 'guide', element: <GuideUtilisateur /> },
       { path: 'notifications', element: <NotificationList /> },
       { path: 'admin', element: <AdminUsers /> },
       { path: 'proprietaire', element: <ProprietaireDashboard /> },

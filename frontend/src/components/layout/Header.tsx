@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, ChevronDown, Menu } from 'lucide-react'
+import { Bell, User, LogOut, ChevronDown, Menu, BookOpen } from 'lucide-react'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
@@ -126,6 +126,13 @@ export function Header({ onMenuClick }: HeaderProps) {
                 >
                   <User size={15} className="text-gray-400" />
                   Mes informations
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); navigate('/guide') }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <BookOpen size={15} className="text-gray-400" />
+                  Guide d'utilisation
                 </button>
                 <div className="border-t border-gray-100 my-1" />
                 <button
