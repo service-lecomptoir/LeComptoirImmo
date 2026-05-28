@@ -120,12 +120,7 @@ export default function LeaseList() {
                   className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-700 flex-shrink-0">
-                        {lease.tenant_full_name.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">{lease.tenant_full_name}</span>
-                    </div>
+                    <span className="text-sm font-medium text-gray-900">{lease.tenant_full_name}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm text-gray-900">{lease.property_name}</div>

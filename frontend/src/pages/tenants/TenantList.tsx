@@ -112,20 +112,13 @@ export default function TenantList() {
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-blue-700 text-sm font-semibold">
-                          {tenant.first_name.charAt(0)}{tenant.last_name.charAt(0)}
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">{tenant.full_name}</span>
+                      {tenant.user_id && (
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full" title="Compte locataire lié">
+                          <ShieldCheck size={10} /> Compte
                         </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">{tenant.full_name}</span>
-                        {tenant.user_id && (
-                          <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full" title="Compte locataire lié">
-                            <ShieldCheck size={10} /> Compte
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-500">

@@ -114,7 +114,7 @@ export function Header() {
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   <User size={15} className="text-gray-400" />
-                  Mon profil
+                  Mes informations
                 </button>
                 <div className="border-t border-gray-100 my-1" />
                 <button

@@ -102,7 +102,7 @@ export default function MonProfil() {
   return (
     <div className="max-w-2xl p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Mon profil</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Mes informations</h1>
         <p className="text-gray-500 text-sm mt-1">
           Vos informations et coordonnées — utilisées dans la barre latérale et sur vos documents.
         </p>

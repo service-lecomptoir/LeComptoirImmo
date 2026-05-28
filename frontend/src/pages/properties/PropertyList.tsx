@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Building2, User, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Search, Building2, Pencil, Trash2 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -133,20 +133,10 @@ export default function PropertyList() {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Building2 size={15} className="text-blue-600" />
-                      </div>
-                      <span className="font-medium text-gray-900">{prop.name}</span>
-                    </div>
+                    <span className="font-medium text-gray-900">{prop.name}</span>
                   </td>
                   <td className="px-4 py-3">
-                    {prop.owner_name ? (
-                      <div className="flex items-center gap-1.5 text-gray-700 text-xs">
-                        <User size={12} className="text-gray-400" />
-                        <span>{prop.owner_name}</span>
-                      </div>
-                    ) : null}
+                    {prop.owner_name ? <span className="text-gray-700 text-xs">{prop.owner_name}</span> : null}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${

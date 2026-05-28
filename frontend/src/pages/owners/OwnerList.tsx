@@ -58,9 +58,6 @@ export default function OwnerList() {
     }
   }
 
-  const initials = (o: OwnerListItem) =>
-    (o.company_name || o.full_name || '?').trim().slice(0, 2).toUpperCase()
-
   return (
     <div className="p-6">
       {/* Header */}
@@ -115,18 +112,13 @@ export default function OwnerList() {
                   className="hover:bg-gray-50 cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-orange-700 text-sm font-semibold">{initials(owner)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900">{owner.full_name}</span>
-                        {owner.user_id && (
-                          <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full" title="Compte propriétaire lié">
-                            <ShieldCheck size={10} /> Compte
-                          </span>
-                        )}
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">{owner.full_name}</span>
+                      {owner.user_id && (
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full" title="Compte propriétaire lié">
+                          <ShieldCheck size={10} /> Compte
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-500">

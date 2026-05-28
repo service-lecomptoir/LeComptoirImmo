@@ -212,9 +212,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
               >
                 <option value="">— Pas encore de compte —</option>
                 {locataireUsers.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.full_name} ({u.email})
-                  </option>
+                  <option key={u.id} value={u.id}>{u.full_name}</option>
                 ))}
               </select>
               <button
@@ -284,10 +282,13 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         {/* Contact */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact</h3>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-3">
+            {/* Email en pleine largeur — une adresse longue reste entièrement visible */}
             <TenantField label="Email" name="email" type="email" register={register} errors={errors} />
-            <TenantField label="Téléphone" name="phone" register={register} errors={errors} />
-            <TenantField label="Téléphone 2" name="phone2" register={register} errors={errors} />
+            <div className="grid grid-cols-2 gap-3">
+              <TenantField label="Téléphone" name="phone" register={register} errors={errors} />
+              <TenantField label="Téléphone 2" name="phone2" register={register} errors={errors} />
+            </div>
           </div>
         </div>
 

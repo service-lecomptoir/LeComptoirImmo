@@ -217,7 +217,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
             <select {...register('property_id')} className={inp} disabled={isEdit}>
               <option value="">— Sélectionner un bien —</option>
               {properties.map(p => (
-                <option key={p.id} value={p.id}>{p.name} — {p.city}</option>
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
             {errors.property_id && <p className={err}>{errors.property_id.message}</p>}
@@ -232,9 +232,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               <select {...register('tenant_id')} className={`flex-1 ${inp}`} disabled={isEdit}>
                 <option value="">— Sélectionner un locataire —</option>
                 {tenants.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.full_name}{t.email ? ` (${t.email})` : ''}
-                  </option>
+                  <option key={t.id} value={t.id}>{t.full_name}</option>
                 ))}
               </select>
               {!isEdit && (
@@ -271,7 +269,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
             {tenants
               .filter(t => t.id !== watch('tenant_id') && !secondaryIds.includes(t.id))
               .map(t => (
-                <option key={t.id} value={t.id}>{t.full_name}{t.email ? ` (${t.email})` : ''}</option>
+                <option key={t.id} value={t.id}>{t.full_name}</option>
               ))}
           </select>
           {secondaryIds.length > 0 && (
