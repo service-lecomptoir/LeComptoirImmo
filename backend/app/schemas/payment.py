@@ -39,6 +39,9 @@ class PaymentResponse(BaseModel):
     period_year: int
     period_month: int
     period_label: str
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
+    period_range_label: Optional[str] = None
     due_date: date
     amount_rent: float
     amount_charges: float
@@ -64,6 +67,9 @@ class PaymentListItem(BaseModel):
     tenant_full_name: str
     property_name: str
     period_label: str
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
+    period_range_label: Optional[str] = None
     period_year: int
     period_month: int
     due_date: date

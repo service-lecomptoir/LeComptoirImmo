@@ -109,12 +109,13 @@ async def _job_generate_monthly_avis() -> None:
                 )
             )).scalars().all()
 
-            period_label = f"{months[today.month]} {today.year}"
             sent = 0
             for avis in avis_list:
                 tenant = avis.tenant
                 if not tenant or not tenant.email:
                     continue
+                # Période réellement couverte (multi-mois selon la fréquence)
+                period_label = avis.period_range_label or f"{months[today.month]} {today.year}"
                 ok = await send_avis_echeance(
                     to=tenant.email,
                     tenant_name=tenant.full_name or tenant.email,

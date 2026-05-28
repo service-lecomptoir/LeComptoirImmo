@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { docFilename } from '@/utils/filename'
+import { isMultiMonth } from '@/utils/period'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Modal } from '@/components/common/Modal'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_VARIANTS } from '@/types/payment'
@@ -217,7 +218,12 @@ export default function PaymentList() {
                   <td className="px-4 py-3">
                     <div className="text-sm text-gray-900">{p.property_name}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{p.period_label}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {p.period_label}
+                    {isMultiMonth(p.period_start, p.period_end) && p.period_range_label && (
+                      <div className="text-xs text-gray-500">{p.period_range_label}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(p.amount_due)}</td>
                   <td className="px-4 py-3 text-sm text-right text-green-700">{fmtEuro(p.amount_paid)}</td>
                   <td className={`px-4 py-3 text-sm text-right font-semibold ${p.balance > 0 ? 'text-red-600' : 'text-gray-400'}`}>

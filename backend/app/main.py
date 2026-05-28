@@ -162,6 +162,9 @@ async def _apply_column_migrations() -> None:
         # Période réellement couverte par un avis d'échéance (prorata d'entrée/sortie)
         "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS period_start DATE",
         "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS period_end DATE",
+        # Période réellement couverte par un loyer (multi-mois selon la fréquence)
+        "ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_start DATE",
+        "ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_end DATE",
         # Coordonnées profil utilisateur (gestionnaire/agence)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300)",

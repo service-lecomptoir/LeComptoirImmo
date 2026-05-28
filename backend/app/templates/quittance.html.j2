@@ -97,6 +97,13 @@
   <p class="subtitle">{{ payment.period_label }}</p>
   <p class="ref-line">Réf. {{ payment.id | string | truncate(8, end='') }} — {{ payment.updated_at.strftime('%d/%m/%Y') }}</p>
 
+  {% if payment.period_start and payment.period_end %}
+  <div class="sec">Période concernée</div>
+  <table class="amt">
+    <tr><td>Période de location</td><td class="r">{{ payment.period_range_label }}</td></tr>
+  </table>
+  {% endif %}
+
   <div class="sec">Détail du loyer</div>
   <table class="amt">
     <tr><td>Loyer hors charges</td><td class="r">{{ "%.2f" | format(payment.amount_rent | float) }} €</td></tr>

@@ -8,6 +8,7 @@ import {
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { leasesApi } from '@/api/leases'
 import { docFilename } from '@/utils/filename'
+import { isMultiMonth } from '@/utils/period'
 import { useAuthStore } from '@/store/authStore'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import type { Lease } from '@/types/lease'
@@ -645,6 +646,9 @@ export default function AvisEcheanceList() {
                 <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
                     <p className="text-sm font-medium text-gray-900">{a.period_label}</p>
+                    {isMultiMonth(a.period_start, a.period_end) && a.period_range_label && (
+                      <p className="text-xs text-gray-500">{a.period_range_label}</p>
+                    )}
                     {a.is_auto_generated && (
                       <span className="text-xs text-gray-400">auto</span>
                     )}

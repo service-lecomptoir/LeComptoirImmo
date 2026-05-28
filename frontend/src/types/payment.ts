@@ -31,6 +31,9 @@ export interface Payment {
   period_year: number
   period_month: number
   period_label: string
+  period_start?: string | null
+  period_end?: string | null
+  period_range_label?: string | null
   due_date: string
   amount_rent: number
   amount_charges: number
@@ -52,6 +55,9 @@ export interface PaymentListItem {
   tenant_full_name: string
   property_name: string
   period_label: string
+  period_start?: string | null
+  period_end?: string | null
+  period_range_label?: string | null
   period_year: number
   period_month: number
   due_date: string

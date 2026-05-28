@@ -48,6 +48,10 @@ class Payment(Base, TimestampMixin):
     # ── Période ───────────────────────────────────────────────────────────────
     period_year: Mapped[int] = mapped_column(Integer, nullable=False)
     period_month: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Étendue réellement couverte (multi-mois selon la fréquence + prorata).
+    # Nullable pour compat avec les paiements générés avant cette fonctionnalité.
+    period_start: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    period_end: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
 
     # ── Montants ──────────────────────────────────────────────────────────────
@@ -106,6 +110,15 @@ class Payment(Base, TimestampMixin):
             "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
         ]
         return f"{months[self.period_month]} {self.period_year}"
+
+    @property
+    def period_range_label(self) -> str:
+        """Période réellement couverte, ex. « du 01/02/2026 au 30/04/2026 »
+        (ou le mois si les dates ne sont pas renseignées — anciens paiements)."""
+        if self.period_start and self.period_end:
+            return (f"du {self.period_start.strftime('%d/%m/%Y')} "
+                    f"au {self.period_end.strftime('%d/%m/%Y')}")
+        return self.period_label
 
     def __repr__(self) -> str:
         return f"<Payment {self.period_label} — {self.status}>"

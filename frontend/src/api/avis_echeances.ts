@@ -5,6 +5,9 @@ export interface AvisEcheanceSummary {
   period_year: number
   period_month: number
   period_label: string
+  period_start?: string | null
+  period_end?: string | null
+  period_range_label?: string | null
   due_date: string
   amount_total: number
   amount_rent: number

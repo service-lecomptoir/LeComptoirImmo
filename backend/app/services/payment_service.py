@@ -38,25 +38,42 @@ class PaymentService:
         month: int,
         created_by: Optional[uuid.UUID] = None,
     ) -> Payment:
-        """Génère un enregistrement de loyer pour un bail et une période."""
-        # Vérifier unicité
+        """Génère un enregistrement de loyer pour un bail et une période.
+
+        La période couvre N mois selon `lease.payment_frequency` (1 = mensuel), avec
+        prorata d'entrée/sortie pour la règle calendaire. (year, month) peut être
+        n'importe quel mois de la période ; la clé retenue est le premier mois couvert.
+        """
+        from app.services.billing_period import compute_period
+
+        bp = compute_period(lease, year, month)
+        if bp is None:
+            raise BadRequestException(
+                f"Le bail ne couvre pas la période {month:02d}/{year}."
+            )
+
+        # Vérifier unicité sur la clé de période (premier mois couvert)
         existing = (
             await db.execute(
                 select(Payment).where(
                     Payment.lease_id == lease.id,
-                    Payment.period_year == year,
-                    Payment.period_month == month,
+                    Payment.period_year == bp.key_year,
+                    Payment.period_month == bp.key_month,
                 )
             )
         ).scalar_one_or_none()
         if existing:
             raise ConflictException(
-                f"Un loyer existe déjà pour ce bail ({year}-{month:02d})"
+                f"Un loyer existe déjà pour ce bail ({bp.key_year}-{bp.key_month:02d})"
             )
 
-        amount_rent = float(lease.rent_amount)
-        amount_charges = float(lease.charges_amount)
-        amount_apl = float(lease.apl_amount) if lease.apl_tiers_payant and lease.apl_amount else None
+        year, month = bp.key_year, bp.key_month
+        amount_rent = round(float(lease.rent_amount) * bp.factor_sum, 2)
+        amount_charges = round(float(lease.charges_amount) * bp.factor_sum, 2)
+        amount_apl = (
+            round(float(lease.apl_amount) * bp.covered_count, 2)
+            if lease.apl_tiers_payant and lease.apl_amount else None
+        )
         # amount_due = montant brut total (loyer + charges), avant déduction APL
         amount_due = amount_rent + amount_charges
 
@@ -81,6 +98,8 @@ class PaymentService:
             tenant_id=lease.tenant_id,
             period_year=year,
             period_month=month,
+            period_start=bp.period_start,
+            period_end=bp.period_end,
             due_date=due_date,
             amount_rent=amount_rent,
             amount_charges=amount_charges,
@@ -106,7 +125,13 @@ class PaymentService:
         created_by: Optional[uuid.UUID] = None,
         property_ids: list | None = None,
     ) -> int:
-        """Génère les loyers pour tous les baux actifs d'une période. Retourne le nombre créé."""
+        """Génère les loyers pour tous les baux actifs d'une période. Retourne le nombre créé.
+
+        Ne génère que pour les baux dont (year, month) est le mois de déclenchement de
+        leur période (fréquence + règle d'appel) → un seul loyer par période de N mois.
+        """
+        from app.services.billing_period import is_trigger_month
+
         q = select(Lease).where(
             Lease.is_active == True,
             or_(Lease.end_date == None, Lease.end_date >= date(year, month, 1)),
@@ -117,11 +142,15 @@ class PaymentService:
 
         created = 0
         for lease in leases:
+            if not is_trigger_month(lease, year, month):
+                continue
             try:
                 await PaymentService.generate_for_lease(db, lease, year, month, created_by)
                 created += 1
             except ConflictException:
                 pass  # déjà existant, on skip
+            except BadRequestException:
+                pass  # le bail ne couvre pas ce mois
         return created
 
     @staticmethod
@@ -262,6 +291,9 @@ class PaymentService:
             tenant_full_name=p.tenant.full_name if p.tenant else str(p.tenant_id),
             property_name=property_name,
             period_label=p.period_label,
+            period_start=p.period_start,
+            period_end=p.period_end,
+            period_range_label=p.period_range_label,
             period_year=p.period_year,
             period_month=p.period_month,
             due_date=p.due_date,
