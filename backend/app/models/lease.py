@@ -45,6 +45,15 @@ class RentCallRule(str, Enum):
     CALENDRIER = "calendrier"
 
 
+class PaymentFrequency(str, Enum):
+    """Fréquence d'appel du loyer."""
+    MENSUELLE = "mensuelle"
+    BIMESTRIELLE = "bimestrielle"
+    TRIMESTRIELLE = "trimestrielle"
+    SEMESTRIELLE = "semestrielle"
+    ANNUELLE = "annuelle"
+
+
 class Lease(Base, TimestampMixin):
     __tablename__ = "leases"
 
@@ -93,6 +102,10 @@ class Lease(Base, TimestampMixin):
     # Règle d'appel de loyer (stockée en texte pour éviter un type enum PG dédié)
     rent_call_rule: Mapped[str] = mapped_column(
         String(20), nullable=False, default="calendrier", server_default="calendrier"
+    )
+    # Fréquence d'appel du loyer (texte, comme rent_call_rule)
+    payment_frequency: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="mensuelle", server_default="mensuelle"
     )
 
     # ── APL ───────────────────────────────────────────────────────────────────

@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 from app.models.lease import LeaseType, PaymentMethod
 
 RentCallRuleT = Literal["contractuelle", "calendrier"]
+PaymentFrequencyT = Literal[
+    "mensuelle", "bimestrielle", "trimestrielle", "semestrielle", "annuelle"
+]
 
 
 # ── Sous-schémas pour les relations chargées ───────────────────────────────────
@@ -44,6 +47,7 @@ class LeaseCreate(BaseModel):
     payment_day: int = Field(1, ge=1, le=28)
     payment_method: PaymentMethod = PaymentMethod.VIREMENT
     rent_call_rule: RentCallRuleT = "calendrier"
+    payment_frequency: PaymentFrequencyT = "mensuelle"
     apl_amount: Optional[float] = Field(None, ge=0)
     apl_tiers_payant: bool = False
     has_guarantor: bool = False
@@ -67,6 +71,7 @@ class LeaseUpdate(BaseModel):
     payment_day: Optional[int] = Field(None, ge=1, le=28)
     payment_method: Optional[PaymentMethod] = None
     rent_call_rule: Optional[RentCallRuleT] = None
+    payment_frequency: Optional[PaymentFrequencyT] = None
     apl_amount: Optional[float] = Field(None, ge=0)
     apl_tiers_payant: Optional[bool] = None
     has_guarantor: Optional[bool] = None
@@ -95,6 +100,7 @@ class LeaseResponse(BaseModel):
     payment_day: int
     payment_method: PaymentMethod
     rent_call_rule: str = "calendrier"
+    payment_frequency: str = "mensuelle"
     apl_amount: Optional[float] = None
     apl_tiers_payant: bool
     has_guarantor: bool

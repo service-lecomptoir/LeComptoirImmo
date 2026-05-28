@@ -10,7 +10,7 @@ import { lettersApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LeaseForm } from './LeaseForm'
-import { LEASE_TYPE_LABELS, RENT_CALL_RULE_LABELS } from '@/types/lease'
+import { LEASE_TYPE_LABELS, RENT_CALL_RULE_LABELS, PAYMENT_FREQUENCY_LABELS } from '@/types/lease'
 import { docFilename } from '@/utils/filename'
 import {
   INSPECTION_TYPE_LABELS,
@@ -319,6 +319,7 @@ export default function LeaseDetail() {
           } />
           <InfoRow label="Dépôt de garantie" value={fmtEuro(lease.deposit_amount)} />
           <InfoRow label="Paiement le" value={`${lease.payment_day} du mois`} />
+          <InfoRow label="Fréquence de paiement" value={PAYMENT_FREQUENCY_LABELS[lease.payment_frequency]} />
           <InfoRow label="Règle d'appel" value={RENT_CALL_RULE_LABELS[lease.rent_call_rule]} />
           {lease.apl_tiers_payant && lease.apl_amount && (
             <>

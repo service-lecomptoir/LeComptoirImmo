@@ -1,10 +1,24 @@
 export type LeaseType = 'vide' | 'meuble' | 'mobilite' | 'commercial'
 export type PaymentMethod = 'virement' | 'cheque' | 'prelevement' | 'especes'
 export type RentCallRule = 'contractuelle' | 'calendrier'
+export type PaymentFrequency =
+  | 'mensuelle'
+  | 'bimestrielle'
+  | 'trimestrielle'
+  | 'semestrielle'
+  | 'annuelle'
 
 export const RENT_CALL_RULE_LABELS: Record<RentCallRule, string> = {
   contractuelle: 'Période contractuelle',
   calendrier: 'Période calendrier',
+}
+
+export const PAYMENT_FREQUENCY_LABELS: Record<PaymentFrequency, string> = {
+  mensuelle: 'Mensuelle',
+  bimestrielle: 'Bimestrielle',
+  trimestrielle: 'Trimestrielle',
+  semestrielle: 'Semestrielle',
+  annuelle: 'Annuelle',
 }
 
 export const LEASE_TYPE_LABELS: Record<LeaseType, string> = {
@@ -48,6 +62,7 @@ export interface Lease {
   payment_day: number
   payment_method: PaymentMethod
   rent_call_rule: RentCallRule
+  payment_frequency: PaymentFrequency
   apl_amount?: number
   apl_tiers_payant: boolean
   has_guarantor: boolean

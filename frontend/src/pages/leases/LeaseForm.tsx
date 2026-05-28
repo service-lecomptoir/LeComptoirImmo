@@ -23,6 +23,7 @@ const schema = z.object({
   payment_day: z.coerce.number().int().min(1).max(28).default(1),
   payment_method: z.enum(['virement', 'cheque', 'prelevement', 'especes']).default('virement'),
   rent_call_rule: z.enum(['contractuelle', 'calendrier']).default('calendrier'),
+  payment_frequency: z.enum(['mensuelle', 'bimestrielle', 'trimestrielle', 'semestrielle', 'annuelle']).default('mensuelle'),
   apl_tiers_payant: z.boolean().default(false),
   apl_amount: z.coerce.number().min(0).optional().or(z.literal('')),
   has_guarantor: z.boolean().default(false),
@@ -130,6 +131,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
       payment_day: lease.payment_day,
       payment_method: lease.payment_method,
       rent_call_rule: lease.rent_call_rule ?? 'calendrier',
+      payment_frequency: lease.payment_frequency ?? 'mensuelle',
       apl_tiers_payant: lease.apl_tiers_payant,
       apl_amount: lease.apl_amount ?? '',
       has_guarantor: lease.has_guarantor,
@@ -140,6 +142,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
       lease_type: 'vide',
       payment_method: 'virement',
       rent_call_rule: 'calendrier',
+      payment_frequency: 'mensuelle',
       apl_tiers_payant: false,
       has_guarantor: false,
       payment_day: 1,
@@ -353,11 +356,21 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               <input type="number" step="0.01" min="0" {...register('deposit_amount')} className={inp} placeholder="0.00" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 mt-3">
+          <div className="grid grid-cols-3 gap-3 mt-3">
             <div>
-              <label className={lbl}>Jour de paiement (1–28)</label>
+              <label className={lbl}>Jour de paiement</label>
               <input type="number" min="1" max="28" {...register('payment_day')} className={inp} />
               <p className="text-xs text-gray-400 mt-1">Jour d'échéance du loyer — sert aux relances.</p>
+            </div>
+            <div>
+              <label className={lbl}>Fréquence de paiement</label>
+              <select {...register('payment_frequency')} className={inp}>
+                <option value="mensuelle">Mensuelle</option>
+                <option value="bimestrielle">Bimestrielle</option>
+                <option value="trimestrielle">Trimestrielle</option>
+                <option value="semestrielle">Semestrielle</option>
+                <option value="annuelle">Annuelle</option>
+              </select>
             </div>
             <div>
               <label className={lbl}>Règle d'appel de loyer</label>

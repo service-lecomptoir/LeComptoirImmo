@@ -157,6 +157,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_sent_at TIMESTAMPTZ",
         # Règle d'appel de loyer sur le contrat (période contractuelle / calendrier)
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS rent_call_rule VARCHAR(20) NOT NULL DEFAULT 'calendrier'",
+        # Fréquence d'appel du loyer (mensuelle / bimestrielle / trimestrielle / semestrielle / annuelle)
+        "ALTER TABLE leases ADD COLUMN IF NOT EXISTS payment_frequency VARCHAR(20) NOT NULL DEFAULT 'mensuelle'",
         # Période réellement couverte par un avis d'échéance (prorata d'entrée/sortie)
         "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS period_start DATE",
         "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS period_end DATE",
