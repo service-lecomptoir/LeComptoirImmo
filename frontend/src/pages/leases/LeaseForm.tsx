@@ -112,6 +112,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
   const [properties, setProperties] = useState<PropertyListItem[]>([])
   const [tenants, setTenants] = useState<TenantListItem[]>([])
   const [showCreateTenant, setShowCreateTenant] = useState(false)
+  const [showCreateCoTenant, setShowCreateCoTenant] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [secondaryIds, setSecondaryIds] = useState<string[]>(
     lease?.co_tenants?.map(t => t.id) ?? []
@@ -171,6 +172,12 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
     setTenants(prev => [...prev, tenant])
     setValue('tenant_id', tenant.id, { shouldValidate: true })
     setShowCreateTenant(false)
+  }
+
+  const handleCoTenantCreated = (tenant: TenantListItem) => {
+    setTenants(prev => prev.some(t => t.id === tenant.id) ? prev : [...prev, tenant])
+    setSecondaryIds(prev => prev.includes(tenant.id) ? prev : [...prev, tenant.id])
+    setShowCreateCoTenant(false)
   }
 
   const onSubmit = async (data: FormData) => {
@@ -280,21 +287,34 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           <p className="text-xs text-gray-400 mb-2">
             Locataires secondaires, solidaires du bail. Ils apparaîtront sur l'avis d'échéance, la quittance et le bail.
           </p>
-          <select
-            value=""
-            onChange={(e) => {
-              const id = e.target.value
-              if (id) setSecondaryIds(prev => prev.includes(id) ? prev : [...prev, id])
-            }}
-            className={inp}
-          >
-            <option value="">— Ajouter un co-titulaire —</option>
-            {tenants
-              .filter(t => t.id !== watch('tenant_id') && !secondaryIds.includes(t.id))
-              .map(t => (
-                <option key={t.id} value={t.id}>{t.full_name}</option>
-              ))}
-          </select>
+          {!showCreateCoTenant ? (
+            <div className="flex gap-2">
+              <select
+                value=""
+                onChange={(e) => {
+                  const id = e.target.value
+                  if (id) setSecondaryIds(prev => prev.includes(id) ? prev : [...prev, id])
+                }}
+                className={`flex-1 ${inp}`}
+              >
+                <option value="">— Ajouter un co-titulaire existant —</option>
+                {tenants
+                  .filter(t => t.id !== watch('tenant_id') && !secondaryIds.includes(t.id))
+                  .map(t => (
+                    <option key={t.id} value={t.id}>{t.full_name}</option>
+                  ))}
+              </select>
+              <button type="button" onClick={() => setShowCreateCoTenant(true)}
+                className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-teal-600 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 whitespace-nowrap">
+                <Plus size={13} /> Nouveau
+              </button>
+            </div>
+          ) : (
+            <CreateTenantPanel
+              onCreated={handleCoTenantCreated}
+              onCancel={() => setShowCreateCoTenant(false)}
+            />
+          )}
           {secondaryIds.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {secondaryIds.map(id => {
