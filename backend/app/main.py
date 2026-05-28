@@ -51,10 +51,9 @@ async def lifespan(app: FastAPI):
             seeded = await backfill_all_managers(_db)
             updated = await refresh_default_bodies(_db)
             await _db.commit()
-        if seeded or updated:
-            logger.info(f"Modèles par défaut : {seeded} compte(s) dotés, {updated} mis à jour")
+        logger.info(f"Modèles par défaut : {seeded} compte(s) dotés, {updated} mis à jour")
     except Exception as _exc:
-        logger.warning(f"Backfill modèles par défaut ignoré : {_exc}")
+        logger.warning(f"Backfill modèles par défaut ignoré : {_exc!r}")
 
     # Crée les comptes de démonstration s'ils sont absents
     logger.info("Vérification des comptes par défaut...")

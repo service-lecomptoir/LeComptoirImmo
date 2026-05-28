@@ -82,13 +82,15 @@ def _wrap(
     recipient_lines: list[str],
     property_address: str,
     layout: dict,
+    sender_name: str = "",
+    sender_addr: str = "",
 ) -> str:
     sp = (layout or {}).get("spacing", {}) if isinstance(layout, dict) else {}
     fs = int(sp.get("font_size", 10) or 10)
     line_height = sp.get("line_height", 1.5)
     accent = template.header_color or "#0d2f5c"
-    company = _html.escape(template.company_name or "Le Comptoir Immo")
-    company_addr = _html.escape(template.company_address or "").replace("\n", "<br/>")
+    company = _html.escape(sender_name or template.company_name or "Le Comptoir Immo")
+    company_addr = _html.escape(sender_addr or template.company_address or "").replace("\n", "<br/>")
     footer = _html.escape(template.footer_text or "")
     prop = _html.escape(property_address or "").replace("\n", "<br/>")
 
@@ -163,5 +165,20 @@ async def render_saved_document(
     )).scalar_one_or_none()
     if not tmpl or not tmpl.content_html:
         return None
+
+    # En-tête : nom + adresse du gestionnaire. Priorité aux champs du template
+    # (company_name/address), sinon repli sur le profil du gestionnaire.
+    sender_name, sender_addr = "", ""
+    try:
+        from app.models.user import User
+        user = (await db.execute(
+            select(User).where(User.id == gestionnaire_id)
+        )).scalar_one_or_none()
+        if user:
+            sender_name = tmpl.company_name or user.full_name or ""
+            sender_addr = tmpl.company_address or getattr(user, "address", "") or ""
+    except Exception:
+        pass
+
     body = substitute(tmpl.content_html, variables)
-    return _wrap(tmpl, body, recipient_lines, property_address, layout)
+    return _wrap(tmpl, body, recipient_lines, property_address, layout, sender_name, sender_addr)
