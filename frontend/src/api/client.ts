@@ -20,7 +20,15 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const original = error.config
+    const original = error.config || {}
+
+    // Les endpoints d'authentification gèrent eux-mêmes leurs erreurs : un 401 sur
+    // /auth/login = identifiants incorrects (à afficher sur la page), PAS une session
+    // expirée. Ne pas rediriger/recharger (sinon perte du message + reset du formulaire).
+    const url: string = original.url || ''
+    if (url.includes('/auth/login') || url.includes('/auth/refresh')) {
+      return Promise.reject(error)
+    }
 
     // Si 401 et pas déjà en retry → essai de refresh
     if (error.response?.status === 401 && !original._retry) {
