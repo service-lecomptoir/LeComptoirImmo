@@ -1,5 +1,11 @@
 export type LeaseType = 'vide' | 'meuble' | 'mobilite' | 'commercial'
 export type PaymentMethod = 'virement' | 'cheque' | 'prelevement' | 'especes'
+export type RentCallRule = 'contractuelle' | 'calendrier'
+
+export const RENT_CALL_RULE_LABELS: Record<RentCallRule, string> = {
+  contractuelle: 'Période contractuelle',
+  calendrier: 'Période calendrier',
+}
 
 export const LEASE_TYPE_LABELS: Record<LeaseType, string> = {
   vide: 'Location vide',
@@ -41,6 +47,7 @@ export interface Lease {
   deposit_amount: number
   payment_day: number
   payment_method: PaymentMethod
+  rent_call_rule: RentCallRule
   apl_amount?: number
   apl_tiers_payant: boolean
   has_guarantor: boolean

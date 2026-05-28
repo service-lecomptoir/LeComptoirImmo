@@ -1,9 +1,11 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, Literal
 from pydantic import BaseModel, Field
 
 from app.models.lease import LeaseType, PaymentMethod
+
+RentCallRuleT = Literal["contractuelle", "calendrier"]
 
 
 # ── Sous-schémas pour les relations chargées ───────────────────────────────────
@@ -41,6 +43,7 @@ class LeaseCreate(BaseModel):
     deposit_amount: float = Field(0.0, ge=0)
     payment_day: int = Field(1, ge=1, le=28)
     payment_method: PaymentMethod = PaymentMethod.VIREMENT
+    rent_call_rule: RentCallRuleT = "calendrier"
     apl_amount: Optional[float] = Field(None, ge=0)
     apl_tiers_payant: bool = False
     has_guarantor: bool = False
@@ -51,6 +54,8 @@ class LeaseCreate(BaseModel):
 
 
 class LeaseUpdate(BaseModel):
+    # Le locataire principal peut être réassigné en modification (pas le bien).
+    tenant_id: Optional[uuid.UUID] = None
     lease_type: Optional[LeaseType] = None
     # Si fourni, remplace la liste des co-titulaires secondaires
     secondary_tenant_ids: Optional[list[uuid.UUID]] = None
@@ -61,6 +66,7 @@ class LeaseUpdate(BaseModel):
     deposit_amount: Optional[float] = Field(None, ge=0)
     payment_day: Optional[int] = Field(None, ge=1, le=28)
     payment_method: Optional[PaymentMethod] = None
+    rent_call_rule: Optional[RentCallRuleT] = None
     apl_amount: Optional[float] = Field(None, ge=0)
     apl_tiers_payant: Optional[bool] = None
     has_guarantor: Optional[bool] = None
@@ -88,6 +94,7 @@ class LeaseResponse(BaseModel):
     deposit_amount: float
     payment_day: int
     payment_method: PaymentMethod
+    rent_call_rule: str = "calendrier"
     apl_amount: Optional[float] = None
     apl_tiers_payant: bool
     has_guarantor: bool

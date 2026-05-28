@@ -21,7 +21,8 @@ const schema = z.object({
   charges_amount: z.coerce.number().min(0).default(0),
   deposit_amount: z.coerce.number().min(0).default(0),
   payment_day: z.coerce.number().int().min(1).max(28).default(1),
-  payment_method: z.enum(['virement', 'cheque', 'prelevement', 'especes']),
+  payment_method: z.enum(['virement', 'cheque', 'prelevement', 'especes']).default('virement'),
+  rent_call_rule: z.enum(['contractuelle', 'calendrier']).default('calendrier'),
   apl_tiers_payant: z.boolean().default(false),
   apl_amount: z.coerce.number().min(0).optional().or(z.literal('')),
   has_guarantor: z.boolean().default(false),
@@ -128,6 +129,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
       deposit_amount: lease.deposit_amount,
       payment_day: lease.payment_day,
       payment_method: lease.payment_method,
+      rent_call_rule: lease.rent_call_rule ?? 'calendrier',
       apl_tiers_payant: lease.apl_tiers_payant,
       apl_amount: lease.apl_amount ?? '',
       has_guarantor: lease.has_guarantor,
@@ -137,6 +139,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
     } : {
       lease_type: 'vide',
       payment_method: 'virement',
+      rent_call_rule: 'calendrier',
       apl_tiers_payant: false,
       has_guarantor: false,
       payment_day: 1,
@@ -149,8 +152,16 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
   const hasGuarantor = watch('has_guarantor')
 
   useEffect(() => {
-    propertiesApi.list({ limit: 200 }).then(r => setProperties(r.data.items as PropertyListItem[]))
-    tenantsApi.list({ limit: 200, available_only: !isEdit }).then(r => setTenants(r.data.items))
+    // En édition, les <select> sont rendus avant l'arrivée des options : on ré-applique
+    // les valeurs une fois les listes chargées pour que le bien et le locataire s'affichent.
+    propertiesApi.list({ limit: 200 }).then(r => {
+      setProperties(r.data.items as PropertyListItem[])
+      if (lease) setValue('property_id', lease.property_id)
+    })
+    tenantsApi.list({ limit: 200, available_only: !isEdit }).then(r => {
+      setTenants(r.data.items)
+      if (lease) setValue('tenant_id', lease.tenant_id)
+    })
   }, [])
 
   const handleTenantCreated = (tenant: TenantListItem) => {
@@ -229,7 +240,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Locataire</h3>
           {!showCreateTenant ? (
             <div className="flex gap-2">
-              <select {...register('tenant_id')} className={`flex-1 ${inp}`} disabled={isEdit}>
+              <select {...register('tenant_id')} className={`flex-1 ${inp}`}>
                 <option value="">— Sélectionner un locataire —</option>
                 {tenants.map(t => (
                   <option key={t.id} value={t.id}>{t.full_name}</option>
@@ -335,16 +346,15 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-3 mt-3">
             <div>
-              <label className={lbl}>Jour d'échéance (1–28)</label>
+              <label className={lbl}>Jour de paiement (1–28)</label>
               <input type="number" min="1" max="28" {...register('payment_day')} className={inp} />
+              <p className="text-xs text-gray-400 mt-1">Jour d'échéance du loyer — sert aux relances.</p>
             </div>
             <div>
-              <label className={lbl}>Mode de paiement</label>
-              <select {...register('payment_method')} className={inp}>
-                <option value="virement">Virement bancaire</option>
-                <option value="cheque">Chèque</option>
-                <option value="prelevement">Prélèvement automatique</option>
-                <option value="especes">Espèces</option>
+              <label className={lbl}>Règle d'appel de loyer</label>
+              <select {...register('rent_call_rule')} className={inp}>
+                <option value="calendrier">Période calendrier (1er → fin de mois)</option>
+                <option value="contractuelle">Période contractuelle (date à date du bail)</option>
               </select>
             </div>
           </div>

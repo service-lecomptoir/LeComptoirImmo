@@ -38,6 +38,13 @@ class PaymentMethod(str, Enum):
     ESPECES = "especes"
 
 
+class RentCallRule(str, Enum):
+    """Règle d'appel de loyer : période contractuelle (basée sur la date d'entrée du
+    bail) ou période calendaire (du 1er au dernier jour du mois)."""
+    CONTRACTUELLE = "contractuelle"
+    CALENDRIER = "calendrier"
+
+
 class Lease(Base, TimestampMixin):
     __tablename__ = "leases"
 
@@ -82,6 +89,10 @@ class Lease(Base, TimestampMixin):
                values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=PaymentMethod.VIREMENT,
+    )
+    # Règle d'appel de loyer (stockée en texte pour éviter un type enum PG dédié)
+    rent_call_rule: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="calendrier", server_default="calendrier"
     )
 
     # ── APL ───────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ import { lettersApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LeaseForm } from './LeaseForm'
-import { LEASE_TYPE_LABELS, PAYMENT_METHOD_LABELS } from '@/types/lease'
+import { LEASE_TYPE_LABELS, RENT_CALL_RULE_LABELS } from '@/types/lease'
 import {
   INSPECTION_TYPE_LABELS,
   CONDITION_LABELS,
@@ -305,7 +305,12 @@ export default function LeaseDetail() {
             <Home size={15} className="text-blue-500" /> Bien immobilier
           </h2>
           <InfoRow label="Bien" value={lease.parent_property?.name} />
-          <InfoRow label="Adresse" value={lease.parent_property?.full_address} />
+          {lease.parent_property?.full_address && (
+            <div className="py-2">
+              <p className="text-xs text-gray-500 mb-0.5">Adresse</p>
+              <p className="text-sm font-medium text-gray-900">{lease.parent_property.full_address}</p>
+            </div>
+          )}
         </div>
 
         {/* Finances */}
@@ -320,7 +325,7 @@ export default function LeaseDetail() {
           } />
           <InfoRow label="Dépôt de garantie" value={fmtEuro(lease.deposit_amount)} />
           <InfoRow label="Paiement le" value={`${lease.payment_day} du mois`} />
-          <InfoRow label="Mode" value={PAYMENT_METHOD_LABELS[lease.payment_method]} />
+          <InfoRow label="Règle d'appel" value={RENT_CALL_RULE_LABELS[lease.rent_call_rule]} />
           {lease.apl_tiers_payant && lease.apl_amount && (
             <>
               <InfoRow label="Aide personnelle au logement" value={

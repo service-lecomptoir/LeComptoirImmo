@@ -155,6 +155,8 @@ async def _apply_column_migrations() -> None:
         # Quittances sur les paiements
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_generated_at TIMESTAMPTZ",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_sent_at TIMESTAMPTZ",
+        # Règle d'appel de loyer sur le contrat (période contractuelle / calendrier)
+        "ALTER TABLE leases ADD COLUMN IF NOT EXISTS rent_call_rule VARCHAR(20) NOT NULL DEFAULT 'calendrier'",
         # Coordonnées profil utilisateur (gestionnaire/agence)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
