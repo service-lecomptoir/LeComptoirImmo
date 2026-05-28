@@ -48,7 +48,11 @@ export default function LocatairePayer() {
       .then(r => {
         setPayment(r.data.payment)
         setPayee(r.data.payee ?? null)
-        if (r.data.payment) setAmount(Number(r.data.payment.amount_due) || 0)
+        // Montant pré-rempli = ce qu'il RESTE à payer (net après APL et acomptes) = balance.
+        if (r.data.payment) {
+          const p = r.data.payment
+          setAmount(Number(p.balance ?? p.amount_due) || 0)
+        }
       })
       .catch(() => { })
       .finally(() => setIsLoading(false))
@@ -93,6 +97,8 @@ export default function LocatairePayer() {
   }
 
   const statusCfg = STATUS_LABELS[payment.status] ?? STATUS_LABELS.pending
+  // « Loyer dû » = ce qu'il reste à payer après déduction de l'aide au logement (et acomptes).
+  const due = Number(payment.balance ?? payment.amount_due) || 0
 
   if (step === 'success') {
     const selectedMethod = METHODS.find(m => m.id === method)
@@ -128,7 +134,7 @@ export default function LocatairePayer() {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Loyer dû</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{fmtEuro(payment.amount_due)}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{fmtEuro(due)}</p>
             <p className="text-sm text-gray-500 mt-0.5">
               {MONTHS[payment.period_month]} {payment.period_year}
               {payment.due_date && ` · Échéance le ${format(new Date(payment.due_date), 'd MMMM', { locale: fr })}`}
@@ -139,7 +145,7 @@ export default function LocatairePayer() {
             {statusCfg.label}
           </span>
         </div>
-        {payment.amount_due !== payment.amount_rent && (
+        {(payment.amount_charges > 0 || (payment.amount_apl ?? 0) > 0) && (
           <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
             <span>Loyer nu</span>
             <span className="text-right font-medium">{fmtEuro(payment.amount_rent)}</span>
@@ -151,6 +157,8 @@ export default function LocatairePayer() {
               <span className="text-green-600">Aide personnelle au logement déduite</span>
               <span className="text-right font-medium text-green-600">− {fmtEuro(payment.amount_apl)}</span>
             </>}
+            <span className="font-semibold text-gray-700 pt-1 border-t border-gray-100">Reste à payer</span>
+            <span className="text-right font-bold text-gray-900 pt-1 border-t border-gray-100">{fmtEuro(due)}</span>
           </div>
         )}
         {payment.status === 'late' && (
@@ -246,17 +254,17 @@ export default function LocatairePayer() {
               <span className="text-sm text-gray-500">€</span>
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              Montant dû : <strong>{fmtEuro(payment.amount_due)}</strong>. Vous pouvez régler un
+              Montant dû : <strong>{fmtEuro(due)}</strong>. Vous pouvez régler un
               montant différent — partiel (le solde restera dû) ou supérieur (avance en votre faveur).
             </p>
-            {amount > 0 && amount < payment.amount_due && (
+            {amount > 0 && amount < due && (
               <p className="text-xs text-amber-600 mt-1">
-                Paiement partiel : il restera {fmtEuro(payment.amount_due - amount)} à régler.
+                Paiement partiel : il restera {fmtEuro(due - amount)} à régler.
               </p>
             )}
-            {amount > payment.amount_due && (
+            {amount > due && (
               <p className="text-xs text-green-600 mt-1">
-                Avance : {fmtEuro(amount - payment.amount_due)} en votre faveur.
+                Avance : {fmtEuro(amount - due)} en votre faveur.
               </p>
             )}
           </div>
@@ -280,10 +288,10 @@ export default function LocatairePayer() {
               <span className="text-gray-500">Montant déclaré</span>
               <span className="font-semibold text-gray-900">{fmtEuro(amount)}</span>
             </div>
-            {amount !== payment.amount_due && (
+            {amount !== due && (
               <div className="flex justify-between text-xs">
                 <span className="text-gray-400">Montant dû</span>
-                <span className="text-gray-400">{fmtEuro(payment.amount_due)}</span>
+                <span className="text-gray-400">{fmtEuro(due)}</span>
               </div>
             )}
             <div className="flex justify-between">
