@@ -23,6 +23,7 @@ interface NavItem {
 
 // Navigation Gestionnaire mandataire / Admin
 const navGestionnaire: NavItem[] = [
+  { label: 'Gestion locative', isSeparator: true },
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
   { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
   { to: '/properties', icon: Building2, label: 'Propriétés' },
