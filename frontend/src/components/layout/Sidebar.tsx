@@ -39,11 +39,6 @@ const navGestionnaire: NavItem[] = [
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
-  { label: 'Mes finances', isSeparator: true },
-  { to: '/proprietaire', icon: LayoutDashboard, label: 'Vue propriétaire' },
-  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
-  { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
-  { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
   { label: 'Mon compte', isSeparator: true },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
