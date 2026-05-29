@@ -97,7 +97,7 @@ def _wrap(
     # En-tête gauche : logo (icône) du gestionnaire OU son nom en wordmark.
     logo_uri = _logo_data_uri(getattr(template, "logo_path", None))
     if logo_uri:
-        sender_brand = f'<img src="{logo_uri}" style="max-height:48px;" alt="logo"/>'
+        sender_brand = f'<img src="{logo_uri}" style="height:32px;" alt="logo"/>'
     else:
         sender_brand = f'<div class="sender-name">{company}</div>'
 
