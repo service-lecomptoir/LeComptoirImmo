@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Save, Landmark, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { PhoneInput } from '@/components/common/PhoneInput'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
 
@@ -124,7 +125,7 @@ export default function MonProfil() {
         </div>
         <div>
           <label className={lbl}>Téléphone</label>
-          <input className={inp} value={phone} onChange={e => setPhone(e.target.value)} placeholder="06 12 34 56 78" />
+          <PhoneInput value={phone} onChange={setPhone} inputClassName={inp} />
         </div>
         {!isLocataire && (
           <div>

@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { UserRound, Plus, X } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
+import { PhoneInput } from '@/components/common/PhoneInput'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
 import { tenantsApi } from '@/api/tenants'
@@ -88,8 +89,8 @@ function CreateTenantPanel({ onCreated, onCancel }: CreateTenantPanelProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email"
           className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" />
-        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Téléphone"
-          className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" />
+        <PhoneInput value={phone} onChange={setPhone}
+          inputClassName="flex-1 w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" />
       </div>
       <button type="button" onClick={handle} disabled={loading}
         className="w-full py-1.5 text-xs font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50">
@@ -441,7 +442,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               </div>
               <div>
                 <label className={lbl}>Téléphone</label>
-                <input {...register('guarantor_phone')} className={inp} />
+                <PhoneInput value={watch('guarantor_phone') || ''} onChange={v => setValue('guarantor_phone', v)} />
               </div>
             </div>
           )}

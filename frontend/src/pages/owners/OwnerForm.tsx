@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Building2 } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
+import { PhoneInput } from '@/components/common/PhoneInput'
 import { ownersApi } from '@/api/owners'
 import type { Owner } from '@/types/owner'
 
@@ -52,6 +53,15 @@ function OwnerField({ label, name, type = 'text', required = false, placeholder,
   )
 }
 
+function PhoneField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+      <PhoneInput value={value} onChange={onChange} />
+    </div>
+  )
+}
+
 interface Props {
   owner?: Owner
   onClose: () => void
@@ -62,7 +72,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
   const isEdit = !!owner
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: owner ? {
       civility: owner.civility ?? undefined,
@@ -180,8 +190,8 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <OwnerField label="Email" name="email" type="email" register={register} errors={errors} />
-            <OwnerField label="Téléphone" name="phone" register={register} errors={errors} />
-            <OwnerField label="Téléphone 2" name="phone2" register={register} errors={errors} />
+            <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
+            <PhoneField label="Téléphone 2" value={watch('phone2') || ''} onChange={v => setValue('phone2', v)} />
           </div>
           <div className="mt-3">
             <OwnerField label="Adresse (chèque / espèces)" name="address" placeholder="12 rue de la République, 75001 Paris" register={register} errors={errors} />
