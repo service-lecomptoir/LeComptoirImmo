@@ -241,8 +241,8 @@ class PaymentService:
             # Envoi automatique de la quittance par e-mail (no-op tant que SMTP désactivé).
             # La quittance reste de toute façon consultable dans l'espace locataire.
             try:
-                from app.config import settings
-                if settings.smtp_enabled:
+                from app.config import get_settings
+                if get_settings().smtp_enabled:
                     from app.services.email_service import send_quittance as _send_q
                     tenant = await db.get(Tenant, payment.tenant_id)
                     to = getattr(tenant, "email", None) if tenant else None
