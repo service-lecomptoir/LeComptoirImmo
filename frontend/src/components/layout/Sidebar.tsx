@@ -39,6 +39,10 @@ const navGestionnaire: NavItem[] = [
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
+  { label: 'Finances', isSeparator: true },
+  { to: '/finances/revenus', icon: Wallet, label: 'Revenus' },
+  { to: '/finances/biens', icon: BarChart3, label: 'Performance biens' },
+  { to: '/finances/fiscal', icon: Calculator, label: 'Liasse fiscale' },
   { label: 'Mon compte', isSeparator: true },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]

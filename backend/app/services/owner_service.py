@@ -29,6 +29,94 @@ class OwnerService:
         )
 
     @staticmethod
+    async def get_finances(db: AsyncSession, owner_id: uuid.UUID, year: int) -> dict:
+        """Agrège revenus, performance par bien et synthèse fiscale d'un propriétaire/année."""
+        from sqlalchemy.orm import selectinload
+        from app.models.lease import Lease
+        from app.models.payment import Payment
+
+        owner = await db.get(Owner, owner_id)
+        if not owner:
+            raise NotFoundException("Propriétaire introuvable")
+
+        props = (await db.execute(
+            select(Property).where(Property.owner_id == owner_id)
+        )).scalars().all()
+        prop_ids = [p.id for p in props]
+
+        leases = []
+        if prop_ids:
+            leases = (await db.execute(
+                select(Lease).where(Lease.property_id.in_(prop_ids))
+            )).scalars().all()
+        lease_ids = [l.id for l in leases]
+
+        payments = []
+        if lease_ids:
+            payments = (await db.execute(
+                select(Payment)
+                .options(
+                    selectinload(Payment.tenant),
+                    selectinload(Payment.lease).selectinload(Lease.parent_property),
+                )
+                .where(Payment.lease_id.in_(lease_ids), Payment.period_year == year)
+                .order_by(Payment.period_month)
+            )).scalars().all()
+
+        lignes = []
+        total_du = total_percu = loyers = charges = apl = 0.0
+        for p in payments:
+            total_du += float(p.amount_due)
+            total_percu += float(p.amount_paid)
+            loyers += float(p.amount_rent or 0)
+            charges += float(p.amount_charges or 0)
+            apl += float(p.amount_apl or 0)
+            lignes.append({
+                "period_label": p.period_label,
+                "period_month": p.period_month,
+                "property_name": p.lease.parent_property.name if p.lease and p.lease.parent_property else "",
+                "tenant_full_name": p.tenant.full_name if p.tenant else "",
+                "amount_due": float(p.amount_due),
+                "amount_paid": float(p.amount_paid),
+                "status": p.status,
+                "payment_date": p.payment_date,
+            })
+
+        biens = []
+        for prop in props:
+            active = next((l for l in leases if l.property_id == prop.id and l.is_active), None)
+            pp = [p for p in payments if p.lease and p.lease.property_id == prop.id]
+            biens.append({
+                "property_id": prop.id,
+                "property_name": prop.name,
+                "city": prop.city,
+                "rent": float(active.rent_amount) if active else 0.0,
+                "charges": float(active.charges_amount) if active else 0.0,
+                "total_du": round(sum(float(x.amount_due) for x in pp), 2),
+                "total_percu": round(sum(float(x.amount_paid) for x in pp), 2),
+                "is_occupied": bool(prop.is_occupied),
+            })
+
+        return {
+            "owner_id": owner.id,
+            "owner_name": owner.full_name,
+            "year": year,
+            "revenus": {
+                "total_du": round(total_du, 2),
+                "total_percu": round(total_percu, 2),
+                "lignes": lignes,
+            },
+            "biens": biens,
+            "fiscal": {
+                "loyers": round(loyers, 2),
+                "charges": round(charges, 2),
+                "apl": round(apl, 2),
+                "total_du": round(total_du, 2),
+                "total_percu": round(total_percu, 2),
+            },
+        }
+
+    @staticmethod
     async def create(
         db: AsyncSession, data: OwnerCreate, created_by: uuid.UUID
     ) -> Owner:

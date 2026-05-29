@@ -130,6 +130,40 @@ async def delete_owner(
     await OwnerService.delete(db, owner_id)
 
 
+# ── Finances par propriétaire (réservé aux gestionnaires) ──────────────────────
+@router.get("/{owner_id}/finances", summary="Finances d'un propriétaire (revenus, biens, fiscal)")
+async def owner_finances(
+    owner_id: uuid.UUID,
+    year: int = Query(..., ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_gestionnaire),
+):
+    return await OwnerService.get_finances(db, owner_id, year)
+
+
+@router.get("/{owner_id}/fiscal/pdf", summary="Liasse fiscale (PDF) d'un propriétaire")
+async def owner_fiscal_pdf(
+    owner_id: uuid.UUID,
+    year: int = Query(..., ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_gestionnaire),
+):
+    from fastapi.responses import Response
+    from app.services.pdf_service import render_template, html_to_pdf
+    from app.services.template_layout_service import get_layout
+    from app.utils.filename import doc_filename
+
+    data = await OwnerService.get_finances(db, owner_id, year)
+    html = render_template("liasse_fiscale.html.j2", {"data": data, "layout": get_layout()})
+    pdf = html_to_pdf(html)
+    filename = doc_filename("liasse_fiscale", tenant=data["owner_name"], year=year)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 # ── Documents du propriétaire ──────────────────────────────────────────────────
 @router.get("/{owner_id}/documents", response_model=List[DocumentResponse])
 async def list_owner_documents(

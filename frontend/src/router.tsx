@@ -43,6 +43,7 @@ import MonAbonnement from '@/pages/subscription/MonAbonnement'
 import TemplateLayoutEditor from '@/pages/templates/TemplateLayoutEditor'
 import MonProfil from '@/pages/profil/MonProfil'
 import GuideUtilisateur from '@/pages/guide/GuideUtilisateur'
+import FinancesParProprietaire from '@/pages/finances/FinancesParProprietaire'
 
 function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
@@ -112,6 +113,9 @@ export const router = createBrowserRouter([
       { path: 'guide', element: <GuideUtilisateur /> },
       { path: 'notifications', element: <NotificationList /> },
       { path: 'admin', element: <AdminUsers /> },
+      { path: 'finances/revenus', element: <FinancesParProprietaire view="revenus" /> },
+      { path: 'finances/biens', element: <FinancesParProprietaire view="biens" /> },
+      { path: 'finances/fiscal', element: <FinancesParProprietaire view="fiscal" /> },
       { path: 'proprietaire', element: <ProprietaireDashboard /> },
       { path: 'proprietaire/biens', element: <ProprietaireBiens /> },
       { path: 'proprietaire/revenus', element: <ProprietaireRevenus /> },
