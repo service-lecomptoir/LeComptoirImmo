@@ -55,12 +55,16 @@ export default function MonProfil() {
   const save = async () => {
     setSaving(true); setMsg(null); setErr(null)
     try {
-      // Compte : nom + email (identifiant). Pour un gestionnaire/admin, le téléphone
-      // et l'adresse (agence) restent sur le compte.
+      // Compte : nom + email (identifiant) + téléphone + adresse.
+      // L'adresse et le téléphone sont aussi écrits sur le compte (pas seulement
+      // sur la fiche propriétaire) pour que les documents générés et le bloc
+      // « Émetteur » de l'éditeur de templates restent à jour, quel que soit le
+      // rôle. Le locataire est exclu de l'adresse (son adresse = le bien loué).
       await apiClient.patch('/users/me', {
         full_name: fullName,
         email: email.trim() || undefined,
-        ...(showRib ? {} : { phone: phone || null, ...(isLocataire ? {} : { address: address || null }) }),
+        phone: phone || null,
+        ...(isLocataire ? {} : { address: address || null }),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
       if (showRib && ownerId) {
