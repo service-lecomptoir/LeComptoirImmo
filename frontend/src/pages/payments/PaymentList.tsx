@@ -345,8 +345,8 @@ export default function PaymentList() {
                           onClick={() => handleSendQuittance(p)}
                           disabled={sendingQuittanceId === p.id}
                           title={p.quittance_sent_at
-                            ? `Envoyée le ${format(new Date(p.quittance_sent_at), 'd MMM yyyy', { locale: fr })}`
-                            : 'Marquer comme envoyée'}
+                            ? `Envoyée par e-mail le ${format(new Date(p.quittance_sent_at), 'd MMM yyyy', { locale: fr })}`
+                            : 'Envoyer la quittance par e-mail au locataire'}
                           className={`p-1.5 rounded disabled:opacity-50 transition-colors ${
                             p.quittance_sent_at
                               ? 'text-green-600 bg-green-50 hover:bg-green-100'
@@ -361,12 +361,12 @@ export default function PaymentList() {
                           }
                         </button>
 
-                        {/* Badge "auto" si générée automatiquement */}
+                        {/* Disponible = consultable par le locataire dans son espace */}
                         {p.quittance_generated_at && !p.quittance_sent_at && (
-                          <span className="text-xs text-blue-500 whitespace-nowrap">Prête</span>
+                          <span className="text-xs text-green-600 whitespace-nowrap" title="Consultable par le locataire dans son espace">Disponible</span>
                         )}
                         {p.quittance_sent_at && (
-                          <span className="text-xs text-green-600 whitespace-nowrap">Envoyée</span>
+                          <span className="text-xs text-green-600 whitespace-nowrap" title="Quittance envoyée par e-mail">Envoyée par mail</span>
                         )}
                       </div>
                     ) : null}

@@ -225,6 +225,25 @@ class PaymentService:
             )).scalar_one_or_none()
             if avis and avis.status != AvisEcheanceStatus.ACQUITTE:
                 avis.status = AvisEcheanceStatus.ACQUITTE
+            # Envoi automatique de la quittance par e-mail (no-op tant que SMTP désactivé).
+            # La quittance reste de toute façon consultable dans l'espace locataire.
+            try:
+                from app.config import settings
+                if settings.smtp_enabled:
+                    from app.services.email_service import send_quittance as _send_q
+                    tenant = await db.get(Tenant, payment.tenant_id)
+                    to = getattr(tenant, "email", None) if tenant else None
+                    if to:
+                        ok = await _send_q(
+                            to=to,
+                            tenant_name=tenant.full_name,
+                            period_label=payment.period_label,
+                            amount=float(payment.amount_paid),
+                        )
+                        if ok:
+                            payment.quittance_sent_at = datetime.now(timezone.utc)
+            except Exception:
+                pass
         else:
             payment.status = PaymentStatus.PARTIAL
 
