@@ -4,7 +4,7 @@ Service AvisEcheance — Génération des avis d'échéances (manuelle et automa
 import uuid
 import calendar
 import logging
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from typing import Optional
 
 from sqlalchemy import select, and_
@@ -126,7 +126,9 @@ class AvisEcheanceService:
             amount_charges=amount_charges,
             amount_apl=apl,
             amount_total=total,
-            status=AvisEcheanceStatus.BROUILLON,
+            # L'avis est immédiatement visible dans l'espace locataire → « Envoyé ».
+            status=AvisEcheanceStatus.ENVOYE,
+            sent_at=datetime.utcnow(),
             generated_by=generated_by,
         )
         db.add(avis)
@@ -139,7 +141,48 @@ class AvisEcheanceService:
             period_start=bp.period_start, period_end=bp.period_end,
         )
 
+        # Si le loyer est déjà soldé dès la génération (APL/avance couvrant tout),
+        # l'avis passe directement « Acquitté ».
+        pay = (await db.execute(
+            select(Payment).where(
+                Payment.lease_id == lease.id,
+                Payment.period_year == bp.key_year,
+                Payment.period_month == bp.key_month,
+            )
+        )).scalar_one_or_none()
+        if pay and pay.status == PaymentStatus.PAID:
+            avis.status = AvisEcheanceStatus.ACQUITTE
+            await db.flush()
+
         return avis
+
+    @classmethod
+    async def sync_statuses(cls, db: AsyncSession) -> int:
+        """Backfill : aligne le statut des avis « brouillon » existants sur la réalité —
+        Envoyé (ils sont visibles côté locataire) ou Acquitté si le loyer lié est payé.
+        Ne touche que les avis encore en BROUILLON. Idempotent."""
+        avis_list = (await db.execute(
+            select(AvisEcheance).where(AvisEcheance.status == AvisEcheanceStatus.BROUILLON)
+        )).scalars().all()
+        n = 0
+        for a in avis_list:
+            pay = (await db.execute(
+                select(Payment).where(
+                    Payment.lease_id == a.lease_id,
+                    Payment.period_year == a.period_year,
+                    Payment.period_month == a.period_month,
+                )
+            )).scalar_one_or_none()
+            if pay and pay.status == PaymentStatus.PAID:
+                a.status = AvisEcheanceStatus.ACQUITTE
+            else:
+                a.status = AvisEcheanceStatus.ENVOYE
+                if a.sent_at is None:
+                    a.sent_at = datetime.utcnow()
+            n += 1
+        if n:
+            await db.flush()
+        return n
 
     @classmethod
     async def _ensure_payment(

@@ -50,7 +50,8 @@ class TestAvisGeneration:
         assert data["period_year"] == 2026
         assert data["period_month"] == 7
         assert data["amount_rent"] == 700.0
-        assert data["status"] == "brouillon"
+        # L'avis est immédiatement visible côté locataire → généré « envoyé ».
+        assert data["status"] == "envoye"
 
     async def test_no_duplicate_avis(self, client, gestionnaire_token, db):
         """Deux générations pour le même bail/période → 409 Conflict."""
@@ -102,15 +103,21 @@ class TestAvisWorkflow:
         assert acq_resp.json()["status"] == "acquitte"
 
     async def test_delete_draft_only(self, client, gestionnaire_token, db):
+        from app.models.avis_echeance import AvisEcheance
+        from datetime import date
         lease = await _setup_active_lease(db)
 
-        create_resp = await client.post("/api/v1/avis-echeances/generate", headers=auth(gestionnaire_token), json={
-            "lease_id": str(lease.id), "period_year": 2026, "period_month": 12,
-        })
-        avis_id = create_resp.json()["id"]
+        # Un avis en brouillon (état manuel) reste supprimable.
+        avis = AvisEcheance(
+            lease_id=lease.id, tenant_id=lease.tenant_id,
+            period_year=2026, period_month=12, due_date=date(2026, 12, 1),
+            amount_rent=700.0, amount_charges=0.0, amount_total=700.0,
+            status="brouillon",
+        )
+        db.add(avis)
+        await db.flush()
 
-        # Supprimer le brouillon → OK
-        del_resp = await client.delete(f"/api/v1/avis-echeances/{avis_id}", headers=auth(gestionnaire_token))
+        del_resp = await client.delete(f"/api/v1/avis-echeances/{avis.id}", headers=auth(gestionnaire_token))
         assert del_resp.status_code == 204
 
     async def test_cannot_delete_sent_avis(self, client, gestionnaire_token, db):
