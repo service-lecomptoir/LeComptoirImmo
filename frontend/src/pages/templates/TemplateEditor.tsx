@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
-  ArrowLeft, Save, X, Star, Check, RefreshCw, Download,
-  Plus, Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal,
+  ArrowLeft, Save, X, Star, Check, RefreshCw,
+  Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -662,22 +662,9 @@ export default function TemplateEditor() {
   const [editTemplate, setEditTemplate] = useState<Template | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
-  const [initLoading, setInitLoading] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
   const triggerReload = () => setReloadKey(k => k + 1)
-
-  const initDefaults = async () => {
-    setInitLoading(true)
-    try {
-      const r = await apiClient.post<{ created: number; message: string }>('/templates/initialize-defaults')
-      setSuccessMsg(r.data.message)
-      setTimeout(() => setSuccessMsg(''), 3000)
-      triggerReload()
-    } finally {
-      setInitLoading(false)
-    }
-  }
 
   const deleteTemplate = async (t: Template) => {
     if (!confirm(`Supprimer "${t.name}" ?`)) return
@@ -689,7 +676,6 @@ export default function TemplateEditor() {
     }
   }
 
-  const openNew = () => { setEditTemplate(null); setEditMode(true) }
   const openEdit = (t: Template) => { setEditTemplate(t); setEditMode(true) }
   const handleBack = () => { setEditMode(false); setEditTemplate(null) }
   const onSaved = () => { setSuccessMsg('Template enregistré'); setTimeout(() => setSuccessMsg(''), 3000); triggerReload() }
@@ -723,25 +709,11 @@ export default function TemplateEditor() {
     <div className="p-4 sm:p-6 max-w-5xl mx-auto">
 
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Templates de documents</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Personnalisez vos avis d'échéance, quittances et courriers
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={initDefaults} disabled={initLoading}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
-            {initLoading ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
-            Modèles par défaut
-          </button>
-          <button onClick={openNew}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-            <Plus size={15} />
-            Nouveau template
-          </button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Templates de documents</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Personnalisez vos avis d'échéance, quittances et courriers en cliquant sur l'un des modèles ci-dessous.
+        </p>
       </div>
 
       {successMsg && (
@@ -757,11 +729,7 @@ export default function TemplateEditor() {
         <div className="text-center py-16 bg-white rounded-xl border">
           <FileText size={40} className="mx-auto text-gray-300 mb-3" />
           <p className="text-gray-500 font-medium mb-1">Aucun template configuré</p>
-          <p className="text-sm text-gray-400 mb-4">Commencez par charger les modèles par défaut ou créez le vôtre.</p>
-          <button onClick={initDefaults}
-            className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            Charger les modèles par défaut
-          </button>
+          <p className="text-sm text-gray-400">Vos modèles par défaut seront recréés au prochain démarrage du serveur.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
