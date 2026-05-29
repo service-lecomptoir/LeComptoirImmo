@@ -4,7 +4,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  MapPin, Hash, User, ShoppingBag, Package, KeyRound,
+  MapPin, Hash, User, ShoppingBag, Package, KeyRound, TrendingUp,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
@@ -32,6 +32,7 @@ const navGestionnaire: NavItem[] = [
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
+  { to: '/actualisation', icon: TrendingUp, label: 'Actualisation loyers' },
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
   { to: '/incidents', icon: MessageSquare, label: 'Messages et Incidents' },
@@ -69,6 +70,7 @@ const navGestionnairePropio: NavItem[] = [
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
+  { to: '/actualisation', icon: TrendingUp, label: 'Actualisation loyers' },
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
   { to: '/incidents', icon: MessageSquare, label: 'Messages et Incidents' },

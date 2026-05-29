@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # (vide → repli sur FIRST_ADMIN_EMAIL).
     LEADS_NOTIFY_EMAIL: str = ""
 
+    # Clé API INSEE (BDM) pour la récupération auto de l'IRL (vide → saisie manuelle).
+    INSEE_API_KEY: str = ""
+
     @property
     def smtp_enabled(self) -> bool:
         return bool(self.SMTP_HOST)

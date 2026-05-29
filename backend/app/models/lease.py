@@ -108,6 +108,13 @@ class Lease(Base, TimestampMixin):
         String(20), nullable=False, default="mensuelle", server_default="mensuelle"
     )
 
+    # ── Révision du loyer (IRL) ─────────────────────────────────────────────────
+    # Trimestre de référence (1..4) et indice IRL de référence (valeur au dernier
+    # calage), + date de la dernière révision. Révision annuelle à l'anniversaire.
+    irl_quarter: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    irl_base_index: Mapped[Optional[float]] = mapped_column(Numeric(8, 2), nullable=True)
+    last_revision_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
     # ── APL ───────────────────────────────────────────────────────────────────
     apl_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     apl_tiers_payant: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

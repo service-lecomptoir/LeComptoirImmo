@@ -16,11 +16,12 @@ from app.models.entretien import Prestataire, Entretien
 from app.models.message import ProprietaireMessage
 from app.models.audit_log import AuditLog
 from app.models.app_setting import AppSetting
+from app.models.irl_index import IrlIndex
 
 __all__ = [
     "User", "Tenant", "Owner", "Property", "Document",
     "Lease", "Inspection", "Payment", "Notification", "AvisEcheance",
     "Contact", "AutomationRule", "CommunicationLog", "DocumentTemplate",
     "Ticket", "TicketMessage", "Prestataire", "Entretien",
-    "ProprietaireMessage", "AuditLog",
+    "ProprietaireMessage", "AuditLog", "IrlIndex",
 ]
