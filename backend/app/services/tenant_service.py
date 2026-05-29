@@ -4,8 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 
 from app.models.tenant import Tenant
+from app.models.lease import Lease, lease_tenants
 from app.schemas.tenant import TenantCreate, TenantUpdate
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import NotFoundException, ConflictException
 
 
 class TenantService:
@@ -75,6 +76,25 @@ class TenantService:
     @staticmethod
     async def delete(db: AsyncSession, tenant_id: uuid.UUID) -> None:
         tenant = await TenantService.get_by_id(db, tenant_id)
+
+        # Un locataire rattaché à un contrat (titulaire principal ou co-titulaire)
+        # ne peut pas être supprimé : la FK des baux est en RESTRICT et la
+        # suppression provoquerait une erreur SQL silencieuse (500). On renvoie
+        # plutôt un message clair (409).
+        as_principal = (await db.execute(
+            select(func.count()).select_from(Lease).where(Lease.tenant_id == tenant_id)
+        )).scalar_one()
+        as_cotenant = (await db.execute(
+            select(func.count()).select_from(lease_tenants)
+            .where(lease_tenants.c.tenant_id == tenant_id)
+        )).scalar_one()
+        if (as_principal or 0) + (as_cotenant or 0) > 0:
+            raise ConflictException(
+                "Ce locataire est rattaché à un ou plusieurs contrats. "
+                "Supprimez d'abord les contrats concernés (ou retirez-le des "
+                "co-titulaires) avant de supprimer le locataire."
+            )
+
         await db.delete(tenant)
         await db.flush()
 

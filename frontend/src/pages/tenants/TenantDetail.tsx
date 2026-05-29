@@ -18,6 +18,7 @@ export default function TenantDetail() {
   const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const fetchTenant = async () => {
     if (!id) return
@@ -35,9 +36,15 @@ export default function TenantDetail() {
   const handleDelete = async () => {
     if (!id) return
     setIsDeleting(true)
+    setDeleteError(null)
     try {
       await tenantsApi.delete(id)
       navigate('/tenants')
+    } catch (e: any) {
+      setDeleteError(
+        e?.response?.data?.detail ||
+        "La suppression a échoué. Ce locataire est peut-être rattaché à un contrat."
+      )
     } finally {
       setIsDeleting(false)
     }
@@ -151,10 +158,13 @@ export default function TenantDetail() {
       )}
       <ConfirmDialog
         isOpen={showDelete}
-        onClose={() => setShowDelete(false)}
+        onClose={() => { setShowDelete(false); setDeleteError(null) }}
         onConfirm={handleDelete}
         title="Supprimer le locataire"
-        message="Cette action est irréversible. Êtes-vous sûr de vouloir supprimer ce locataire ?"
+        message={deleteError
+          ? `⚠️ ${deleteError}`
+          : "Cette action est irréversible. Êtes-vous sûr de vouloir supprimer ce locataire ?"}
+        confirmLabel={deleteError ? 'Réessayer' : 'Supprimer'}
         isLoading={isDeleting}
       />
     </div>
