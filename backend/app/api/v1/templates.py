@@ -45,9 +45,10 @@ async def list_templates(
     q = select(DocumentTemplate)
     if template_type:
         q = q.where(DocumentTemplate.template_type == template_type)
-    # Admin voit tout ; gestionnaires voient uniquement leurs propres templates
-    if not _is_admin(current_user):
-        q = q.where(DocumentTemplate.gestionnaire_id == current_user.id)
+    # Chaque utilisateur (admin inclus) ne voit que SES propres templates : l'admin
+    # possède son propre jeu par défaut, et afficher ceux de tous les comptes
+    # produisait des doublons apparents (un même type répété par gestionnaire).
+    q = q.where(DocumentTemplate.gestionnaire_id == current_user.id)
     q = q.where(DocumentTemplate.is_active.is_(True)).order_by(
         DocumentTemplate.template_type, DocumentTemplate.name
     )
