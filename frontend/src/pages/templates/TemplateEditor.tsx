@@ -575,88 +575,55 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
         <div className="w-[420px] shrink-0 bg-gray-100 flex flex-col overflow-hidden">
 
           {/* Barre de mise en page (s'applique à tous les documents) */}
-          <div className="shrink-0 px-3 py-2 border-b bg-white space-y-1.5">
-            {/* Ligne 1 : Typographie */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] text-gray-500">Police</label>
-                <select value={layout?.spacing?.font_family ?? 'Helvetica, Arial, sans-serif'}
-                  onChange={e => setSpacing('font_family', e.target.value)}
-                  className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50 max-w-[120px]">
-                  <option value="Helvetica, Arial, sans-serif">Helvetica</option>
-                  <option value="Arial, sans-serif">Arial</option>
-                  <option value='Georgia, "Times New Roman", serif'>Georgia</option>
-                  <option value='"Times New Roman", Times, serif'>Times</option>
-                  <option value="Verdana, sans-serif">Verdana</option>
-                  <option value='"Trebuchet MS", sans-serif'>Trebuchet</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] text-gray-500">Taille</label>
-                <select value={layout?.spacing?.font_size ?? 10}
-                  onChange={e => setSpacing('font_size', Number(e.target.value))}
-                  className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
-                  {[8, 9, 10, 11, 12].map(s => <option key={s} value={s}>{s} pt</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] text-gray-500">Interligne</label>
-                <select value={layout?.spacing?.line_height ?? 1.55}
-                  onChange={e => setSpacing('line_height', Number(e.target.value))}
-                  className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
-                  {[1.3, 1.45, 1.55, 1.7, 1.9].map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] text-gray-500">Paragraphes</label>
-                <select value={layout?.spacing?.paragraph_spacing ?? 8}
-                  onChange={e => setSpacing('paragraph_spacing', Number(e.target.value))}
-                  className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
-                  <option value={4}>Compact</option>
-                  <option value={8}>Normal</option>
-                  <option value={12}>Aéré</option>
-                </select>
-              </div>
+          <div className="shrink-0 px-3 py-2 border-b bg-white flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-gray-500">Police</label>
+              <select value={layout?.spacing?.font_family ?? 'Helvetica, Arial, sans-serif'}
+                onChange={e => setSpacing('font_family', e.target.value)}
+                className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50 max-w-[120px]">
+                <option value="Helvetica, Arial, sans-serif">Helvetica</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value='Georgia, "Times New Roman", serif'>Georgia</option>
+                <option value='"Times New Roman", Times, serif'>Times</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value='"Trebuchet MS", sans-serif'>Trebuchet</option>
+              </select>
             </div>
-
-            {/* Ligne 2 : Couleurs, taille des titres & marges */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              <div className="flex items-center gap-1.5" title="Couleur du texte du corps">
-                <label className="text-[11px] text-gray-500">Texte</label>
-                <input type="color" value={layout?.spacing?.text_color ?? '#1f2937'}
-                  onChange={e => setSpacing('text_color', e.target.value)}
-                  className="w-6 h-6 rounded border border-gray-200 cursor-pointer p-0" />
-              </div>
-              <div className="flex items-center gap-1.5" title="Couleur des titres (vide = couleur du bandeau)">
-                <label className="text-[11px] text-gray-500">Titres</label>
-                <input type="color" value={layout?.spacing?.heading_color ?? form.header_color}
-                  onChange={e => setSpacing('heading_color', e.target.value)}
-                  className="w-6 h-6 rounded border border-gray-200 cursor-pointer p-0" />
-                {layout?.spacing?.heading_color && (
-                  <button onClick={() => setSpacing('heading_color', '')} title="Réinitialiser"
-                    className="text-[10px] text-gray-400 hover:text-gray-700 underline">auto</button>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] text-gray-500">Taille titres</label>
-                <select value={layout?.spacing?.heading_scale ?? 6}
-                  onChange={e => setSpacing('heading_scale', Number(e.target.value))}
-                  className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
-                  <option value={4}>Petits</option>
-                  <option value={6}>Moyens</option>
-                  <option value={8}>Grands</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label className="text-[11px] text-gray-500">Marges</label>
-                <select value={layout?.spacing?.page_margin ?? '2cm 2.5cm'}
-                  onChange={e => setSpacing('page_margin', e.target.value)}
-                  className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
-                  <option value="1.5cm 2cm">Serrées</option>
-                  <option value="2cm 2.5cm">Normales</option>
-                  <option value="2.5cm 3cm">Aérées</option>
-                </select>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-gray-500">Taille</label>
+              <select value={layout?.spacing?.font_size ?? 10}
+                onChange={e => setSpacing('font_size', Number(e.target.value))}
+                className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
+                {[8, 9, 10, 11, 12].map(s => <option key={s} value={s}>{s} pt</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-gray-500">Interligne</label>
+              <select value={layout?.spacing?.line_height ?? 1.55}
+                onChange={e => setSpacing('line_height', Number(e.target.value))}
+                className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
+                {[1.3, 1.45, 1.55, 1.7, 1.9].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-gray-500">Paragraphes</label>
+              <select value={layout?.spacing?.paragraph_spacing ?? 8}
+                onChange={e => setSpacing('paragraph_spacing', Number(e.target.value))}
+                className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
+                <option value={4}>Compact</option>
+                <option value={8}>Normal</option>
+                <option value={12}>Aéré</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-[11px] text-gray-500">Marges</label>
+              <select value={layout?.spacing?.page_margin ?? '2cm 2.5cm'}
+                onChange={e => setSpacing('page_margin', e.target.value)}
+                className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
+                <option value="1.5cm 2cm">Serrées</option>
+                <option value="2cm 2.5cm">Normales</option>
+                <option value="2.5cm 3cm">Aérées</option>
+              </select>
             </div>
           </div>
 
