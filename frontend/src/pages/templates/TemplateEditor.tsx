@@ -5,8 +5,13 @@ import {
   Plus, Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal, Layout,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import { useAuthStore } from '@/store/authStore'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+// Découpe l'adresse du profil en lignes (n° et rue / code postal Ville).
+const addressLines = (addr?: string | null): string[] =>
+  (addr ?? '').split(/[\n,]+/).map(s => s.trim()).filter(Boolean)
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -56,9 +61,9 @@ const VAR_CATEGORIES = [
     ],
   },
   {
-    label: 'Cabinet', color: '#374151', bg: '#f3f4f6', text: '#111827',
+    label: 'Gestionnaire', color: '#374151', bg: '#f3f4f6', text: '#111827',
     vars: [
-      { key: '{{company_name}}', label: 'Cabinet' },
+      { key: '{{company_name}}', label: 'Nom gestionnaire' },
     ],
   },
 ]
@@ -94,11 +99,6 @@ interface FormData {
   name: string
   template_type: string
   header_color: string
-  company_name: string
-  company_address: string
-  company_phone: string
-  company_email: string
-  company_siret: string
   content_html: string
   footer_text: string
   is_default: boolean
@@ -131,8 +131,7 @@ const DEFAULT_CONTENT: Record<string, string> = {
 
 const EMPTY_FORM: FormData = {
   name: '', template_type: 'avis_echeance', header_color: '#1E3A5F',
-  company_name: '', company_address: '', company_phone: '',
-  company_email: '', company_siret: '', content_html: DEFAULT_CONTENT.avis_echeance, footer_text: '', is_default: false,
+  content_html: DEFAULT_CONTENT.avis_echeance, footer_text: '', is_default: false,
 }
 
 // ── Helpers preview ───────────────────────────────────────────────────────────
@@ -159,16 +158,13 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
       name: template.name,
       template_type: template.template_type,
       header_color: template.header_color ?? '#1E3A5F',
-      company_name: template.company_name ?? '',
-      company_address: template.company_address ?? '',
-      company_phone: template.company_phone ?? '',
-      company_email: template.company_email ?? '',
-      company_siret: template.company_siret ?? '',
       content_html: template.content_html ?? '',
       footer_text: template.footer_text ?? '',
       is_default: template.is_default,
     } : { ...EMPTY_FORM }
   )
+
+  const currentUser = useAuthStore(s => s.user)
 
   const [logoPreview, setLogoPreview] = useState<string | null>(
     template?.logo_url ? `${API_BASE}${template.logo_url}` : null
@@ -406,23 +402,23 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
               </div>
             </div>
 
-            {/* Informations cabinet */}
+            {/* Émetteur : Nom + adresse du gestionnaire (issus du profil, sous le logo) */}
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Votre cabinet</p>
-              <div className="space-y-2">
-                <input className={inp} value={form.company_name}
-                  onChange={e => set('company_name', e.target.value)} placeholder="Nom de la société" />
-                <input className={inp} value={form.company_address}
-                  onChange={e => set('company_address', e.target.value)} placeholder="Adresse" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <input className={inp} value={form.company_phone}
-                    onChange={e => set('company_phone', e.target.value)} placeholder="Téléphone" />
-                  <input className={inp} value={form.company_email}
-                    onChange={e => set('company_email', e.target.value)} placeholder="Email" />
-                </div>
-                <input className={inp} value={form.company_siret}
-                  onChange={e => set('company_siret', e.target.value)} placeholder="SIRET" />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Émetteur</p>
+              <div className="rounded-lg border border-gray-200 bg-white p-3 text-sm">
+                <p className="font-semibold text-gray-800">{currentUser?.full_name || 'Votre nom'}</p>
+                {addressLines(currentUser?.address).length > 0 ? (
+                  addressLines(currentUser?.address).map((l, i) => (
+                    <p key={i} className="text-xs text-gray-500">{l}</p>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400 italic">Adresse non renseignée</p>
+                )}
               </div>
+              <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
+                Le nom et l'adresse proviennent de votre profil et s'affichent automatiquement
+                sous le logo. Pour les modifier, rendez-vous dans « Mes informations ».
+              </p>
             </div>
 
             {/* Pied de page */}
@@ -544,39 +540,24 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
                 position: 'relative',
               }}
             >
-              {/* En-tête coloré */}
+              {/* En-tête coloré : logo, puis nom + adresse du gestionnaire EN DESSOUS */}
               <div style={{
                 backgroundColor: form.header_color,
                 padding: '28px 48px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 24,
                 minHeight: 100,
               }}>
                 {logoPreview && (
                   <img src={logoPreview} alt="Logo"
-                    style={{ height: 56, width: 'auto', maxWidth: 120, objectFit: 'contain', flexShrink: 0 }} />
+                    style={{ height: 56, width: 'auto', maxWidth: 150, objectFit: 'contain', display: 'block', marginBottom: 10 }} />
                 )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>
-                    {form.company_name || <span style={{ opacity: 0.5 }}>Nom de votre cabinet</span>}
-                  </div>
-                  {form.company_address && (
-                    <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 4, fontFamily: 'Arial, sans-serif' }}>
-                      {form.company_address}
-                    </div>
-                  )}
-                  {(form.company_phone || form.company_email) && (
-                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 3, fontFamily: 'Arial, sans-serif' }}>
-                      {[form.company_phone, form.company_email].filter(Boolean).join(' · ')}
-                    </div>
-                  )}
+                <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>
+                  {currentUser?.full_name || <span style={{ opacity: 0.5 }}>Votre nom</span>}
                 </div>
-                {form.company_siret && (
-                  <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, textAlign: 'right', fontFamily: 'Arial, sans-serif' }}>
-                    SIRET<br />{form.company_siret}
+                {addressLines(currentUser?.address).map((l, i) => (
+                  <div key={i} style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: i === 0 ? 4 : 1, fontFamily: 'Arial, sans-serif' }}>
+                    {l}
                   </div>
-                )}
+                ))}
               </div>
 
               {/* Corps du document */}

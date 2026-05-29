@@ -59,6 +59,15 @@ def substitute(content_html: str, variables: dict) -> str:
     return _VAR_RE.sub(_var_repl, out)
 
 
+def _format_address_html(addr: str) -> str:
+    """Met l'adresse sur plusieurs lignes : « n° et rue » puis « code postal Ville ».
+    Découpe sur les retours à la ligne et les virgules saisies dans le profil."""
+    if not addr:
+        return ""
+    parts = [p.strip() for p in re.split(r"[\n,]+", addr) if p.strip()]
+    return "<br/>".join(_html.escape(p) for p in parts)
+
+
 def _logo_data_uri(logo_path: Optional[str]) -> Optional[str]:
     """Encode le logo en data-URI base64 (xhtml2pdf n'a pas de link_callback)."""
     try:
@@ -89,17 +98,21 @@ def _wrap(
     fs = int(sp.get("font_size", 10) or 10)
     line_height = sp.get("line_height", 1.5)
     accent = template.header_color or "#0d2f5c"
-    company = _html.escape(sender_name or template.company_name or "Le Comptoir Immo")
-    company_addr = _html.escape(sender_addr or template.company_address or "").replace("\n", "<br/>")
+    company = _html.escape(sender_name or "Le Comptoir Immo")
+    company_addr = _format_address_html(sender_addr)
     footer = _html.escape(template.footer_text or "")
     prop = _html.escape(property_address or "").replace("\n", "<br/>")
 
-    # En-tête gauche : logo (icône) du gestionnaire OU son nom en wordmark.
+    # En-tête gauche : logo du gestionnaire puis, EN DESSOUS, son nom et son adresse
+    # (n° et rue / code postal Ville) — issus du profil du gestionnaire.
     logo_uri = _logo_data_uri(getattr(template, "logo_path", None))
+    brand_parts = []
     if logo_uri:
-        sender_brand = f'<img src="{logo_uri}" style="width:150px; height:100px;" alt="logo"/>'
-    else:
-        sender_brand = f'<div class="sender-name">{company}</div>'
+        brand_parts.append(f'<div><img src="{logo_uri}" style="width:150px; height:100px;" alt="logo"/></div>')
+    brand_parts.append(f'<div class="sender-name">{company}</div>')
+    if company_addr:
+        brand_parts.append(f'<div class="sender-addr">{company_addr}</div>')
+    sender_brand = "".join(brand_parts)
 
     recipient = "".join(
         f'<div class="rc-name">{_html.escape(n)}</div>' for n in (recipient_lines or [])
@@ -128,7 +141,6 @@ def _wrap(
   <table class="hdr"><tr>
     <td style="width: 55%;">
       {sender_brand}
-      {f'<div class="sender-addr">{company_addr}</div>' if company_addr else ''}
     </td>
     <td style="width: 45%;" class="recipient">
       {recipient}
@@ -166,8 +178,8 @@ async def render_saved_document(
     if not tmpl or not tmpl.content_html:
         return None
 
-    # En-tête : nom + adresse du gestionnaire. Priorité aux champs du template
-    # (company_name/address), sinon repli sur le profil du gestionnaire.
+    # En-tête : nom + adresse issus du PROFIL du gestionnaire (les champs « cabinet »
+    # du template ont été retirés ; on retombe dessus uniquement par sécurité).
     sender_name, sender_addr = "", ""
     try:
         from app.models.user import User
@@ -175,10 +187,14 @@ async def render_saved_document(
             select(User).where(User.id == gestionnaire_id)
         )).scalar_one_or_none()
         if user:
-            sender_name = tmpl.company_name or user.full_name or ""
-            sender_addr = tmpl.company_address or getattr(user, "address", "") or ""
+            sender_name = user.full_name or tmpl.company_name or ""
+            sender_addr = getattr(user, "address", "") or tmpl.company_address or ""
     except Exception:
         pass
+
+    # Le marqueur {{company_name}} du corps reflète aussi le nom du gestionnaire.
+    if not variables.get("company_name"):
+        variables = {**variables, "company_name": sender_name}
 
     body = substitute(tmpl.content_html, variables)
     return _wrap(tmpl, body, recipient_lines, property_address, layout, sender_name, sender_addr)
