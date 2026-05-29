@@ -111,7 +111,7 @@ export default function FinancesParProprietaire({ view }: { view: View }) {
             <tbody>
               {fin.biens.map(b => (
                 <tr key={b.property_id} className="border-t border-gray-100">
-                  <td className="px-3 py-2">{b.property_name}{b.city ? ` — ${b.city}` : ''}</td>
+                  <td className="px-3 py-2">{b.property_name}</td>
                   <td className="px-3 py-2 text-right">{fmtEuro(b.rent + b.charges)}</td>
                   <td className="px-3 py-2 text-right">{fmtEuro(b.total_du)}</td>
                   <td className="px-3 py-2 text-right text-green-700">{fmtEuro(b.total_percu)}</td>
@@ -125,30 +125,53 @@ export default function FinancesParProprietaire({ view }: { view: View }) {
         </div>
       )
     }
-    // fiscal
+    // fiscal — format 2044 simplifié (mêmes sections que la page GP)
     const f = fin.fiscal
+    const net = f.net_revenue
+    const row = (label: string, sub: string, value: number, strong = false) => (
+      <div className={`flex justify-between items-start gap-4 px-3 py-2 ${strong ? 'bg-gray-50 font-semibold' : 'border-b border-gray-100'}`}>
+        <div><p className="text-sm text-gray-900">{label}</p>{sub && <p className="text-[11px] text-gray-400">{sub}</p>}</div>
+        <p className="text-sm text-gray-900 whitespace-nowrap">{fmtEuro(value)}</p>
+      </div>
+    )
     return (
-      <>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[420px] max-w-xl text-sm">
-            <tbody>
-              <tr className="border-t border-gray-100"><td className="px-3 py-2">Loyers (hors charges) appelés</td><td className="px-3 py-2 text-right">{fmtEuro(f.loyers)}</td></tr>
-              <tr className="border-t border-gray-100"><td className="px-3 py-2">Provisions pour charges</td><td className="px-3 py-2 text-right">{fmtEuro(f.charges)}</td></tr>
-              {f.apl > 0 && <tr className="border-t border-gray-100"><td className="px-3 py-2">Aide personnelle au logement</td><td className="px-3 py-2 text-right">{fmtEuro(f.apl)}</td></tr>}
-              <tr className="border-t-2 border-gray-300 font-semibold"><td className="px-3 py-2">Total appelé sur {fin.year}</td><td className="px-3 py-2 text-right">{fmtEuro(f.total_du)}</td></tr>
-              <tr className="font-semibold"><td className="px-3 py-2 text-green-700">Total encaissé sur {fin.year}</td><td className="px-3 py-2 text-right text-green-700">{fmtEuro(f.total_percu)}</td></tr>
-            </tbody>
-          </table>
+      <div className="max-w-xl space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="bg-blue-50 rounded-lg p-2 text-center"><p className="text-base font-bold text-blue-700">{fmtEuro(f.total_gross_revenue)}</p><p className="text-[11px] text-blue-600">Revenus bruts</p></div>
+          <div className="bg-orange-50 rounded-lg p-2 text-center"><p className="text-base font-bold text-orange-700">{fmtEuro(f.total_deductible)}</p><p className="text-[11px] text-orange-600">Charges déductibles</p></div>
+          <div className={`${net >= 0 ? 'bg-green-50' : 'bg-red-50'} rounded-lg p-2 text-center`}><p className={`text-base font-bold ${net >= 0 ? 'text-green-700' : 'text-red-700'}`}>{fmtEuro(net)}</p><p className={`text-[11px] ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{net >= 0 ? 'Revenu net imposable' : 'Déficit foncier'}</p></div>
         </div>
+
+        <div className="rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-gray-800 text-white px-3 py-1.5 text-xs font-semibold">SECTION A — REVENUS BRUTS</div>
+          {row('Loyers encaissés', 'Ligne 100 — Recettes brutes', f.gross_rent_revenue)}
+          {row('Provisions pour charges récupérées', 'Ligne 110 — Charges locatives', f.charges_received)}
+          {row('Total revenus bruts (A)', '', f.total_gross_revenue, true)}
+        </div>
+
+        <div className="rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-gray-800 text-white px-3 py-1.5 text-xs font-semibold">SECTION B — CHARGES DÉDUCTIBLES</div>
+          {row("Frais de gestion et d'administration", 'Ligne 120 — 8% des loyers bruts (estimation)', f.management_fees)}
+          {row('Total charges déductibles (B)', '', f.total_deductible, true)}
+        </div>
+
+        <div className={`rounded-lg border overflow-hidden ${net >= 0 ? 'border-green-200' : 'border-red-200'}`}>
+          <div className={`px-3 py-1.5 text-xs font-semibold text-white ${net >= 0 ? 'bg-green-700' : 'bg-red-700'}`}>SECTION C — RÉSULTAT FISCAL</div>
+          <div className={`flex justify-between items-center gap-4 px-3 py-2 ${net >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div><p className="text-sm font-bold text-gray-900">{net >= 0 ? 'Revenu foncier net imposable' : 'Déficit foncier'}</p><p className="text-[11px] text-gray-500">A − B = à reporter sur la déclaration 2042</p></div>
+            <p className={`text-lg font-bold ${net >= 0 ? 'text-green-700' : 'text-red-700'}`}>{fmtEuro(Math.abs(net))}</p>
+          </div>
+        </div>
+
         <button
           onClick={() => downloadFiscal({ id: fin.owner_id, full_name: fin.owner_name } as OwnerListItem)}
           disabled={downloadingId === fin.owner_id}
-          className="mt-3 inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
           {downloadingId === fin.owner_id ? <RefreshCw size={14} className="animate-spin" /> : <FileDown size={14} />}
           Télécharger la liasse fiscale (PDF)
         </button>
-      </>
+      </div>
     )
   }
 

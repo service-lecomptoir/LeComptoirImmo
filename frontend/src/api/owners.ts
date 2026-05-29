@@ -60,11 +60,22 @@ export interface OwnerFinancesBien {
   property_id: string
   property_name: string
   city: string
+  address: string
   rent: number
   charges: number
   total_du: number
   total_percu: number
+  annual_rent: number
+  active_leases: number
   is_occupied: boolean
+}
+export interface OwnerFiscal {
+  gross_rent_revenue: number
+  charges_received: number
+  total_gross_revenue: number
+  management_fees: number
+  total_deductible: number
+  net_revenue: number
 }
 export interface OwnerFinances {
   owner_id: string
@@ -72,5 +83,5 @@ export interface OwnerFinances {
   year: number
   revenus: { total_du: number; total_percu: number; lignes: OwnerFinancesLine[] }
   biens: OwnerFinancesBien[]
-  fiscal: { loyers: number; charges: number; apl: number; total_du: number; total_percu: number }
+  fiscal: OwnerFiscal
 }

@@ -2,48 +2,80 @@
 <html lang="fr"><head><meta charset="UTF-8">
 {% set sp = layout.spacing %}
 {% set f = data.fiscal %}
+{% set net = f.net_revenue %}
 <style>
   @page { size: A4; margin: {{ sp.page_margin }}; }
   body { font-family: Arial, sans-serif; font-size: {{ sp.font_size }}pt; color: #1f2937; line-height: {{ sp.line_height }}; background: #fff; }
   h1 { font-size: {{ sp.font_size | int + 6 }}pt; color: #0d2f5c; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 2px 0; }
-  .sub { text-align: center; color: #6b7280; font-size: {{ sp.font_size | int - 1 }}pt; margin-bottom: 16px; }
-  .owner { font-weight: bold; color: #111827; }
-  h2 { font-size: {{ sp.font_size | int + 1 }}pt; color: #0d2f5c; border-left: 3px solid #0d2f5c; padding-left: 7px; margin: 18px 0 6px 0; }
-  table { width: 100%; border-collapse: collapse; margin: 6px 0; }
-  td, th { padding: 7px 10px; border-bottom: 1px solid #eef2f7; font-size: {{ sp.font_size }}pt; text-align: left; }
-  th { background: #f3f4f6; color: #374151; }
+  .sub { text-align: center; color: #6b7280; font-size: {{ sp.font_size | int - 1 }}pt; margin-bottom: 4px; }
+  .owner { text-align: center; font-weight: bold; color: #111827; margin-bottom: 16px; }
+  .sec-title { background: #1f2937; color: #fff; padding: 6px 10px; font-size: {{ sp.font_size | int - 1 }}pt; font-weight: bold; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 6px 10px; border-bottom: 1px solid #eef2f7; font-size: {{ sp.font_size }}pt; text-align: left; vertical-align: top; }
   td.r, th.r { text-align: right; }
-  tr.tot td { font-weight: bold; background: #eef2f7; border-top: 2px solid #0d2f5c; }
-  .footer { margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 8pt; color: #9ca3af; text-align: center; }
+  .line { font-size: {{ sp.font_size | int - 2 }}pt; color: #9ca3af; }
+  tr.tot td { font-weight: bold; background: #f3f4f6; }
+  .result { margin-top: 14px; border: 2px solid {{ '#15803d' if net >= 0 else '#b91c1c' }}; }
+  .result .rh { background: {{ '#15803d' if net >= 0 else '#b91c1c' }}; color: #fff; padding: 6px 10px; font-weight: bold; font-size: {{ sp.font_size | int - 1 }}pt; }
+  .result .rb { padding: 10px; }
+  .result .amt { font-size: {{ sp.font_size | int + 6 }}pt; font-weight: bold; color: {{ '#15803d' if net >= 0 else '#b91c1c' }}; text-align: right; }
+  th { background: #f9fafb; color: #374151; }
+  .footer { margin-top: 22px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 7.5pt; color: #9ca3af; }
 </style></head><body>
-  <h1>Liasse fiscale</h1>
-  <p class="sub">Revenus fonciers {{ data.year }} — <span class="owner">{{ data.owner_name }}</span></p>
+  <h1>Revenus fonciers</h1>
+  <p class="sub">Déclaration 2044 simplifiée — année {{ data.year }}</p>
+  <p class="owner">{{ data.owner_name }}</p>
 
-  <h2>Synthèse des revenus fonciers</h2>
+  <div class="sec-title">SECTION A — REVENUS BRUTS</div>
   <table>
-    <tr><td>Loyers (hors charges) appelés</td><td class="r">{{ "%.2f"|format(f.loyers) }} €</td></tr>
-    <tr><td>Provisions pour charges</td><td class="r">{{ "%.2f"|format(f.charges) }} €</td></tr>
-    {% if f.apl and f.apl > 0 %}<tr><td>Aide personnelle au logement (tiers-payant)</td><td class="r">{{ "%.2f"|format(f.apl) }} €</td></tr>{% endif %}
-    <tr class="tot"><td>Total appelé sur l'année</td><td class="r">{{ "%.2f"|format(f.total_du) }} €</td></tr>
-    <tr class="tot"><td>Total encaissé sur l'année</td><td class="r">{{ "%.2f"|format(f.total_percu) }} €</td></tr>
+    <tr><td>Loyers encaissés<div class="line">Ligne 100 — Recettes brutes</div></td><td class="r">{{ "%.2f"|format(f.gross_rent_revenue) }} €</td></tr>
+    <tr><td>Provisions pour charges récupérées<div class="line">Ligne 110 — Charges locatives</div></td><td class="r">{{ "%.2f"|format(f.charges_received) }} €</td></tr>
+    <tr class="tot"><td>Total revenus bruts (A)</td><td class="r">{{ "%.2f"|format(f.total_gross_revenue) }} €</td></tr>
   </table>
 
-  <h2>Détail par bien</h2>
+  <div class="sec-title">SECTION B — CHARGES DÉDUCTIBLES</div>
   <table>
-    <tr><th>Bien</th><th class="r">Loyer + charges /mois</th><th class="r">Appelé {{ data.year }}</th><th class="r">Encaissé {{ data.year }}</th></tr>
+    <tr><td>Frais de gestion et d'administration<div class="line">Ligne 120 — 8% des loyers bruts (estimation)</div></td><td class="r">{{ "%.2f"|format(f.management_fees) }} €</td></tr>
+    <tr><td>Travaux et réparations<div class="line">Ligne 130</div></td><td class="r">__________ €</td></tr>
+    <tr><td>Primes d'assurance<div class="line">Ligne 140</div></td><td class="r">__________ €</td></tr>
+    <tr><td>Taxe foncière<div class="line">Ligne 150</div></td><td class="r">__________ €</td></tr>
+    <tr><td>Autres frais<div class="line">Ligne 160</div></td><td class="r">__________ €</td></tr>
+    <tr class="tot"><td>Total charges déductibles (B)</td><td class="r">{{ "%.2f"|format(f.total_deductible) }} €</td></tr>
+  </table>
+
+  <div class="result">
+    <div class="rh">SECTION C — RÉSULTAT FISCAL</div>
+    <div class="rb">
+      <table style="border:0;">
+        <tr style="border:0;">
+          <td style="border:0;">
+            <strong>{{ 'Revenu foncier net imposable' if net >= 0 else 'Déficit foncier' }}</strong>
+            <div class="line">A − B = résultat à reporter sur la déclaration 2042{% if net < 0 %} (déficit imputable, plafond 10 700 €){% endif %}</div>
+          </td>
+          <td style="border:0;" class="amt">{{ "%.2f"|format(net if net >= 0 else -net) }} €</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="sec-title">DÉTAIL PAR BIEN IMMOBILIER</div>
+  <table>
+    <tr><th>Bien</th><th>Adresse</th><th class="r">Loyers {{ data.year }}</th><th class="r">Contrats</th></tr>
     {% for b in data.biens %}
     <tr>
-      <td>{{ b.property_name }}{% if b.city %} — {{ b.city }}{% endif %}</td>
-      <td class="r">{{ "%.2f"|format(b.rent + b.charges) }} €</td>
-      <td class="r">{{ "%.2f"|format(b.total_du) }} €</td>
-      <td class="r">{{ "%.2f"|format(b.total_percu) }} €</td>
+      <td>{{ b.property_name }}</td>
+      <td>{{ b.address }}</td>
+      <td class="r">{{ "%.2f"|format(b.annual_rent) }} €</td>
+      <td class="r">{{ b.active_leases }}</td>
     </tr>
     {% endfor %}
     {% if not data.biens %}<tr><td colspan="4" style="color:#9ca3af;">Aucun bien rattaché.</td></tr>{% endif %}
+    <tr class="tot"><td colspan="2">Total loyers encaissés</td><td class="r">{{ "%.2f"|format(f.gross_rent_revenue) }} €</td><td></td></tr>
   </table>
 
   <div class="footer">
-    Document récapitulatif établi par Le Comptoir Immo à des fins d'aide à la déclaration des revenus fonciers ({{ data.year }}).
-    Il ne se substitue pas aux justificatifs comptables ni à la déclaration officielle (formulaire 2044).
+    Document d'aide à la déclaration des revenus fonciers ({{ data.year }}), établi par Le Comptoir Immo à titre indicatif.
+    Les frais de gestion sont estimés à 8% des loyers bruts ; complétez les charges réelles (travaux, assurance, taxe foncière)
+    pour obtenir le résultat définitif. Ce récapitulatif ne se substitue pas au formulaire officiel 2044.
   </div>
 </body></html>

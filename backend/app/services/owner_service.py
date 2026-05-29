@@ -33,7 +33,7 @@ class OwnerService:
         """Agrège revenus, performance par bien et synthèse fiscale d'un propriétaire/année."""
         from sqlalchemy.orm import selectinload
         from app.models.lease import Lease
-        from app.models.payment import Payment
+        from app.models.payment import Payment, PaymentStatus
 
         owner = await db.get(Owner, owner_id)
         if not owner:
@@ -82,18 +82,41 @@ class OwnerService:
                 "payment_date": p.payment_date,
             })
 
+        # ── Calcul fiscal type 2044 : part loyer/charges RÉELLEMENT encaissée ──────
+        # (paiements payés/partiels, proratisés sur amount_paid), frais de gestion 8%.
+        gross_rent = 0.0
+        charges_received = 0.0
+        per_prop_rent: dict = {}
+        for p in payments:
+            if p.status in (PaymentStatus.PAID, PaymentStatus.PARTIAL) and float(p.amount_due) > 0:
+                rent_part = float(p.amount_paid) * float(p.amount_rent) / float(p.amount_due)
+                ch_part = float(p.amount_paid) * float(p.amount_charges) / float(p.amount_due)
+                gross_rent += rent_part
+                charges_received += ch_part
+                pid = p.lease.property_id if p.lease else None
+                if pid is not None:
+                    per_prop_rent[pid] = per_prop_rent.get(pid, 0.0) + rent_part
+        management_fees = round(gross_rent * 0.08, 2)
+        total_gross = gross_rent + charges_received
+        total_deductible = management_fees
+        net_revenue = total_gross - total_deductible
+
         biens = []
         for prop in props:
             active = next((l for l in leases if l.property_id == prop.id and l.is_active), None)
             pp = [p for p in payments if p.lease and p.lease.property_id == prop.id]
+            active_count = sum(1 for l in leases if l.property_id == prop.id and l.is_active)
             biens.append({
                 "property_id": prop.id,
                 "property_name": prop.name,
                 "city": prop.city,
+                "address": prop.full_address,
                 "rent": float(active.rent_amount) if active else 0.0,
                 "charges": float(active.charges_amount) if active else 0.0,
                 "total_du": round(sum(float(x.amount_due) for x in pp), 2),
                 "total_percu": round(sum(float(x.amount_paid) for x in pp), 2),
+                "annual_rent": round(per_prop_rent.get(prop.id, 0.0), 2),
+                "active_leases": active_count,
                 "is_occupied": bool(prop.is_occupied),
             })
 
@@ -107,12 +130,14 @@ class OwnerService:
                 "lignes": lignes,
             },
             "biens": biens,
+            # Synthèse fiscale au format 2044 (même structure que la page GP).
             "fiscal": {
-                "loyers": round(loyers, 2),
-                "charges": round(charges, 2),
-                "apl": round(apl, 2),
-                "total_du": round(total_du, 2),
-                "total_percu": round(total_percu, 2),
+                "gross_rent_revenue": round(gross_rent, 2),
+                "charges_received": round(charges_received, 2),
+                "total_gross_revenue": round(total_gross, 2),
+                "management_fees": management_fees,
+                "total_deductible": round(total_deductible, 2),
+                "net_revenue": round(net_revenue, 2),
             },
         }
 
