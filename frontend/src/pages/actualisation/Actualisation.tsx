@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp } from 'lucide-react'
+import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt } from 'lucide-react'
 import { actualisationApi, type IrlIndexItem, type RevisionRow } from '@/api/actualisation'
+import ChargesPanel from './ChargesPanel'
 
 const fmtEuro = (n: number | null) =>
   n == null ? '—' : n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -11,6 +12,7 @@ export default function Actualisation() {
   const [rows, setRows] = useState<RevisionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showIrl, setShowIrl] = useState(false)
+  const [tab, setTab] = useState<'loyers' | 'charges'>('loyers')
   const [msg, setMsg] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   // form IRL
@@ -79,9 +81,21 @@ export default function Actualisation() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Actualisation des loyers</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Révision annuelle selon l'indice de référence des loyers (IRL)</p>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-gray-900">Actualisation des loyers et charges</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Révision annuelle du loyer (IRL) et régularisation des charges</p>
+      </div>
+
+      {/* Onglets */}
+      <div className="flex gap-1 mb-5 border-b border-gray-200">
+        <button onClick={() => setTab('loyers')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'loyers' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          <TrendingUp size={15} /> Révision des loyers
+        </button>
+        <button onClick={() => setTab('charges')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'charges' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          <Receipt size={15} /> Régularisation des charges
+        </button>
       </div>
 
       {msg && (
@@ -90,6 +104,9 @@ export default function Actualisation() {
         </div>
       )}
 
+      {tab === 'charges' && <ChargesPanel flash={flash} />}
+
+      {tab === 'loyers' && (<>
       {/* Indices IRL */}
       <div className="bg-white rounded-xl border border-gray-200 mb-6">
         <button onClick={() => setShowIrl(v => !v)} className="w-full flex items-center justify-between px-5 py-4">
@@ -224,8 +241,9 @@ export default function Actualisation() {
       <p className="text-xs text-gray-400 mt-4">
         Le locataire est prévenu 1 mois à l'avance : une mention « révision de loyer à venir » apparaît
         automatiquement sur l'avis d'échéance et la quittance du mois précédent, accompagnée d'une notification
-        (l'e-mail s'activera avec la configuration SMTP). La régularisation des charges sera ajoutée prochainement.
+        (l'e-mail s'activera avec la configuration SMTP).
       </p>
+      </>)}
     </div>
   )
 }

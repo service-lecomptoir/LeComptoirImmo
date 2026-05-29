@@ -42,6 +42,19 @@ class PaymentService:
         )).all()
         overpaid = sum(max(0.0, float(paid) - float(due)) for paid, due, _ in rows)
         applied = sum(float(credit or 0) for _, _, credit in rows)
+
+        # Trop-perçus de régularisation de charges (remboursements) → crédit du bail,
+        # déduit automatiquement des prochaines échéances (comme une avance).
+        from app.models.charge_regularization import ChargeRegularization
+        reg_refunds = (await db.execute(
+            select(ChargeRegularization.balance).where(
+                ChargeRegularization.lease_id == lease_id,
+                ChargeRegularization.status == "applied",
+                ChargeRegularization.balance > 0,
+            )
+        )).scalars().all()
+        overpaid += sum(float(b or 0) for b in reg_refunds)
+
         return max(0.0, round(overpaid - applied, 2))
 
     @staticmethod

@@ -17,11 +17,12 @@ from app.models.message import ProprietaireMessage
 from app.models.audit_log import AuditLog
 from app.models.app_setting import AppSetting
 from app.models.irl_index import IrlIndex
+from app.models.charge_regularization import ChargeRegularization
 
 __all__ = [
     "User", "Tenant", "Owner", "Property", "Document",
     "Lease", "Inspection", "Payment", "Notification", "AvisEcheance",
     "Contact", "AutomationRule", "CommunicationLog", "DocumentTemplate",
     "Ticket", "TicketMessage", "Prestataire", "Entretien",
-    "ProprietaireMessage", "AuditLog", "IrlIndex",
+    "ProprietaireMessage", "AuditLog", "IrlIndex", "ChargeRegularization",
 ]

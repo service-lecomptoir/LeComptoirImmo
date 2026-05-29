@@ -1,7 +1,9 @@
-"""Actualisation des loyers (révision IRL). Réservé aux gestionnaires.
+"""Actualisation des loyers (révision IRL) et des charges. Réservé aux gestionnaires.
 
 Étape 1 : indices IRL (manuel + INSEE) et révision du loyer par bail.
-La régularisation des charges fera l'objet d'une étape ultérieure.
+Étape 2 : mention de révision 1 mois à l'avance (avis/quittance/e-mail).
+Étape 3 : régularisation annuelle des charges (provisions vs charges réelles →
+réajustement de la provision mensuelle + solde remboursement/complément).
 """
 import uuid
 from datetime import date, timedelta
@@ -19,7 +21,9 @@ from app.core.permissions import Role
 from app.api.v1._isolation import gp_lease_ids
 from app.models.user import User
 from app.models.lease import Lease
+from app.models.charge_regularization import ChargeRegularization
 from app.services.irl_service import IrlService
+from app.services.charge_regularization_service import ChargeRegularizationService
 
 router = APIRouter(prefix="/actualisation", tags=["Actualisation"])
 
@@ -201,3 +205,122 @@ async def apply_revision(
         .where(Lease.id == lease_id)
     )).scalar_one()
     return await _row(db, lease)
+
+
+# ── Régularisation des charges (Étape 3) ─────────────────────────────────────────
+def _default_charge_period() -> tuple[date, date]:
+    """Période par défaut : les 12 derniers mois civils complets (fin = dernier
+    jour du mois précédent)."""
+    today = date.today()
+    first_this_month = today.replace(day=1)
+    end = first_this_month - timedelta(days=1)  # dernier jour du mois précédent
+    # Premier jour, 12 mois inclusifs → 11 mois avant le mois de `end`
+    sy, sm = end.year, end.month - 11
+    while sm <= 0:
+        sm += 12
+        sy -= 1
+    start = date(sy, sm, 1)
+    return start, end
+
+
+async def _charge_row(db: AsyncSession, lease: Lease) -> dict:
+    prop = lease.parent_property
+    start, end = _default_charge_period()
+    provisions = await ChargeRegularizationService.provisions_paid(db, lease.id, start, end)
+    last = (await db.execute(
+        select(ChargeRegularization)
+        .where(ChargeRegularization.lease_id == lease.id)
+        .order_by(ChargeRegularization.applied_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    return {
+        "lease_id": str(lease.id),
+        "tenant_full_name": lease.tenant.full_name if lease.tenant else "",
+        "property_name": prop.name if prop else "",
+        "owner_id": str(prop.owner_id) if prop and prop.owner_id else None,
+        "owner_name": (prop.owner_name if prop else None) or "Sans propriétaire",
+        "current_monthly_provision": float(lease.charges_amount),
+        "default_period_start": start.isoformat(),
+        "default_period_end": end.isoformat(),
+        "provisions_paid_12m": provisions,
+        "last_regularization": None if not last else {
+            "period_start": last.period_start.isoformat(),
+            "period_end": last.period_end.isoformat(),
+            "provisions_total": float(last.provisions_total),
+            "real_total": float(last.real_total),
+            "balance": float(last.balance),
+            "new_monthly_provision": float(last.new_monthly_provision),
+            "applied_at": last.applied_at.isoformat() if last.applied_at else None,
+        },
+    }
+
+
+@router.get("/charges")
+async def list_charges(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    leases = await _scoped_active_leases(db, current_user)
+    return [await _charge_row(db, l) for l in leases]
+
+
+class ChargePreviewIn(BaseModel):
+    period_start: date
+    period_end: date
+    real_total: float
+
+
+@router.post("/charges/{lease_id}/preview")
+async def preview_charge(
+    lease_id: uuid.UUID,
+    data: ChargePreviewIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    if data.period_end < data.period_start:
+        raise HTTPException(status_code=400, detail="Période invalide (fin avant début)")
+    return await ChargeRegularizationService.compute(
+        db, lease, data.period_start, data.period_end, data.real_total
+    )
+
+
+class ChargeApplyIn(BaseModel):
+    period_start: date
+    period_end: date
+    real_total: float
+    new_monthly_provision: float
+    notes: Optional[str] = None
+
+
+@router.post("/charges/{lease_id}/appliquer")
+async def apply_charge(
+    lease_id: uuid.UUID,
+    data: ChargeApplyIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    if data.period_end < data.period_start:
+        raise HTTPException(status_code=400, detail="Période invalide (fin avant début)")
+    if data.real_total < 0 or data.new_monthly_provision < 0:
+        raise HTTPException(status_code=400, detail="Montants négatifs invalides")
+    await ChargeRegularizationService.apply(
+        db, lease, data.period_start, data.period_end, data.real_total,
+        data.new_monthly_provision, created_by=current_user.id, notes=data.notes,
+    )
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one()
+    return await _charge_row(db, lease)

@@ -183,6 +183,51 @@ de l'indice applicable.</p>
     )
 
 
+async def send_charge_regularization(
+    to: str,
+    tenant_name: str,
+    period: str,
+    provisions_total: float,
+    real_total: float,
+    balance: float,
+    new_monthly_provision: float,
+) -> bool:
+    """Notifie le locataire d'une régularisation annuelle des charges."""
+    if balance > 0:
+        solde = (f'<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">'
+                 f'Trop-perçu remboursé</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;'
+                 f'font-weight:600;color:#047857">{balance:.2f} €</td></tr>')
+        note = "<p>Ce trop-perçu sera déduit automatiquement de vos prochains loyers.</p>"
+    elif balance < 0:
+        solde = (f'<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">'
+                 f'Complément à régler</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;'
+                 f'font-weight:600;color:#b91c1c">{abs(balance):.2f} €</td></tr>')
+        note = "<p>Un complément de charges reste à régler. Votre gestionnaire vous précisera les modalités.</p>"
+    else:
+        solde = ""
+        note = "<p>Les provisions versées correspondent exactement aux charges réelles.</p>"
+    content = f"""
+<p>Bonjour {tenant_name},</p>
+<p>Voici la régularisation de vos charges pour la période <strong>{period}</strong>.</p>
+<table style="width:100%;border-collapse:collapse;margin:16px 0">
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">Provisions versées</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">{provisions_total:.2f} €</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">Charges réelles</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">{real_total:.2f} €</td></tr>
+  {solde}
+  <tr><td style="padding:8px;color:#6b7280">Nouvelle provision mensuelle</td>
+      <td style="padding:8px;font-weight:600">{new_monthly_provision:.2f} €</td></tr>
+</table>
+{note}
+<p>Cordialement,<br>Votre gestionnaire</p>
+"""
+    return await send_email(
+        to=to,
+        subject="Régularisation de vos charges",
+        html_body=_base_template("Régularisation des charges", content),
+    )
+
+
 async def send_subscription_lead_notification(
     to: str,
     full_name: str,
