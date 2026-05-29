@@ -21,23 +21,29 @@ interface NavItem {
   isSeparator?: boolean
 }
 
-// Navigation Gestionnaire / Admin
+// Navigation Gestionnaire mandataire / Admin
 const navGestionnaire: NavItem[] = [
+  { label: 'Gestion locative', isSeparator: true },
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
-  { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
+  { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
-  { to: '/incidents', icon: MessageSquare, label: 'Incidents & messages' },
-  { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
+  { to: '/incidents', icon: MessageSquare, label: 'Message et Incidents' },
+  { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
+  { label: 'Mes finances', isSeparator: true },
+  { to: '/proprietaire', icon: LayoutDashboard, label: 'Vue propriétaire' },
+  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
+  { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
+  { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
   { label: 'Mon compte', isSeparator: true },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
@@ -54,27 +60,27 @@ const navProprietaire: NavItem[] = [
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
 ]
 
-// Navigation Gestionnaire-Propriétaire : menu complet avec section finances après quittances
+// Navigation Gestionnaire-Propriétaire : identique au mandataire SANS « Vue propriétaire »
 const navGestionnairePropio: NavItem[] = [
+  { label: 'Gestion locative', isSeparator: true },
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
-  { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
+  { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
-  { label: 'Mes finances', isSeparator: true },
-  { to: '/proprietaire', icon: LayoutDashboard, label: 'Vue propriétaire' },
-  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
-  { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
-  { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
-  { to: '/incidents', icon: MessageSquare, label: 'Incidents' },
-  { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
+  { to: '/incidents', icon: MessageSquare, label: 'Message et Incidents' },
+  { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
   { to: '/admin', icon: Settings, label: 'Administration' },
+  { label: 'Mes finances', isSeparator: true },
+  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
+  { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
+  { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
   { label: 'Mon compte', isSeparator: true },
   { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
