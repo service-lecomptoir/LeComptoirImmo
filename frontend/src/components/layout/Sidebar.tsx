@@ -23,18 +23,17 @@ interface NavItem {
 
 // Navigation Gestionnaire mandataire / Admin
 const navGestionnaire: NavItem[] = [
-  { label: 'Gestion locative', isSeparator: true },
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
+  { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
-  { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
   { to: '/automatisation', icon: Zap, label: 'Automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Templates docs' },
-  { to: '/incidents', icon: MessageSquare, label: 'Message et Incidents' },
+  { to: '/incidents', icon: MessageSquare, label: 'Incidents & messages' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
