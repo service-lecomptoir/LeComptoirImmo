@@ -99,6 +99,12 @@ def _wrap(
     line_height = sp.get("line_height", 1.5)
     page_margin = sp.get("page_margin") or "1.6cm 1.8cm"
     accent = template.header_color or "#0d2f5c"
+    # Typographie & couleurs configurables depuis l'aperçu (avec valeurs par défaut).
+    font_family = sp.get("font_family") or "Helvetica, Arial, sans-serif"
+    text_color = sp.get("text_color") or "#1f2937"
+    heading_color = sp.get("heading_color") or accent
+    heading_scale = int(sp.get("heading_scale", 6) or 6)
+    paragraph_spacing = int(sp.get("paragraph_spacing", 8) or 8)
     company = _html.escape(sender_name or "Le Comptoir Immo")
     company_addr = _format_address_html(sender_addr)
     footer = _html.escape(template.footer_text or "")
@@ -122,19 +128,19 @@ def _wrap(
     return f"""<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"><style>
   @page {{ size: A4; margin: {page_margin}; }}
-  body {{ font-family: Helvetica, Arial, sans-serif; font-size: {fs}pt; color: #1f2937; line-height: {line_height}; background: #ffffff; }}
+  body {{ font-family: {font_family}; font-size: {fs}pt; color: {text_color}; line-height: {line_height}; background: #ffffff; }}
   .hdr {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
   .hdr td {{ vertical-align: top; }}
   .sender-name {{ font-size: {fs + 4}pt; font-weight: bold; color: {accent}; }}
   .sender-addr {{ font-size: {fs - 1}pt; color: #6b7280; margin-top: 6px; }}
   .recipient {{ text-align: right; }}
-  .rc-name {{ font-weight: bold; font-size: {fs + 1}pt; color: #111827; }}
+  .rc-name {{ font-weight: bold; font-size: {fs + 1}pt; color: {text_color}; }}
   .rc-prop {{ font-size: {fs - 1}pt; color: #6b7280; margin-top: 8px; }}
   .rule {{ border: 0; border-top: 2px solid {accent}; margin: 6px 0 20px 0; }}
-  .body {{ font-size: {fs}pt; }}
-  .body h1, .body h2 {{ font-size: {fs + 6}pt; color: {accent}; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 2px 0; }}
-  .body h3 {{ font-size: {fs + 1}pt; color: {accent}; border-left: 3px solid {accent}; padding-left: 7px; margin: 16px 0 6px 0; }}
-  .body p {{ margin: 8px 0; }}
+  .body {{ font-size: {fs}pt; color: {text_color}; }}
+  .body h1, .body h2 {{ font-size: {fs + heading_scale}pt; color: {heading_color}; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 2px 0; }}
+  .body h3 {{ font-size: {fs + 1}pt; color: {heading_color}; border-left: 3px solid {heading_color}; padding-left: 7px; margin: 16px 0 6px 0; }}
+  .body p {{ margin: {paragraph_spacing}px 0; }}
   .body table {{ width: 100%; border-collapse: collapse; margin: 8px 0; }}
   .body td {{ padding: 7px 10px; border-bottom: 1px solid #eef2f7; font-size: {fs}pt; }}
   .footer {{ margin-top: 28px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 8pt; color: #9ca3af; text-align: center; }}

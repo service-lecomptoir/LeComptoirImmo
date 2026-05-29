@@ -15,6 +15,11 @@ DEFAULT_LAYOUT: dict = {
         "cell_padding_h": 10,
         "line_height": 1.55,
         "font_size": 10,
+        "font_family": "Helvetica, Arial, sans-serif",
+        "text_color": "#1f2937",
+        "heading_color": None,
+        "heading_scale": 6,
+        "paragraph_spacing": 8,
     },
 }
 

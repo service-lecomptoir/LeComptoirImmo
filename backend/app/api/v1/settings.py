@@ -107,6 +107,12 @@ class TemplateSpacing(BaseModel):
     cell_padding_h: int = 10
     line_height: float = 1.55
     font_size: int = 10
+    # Personnalisation typographie / couleurs (édition depuis l'aperçu).
+    font_family: Optional[str] = "Helvetica, Arial, sans-serif"
+    text_color: Optional[str] = "#1f2937"
+    heading_color: Optional[str] = None  # vide → reprend la couleur d'accent du template
+    heading_scale: Optional[int] = 6     # h1/h2 = font_size + heading_scale
+    paragraph_spacing: Optional[int] = 8  # px entre paragraphes
 
 
 class TemplateLayout(BaseModel):
