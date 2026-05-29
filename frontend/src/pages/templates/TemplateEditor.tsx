@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Save, X, Star, Check, RefreshCw, Download,
-  Plus, Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal, Layout,
+  Plus, Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -68,12 +67,6 @@ const VAR_CATEGORIES = [
   },
 ]
 
-// Map clé → couleurs pour le preview
-const VAR_COLOR_MAP: Record<string, { bg: string; text: string }> = {}
-VAR_CATEGORIES.forEach(cat => {
-  cat.vars.forEach(v => { VAR_COLOR_MAP[v.key] = { bg: cat.bg, text: cat.text } })
-})
-
 const typeLabel = (val: string) => TEMPLATE_TYPES.find(t => t.value === val)?.label ?? val
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -134,16 +127,6 @@ const EMPTY_FORM: FormData = {
   content_html: DEFAULT_CONTENT.avis_echeance, footer_text: '', is_default: false,
 }
 
-// ── Helpers preview ───────────────────────────────────────────────────────────
-
-function renderPreviewHtml(html: string): string {
-  if (!html) return '<p style="color:#9ca3af;font-style:italic;margin:0">Le contenu du document apparaîtra ici…</p>'
-  return html.replace(/\{\{\w+\}\}/g, (match) => {
-    const c = VAR_COLOR_MAP[match] ?? { bg: '#f3f4f6', text: '#374151' }
-    return `<span style="background:${c.bg};color:${c.text};padding:1px 5px;border-radius:3px;font-size:0.78em;font-weight:700;white-space:nowrap;font-family:monospace;">${match}</span>`
-  })
-}
-
 // ── Composant éditeur principal ───────────────────────────────────────────────
 
 interface EditorProps {
@@ -174,12 +157,69 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
   const [error, setError] = useState('')
   const [dragOverTextarea, setDragOverTextarea] = useState(false)
 
+  // ── Mise en page (globale) + aperçu PDF réel ───────────────────────────────
+  const [layout, setLayout] = useState<any>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewErr, setPreviewErr] = useState('')
+  const previewUrlRef = useRef<string | null>(null)
+
+  // Charge la configuration de mise en page (commune à tous les documents).
+  useEffect(() => {
+    apiClient.get('/settings/template-layout')
+      .then(r => setLayout(r.data))
+      .catch(() => setLayout({ spacing: { page_margin: '2cm 2.5cm', line_height: 1.55, font_size: 10 } }))
+  }, [])
+
+  // Persiste la mise en page (débauché) dès qu'elle change.
+  useEffect(() => {
+    if (!layout) return
+    const h = setTimeout(() => { apiClient.put('/settings/template-layout', layout).catch(() => {}) }, 900)
+    return () => clearTimeout(h)
+  }, [layout])
+
+  const setSpacing = (key: string, value: number | string) =>
+    setLayout((l: any) => ({ ...(l || {}), spacing: { ...((l || {}).spacing || {}), [key]: value } }))
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const cursorPosRef = useRef(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const set = (field: keyof FormData, value: string | boolean) =>
     setForm(f => ({ ...f, [field]: value }))
+
+  // Génère (débauché) l'aperçu PDF RÉEL du brouillon, identique au document final.
+  useEffect(() => {
+    if (!layout) return
+    let cancelled = false
+    const h = setTimeout(async () => {
+      setPreviewLoading(true); setPreviewErr('')
+      try {
+        const r = await apiClient.post('/templates/preview', {
+          template_type: form.template_type,
+          content_html: form.content_html,
+          footer_text: form.footer_text,
+          header_color: form.header_color,
+          template_id: template?.id ?? null,
+          layout,
+        }, { responseType: 'blob' })
+        if (cancelled) return
+        const url = URL.createObjectURL(r.data as Blob)
+        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = url
+        setPreviewUrl(url)
+      } catch {
+        if (!cancelled) setPreviewErr("Aperçu indisponible (vérifiez le contenu).")
+      } finally {
+        if (!cancelled) setPreviewLoading(false)
+      }
+    }, 700)
+    return () => { cancelled = true; clearTimeout(h) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout, form.content_html, form.footer_text, form.header_color, form.template_type, template?.id])
+
+  // Libère l'URL blob au démontage.
+  useEffect(() => () => { if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current) }, [])
 
   // Changer le type : remplace le contenu par le starter du type tant que
   // l'utilisateur n'a pas écrit son propre contenu (vide ou starter connu).
@@ -519,76 +559,59 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
           </div>
         </div>
 
-        {/* ── Colonne droite : aperçu A4 ──────────────────────────────────── */}
-        <div className="w-[380px] shrink-0 bg-gray-100 flex flex-col items-center overflow-y-auto py-4 px-3 gap-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider self-start">
-            Aperçu document
-          </p>
+        {/* ── Colonne droite : mise en page + aperçu PDF RÉEL ──────────────── */}
+        <div className="w-[420px] shrink-0 bg-gray-100 flex flex-col overflow-hidden">
 
-          {/* Document A4 simulé à scale 0.47 */}
-          <div style={{ width: 373 }} className="flex-shrink-0">
-            <div
-              style={{
-                width: 794,
-                minHeight: 1123,
-                transform: 'scale(0.47)',
-                transformOrigin: 'top left',
-                backgroundColor: '#fff',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-                borderRadius: 4,
-                fontFamily: 'Georgia, "Times New Roman", serif',
-                position: 'relative',
-              }}
-            >
-              {/* En-tête coloré : logo, puis nom + adresse du gestionnaire EN DESSOUS */}
-              <div style={{
-                backgroundColor: form.header_color,
-                padding: '28px 48px',
-                minHeight: 100,
-              }}>
-                {logoPreview && (
-                  <img src={logoPreview} alt="Logo"
-                    style={{ height: 56, width: 'auto', maxWidth: 150, objectFit: 'contain', display: 'block', marginBottom: 10 }} />
-                )}
-                <div style={{ color: '#fff', fontSize: 20, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>
-                  {currentUser?.full_name || <span style={{ opacity: 0.5 }}>Votre nom</span>}
-                </div>
-                {addressLines(currentUser?.address).map((l, i) => (
-                  <div key={i} style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: i === 0 ? 4 : 1, fontFamily: 'Arial, sans-serif' }}>
-                    {l}
-                  </div>
-                ))}
-              </div>
-
-              {/* Corps du document */}
-              <div style={{ padding: '40px 48px', minHeight: 900 }}>
-                <div
-                  style={{ fontSize: 14, lineHeight: '1.8', color: '#1f2937', fontFamily: 'Arial, sans-serif' }}
-                  dangerouslySetInnerHTML={{ __html: renderPreviewHtml(form.content_html) }}
-                />
-              </div>
-
-              {/* Pied de page */}
-              <div style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                borderTop: '1px solid #e5e7eb',
-                padding: '16px 48px',
-                backgroundColor: '#f9fafb',
-              }}>
-                <div style={{ fontSize: 10, color: '#9ca3af', fontFamily: 'Arial, sans-serif' }}>
-                  {form.footer_text || <span style={{ fontStyle: 'italic' }}>Pied de page…</span>}
-                </div>
-              </div>
+          {/* Barre de mise en page (s'applique à tous les documents) */}
+          <div className="shrink-0 px-3 py-2.5 border-b bg-white flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-gray-500">Police</label>
+              <select value={layout?.spacing?.font_size ?? 10}
+                onChange={e => setSpacing('font_size', Number(e.target.value))}
+                className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
+                {[8, 9, 10, 11, 12].map(s => <option key={s} value={s}>{s} pt</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-gray-500">Interligne</label>
+              <select value={layout?.spacing?.line_height ?? 1.55}
+                onChange={e => setSpacing('line_height', Number(e.target.value))}
+                className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
+                {[1.3, 1.45, 1.55, 1.7, 1.9].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-gray-500">Marges</label>
+              <select value={layout?.spacing?.page_margin ?? '2cm 2.5cm'}
+                onChange={e => setSpacing('page_margin', e.target.value)}
+                className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50">
+                <option value="1.5cm 2cm">Serrées</option>
+                <option value="2cm 2.5cm">Normales</option>
+                <option value="2.5cm 3cm">Aérées</option>
+              </select>
             </div>
           </div>
 
-          {/* Indicateur hauteur page */}
-          <p className="text-xs text-gray-400 text-center mt-1">
-            Aperçu réel du document PDF généré
-          </p>
+          {/* Aperçu : le vrai PDF généré côté serveur */}
+          <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Aperçu document</p>
+            <span className="text-xs text-gray-400 flex items-center gap-1">
+              {previewLoading ? <><RefreshCw size={11} className="animate-spin" /> génération…</> : 'PDF final'}
+            </span>
+          </div>
+          <div className="flex-1 min-h-0 px-3 pb-3">
+            <div className="w-full h-full rounded-lg border border-gray-200 bg-white overflow-hidden relative">
+              {previewErr ? (
+                <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400 px-4 text-center">{previewErr}</div>
+              ) : previewUrl ? (
+                <iframe title="Aperçu PDF" src={`${previewUrl}#toolbar=0&navpanes=0`} className="w-full h-full" />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400">
+                  <RefreshCw size={14} className="animate-spin mr-2" /> Préparation de l'aperçu…
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
       </div>
@@ -599,7 +622,6 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
 // ── Page liste des templates ──────────────────────────────────────────────────
 
 export default function TemplateEditor() {
-  const navigate = useNavigate()
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [editTemplate, setEditTemplate] = useState<Template | null>(null)
@@ -674,12 +696,6 @@ export default function TemplateEditor() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => navigate('/templates/layout')}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50"
-            title="Régler les marges, polices et espacements des PDF générés">
-            <Layout size={15} />
-            Mise en page PDF
-          </button>
           <button onClick={initDefaults} disabled={initLoading}
             className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
             {initLoading ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}

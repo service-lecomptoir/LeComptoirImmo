@@ -97,6 +97,7 @@ def _wrap(
     sp = (layout or {}).get("spacing", {}) if isinstance(layout, dict) else {}
     fs = int(sp.get("font_size", 10) or 10)
     line_height = sp.get("line_height", 1.5)
+    page_margin = sp.get("page_margin") or "1.6cm 1.8cm"
     accent = template.header_color or "#0d2f5c"
     company = _html.escape(sender_name or "Le Comptoir Immo")
     company_addr = _format_address_html(sender_addr)
@@ -120,7 +121,7 @@ def _wrap(
 
     return f"""<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"><style>
-  @page {{ size: A4; margin: 1.6cm 1.8cm; }}
+  @page {{ size: A4; margin: {page_margin}; }}
   body {{ font-family: Helvetica, Arial, sans-serif; font-size: {fs}pt; color: #1f2937; line-height: {line_height}; background: #ffffff; }}
   .hdr {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
   .hdr td {{ vertical-align: top; }}
@@ -151,6 +152,33 @@ def _wrap(
   <div class="body">{body_html}</div>
   {f'<div class="footer">{footer}</div>' if footer else ''}
 </body></html>"""
+
+
+def build_document_html(
+    *,
+    header_color: str,
+    footer_text: str,
+    content_html: str,
+    logo_path: Optional[str],
+    sender_name: str,
+    sender_addr: str,
+    recipient_lines: list[str],
+    property_address: str,
+    variables: dict,
+    layout: dict,
+) -> str:
+    """Construit le HTML d'un document à partir de champs bruts (brouillon d'éditeur),
+    avec EXACTEMENT la même mise en page que le document final (`_wrap`)."""
+    from types import SimpleNamespace
+    tmpl = SimpleNamespace(
+        header_color=header_color, footer_text=footer_text,
+        company_name="", company_address="", logo_path=logo_path,
+    )
+    vars2 = {**variables}
+    if not vars2.get("company_name"):
+        vars2["company_name"] = sender_name
+    body = substitute(content_html or "", vars2)
+    return _wrap(tmpl, body, recipient_lines, property_address, layout, sender_name, sender_addr)
 
 
 async def render_saved_document(

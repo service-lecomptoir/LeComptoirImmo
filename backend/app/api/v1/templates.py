@@ -2,8 +2,11 @@
 import uuid
 import os
 import shutil
+from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
+from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,6 +57,67 @@ async def list_templates(
     )
     result = await db.execute(q)
     return list(result.scalars().all())
+
+
+class TemplatePreviewIn(BaseModel):
+    template_type: Optional[str] = None
+    content_html: str = ""
+    footer_text: str = ""
+    header_color: str = "#1E3A5F"
+    template_id: Optional[uuid.UUID] = None  # pour récupérer le logo enregistré
+    layout: Optional[dict] = None            # surcharge de mise en page (sinon globale)
+
+
+@router.post("/preview")
+async def preview_document_pdf(
+    data: TemplatePreviewIn,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Génère un PDF d'aperçu du BROUILLON courant, avec la même mise en page que le
+    document final (en-tête logo+nom+adresse du profil, corps, pied de page)."""
+    from app.services.document_render_service import build_document_html, eur
+    from app.services.pdf_service import html_to_pdf
+    from app.services.template_layout_service import get_layout
+
+    # Logo : repris du template enregistré si on en édite un.
+    logo_path = None
+    if data.template_id:
+        t = await db.get(DocumentTemplate, data.template_id)
+        if t:
+            _check_ownership(t, current_user)
+            logo_path = getattr(t, "logo_path", None)
+
+    sender_name = getattr(current_user, "full_name", "") or ""
+    sender_addr = getattr(current_user, "address", "") or ""
+
+    _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
+                  "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+    _d = date.today()
+    today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
+
+    variables = {
+        "tenant_name": "Marie Dupont",
+        "company_name": sender_name,
+        "property_name": "Résidence Les Tilleuls",
+        "unit_ref": "Appartement B12",
+        "property_address": "12 avenue des Tilleuls, 75001 Paris",
+        "rent_amount": eur(800), "charges_amount": eur(80),
+        "total_due": eur(880), "amount_paid": eur(880), "apl_amount": eur(0),
+        "month": f"{_MONTHS_FR[_d.month - 1].capitalize()} {_d.year}",
+        "due_date": today_fr, "date": today_fr,
+    }
+    html = build_document_html(
+        header_color=data.header_color, footer_text=data.footer_text,
+        content_html=data.content_html, logo_path=logo_path,
+        sender_name=sender_name, sender_addr=sender_addr,
+        recipient_lines=["Marie Dupont"],
+        property_address="12 avenue des Tilleuls, 75001 Paris",
+        variables=variables, layout=(data.layout or get_layout()),
+    )
+    pdf_bytes = html_to_pdf(html)
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                    headers={"Content-Disposition": 'inline; filename="apercu.pdf"'})
 
 
 @router.post("/initialize-defaults", status_code=status.HTTP_200_OK)
