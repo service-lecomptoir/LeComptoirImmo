@@ -154,7 +154,56 @@ class AvisEcheanceService:
             avis.status = AvisEcheanceStatus.ACQUITTE
             await db.flush()
 
+        # Prévenir le locataire 1 mois avant une révision IRL (notification + e-mail).
+        await cls._notify_upcoming_revision(db, lease, bp.key_year, bp.key_month)
+
         return avis
+
+    @classmethod
+    async def _notify_upcoming_revision(
+        cls, db: AsyncSession, lease: Lease, year: int, month: int
+    ) -> None:
+        """Si une révision IRL prend effet le mois suivant cette période, crée une
+        notification pour le locataire et envoie un e-mail (no-op tant que SMTP off).
+        Best-effort : n'interrompt jamais la génération de l'avis."""
+        try:
+            from app.services.irl_notice import upcoming_revision_notice, notice_text
+            notice = await upcoming_revision_notice(db, lease, year, month)
+            if not notice:
+                return
+            text = notice_text(notice)
+
+            tenant = await db.get(Tenant, lease.tenant_id)
+            if tenant and getattr(tenant, "user_id", None):
+                from app.models.notification import (
+                    Notification, NotificationType, NotificationPriority,
+                )
+                db.add(Notification(
+                    title="Révision de loyer à venir",
+                    message=text,
+                    notification_type=NotificationType.SYSTEME,
+                    priority=NotificationPriority.NORMAL,
+                    entity_type="lease",
+                    entity_id=lease.id,
+                    user_id=tenant.user_id,
+                ))
+                await db.flush()
+
+            # E-mail (no-op si SMTP désactivé).
+            email = getattr(tenant, "email", None) if tenant else None
+            if email:
+                from app.services.email_service import send_revision_loyer
+                await send_revision_loyer(
+                    to=email,
+                    tenant_name=tenant.full_name if tenant else "",
+                    effective_date=notice["effective_date"],
+                    old_rent=notice["old_rent"],
+                    new_rent=notice.get("new_rent"),
+                    irl_quarter=notice.get("irl_quarter"),
+                    irl_year=notice.get("irl_year"),
+                )
+        except Exception as exc:  # pragma: no cover - best effort
+            logger.warning("Notification révision loyer ignorée (bail %s): %s", lease.id, exc)
 
     @classmethod
     async def sync_statuses(cls, db: AsyncSession) -> int:

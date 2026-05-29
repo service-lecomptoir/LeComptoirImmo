@@ -145,7 +145,19 @@ class AvisEcheancePDFService:
             property_address=property_obj.full_address if property_obj else "",
             layout=layout,
         )
+
+        # Mention « révision de loyer à venir » (1 mois à l'avance), si applicable.
+        notice = None
+        if _lease_rel is not None:
+            from app.services.irl_notice import upcoming_revision_notice
+            notice = await upcoming_revision_notice(
+                db, _lease_rel, avis_full.period_year, avis_full.period_month
+            )
+
         if custom:
+            if notice:
+                from app.services.irl_notice import inject_notice
+                custom = inject_notice(custom, notice)
             return html_to_pdf(custom)
 
         # 2) …sinon, modèle .j2 historique (mise en page complète).
@@ -157,4 +169,7 @@ class AvisEcheancePDFService:
             "tenant_names_list": names,
             "layout": layout,
         })
+        if notice:
+            from app.services.irl_notice import inject_notice
+            html = inject_notice(html, notice)
         return html_to_pdf(html)

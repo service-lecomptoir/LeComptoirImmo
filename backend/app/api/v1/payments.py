@@ -502,6 +502,7 @@ async def download_quittance(
 
     # Noms de tous les locataires : principal puis co-titulaires, chacun sur sa ligne.
     names: list[str] = []
+    _lease_obj = None
     if getattr(payment, "lease_id", None):
         from sqlalchemy import select as _select
         from sqlalchemy.orm import selectinload as _selectinload
@@ -546,7 +547,18 @@ async def download_quittance(
         property_address=_prop_obj.full_address if _prop_obj else "",
         layout=layout,
     )
+    # Mention « révision de loyer à venir » (1 mois à l'avance), si applicable.
+    notice = None
+    if _lease_obj is not None:
+        from app.services.irl_notice import upcoming_revision_notice
+        notice = await upcoming_revision_notice(
+            db, _lease_obj, payment.period_year, payment.period_month
+        )
+
     if custom:
+        if notice:
+            from app.services.irl_notice import inject_notice
+            custom = inject_notice(custom, notice)
         pdf_bytes = html_to_pdf(custom)
     else:
         # 2) …sinon, modèle .j2 historique (mise en page complète).
@@ -557,6 +569,9 @@ async def download_quittance(
             "tenant_names_list": names,
             "layout": layout,
         })
+        if notice:
+            from app.services.irl_notice import inject_notice
+            html = inject_notice(html, notice)
         pdf_bytes = html_to_pdf(html)
 
     from app.utils.filename import doc_filename

@@ -141,6 +141,48 @@ async def send_quittance(
     )
 
 
+async def send_revision_loyer(
+    to: str,
+    tenant_name: str,
+    effective_date: str,
+    old_rent: float,
+    new_rent: Optional[float] = None,
+    irl_quarter: Optional[int] = None,
+    irl_year: Optional[int] = None,
+) -> bool:
+    """Prévient le locataire d'une révision de loyer à venir (1 mois à l'avance)."""
+    if new_rent is not None:
+        detail = f"""
+<table style="width:100%;border-collapse:collapse;margin:16px 0">
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">Loyer actuel</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">{old_rent:.2f} €</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">Nouveau loyer</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">{new_rent:.2f} €</td></tr>
+  <tr><td style="padding:8px;color:#6b7280">À compter du</td>
+      <td style="padding:8px;font-weight:600">{effective_date}</td></tr>
+</table>
+<p style="color:#6b7280;font-size:13px">Révision calculée selon l'indice de référence des loyers
+{f"(IRL T{irl_quarter} {irl_year})" if irl_quarter and irl_year else "(IRL)"}.</p>
+"""
+    else:
+        detail = f"""
+<p>À compter du <strong>{effective_date}</strong>, votre loyer sera révisé selon l'indice
+de référence des loyers (IRL). Le nouveau montant vous sera précisé dès la publication
+de l'indice applicable.</p>
+"""
+    content = f"""
+<p>Bonjour {tenant_name},</p>
+<p>Conformément à votre bail, votre loyer fera l'objet de sa révision annuelle.</p>
+{detail}
+<p>Cordialement,<br>Votre gestionnaire</p>
+"""
+    return await send_email(
+        to=to,
+        subject="Révision de loyer à venir",
+        html_body=_base_template("Révision de loyer à venir", content),
+    )
+
+
 async def send_subscription_lead_notification(
     to: str,
     full_name: str,
