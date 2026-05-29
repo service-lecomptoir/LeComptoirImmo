@@ -58,6 +58,38 @@ class IrlService:
         return idx
 
     @staticmethod
+    async def get_by_id(db: AsyncSession, irl_id: uuid.UUID) -> Optional[IrlIndex]:
+        return (await db.execute(
+            select(IrlIndex).where(IrlIndex.id == irl_id)
+        )).scalar_one_or_none()
+
+    @staticmethod
+    async def update(db: AsyncSession, irl_id: uuid.UUID, year: int, quarter: int,
+                     value: float) -> Optional[IrlIndex]:
+        idx = await IrlService.get_by_id(db, irl_id)
+        if not idx:
+            return None
+        # Conflit éventuel : un autre indice occupe déjà (year, quarter).
+        clash = await IrlService.get_index(db, year, quarter)
+        if clash and clash.id != irl_id:
+            raise ValueError("Un indice existe déjà pour ce trimestre et cette année.")
+        idx.year = year
+        idx.quarter = quarter
+        idx.value = value
+        idx.source = "manuel"  # une édition manuelle prime sur l'origine INSEE
+        await db.flush()
+        return idx
+
+    @staticmethod
+    async def delete(db: AsyncSession, irl_id: uuid.UUID) -> bool:
+        idx = await IrlService.get_by_id(db, irl_id)
+        if not idx:
+            return False
+        await db.delete(idx)
+        await db.flush()
+        return True
+
+    @staticmethod
     async def fetch_from_insee(db: AsyncSession) -> dict:
         """Tente de récupérer les indices IRL depuis l'API INSEE BDM.
         Nécessite settings.INSEE_API_KEY. Best-effort : repli manuel si indisponible."""

@@ -53,6 +53,31 @@ async def add_irl(data: IrlIn, db: AsyncSession = Depends(get_db),
             "value": float(idx.value), "source": idx.source}
 
 
+@router.patch("/irl/{irl_id}")
+async def update_irl(irl_id: uuid.UUID, data: IrlIn, db: AsyncSession = Depends(get_db),
+                     _: User = Depends(get_current_gestionnaire)):
+    if data.quarter < 1 or data.quarter > 4:
+        raise HTTPException(status_code=400, detail="Trimestre invalide (1 à 4)")
+    try:
+        idx = await IrlService.update(db, irl_id, data.year, data.quarter, data.value)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not idx:
+        raise HTTPException(status_code=404, detail="Indice introuvable")
+    await db.commit()
+    return {"id": str(idx.id), "year": idx.year, "quarter": idx.quarter,
+            "value": float(idx.value), "source": idx.source}
+
+
+@router.delete("/irl/{irl_id}", status_code=204)
+async def delete_irl(irl_id: uuid.UUID, db: AsyncSession = Depends(get_db),
+                     _: User = Depends(get_current_gestionnaire)):
+    ok = await IrlService.delete(db, irl_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Indice introuvable")
+    await db.commit()
+
+
 @router.post("/irl/refresh")
 async def refresh_irl(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_gestionnaire)):
     res = await IrlService.fetch_from_insee(db)
@@ -244,6 +269,7 @@ async def _charge_row(db: AsyncSession, lease: Lease) -> dict:
         "default_period_end": end.isoformat(),
         "provisions_paid_12m": provisions,
         "last_regularization": None if not last else {
+            "id": str(last.id),
             "period_start": last.period_start.isoformat(),
             "period_end": last.period_end.isoformat(),
             "provisions_total": float(last.provisions_total),
@@ -324,3 +350,51 @@ async def apply_charge(
         .where(Lease.id == lease_id)
     )).scalar_one()
     return await _charge_row(db, lease)
+
+
+async def _get_regul_and_lease(db: AsyncSession, reg_id: uuid.UUID):
+    reg = (await db.execute(
+        select(ChargeRegularization).where(ChargeRegularization.id == reg_id)
+    )).scalar_one_or_none()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Régularisation introuvable")
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == reg.lease_id)
+    )).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    return reg, lease
+
+
+@router.put("/charges/regularizations/{reg_id}")
+async def update_charge_regularization(
+    reg_id: uuid.UUID,
+    data: ChargeApplyIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    if data.period_end < data.period_start:
+        raise HTTPException(status_code=400, detail="Période invalide (fin avant début)")
+    if data.real_total < 0 or data.new_monthly_provision < 0:
+        raise HTTPException(status_code=400, detail="Montants négatifs invalides")
+    reg, lease = await _get_regul_and_lease(db, reg_id)
+    await ChargeRegularizationService.update(
+        db, reg, lease, data.period_start, data.period_end, data.real_total,
+        data.new_monthly_provision, notes=data.notes,
+    )
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease.id)
+    )).scalar_one()
+    return await _charge_row(db, lease)
+
+
+@router.delete("/charges/regularizations/{reg_id}", status_code=204)
+async def delete_charge_regularization(
+    reg_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    reg, lease = await _get_regul_and_lease(db, reg_id)
+    await ChargeRegularizationService.delete(db, reg, lease)

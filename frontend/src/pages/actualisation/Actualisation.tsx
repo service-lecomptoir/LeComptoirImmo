@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt } from 'lucide-react'
+import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt, Pencil, Trash2, X } from 'lucide-react'
 import { actualisationApi, type IrlIndexItem, type RevisionRow } from '@/api/actualisation'
 import ChargesPanel from './ChargesPanel'
 
@@ -19,6 +19,7 @@ export default function Actualisation() {
   const [iy, setIy] = useState(now.getFullYear())
   const [iq, setIq] = useState(1)
   const [iv, setIv] = useState('')
+  const [editId, setEditId] = useState<string | null>(null)
   // form référence par bail
   const [refForm, setRefForm] = useState<Record<string, { q: number; base: string }>>({})
 
@@ -34,14 +35,43 @@ export default function Actualisation() {
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 4000) }
 
+  const resetIrlForm = () => { setEditId(null); setIv(''); setIq(1); setIy(now.getFullYear()) }
+
   const addIrl = async () => {
     const v = parseFloat(iv)
     if (!iy || !iq || !v) return
-    await actualisationApi.addIrl({ year: iy, quarter: iq, value: v })
-    setIv('')
+    try {
+      if (editId) {
+        await actualisationApi.updateIrl(editId, { year: iy, quarter: iq, value: v })
+        flash(`Indice IRL T${iq} ${iy} modifié.`)
+      } else {
+        await actualisationApi.addIrl({ year: iy, quarter: iq, value: v })
+        flash(`Indice IRL T${iq} ${iy} enregistré.`)
+      }
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors de l\'enregistrement de l\'indice')
+      return
+    }
+    resetIrlForm()
     const a = await actualisationApi.listIrl(); setIrl(a.data)
     load()
-    flash(`Indice IRL T${iq} ${iy} enregistré.`)
+  }
+
+  const startEditIrl = (i: IrlIndexItem) => {
+    setEditId(i.id); setIy(i.year); setIq(i.quarter); setIv(String(i.value)); setShowIrl(true)
+  }
+
+  const deleteIrl = async (i: IrlIndexItem) => {
+    if (!confirm(`Supprimer l'indice IRL T${i.quarter} ${i.year} (${i.value}) ?`)) return
+    try {
+      await actualisationApi.deleteIrl(i.id)
+      if (editId === i.id) resetIrlForm()
+      flash(`Indice IRL T${i.quarter} ${i.year} supprimé.`)
+      const a = await actualisationApi.listIrl(); setIrl(a.data)
+      load()
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
+    }
   }
 
   const refreshInsee = async () => {
@@ -134,8 +164,13 @@ export default function Actualisation() {
                 <input type="number" step="0.01" value={iv} onChange={e => setIv(e.target.value)} placeholder="ex. 145.47" className="w-28 px-2 py-1.5 border border-gray-300 rounded-lg text-sm" />
               </div>
               <button onClick={addIrl} className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                <Plus size={14} /> Ajouter
+                {editId ? <><CheckCircle2 size={14} /> Enregistrer</> : <><Plus size={14} /> Ajouter</>}
               </button>
+              {editId && (
+                <button onClick={resetIrlForm} className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <X size={14} /> Annuler
+                </button>
+              )}
               <button onClick={refreshInsee} className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <RefreshCw size={14} /> Récupérer depuis l'INSEE
               </button>
@@ -143,8 +178,14 @@ export default function Actualisation() {
             <div className="flex flex-wrap gap-2">
               {irl.length === 0 ? <p className="text-sm text-gray-400">Aucun indice. Ajoutez-en ou récupérez depuis l'INSEE.</p>
                 : irl.map(i => (
-                  <span key={i.id} className="text-xs bg-gray-100 rounded-full px-2.5 py-1 text-gray-700">
+                  <span key={i.id} className={`group inline-flex items-center gap-1.5 text-xs rounded-full pl-2.5 pr-1.5 py-1 ${editId === i.id ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>
                     T{i.quarter} {i.year} : <strong>{i.value}</strong>{i.source === 'insee' ? ' · INSEE' : ''}
+                    <button onClick={() => startEditIrl(i)} title="Modifier" className="p-0.5 rounded hover:bg-white/70 text-gray-500 hover:text-blue-600">
+                      <Pencil size={12} />
+                    </button>
+                    <button onClick={() => deleteIrl(i)} title="Supprimer" className="p-0.5 rounded hover:bg-white/70 text-gray-500 hover:text-red-600">
+                      <Trash2 size={12} />
+                    </button>
                   </span>
                 ))}
             </div>

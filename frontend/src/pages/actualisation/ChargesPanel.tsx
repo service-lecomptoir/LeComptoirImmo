@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { KeyRound, RefreshCw, Calculator, CheckCircle2 } from 'lucide-react'
+import { KeyRound, RefreshCw, Calculator, CheckCircle2, Pencil, Trash2, X } from 'lucide-react'
 import { actualisationApi, type ChargeRow, type ChargePreview } from '@/api/actualisation'
 
 const fmtEuro = (n: number | null | undefined) =>
@@ -16,6 +16,7 @@ type FormState = {
   real: string
   newMonthly: string
   preview: ChargePreview | null
+  editRegId?: string | null
 }
 
 export default function ChargesPanel({ flash }: { flash: (m: string) => void }) {
@@ -79,19 +80,58 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
     const soldeTxt = bal > 0 ? `remboursement de ${fmtEuro(bal)} au locataire`
       : bal < 0 ? `complément de ${fmtEuro(Math.abs(bal))} dû par le locataire`
       : 'aucun solde'
-    if (!confirm(`Appliquer la régularisation des charges de ${row.tenant_full_name} ?\n` +
+    const verb = f.editRegId ? 'Modifier' : 'Appliquer'
+    if (!confirm(`${verb} la régularisation des charges de ${row.tenant_full_name} ?\n` +
       `Nouvelle provision mensuelle : ${fmtEuro(newMonthly)}\nSolde : ${soldeTxt}`)) return
     setBusyId(row.lease_id)
     try {
-      await actualisationApi.applyCharge(row.lease_id, {
+      const payload = {
         period_start: f.start, period_end: f.end, real_total: real,
         new_monthly_provision: newMonthly,
-      })
-      flash(`Régularisation des charges appliquée pour ${row.tenant_full_name}.`)
-      upd(row.lease_id, { preview: null, real: '', newMonthly: '' })
+      }
+      if (f.editRegId) {
+        await actualisationApi.updateCharge(f.editRegId, payload)
+        flash(`Régularisation des charges modifiée pour ${row.tenant_full_name}.`)
+      } else {
+        await actualisationApi.applyCharge(row.lease_id, payload)
+        flash(`Régularisation des charges appliquée pour ${row.tenant_full_name}.`)
+      }
+      upd(row.lease_id, { preview: null, real: '', newMonthly: '', editRegId: null })
       load()
     } catch (e: any) {
       alert(e?.response?.data?.detail || 'Erreur lors de la régularisation')
+    } finally { setBusyId(null) }
+  }
+
+  const startEditRegul = (row: ChargeRow) => {
+    const r = row.last_regularization
+    if (!r) return
+    upd(row.lease_id, {
+      start: r.period_start, end: r.period_end,
+      real: String(r.real_total), newMonthly: String(r.new_monthly_provision),
+      preview: null, editRegId: r.id,
+    })
+  }
+
+  const cancelEdit = (row: ChargeRow) =>
+    upd(row.lease_id, {
+      start: row.default_period_start, end: row.default_period_end,
+      real: '', newMonthly: '', preview: null, editRegId: null,
+    })
+
+  const delRegul = async (row: ChargeRow) => {
+    const r = row.last_regularization
+    if (!r) return
+    if (!confirm(`Supprimer cette régularisation de charges de ${row.tenant_full_name} ?\n` +
+      `La provision mensuelle reviendra à ${fmtEuro(row.last_regularization?.new_monthly_provision ?? 0)} → valeur antérieure.`)) return
+    setBusyId(row.lease_id)
+    try {
+      await actualisationApi.deleteCharge(r.id)
+      flash(`Régularisation supprimée pour ${row.tenant_full_name}.`)
+      upd(row.lease_id, { preview: null, real: '', newMonthly: '', editRegId: null })
+      load()
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
     } finally { setBusyId(null) }
   }
 
@@ -129,12 +169,33 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
                       </p>
                     </div>
                     {r.last_regularization && (
-                      <p className="text-xs text-gray-400 text-right">
-                        Dernière régul. {r.last_regularization.applied_at ? fmtDate(r.last_regularization.applied_at.slice(0, 10)) : ''} ·
-                        nouvelle provision {fmtEuro(r.last_regularization.new_monthly_provision)}
-                      </p>
+                      <div className="text-xs text-gray-400 text-right flex items-center gap-1.5">
+                        <span>
+                          Dernière régul. {r.last_regularization.applied_at ? fmtDate(r.last_regularization.applied_at.slice(0, 10)) : ''} ·
+                          nouvelle provision {fmtEuro(r.last_regularization.new_monthly_provision)}
+                        </span>
+                        <button onClick={() => startEditRegul(r)} disabled={busyId === r.lease_id}
+                          title="Modifier cette régularisation"
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 disabled:opacity-50">
+                          <Pencil size={13} />
+                        </button>
+                        <button onClick={() => delRegul(r)} disabled={busyId === r.lease_id}
+                          title="Supprimer cette régularisation"
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 disabled:opacity-50">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     )}
                   </div>
+
+                  {f?.editRegId && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs border border-blue-200">
+                      Modification de la régularisation existante
+                      <button onClick={() => cancelEdit(r)} title="Annuler" className="p-0.5 rounded hover:bg-white/70">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
 
                   {/* Formulaire de régularisation */}
                   {f && (
@@ -163,30 +224,36 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
                     </div>
                   )}
 
-                  {/* Résultat du calcul */}
-                  {f?.preview && (
+                  {/* Résultat du calcul / édition */}
+                  {(f?.preview || f?.editRegId) && (
                     <div className="mt-2 p-3 rounded-lg bg-gray-50 border border-gray-100 text-sm">
-                      <p className="text-gray-600">
-                        Sur {f.preview.months_count} mois : provisions versées <strong>{fmtEuro(f.preview.provisions_total)}</strong> ·
-                        charges réelles <strong>{fmtEuro(f.preview.real_total)}</strong>
-                      </p>
-                      <p className="mt-1">
-                        {bal != null && bal > 0 && <span className="text-green-700 font-semibold">Trop-perçu : {fmtEuro(bal)} → remboursé au locataire (déduit des prochains loyers)</span>}
-                        {bal != null && bal < 0 && <span className="text-red-700 font-semibold">Complément dû par le locataire : {fmtEuro(Math.abs(bal))}</span>}
-                        {bal != null && bal === 0 && <span className="text-gray-700 font-semibold">Provisions équilibrées (aucun solde)</span>}
-                      </p>
+                      {f.preview ? (
+                        <>
+                          <p className="text-gray-600">
+                            Sur {f.preview.months_count} mois : provisions versées <strong>{fmtEuro(f.preview.provisions_total)}</strong> ·
+                            charges réelles <strong>{fmtEuro(f.preview.real_total)}</strong>
+                          </p>
+                          <p className="mt-1">
+                            {bal != null && bal > 0 && <span className="text-green-700 font-semibold">Trop-perçu : {fmtEuro(bal)} → remboursé au locataire (déduit des prochains loyers)</span>}
+                            {bal != null && bal < 0 && <span className="text-red-700 font-semibold">Complément dû par le locataire : {fmtEuro(Math.abs(bal))}</span>}
+                            {bal != null && bal === 0 && <span className="text-gray-700 font-semibold">Provisions équilibrées (aucun solde)</span>}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-gray-500 text-xs">Modifiez la période, les charges réelles ou la provision, puis enregistrez (« Calculer » pour recalculer le solde).</p>
+                      )}
                       <div className="mt-2 flex flex-wrap items-end gap-2">
                         <div>
                           <label className="block text-[11px] text-gray-500 mb-0.5">Nouvelle provision mensuelle</label>
                           <input type="number" step="0.01" value={f.newMonthly}
                             onChange={e => upd(r.lease_id, { newMonthly: e.target.value })}
                             className="w-32 px-2 py-1 border border-gray-300 rounded-lg text-sm" />
-                          <span className="ml-2 text-xs text-gray-400">suggérée {fmtEuro(f.preview.suggested_monthly_provision)}</span>
+                          {f.preview && <span className="ml-2 text-xs text-gray-400">suggérée {fmtEuro(f.preview.suggested_monthly_provision)}</span>}
                         </div>
                         <button onClick={() => apply(r)} disabled={busyId === r.lease_id || !f.newMonthly}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-40">
                           {busyId === r.lease_id ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                          Appliquer la régularisation
+                          {f.editRegId ? 'Enregistrer les modifications' : 'Appliquer la régularisation'}
                         </button>
                       </div>
                     </div>

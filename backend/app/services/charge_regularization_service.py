@@ -116,6 +116,43 @@ class ChargeRegularizationService:
         await db.refresh(reg)
         return reg
 
+    @classmethod
+    async def update(
+        cls, db: AsyncSession, reg: ChargeRegularization, lease: Lease,
+        period_start: date, period_end: date, real_total: float,
+        new_monthly_provision: float, notes: Optional[str] = None,
+    ) -> ChargeRegularization:
+        """Modifie une régularisation existante : recalcule le solde et réapplique
+        la provision mensuelle. `old_monthly_provision` reste la valeur d'origine
+        (pré-régularisation) pour permettre une annulation correcte."""
+        c = await cls.compute(db, lease, period_start, period_end, real_total)
+        new_monthly = round(float(new_monthly_provision), 2)
+        reg.period_start = period_start
+        reg.period_end = period_end
+        reg.months_count = c["months_count"]
+        reg.provisions_total = c["provisions_total"]
+        reg.real_total = c["real_total"]
+        reg.balance = c["balance"]
+        reg.new_monthly_provision = new_monthly
+        if notes is not None:
+            reg.notes = notes
+        # Réajuste la provision du bail sur la nouvelle valeur.
+        lease.charges_amount = new_monthly
+        await db.flush()
+        await cls._notify(db, lease, reg)
+        await db.commit()
+        await db.refresh(reg)
+        return reg
+
+    @staticmethod
+    async def delete(db: AsyncSession, reg: ChargeRegularization, lease: Lease) -> None:
+        """Supprime une régularisation et restaure la provision mensuelle
+        antérieure du bail (old_monthly_provision)."""
+        lease.charges_amount = round(float(reg.old_monthly_provision), 2)
+        await db.delete(reg)
+        await db.flush()
+        await db.commit()
+
     @staticmethod
     async def _notify(db: AsyncSession, lease: Lease, reg: ChargeRegularization) -> None:
         """Notification interne + e-mail (best-effort)."""
