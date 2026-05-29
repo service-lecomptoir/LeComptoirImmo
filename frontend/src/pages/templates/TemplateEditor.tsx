@@ -148,6 +148,17 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
   )
 
   const currentUser = useAuthStore(s => s.user)
+  const fetchMe = useAuthStore(s => s.fetchMe)
+
+  // Garde l'« Émetteur » à jour : rafraîchit le profil à l'ouverture de l'éditeur,
+  // et chaque fois que l'onglet reprend le focus (couvre le cas où l'utilisateur
+  // modifie « Mes informations » dans un autre onglet).
+  useEffect(() => {
+    fetchMe()
+    const onFocus = () => { fetchMe() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [fetchMe])
 
   const [logoPreview, setLogoPreview] = useState<string | null>(
     template?.logo_url ? `${API_BASE}${template.logo_url}` : null
@@ -216,7 +227,8 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
     }, 700)
     return () => { cancelled = true; clearTimeout(h) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layout, form.content_html, form.footer_text, form.header_color, form.template_type, template?.id])
+  }, [layout, form.content_html, form.footer_text, form.header_color, form.template_type, template?.id,
+      currentUser?.full_name, currentUser?.address])
 
   // Libère l'URL blob au démontage.
   useEffect(() => () => { if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current) }, [])
