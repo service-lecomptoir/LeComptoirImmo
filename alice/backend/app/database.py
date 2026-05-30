@@ -1,8 +1,13 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import func
-from datetime import datetime
+from sqlalchemy import func, TIMESTAMP
+from datetime import datetime, timezone
 import uuid
+
+
+def _utcnow() -> datetime:
+    """Horodatage UTC tz-aware, calculé côté Python."""
+    return datetime.now(timezone.utc)
 
 from app.config import get_settings
 
@@ -30,17 +35,30 @@ AsyncSessionLocal = async_sessionmaker(
 
 # ── Base declarative ──────────────────────────────────────────────────────────
 class Base(DeclarativeBase):
-    pass
+    # eager_defaults : récupère les valeurs server_default / server_onupdate
+    # immédiatement (RETURNING sur PostgreSQL) lors de l'INSERT/UPDATE, au lieu de
+    # les expirer. Évite tout lazy-load post-flush hors contexte async
+    # (MissingGreenlet) lors de la sérialisation Pydantic — pour TOUS les modèles.
+    __mapper_args__ = {"eager_defaults": True}
 
 
 class TimestampMixin:
-    """Ajoute created_at et updated_at aux modèles qui en héritent."""
+    """Ajoute created_at et updated_at aux modèles qui en héritent.
+
+    Les valeurs sont calculées côté Python (default/onupdate) ET côté serveur
+    (server_default) : le Python évite que SQLAlchemy expire l'attribut après un
+    flush (ce qui déclenchait un lazy-load hors contexte async -> MissingGreenlet
+    lors de la sérialisation Pydantic) ; le server_default reste un filet de
+    sécurité pour les insertions hors ORM (migrations, SQL brut).
+    """
     created_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), nullable=False
+        TIMESTAMP(timezone=True), server_default=func.now(), default=_utcnow, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
         server_default=func.now(),
-        onupdate=func.now(),
+        default=_utcnow,
+        onupdate=_utcnow,
         nullable=False,
     )
 
