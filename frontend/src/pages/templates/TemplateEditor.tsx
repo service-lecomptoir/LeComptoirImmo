@@ -710,7 +710,7 @@ export default function TemplateEditor() {
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Templates de documents</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Ma papeterie</h1>
         <p className="text-sm text-gray-500 mt-1">
           Personnalisez vos avis d'échéance, quittances et courriers en cliquant sur l'un des modèles ci-dessous.
         </p>
