@@ -74,7 +74,7 @@ export default function SubscriptionList() {
       <div className="flex items-center gap-3 mb-6">
         <Inbox size={24} className="text-gray-700" />
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Demandes de souscription</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Demandes de souscription et de résiliation</h1>
           <p className="text-sm text-gray-500">Souscriptions (page d'accueil) et demandes de résiliation (espaces gestionnaires)</p>
         </div>
       </div>
