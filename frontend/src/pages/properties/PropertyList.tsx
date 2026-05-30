@@ -1,12 +1,36 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Unlock, Loader2 } from 'lucide-react'
+import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import type { Property, PropertyListItem } from '@/types/property'
+
+/**
+ * Cadenas ouvert : corps dans le sens normal, anse ouverte pivotée vers la gauche.
+ * (l'anse est attachée à droite du corps et s'ouvre en arc vers le haut-gauche)
+ */
+function OpenLockLeft({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M17 11V7a5 5 0 0 0-9.9-1" />
+    </svg>
+  )
+}
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
   maison: 'Maison',
@@ -148,7 +172,7 @@ export default function PropertyList() {
             ? <Loader2 size={16} className="animate-spin" />
             : creationBlocked
               ? <Lock size={16} />
-              : <Unlock size={16} className="-scale-x-100" />}
+              : <OpenLockLeft size={16} />}
           {checkingLicense ? 'Vérification…' : 'Nouveau bien'}
         </button>
       </div>
