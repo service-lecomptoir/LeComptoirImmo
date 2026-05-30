@@ -1,0 +1,22 @@
+# Secrets — ne jamais baker dans l'image (injectés via env_file de docker-compose)
+.env
+.env.*
+!.env.example
+
+# Environnements virtuels Python
+.venv/
+venv/
+env/
+
+# Caches & artefacts Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Logs & uploads locaux
+*.log
+uploads/
+
+# Git
+.git/
+.gitignore
