@@ -69,11 +69,12 @@ export default function PropertyList() {
   const user = useAuthStore(s => s.user)
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
   const [view, setView] = useViewMode('properties', 'grid')
+  const [limit, setLimit] = useState(100)
 
-  const fetchProperties = useCallback(async (q: string) => {
+  const fetchProperties = useCallback(async (q: string, lim: number) => {
     setIsLoading(true)
     try {
-      const { data } = await propertiesApi.list({ search: q || undefined, limit: 100 })
+      const { data } = await propertiesApi.list({ search: q || undefined, limit: lim })
       setProperties(data.items as PropertyListItem[])
       setTotal(data.total)
     } finally {
@@ -97,9 +98,9 @@ export default function PropertyList() {
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchProperties(search), 300)
+    const t = setTimeout(() => fetchProperties(search, limit), 300)
     return () => clearTimeout(t)
-  }, [search, fetchProperties])
+  }, [search, limit, fetchProperties])
 
   useEffect(() => { fetchSubscription() }, [fetchSubscription])
 
@@ -152,7 +153,7 @@ export default function PropertyList() {
     try {
       await propertiesApi.delete(deleteId)
       setDeleteId(null)
-      fetchProperties(search)
+      fetchProperties(search, limit)
       fetchSubscription()
       toast.success('Bien supprimé')
     } finally {
@@ -228,14 +229,14 @@ export default function PropertyList() {
         <input
           type="text"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setLimit(100) }}
           placeholder="Rechercher par nom, adresse, ville..."
           className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       {/* Mosaïque */}
-      {isLoading ? (
+      {isLoading && properties.length === 0 ? (
         <CardGridSkeleton />
       ) : properties.length === 0 ? (
         <EmptyState
@@ -378,12 +379,23 @@ export default function PropertyList() {
         </div>
       )}
 
+      {!isLoading && properties.length < total && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => setLimit(l => l + 100)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Charger plus ({properties.length} / {total})
+          </button>
+        </div>
+      )}
+
       {/* Modals */}
       {showForm && (
         <PropertyForm
           property={editProperty ?? undefined}
           onClose={() => { setShowForm(false); setEditProperty(null) }}
-          onSaved={() => { setShowForm(false); setEditProperty(null); fetchProperties(search); fetchSubscription(); toast.success('Bien enregistré') }}
+          onSaved={() => { setShowForm(false); setEditProperty(null); fetchProperties(search, limit); fetchSubscription(); toast.success('Bien enregistré') }}
         />
       )}
       <ConfirmDialog

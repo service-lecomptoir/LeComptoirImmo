@@ -1,6 +1,8 @@
 /**
  * Exporte des données tabulaires en CSV et déclenche le téléchargement.
- * - séparateur `;` (Excel FR), BOM UTF-8 pour les accents,
+ * - séparateur `;` (Excel FR),
+ * - encodage UTF-8 explicite (TextEncoder) + BOM en octets bruts (EF BB BF)
+ *   pour que les accents s'affichent correctement dans Excel / LibreOffice,
  * - échappement des guillemets / séparateurs / retours ligne.
  */
 export function exportCsv(
@@ -17,11 +19,11 @@ export function exportCsv(
     .map(r => r.map(esc).join(sep))
     .join('\r\n')
 
-  // Préfixe BOM UTF-8 — indispensable pour qu'Excel (FR) lise les accents.
-  // Construit via fromCharCode (source ASCII) pour qu'aucun minifier ne puisse
-  // supprimer un caractère BOM littéral du bundle.
-  const BOM = String.fromCharCode(0xFEFF)
-  const blob = new Blob([BOM + content], { type: 'text/csv;charset=utf-8;' })
+  // BOM UTF-8 en octets + contenu encodé en UTF-8 : aucune ambiguïté d'encodage.
+  const bom = new Uint8Array([0xEF, 0xBB, 0xBF])
+  const body = new TextEncoder().encode(content)
+  const blob = new Blob([bom, body], { type: 'text/csv;charset=utf-8;' })
+
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

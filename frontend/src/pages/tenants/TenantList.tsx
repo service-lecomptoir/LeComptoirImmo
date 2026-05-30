@@ -29,11 +29,12 @@ export default function TenantList() {
   const user = useAuthStore(s => s.user)
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
   const [view, setView] = useViewMode('tenants', 'grid')
+  const [limit, setLimit] = useState(100)
 
-  const fetchTenants = useCallback(async (q: string) => {
+  const fetchTenants = useCallback(async (q: string, lim: number) => {
     setIsLoading(true)
     try {
-      const { data } = await tenantsApi.list({ search: q || undefined, limit: 100 })
+      const { data } = await tenantsApi.list({ search: q || undefined, limit: lim })
       setTenants(data.items)
       setTotal(data.total)
     } catch (e) {
@@ -44,9 +45,9 @@ export default function TenantList() {
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchTenants(search), 300)
+    const t = setTimeout(() => fetchTenants(search, limit), 300)
     return () => clearTimeout(t)
-  }, [search, fetchTenants])
+  }, [search, limit, fetchTenants])
 
   const openEdit = async (id: string) => {
     try {
@@ -64,7 +65,7 @@ export default function TenantList() {
     try {
       await tenantsApi.delete(deleteId)
       setDeleteId(null)
-      fetchTenants(search)
+      fetchTenants(search, limit)
       toast.success('Locataire supprimé')
     } catch (e: any) {
       setDeleteError(
@@ -121,14 +122,14 @@ export default function TenantList() {
         <input
           type="text"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setLimit(100) }}
           placeholder="Rechercher par nom, email, téléphone..."
           className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       {/* Liste ou mosaïque */}
-      {isLoading ? (
+      {isLoading && tenants.length === 0 ? (
         <CardGridSkeleton />
       ) : tenants.length === 0 ? (
         <EmptyState icon={UserRound} title={search ? 'Aucun résultat' : 'Aucun locataire enregistré'} />
@@ -242,18 +243,29 @@ export default function TenantList() {
         </div>
       )}
 
+      {!isLoading && tenants.length < total && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => setLimit(l => l + 100)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Charger plus ({tenants.length} / {total})
+          </button>
+        </div>
+      )}
+
       {/* Modals */}
       {showForm && (
         <TenantForm
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchTenants(search); toast.success('Locataire créé') }}
+          onSaved={() => { setShowForm(false); fetchTenants(search, limit); toast.success('Locataire créé') }}
         />
       )}
       {editTenant && (
         <TenantForm
           tenant={editTenant}
           onClose={() => setEditTenant(null)}
-          onSaved={() => { setEditTenant(null); fetchTenants(search); toast.success('Locataire mis à jour') }}
+          onSaved={() => { setEditTenant(null); fetchTenants(search, limit); toast.success('Locataire mis à jour') }}
         />
       )}
       <ConfirmDialog

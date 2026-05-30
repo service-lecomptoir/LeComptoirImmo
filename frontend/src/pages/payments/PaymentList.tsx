@@ -10,6 +10,7 @@ import type { PaymentListItem, PaymentStatus } from '@/types/payment'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useForm } from 'react-hook-form'
+import { toast } from '@/store/toast'
 
 interface RecordForm {
   amount_paid: number
@@ -86,6 +87,7 @@ export default function PaymentList() {
     setRecordingId(null)
     reset()
     fetchPayments(search, filterStatus, filterYear, filterMonth)
+    toast.success('Paiement enregistré')
   }
 
   const handleDownloadQuittance = async (p: PaymentListItem) => {

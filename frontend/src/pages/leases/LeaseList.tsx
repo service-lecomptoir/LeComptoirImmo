@@ -27,14 +27,15 @@ export default function LeaseList() {
   const user = useAuthStore(s => s.user)
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
   const [view, setView] = useViewMode('leases', 'grid')
+  const [limit, setLimit] = useState(100)
 
-  const fetchLeases = useCallback(async (q: string, active: boolean | undefined) => {
+  const fetchLeases = useCallback(async (q: string, active: boolean | undefined, lim: number) => {
     setIsLoading(true)
     try {
       const { data } = await leasesApi.list({
         search: q || undefined,
         is_active: active,
-        limit: 100,
+        limit: lim,
       })
       setLeases(data.items)
       setTotal(data.total)
@@ -44,9 +45,9 @@ export default function LeaseList() {
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchLeases(search, filterActive), 300)
+    const t = setTimeout(() => fetchLeases(search, filterActive, limit), 300)
     return () => clearTimeout(t)
-  }, [search, filterActive, fetchLeases])
+  }, [search, filterActive, limit, fetchLeases])
 
   const fmtDate = (d: string) => format(new Date(d), 'd MMM yyyy', { locale: fr })
   const fmtEuro = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
@@ -97,7 +98,7 @@ export default function LeaseList() {
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setLimit(100) }}
             placeholder="Rechercher par locataire, logement, bien..."
             className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -109,6 +110,7 @@ export default function LeaseList() {
             onChange={e => {
               const v = e.target.value
               setFilterActive(v === '' ? undefined : v === 'true')
+              setLimit(100)
             }}
             className="outline-none text-gray-700 bg-transparent cursor-pointer"
           >
@@ -120,7 +122,7 @@ export default function LeaseList() {
       </div>
 
       {/* Liste ou mosaïque */}
-      {isLoading ? (
+      {isLoading && leases.length === 0 ? (
         <CardGridSkeleton />
       ) : leases.length === 0 ? (
         <EmptyState icon={FileText} title={search ? 'Aucun résultat' : 'Aucun contrat enregistré'} />
@@ -222,10 +224,21 @@ export default function LeaseList() {
         </div>
       )}
 
+      {!isLoading && leases.length < total && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => setLimit(l => l + 100)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Charger plus ({leases.length} / {total})
+          </button>
+        </div>
+      )}
+
       {showForm && (
         <LeaseForm
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchLeases(search, filterActive); toast.success('Contrat enregistré') }}
+          onSaved={() => { setShowForm(false); fetchLeases(search, filterActive, limit); toast.success('Contrat enregistré') }}
         />
       )}
     </div>

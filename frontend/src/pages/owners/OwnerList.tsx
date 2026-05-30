@@ -28,11 +28,12 @@ export default function OwnerList() {
   const user = useAuthStore(s => s.user)
   const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
   const [view, setView] = useViewMode('owners', 'grid')
+  const [limit, setLimit] = useState(100)
 
-  const fetchOwners = useCallback(async (q: string) => {
+  const fetchOwners = useCallback(async (q: string, lim: number) => {
     setIsLoading(true)
     try {
-      const { data } = await ownersApi.list({ search: q || undefined, limit: 100 })
+      const { data } = await ownersApi.list({ search: q || undefined, limit: lim })
       setOwners(data.items)
       setTotal(data.total)
     } catch (e) {
@@ -43,9 +44,9 @@ export default function OwnerList() {
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => fetchOwners(search), 300)
+    const t = setTimeout(() => fetchOwners(search, limit), 300)
     return () => clearTimeout(t)
-  }, [search, fetchOwners])
+  }, [search, limit, fetchOwners])
 
   const openEdit = async (id: string) => {
     try {
@@ -62,7 +63,7 @@ export default function OwnerList() {
     try {
       await ownersApi.delete(deleteId)
       setDeleteId(null)
-      fetchOwners(search)
+      fetchOwners(search, limit)
       toast.success('Propriétaire supprimé')
     } finally {
       setIsDeleting(false)
@@ -112,14 +113,14 @@ export default function OwnerList() {
         <input
           type="text"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setLimit(100) }}
           placeholder="Rechercher par nom, société, email, téléphone..."
           className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
       {/* Liste ou mosaïque */}
-      {isLoading ? (
+      {isLoading && owners.length === 0 ? (
         <CardGridSkeleton />
       ) : owners.length === 0 ? (
         <EmptyState icon={Building2} title={search ? 'Aucun résultat' : 'Aucun propriétaire enregistré'} />
@@ -234,18 +235,29 @@ export default function OwnerList() {
         </div>
       )}
 
+      {!isLoading && owners.length < total && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => setLimit(l => l + 100)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Charger plus ({owners.length} / {total})
+          </button>
+        </div>
+      )}
+
       {/* Modals */}
       {showForm && (
         <OwnerForm
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchOwners(search); toast.success('Propriétaire créé') }}
+          onSaved={() => { setShowForm(false); fetchOwners(search, limit); toast.success('Propriétaire créé') }}
         />
       )}
       {editOwner && (
         <OwnerForm
           owner={editOwner}
           onClose={() => setEditOwner(null)}
-          onSaved={() => { setEditOwner(null); fetchOwners(search); toast.success('Propriétaire mis à jour') }}
+          onSaved={() => { setEditOwner(null); fetchOwners(search, limit); toast.success('Propriétaire mis à jour') }}
         />
       )}
       <ConfirmDialog
