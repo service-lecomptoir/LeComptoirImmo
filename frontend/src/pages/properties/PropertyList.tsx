@@ -7,6 +7,7 @@ import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
+import { toast } from '@/store/toast'
 import type { Property, PropertyListItem } from '@/types/property'
 import { useAuthStore } from '@/store/authStore'
 import { ViewToggle } from '@/components/common/ViewToggle'
@@ -151,6 +152,7 @@ export default function PropertyList() {
       setDeleteId(null)
       fetchProperties(search)
       fetchSubscription()
+      toast.success('Bien supprimé')
     } finally {
       setIsDeleting(false)
     }
@@ -359,7 +361,7 @@ export default function PropertyList() {
         <PropertyForm
           property={editProperty ?? undefined}
           onClose={() => { setShowForm(false); setEditProperty(null) }}
-          onSaved={() => { setShowForm(false); setEditProperty(null); fetchProperties(search); fetchSubscription() }}
+          onSaved={() => { setShowForm(false); setEditProperty(null); fetchProperties(search); fetchSubscription(); toast.success('Bien enregistré') }}
         />
       )}
       <ConfirmDialog

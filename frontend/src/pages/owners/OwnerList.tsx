@@ -5,6 +5,7 @@ import { ownersApi } from '@/api/owners'
 import { OwnerForm } from './OwnerForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
+import { toast } from '@/store/toast'
 import type { Owner, OwnerListItem } from '@/types/owner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -60,6 +61,7 @@ export default function OwnerList() {
       await ownersApi.delete(deleteId)
       setDeleteId(null)
       fetchOwners(search)
+      toast.success('Propriétaire supprimé')
     } finally {
       setIsDeleting(false)
     }
@@ -219,14 +221,14 @@ export default function OwnerList() {
       {showForm && (
         <OwnerForm
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchOwners(search) }}
+          onSaved={() => { setShowForm(false); fetchOwners(search); toast.success('Propriétaire créé') }}
         />
       )}
       {editOwner && (
         <OwnerForm
           owner={editOwner}
           onClose={() => setEditOwner(null)}
-          onSaved={() => { setEditOwner(null); fetchOwners(search) }}
+          onSaved={() => { setEditOwner(null); fetchOwners(search); toast.success('Propriétaire mis à jour') }}
         />
       )}
       <ConfirmDialog

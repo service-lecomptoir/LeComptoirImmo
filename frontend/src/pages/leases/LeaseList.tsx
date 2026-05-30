@@ -5,6 +5,7 @@ import { leasesApi } from '@/api/leases'
 import { LeaseForm } from './LeaseForm'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
+import { toast } from '@/store/toast'
 import { LEASE_TYPE_LABELS } from '@/types/lease'
 import type { LeaseListItem } from '@/types/lease'
 import { format } from 'date-fns'
@@ -204,7 +205,7 @@ export default function LeaseList() {
       {showForm && (
         <LeaseForm
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchLeases(search, filterActive) }}
+          onSaved={() => { setShowForm(false); fetchLeases(search, filterActive); toast.success('Contrat enregistré') }}
         />
       )}
     </div>

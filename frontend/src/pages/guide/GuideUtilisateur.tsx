@@ -62,12 +62,14 @@ const GUIDE_MANDATAIRE: Guide = {
     "Le RIB se saisit une seule fois, sur la fiche du propriétaire : il alimente automatiquement les quittances.",
     "Choisissez la bonne « règle d'appel de loyer » : calendaire (au prorata des jours) ou contractuelle (date à date).",
     "Résiliez un bail terminé pour libérer le bien et le rendre de nouveau disponible à la mise en location.",
+    "Sur Propriétés, Propriétaires, Locataires et Contrats, basculez entre vue liste et vue mosaïque via les icônes en haut à droite — votre choix est mémorisé.",
   ],
   faq: [
     { q: 'Un bien occupé n\'apparaît pas dans la liste lors de la création d\'un contrat, est-ce normal ?', a: 'Oui. Pour éviter les doublons, seuls les biens disponibles sont proposés. Un bien redevient sélectionnable dès que son bail est résilié.' },
     { q: 'Comment ajouter un co-locataire ?', a: 'Dans le formulaire de contrat, section « Co-titulaires », choisissez un locataire existant ou créez-en un avec le bouton « Nouveau ». C\'est possible en création comme en modification.' },
     { q: 'Pourquoi je ne génère qu\'un seul avis pour plusieurs mois ?', a: 'Si la fréquence du bail est trimestrielle, semestrielle ou annuelle, un seul avis couvre toute la période, avec le montant correspondant.' },
     { q: 'Où apparaissent mes coordonnées sur les documents ?', a: 'Les coordonnées de l\'agence (« Mes informations ») et le RIB du propriétaire (sa fiche) figurent automatiquement en en-tête des avis et quittances.' },
+    { q: 'Pourquoi un compte n\'apparaît pas dans « Accès espace locataire » ?', a: 'À la création d\'un locataire, seuls les comptes non encore rattachés à une fiche sont proposés (un compte = un seul locataire). En modification, le compte déjà lié à ce locataire reste visible.' },
   ],
 }
 
@@ -108,12 +110,15 @@ const GUIDE_GP: Guide = {
     "Votre RIB est saisi une seule fois (Mes informations) et figure sur les quittances.",
     "Consultez régulièrement « Mes revenus » et « Liasse fiscale » pour anticiper votre déclaration.",
     "Résiliez un bail terminé pour libérer le bien.",
+    "Sur vos listes (Propriétés, Locataires, Contrats), basculez entre vue liste et mosaïque via les icônes en haut à droite — le choix est mémorisé.",
+    "Le tableau de bord « Performance par bien » liste désormais tous vos biens, triés par revenu.",
   ],
   faq: [
     { q: 'Dois-je créer une fiche propriétaire pour moi-même ?', a: 'Non. En tant que gestionnaire propriétaire, vous êtes automatiquement rattaché à vos biens.' },
     { q: 'Où vois-je combien me rapportent mes biens ?', a: 'Dans la section « Mes finances » → « Mes revenus » et « Performance biens ».' },
     { q: 'Comment préparer ma déclaration fiscale ?', a: 'Ouvrez « Liasse fiscale », qui récapitule loyers et charges, et que vous pouvez imprimer.' },
     { q: 'Puis-je créer un locataire pendant la rédaction du bail ?', a: 'Oui, le formulaire de contrat permet de créer un locataire principal et des co-titulaires à la volée.' },
+    { q: 'Pourquoi un compte n\'apparaît pas dans « Accès espace locataire » ?', a: 'À la création d\'un locataire, seuls les comptes non encore rattachés à une fiche sont proposés (un compte = un seul locataire). En modification, le compte déjà lié reste visible.' },
   ],
 }
 
@@ -148,6 +153,7 @@ const GUIDE_PROPRIETAIRE: Guide = {
     "Gardez votre RIB à jour : c'est la condition d'un reversement sans accroc.",
     "Utilisez les messages pour toute question : votre gestionnaire y répond.",
     "Consultez la liasse fiscale en fin d'année pour préparer sereinement votre déclaration.",
+    "Sur vos listes (biens, locataires, contrats), basculez entre vue liste et mosaïque via les icônes en haut à droite — le choix est mémorisé.",
   ],
   faq: [
     { q: 'Puis-je créer un contrat ou ajouter un locataire ?', a: 'Non : ces actions sont réalisées par votre gestionnaire mandataire. Votre espace est dédié au suivi et à la consultation.' },

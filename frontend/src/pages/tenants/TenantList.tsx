@@ -5,6 +5,7 @@ import { tenantsApi } from '@/api/tenants'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
+import { toast } from '@/store/toast'
 import type { Tenant, TenantListItem } from '@/types/tenant'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -62,6 +63,7 @@ export default function TenantList() {
       await tenantsApi.delete(deleteId)
       setDeleteId(null)
       fetchTenants(search)
+      toast.success('Locataire supprimé')
     } catch (e: any) {
       setDeleteError(
         e?.response?.data?.detail ||
@@ -227,14 +229,14 @@ export default function TenantList() {
       {showForm && (
         <TenantForm
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchTenants(search) }}
+          onSaved={() => { setShowForm(false); fetchTenants(search); toast.success('Locataire créé') }}
         />
       )}
       {editTenant && (
         <TenantForm
           tenant={editTenant}
           onClose={() => setEditTenant(null)}
-          onSaved={() => { setEditTenant(null); fetchTenants(search) }}
+          onSaved={() => { setEditTenant(null); fetchTenants(search); toast.success('Locataire mis à jour') }}
         />
       )}
       <ConfirmDialog

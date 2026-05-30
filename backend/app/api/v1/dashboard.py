@@ -209,42 +209,52 @@ async def get_dashboard_stats(
         props_res = await db.execute(select(Property))
     properties = props_res.scalars().all()
 
-    top_properties = []
-    for prop in properties:
-        units_count = 1  # un bien = un logement
-
-        occ_res = await db.execute(
-            select(func.count(Lease.id)).where(
-                Lease.property_id == prop.id, Lease.is_active.is_(True)
+    # Agrégats par bien en 2 requêtes groupées (au lieu de 3 requêtes par bien)
+    prop_ids = [prop.id for prop in properties]
+    occ_by_prop: dict = {}
+    rev_by_prop: dict = {}
+    out_by_prop: dict = {}
+    if prop_ids:
+        lease_rows = (await db.execute(
+            select(
+                Lease.property_id,
+                func.count(Lease.id),
+                func.sum(Lease.rent_amount + Lease.charges_amount),
             )
-        )
-        occ_count = occ_res.scalar_one() or 0
+            .where(Lease.property_id.in_(prop_ids), Lease.is_active.is_(True))
+            .group_by(Lease.property_id)
+        )).all()
+        for pid, cnt, rev in lease_rows:
+            occ_by_prop[pid] = cnt or 0
+            rev_by_prop[pid] = float(rev or 0)
 
-        rev_res = await db.execute(
-            select(func.sum(Lease.rent_amount + Lease.charges_amount))
-            .where(Lease.property_id == prop.id, Lease.is_active.is_(True))
-        )
-        monthly_rev = float(rev_res.scalar_one() or 0)
-
-        out_prop_res = await db.execute(
-            select(func.sum(Payment.amount_due - Payment.amount_paid))
+        out_rows = (await db.execute(
+            select(
+                Lease.property_id,
+                func.sum(Payment.amount_due - Payment.amount_paid),
+            )
             .join(Lease, Payment.lease_id == Lease.id)
             .where(
-                Lease.property_id == prop.id,
+                Lease.property_id.in_(prop_ids),
                 Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
                 Payment.due_date < today,
             )
-        )
-        outstanding_prop = float(out_prop_res.scalar_one() or 0)
+            .group_by(Lease.property_id)
+        )).all()
+        for pid, out in out_rows:
+            out_by_prop[pid] = float(out or 0)
 
-        top_properties.append(PropertyStats(
+    top_properties = [
+        PropertyStats(
             property_id=str(prop.id),
             property_name=prop.name,
-            units_count=units_count,
-            occupied_count=occ_count,
-            monthly_revenue=round(monthly_rev, 2),
-            outstanding=round(outstanding_prop, 2),
-        ))
+            units_count=1,  # un bien = un logement
+            occupied_count=occ_by_prop.get(prop.id, 0),
+            monthly_revenue=round(rev_by_prop.get(prop.id, 0.0), 2),
+            outstanding=round(out_by_prop.get(prop.id, 0.0), 2),
+        )
+        for prop in properties
+    ]
 
     top_properties.sort(key=lambda x: x.monthly_revenue, reverse=True)
 
