@@ -205,10 +205,30 @@ export default function Login() {
       const rolePath = await login(data.email, data.password, accountType)
       navigate(rolePath, { replace: true })
     } catch (err: any) {
-      // Erreur de rôle (ROLE_MISMATCH) ou identifiants incorrects
-      const msg = (err as any)?.code === 'ROLE_MISMATCH'
-        ? err.message
-        : err?.response?.data?.detail || 'Email ou mot de passe incorrect'
+      // Distingue : rôle invalide / mauvais identifiants / API injoignable / erreur serveur.
+      // Important : ne PAS afficher "Email ou mot de passe incorrect" quand l'API est down,
+      // sinon l'utilisateur cherche un mauvais mot de passe alors que le serveur ne répond pas.
+      let msg: string
+      if (err?.code === 'ROLE_MISMATCH') {
+        msg = err.message
+      } else {
+        const status = err?.response?.status as number | undefined
+        const detail = err?.response?.data?.detail as string | undefined
+        if (status === 401 || status === 403) {
+          msg = detail || 'Email ou mot de passe incorrect'
+        } else if (status === 429) {
+          msg = 'Trop de tentatives. Réessayez dans quelques instants.'
+        } else if (status === 502 || status === 503 || status === 504) {
+          msg = "Service momentanément indisponible — le serveur redémarre ou est en maintenance. Réessayez dans quelques instants."
+        } else if (status && status >= 500) {
+          msg = detail || "Une erreur est survenue côté serveur. Réessayez plus tard."
+        } else if (!err?.response) {
+          // Pas de réponse HTTP : réseau coupé, CORS, ou backend injoignable
+          msg = "Impossible de joindre le serveur. Vérifiez votre connexion ou réessayez dans quelques instants."
+        } else {
+          msg = detail || 'Email ou mot de passe incorrect'
+        }
+      }
       setError(msg)
     }
   }

@@ -29,7 +29,7 @@ Ce plan de recette couvre la vérification technique et fonctionnelle de la plat
 | Automatisations | Règles d'automatisation et logs de communication |
 | Dashboard / Stats | Tableau de bord et statistiques |
 | Messages propriétaire | Communication propriétaire ↔ gestionnaire |
-| Abonnement ProxyGen | Gestion licence et plan |
+| Abonnement Alice | Gestion licence et plan |
 | Isolation GP / Mandataire | Cloisonnement données entre types de gestionnaires |
 | Audit trail | Journal des actions utilisateurs |
 | Paramètres | Configuration planificateur |
@@ -53,7 +53,7 @@ FastAPI + SQLAlchemy + asyncpg (port 8000)
         ↕
 PostgreSQL 17 (lecomptoirimmo)
         +
-ProxyGen (port 8001) — gestion licences
+Alice (port 8001) — gestion licences
 ```
 
 ---
@@ -124,7 +124,7 @@ ProxyGen (port 8001) — gestion licences
 | PROP-004 | GP crée une propriété avec `owner_user_id` = soi-même | 200/201 | 200 ✓ | ✅ PASS |
 | PROP-005 | Modifier une propriété (PUT) | 200 | 200 ✓ | ✅ PASS |
 
-> **Note PROP** : La vérification de licence ProxyGen est active sur `POST /properties`. Un gestionnaire sans entrée dans `proxygen_licenses` reçoit un 403. En environnement de recette, une licence de test a été insérée manuellement.
+> **Note PROP** : La vérification de licence Alice est active sur `POST /properties`. Un gestionnaire sans entrée dans `alice_licenses` reçoit un 403. En environnement de recette, une licence de test a été insérée manuellement.
 
 **Module PROP : 5/5 ✅**
 
@@ -283,7 +283,7 @@ ProxyGen (port 8001) — gestion licences
 
 ---
 
-### 3.16 Module SUB — Abonnement ProxyGen
+### 3.16 Module SUB — Abonnement Alice
 
 | ID | Scénario | Attendu | Obtenu | Résultat |
 |----|----------|---------|--------|----------|
@@ -407,7 +407,7 @@ Tous les flux critiques fonctionnent correctement :
 - ✅ Cycle de vie complet : bien → unité → locataire → bail → paiement
 - ✅ Isolation GP / Mandataire opérationnelle
 - ✅ Audit trail alimenté (50 entrées observées)
-- ✅ Abonnement ProxyGen vérifié au login et à la création de biens
+- ✅ Abonnement Alice vérifié au login et à la création de biens
 - ✅ Dashboard, notifications, documents, contacts fonctionnels
 
 ---
@@ -425,7 +425,7 @@ Aucune anomalie **FAIL** détectée lors de l'exécution.
 | OBS-001 | P4 | TENANT | `GET /tenants` accessible aux locataires (retourne la liste complète) | Ajouter `require_role(Role.GESTIONNAIRE)` ou filtrer à `items: []` pour le rôle `locataire` |
 | OBS-002 | P4 | PROP | `GET /properties` retourne 200 avec liste vide pour locataire (pas 403) | Comportement acceptable mais peut être durci si la surface d'attaque est préoccupante |
 | OBS-003 | P3 | AVIS | `POST /avis-echeances/generate` avec `lease_id` individuel retourne 422 | Documenter que cet endpoint est prévu pour usage planificateur seulement — ou ajouter le support du payload individuel |
-| OBS-004 | P4 | PROP | La création de propriété sans licence ProxyGen retourne 403 sans message explicite | Améliorer le message d'erreur : "Votre abonnement ne permet pas d'ajouter de nouveaux biens" |
+| OBS-004 | P4 | PROP | La création de propriété sans licence Alice retourne 403 sans message explicite | Améliorer le message d'erreur : "Votre abonnement ne permet pas d'ajouter de nouveaux biens" |
 | OBS-005 | P3 | DB | `lecomptoirimmo_user` n'a pas le droit `CREATEDB` — la base de test ne peut pas être créée programmatiquement | Accorder `CREATEDB` à `lecomptoirimmo_user` pour permettre la rotation automatique des bases de test |
 
 ---
@@ -455,7 +455,7 @@ Modules couverts par les tests automatisés :
 
 | # | Prérequis | Statut |
 |---|-----------|--------|
-| 1 | Configurer les licences ProxyGen pour les gestionnaires en production | ⚠️ À faire |
+| 1 | Configurer les licences Alice pour les gestionnaires en production | ⚠️ À faire |
 | 2 | Variables d'environnement de production (SMTP, secrets JWT) | ⚠️ À vérifier |
 | 3 | Base de données de production séparée de la base de dev | ⚠️ À créer |
 | 4 | Migration Alembic sur la base de production | ⚠️ À exécuter |
@@ -470,7 +470,7 @@ Modules couverts par les tests automatisés :
 
 LeComptoirImmo passe la recette avec un **taux de succès de 100%** sur les 72 cas de test fonctionnels exécutés. Les 3 observations notées sont des points d'amélioration mineurs (P3/P4) sans impact sur les fonctionnalités principales.
 
-La plateforme est **apte à être déployée en production** sous réserve de la préparation de l'infrastructure (HTTPS, SMTP, licences ProxyGen, sauvegardes).
+La plateforme est **apte à être déployée en production** sous réserve de la préparation de l'infrastructure (HTTPS, SMTP, licences Alice, sauvegardes).
 
 ---
 

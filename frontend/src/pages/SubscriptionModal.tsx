@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void
 }
 
-/** Demande de souscription / démo — page d'accueil. Alimente ProxyGen (lead à traiter). */
+/** Demande de souscription / démo — page d'accueil. Alimente Alice (lead à traiter). */
 export default function SubscriptionModal({ open, onClose }: Props) {
   const [form, setForm] = useState({ full_name: '', email: '', phone: '', company: '', message: '' })
   const [sending, setSending] = useState(false)

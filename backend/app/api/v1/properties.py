@@ -69,7 +69,7 @@ async def create_property(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    # ── Vérification limite de biens via ProxyGen ─────────────────────────────
+    # ── Vérification limite de biens via Alice ─────────────────────────────
     from fastapi import HTTPException
     import logging
     _log = logging.getLogger(__name__)
@@ -82,13 +82,13 @@ async def create_property(
             _cfg = _cfg_fn()
             async with httpx.AsyncClient(timeout=5.0) as _hc:
                 _resp = await _hc.get(
-                    f"{_cfg.PROXYGEN_URL}/api/v1/internal/license/{current_user.id}",
-                    headers={"X-Internal-Key": _cfg.PROXYGEN_INTERNAL_KEY},
+                    f"{_cfg.ALICE_URL}/api/v1/internal/license/{current_user.id}",
+                    headers={"X-Internal-Key": _cfg.ALICE_INTERNAL_KEY},
                 )
             if _resp.status_code == 404:
                 raise HTTPException(
                     status_code=403,
-                    detail="Aucune licence ProxyGen associée à votre compte. Contactez l'administrateur."
+                    detail="Aucune licence Alice associée à votre compte. Contactez l'administrateur."
                 )
             if _resp.status_code != 200:
                 raise HTTPException(status_code=503, detail="Service de licences indisponible. Réessayez.")
@@ -108,7 +108,7 @@ async def create_property(
         except HTTPException:
             raise
         except Exception as exc:
-            _log.warning(f"ProxyGen license check error for {current_user.id}: {exc}")
+            _log.warning(f"Alice license check error for {current_user.id}: {exc}")
             raise HTTPException(status_code=503, detail="Service de licences indisponible. Réessayez.")
     # ─────────────────────────────────────────────────────────────────────────
     prop = await PropertyService.create(db, data, created_by=current_user.id)

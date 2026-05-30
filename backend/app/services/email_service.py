@@ -254,7 +254,7 @@ async def send_subscription_lead_notification(
   {_row("Société", company)}
 </table>
 {f'<p style="color:#6b7280;margin:0 0 4px">Besoin exprimé :</p><p style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px">{message}</p>' if message else ''}
-<p style="margin-top:16px">À traiter dans ProxyGen → <strong>Demandes</strong>.</p>
+<p style="margin-top:16px">À traiter dans Alice → <strong>Demandes</strong>.</p>
 """
     return await send_email(
         to=to,

@@ -2,11 +2,11 @@
 # Usage : docker compose -f docker/docker-compose.prod.yml up -d --build
 #
 # Stack : PostgreSQL (base partagée) + LeComptoirImmo (backend 8000 / frontend)
-#         + ProxyGen (backend 8001 / frontend) + Nginx reverse proxy + Certbot
+#         + Alice (backend 8001 / frontend) + Nginx reverse proxy + Certbot
 #
 # Les secrets viennent des fichiers .env (hors git) :
-#   - backend/.env           → POSTGRES_*, SECRET_KEY, DATABASE_URL, PROXYGEN_*
-#   - proxygen/backend/.env   → SECRET_KEY, DATABASE_URL (même base), INTERNAL_API_KEY
+#   - backend/.env           → POSTGRES_*, SECRET_KEY, DATABASE_URL, ALICE_*
+#   - alice/backend/.env   → SECRET_KEY, DATABASE_URL (même base), INTERNAL_API_KEY
 
 services:
 
@@ -69,16 +69,16 @@ services:
     networks:
       - locataire_net
 
-  # ── ProxyGen backend (même base de données) ─────────────────────────────────
-  proxygen-backend:
+  # ── Alice backend (même base de données) ─────────────────────────────────
+  alice-backend:
     build:
-      context: ../proxygen/backend
-      dockerfile: ../../docker/Dockerfile.proxygen-backend
+      context: ../alice/backend
+      dockerfile: ../../docker/Dockerfile.alice-backend
       target: production
-    container_name: proxygen_backend
+    container_name: alice_backend
     restart: always
     env_file:
-      - ../proxygen/backend/.env
+      - ../alice/backend/.env
     environment:
       APP_ENV: production
       DEBUG: "false"
@@ -90,15 +90,15 @@ services:
     networks:
       - locataire_net
 
-  # ── ProxyGen frontend ─────────────────────────────────────────────────────────
-  proxygen-frontend:
+  # ── Alice frontend ─────────────────────────────────────────────────────────
+  alice-frontend:
     build:
-      context: ../proxygen/frontend
-      dockerfile: ../../docker/Dockerfile.proxygen-frontend
+      context: ../alice/frontend
+      dockerfile: ../../docker/Dockerfile.alice-frontend
       target: production
       args:
-        VITE_API_URL: "https://proxygen.lecomptoir.services"
-    container_name: proxygen_frontend
+        VITE_API_URL: "https://alice.lecomptoir.services"
+    container_name: alice_frontend
     restart: always
     expose:
       - "80"
@@ -121,8 +121,8 @@ services:
     depends_on:
       - backend
       - frontend
-      - proxygen-backend
-      - proxygen-frontend
+      - alice-backend
+      - alice-frontend
     networks:
       - locataire_net
 

@@ -1,6 +1,6 @@
 """
 Tests API — Abonnement (GET /subscription).
-Couvre : accès RBAC, réponse quand ProxyGen indisponible, structure de la réponse.
+Couvre : accès RBAC, réponse quand Alice indisponible, structure de la réponse.
 """
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -11,7 +11,7 @@ from tests.conftest import auth
 class TestSubscriptionRBAC:
     async def test_gestionnaire_can_get_subscription(self, client, gestionnaire_token):
         resp = await client.get("/api/v1/subscription", headers=auth(gestionnaire_token))
-        # 200 ou 503 si ProxyGen indispo — les deux sont valides en dev
+        # 200 ou 503 si Alice indispo — les deux sont valides en dev
         assert resp.status_code in (200,)
 
     async def test_gp_can_get_subscription(self, client, gp_token):
@@ -38,17 +38,17 @@ class TestSubscriptionRBAC:
 
 @pytest.mark.asyncio
 class TestSubscriptionResponseStructure:
-    """Teste la structure de réponse quand ProxyGen est mocké."""
+    """Teste la structure de réponse quand Alice est mocké."""
 
-    async def test_response_when_proxygen_unavailable(self, client, gestionnaire_token):
-        """Quand ProxyGen est injoignable, l'endpoint répond avec les infos DB locales."""
+    async def test_response_when_alice_unavailable(self, client, gestionnaire_token):
+        """Quand Alice est injoignable, l'endpoint répond avec les infos DB locales."""
         import httpx
 
         with patch("httpx.AsyncClient") as mock_class:
             mock_client = AsyncMock()
             mock_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
             mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
-            mock_client.get.side_effect = Exception("ProxyGen unavailable")
+            mock_client.get.side_effect = Exception("Alice unavailable")
 
             resp = await client.get("/api/v1/subscription", headers=auth(gestionnaire_token))
             assert resp.status_code == 200
@@ -57,8 +57,8 @@ class TestSubscriptionResponseStructure:
             assert "property_count" in data
             assert "can_create_property" in data
 
-    async def test_response_when_proxygen_returns_license(self, client, gestionnaire_token):
-        """Quand ProxyGen retourne une licence valide, la réponse est bien formée."""
+    async def test_response_when_alice_returns_license(self, client, gestionnaire_token):
+        """Quand Alice retourne une licence valide, la réponse est bien formée."""
         import httpx
 
         mock_response = MagicMock()
@@ -132,7 +132,7 @@ class TestSubscriptionResponseStructure:
             assert resp.json()["can_create_property"] is False
 
     async def test_no_license_404_means_blocked(self, client, gestionnaire_token):
-        """ProxyGen 404 (pas de licence) → is_blocked=True."""
+        """Alice 404 (pas de licence) → is_blocked=True."""
         import httpx
 
         mock_response = MagicMock()

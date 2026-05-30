@@ -78,36 +78,46 @@ class TestLocataireCurrentPayment:
 @pytest.mark.asyncio
 class TestLocataireDeclarePayment:
     async def test_declare_virement(self, client, locataire_token, locataire_user, db):
-        await _setup_locataire_with_payment(db, locataire_user)
+        _, payment = await _setup_locataire_with_payment(db, locataire_user)
         resp = await client.post(
             "/api/v1/payments/locataire/declare",
             headers=auth(locataire_token),
-            json={"method": "virement", "amount": 780.0},
+            json={"payment_id": str(payment.id), "method": "virement", "amount": 780.0},
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["status"] == "declared"
         assert data["method"] == "virement"
 
-    async def test_declare_cheque(self, client, locataire_token, locataire_user, db):
-        await _setup_locataire_with_payment(db, locataire_user)
+    async def test_declare_especes(self, client, locataire_token, locataire_user, db):
+        _, payment = await _setup_locataire_with_payment(db, locataire_user)
         resp = await client.post(
             "/api/v1/payments/locataire/declare",
             headers=auth(locataire_token),
-            json={"method": "cheque", "amount": 780.0},
+            json={"payment_id": str(payment.id), "method": "especes", "amount": 780.0},
         )
         assert resp.status_code == 201
-        assert resp.json()["method"] == "cheque"
+        assert resp.json()["method"] == "especes"
 
-    async def test_declare_carte(self, client, locataire_token, locataire_user, db):
-        await _setup_locataire_with_payment(db, locataire_user)
+    async def test_declare_cheque_rejected(self, client, locataire_token, locataire_user, db):
+        # chèque retiré des modes autorisés (virement + espèces uniquement)
+        _, payment = await _setup_locataire_with_payment(db, locataire_user)
         resp = await client.post(
             "/api/v1/payments/locataire/declare",
             headers=auth(locataire_token),
-            json={"method": "carte", "amount": 780.0},
+            json={"payment_id": str(payment.id), "method": "cheque", "amount": 780.0},
         )
-        assert resp.status_code == 201
-        assert resp.json()["method"] == "carte"
+        assert resp.status_code == 400
+
+    async def test_declare_carte_rejected(self, client, locataire_token, locataire_user, db):
+        # carte retirée des modes autorisés (virement + espèces uniquement)
+        _, payment = await _setup_locataire_with_payment(db, locataire_user)
+        resp = await client.post(
+            "/api/v1/payments/locataire/declare",
+            headers=auth(locataire_token),
+            json={"payment_id": str(payment.id), "method": "carte", "amount": 780.0},
+        )
+        assert resp.status_code == 400
 
     async def test_declare_without_tenant_fails(self, client, locataire_token):
         resp = await client.post(

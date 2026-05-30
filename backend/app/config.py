@@ -37,9 +37,9 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
-    # ── ProxyGen internal API ─────────────────────────────────────────────────
-    PROXYGEN_URL: str = "http://localhost:8001"
-    PROXYGEN_INTERNAL_KEY: str = "lecomptoir-internal-dev-key-change-in-production"
+    # ── Alice internal API ─────────────────────────────────────────────────
+    ALICE_URL: str = "http://localhost:8001"
+    ALICE_INTERNAL_KEY: str = "lecomptoir-internal-dev-key-change-in-production"
 
     # ── SMTP (désactivé si SMTP_HOST est vide) ───────────────────────────────
     SMTP_HOST: str = ""

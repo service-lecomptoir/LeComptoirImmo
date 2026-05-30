@@ -21,24 +21,24 @@ _MANAGED_ROLES = {"gestionnaire", "gestionnaire_proprio"}
 class AuthService:
 
     @staticmethod
-    async def _check_proxygen_license(db: AsyncSession, user: User) -> None:
-        """Vérifie que la licence ProxyGen n'est pas bloquée pour les gestionnaires."""
+    async def _check_alice_license(db: AsyncSession, user: User) -> None:
+        """Vérifie que la licence Alice n'est pas bloquée pour les gestionnaires."""
         if user.role not in _MANAGED_ROLES:
             return
         try:
             row = (await db.execute(
-                sa_text("SELECT is_blocked FROM proxygen_licenses WHERE gestionnaire_user_id = :uid")
+                sa_text("SELECT is_blocked FROM alice_licenses WHERE gestionnaire_user_id = :uid")
                 .bindparams(uid=user.id)
             )).fetchone()
             if row is None:
-                logger.warning(f"Aucune licence ProxyGen pour user {user.id} ({user.email})")
+                logger.warning(f"Aucune licence Alice pour user {user.id} ({user.email})")
                 return  # pas de licence → on laisse passer (voir task #8 pour la limite biens)
             if row[0]:  # is_blocked = True
                 raise UnauthorizedException("Votre compte a été suspendu. Contactez l'administrateur.")
         except UnauthorizedException:
             raise
         except Exception as exc:
-            logger.warning(f"ProxyGen license check failed for {user.id}: {exc}")
+            logger.warning(f"Alice license check failed for {user.id}: {exc}")
 
     @staticmethod
     async def authenticate(
@@ -52,7 +52,7 @@ class AuthService:
             raise UnauthorizedException("Email ou mot de passe incorrect")
         if not user.is_active:
             raise UnauthorizedException("Compte désactivé. Contactez un administrateur.")
-        await AuthService._check_proxygen_license(db, user)
+        await AuthService._check_alice_license(db, user)
         return user
 
     @staticmethod
@@ -82,7 +82,7 @@ class AuthService:
 
         if not user or not user.is_active:
             raise UnauthorizedException("Utilisateur introuvable ou inactif")
-        await AuthService._check_proxygen_license(db, user)
+        await AuthService._check_alice_license(db, user)
 
         extra = {"role": user.role, "name": user.full_name}
         return create_access_token(subject=str(user.id), extra_claims=extra)
@@ -106,6 +106,6 @@ class AuthService:
             raise UnauthorizedException("Utilisateur introuvable")
         if not user.is_active:
             raise UnauthorizedException("Compte désactivé")
-        await AuthService._check_proxygen_license(db, user)
+        await AuthService._check_alice_license(db, user)
 
         return user

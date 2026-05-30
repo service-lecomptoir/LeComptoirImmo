@@ -158,6 +158,8 @@ async def locataire_declare_payment(
         "especes": "Espèces",
     }
     method = data.get("method", "virement")
+    if method not in method_labels:
+        raise BadRequestException("Mode de règlement non autorisé")
     payment_id = data.get("payment_id")
     if not payment_id:
         raise BadRequestException("Paiement non précisé")

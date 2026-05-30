@@ -74,10 +74,10 @@ async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides.clear()
 
 
-# ── Mock ProxyGen (évite les appels HTTP réels vers ProxyGen lors des tests) ──
-# Les utilisateurs de test n'ont pas de licence ProxyGen. Ce mock retourne
-# une licence valide sans limite pour tous les appels httpx vers ProxyGen.
-_PROXYGEN_MOCK_LICENSE = {
+# ── Mock Alice (évite les appels HTTP réels vers Alice lors des tests) ──
+# Les utilisateurs de test n'ont pas de licence Alice. Ce mock retourne
+# une licence valide sans limite pour tous les appels httpx vers Alice.
+_ALICE_MOCK_LICENSE = {
     "is_blocked": False,
     "property_limit": None,
     "plan_name": "TestPlan",
@@ -89,7 +89,7 @@ class _MockHttpxResponse:
     status_code = 200
 
     def json(self):
-        return _PROXYGEN_MOCK_LICENSE
+        return _ALICE_MOCK_LICENSE
 
 
 class _MockHttpxClient:
@@ -107,8 +107,8 @@ class _MockHttpxClient:
 
 
 @pytest.fixture(autouse=True)
-def mock_proxygen_http():
-    """Bypass all outbound httpx calls to ProxyGen in tests."""
+def mock_alice_http():
+    """Bypass all outbound httpx calls to Alice in tests."""
     with patch("httpx.AsyncClient", return_value=_MockHttpxClient()):
         yield
 

@@ -234,11 +234,11 @@ async def _apply_column_migrations() -> None:
         # Isolation contacts/automatisation (013)
         "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL",
         "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL",
-        # Demandes de souscription (page d'accueil → ProxyGen). Table partagée :
-        # créée ici par sécurité (le endpoint public écrit dedans) ; ProxyGen la
+        # Demandes de souscription (page d'accueil → Alice). Table partagée :
+        # créée ici par sécurité (le endpoint public écrit dedans) ; Alice la
         # gère aussi via create_all (idempotent).
         """
-        CREATE TABLE IF NOT EXISTS proxygen_subscription_requests (
+        CREATE TABLE IF NOT EXISTS alice_subscription_requests (
             id UUID PRIMARY KEY,
             full_name VARCHAR(150) NOT NULL,
             email VARCHAR(255) NOT NULL,

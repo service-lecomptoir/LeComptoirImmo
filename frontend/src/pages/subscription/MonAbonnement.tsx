@@ -65,7 +65,7 @@ export default function MonAbonnement() {
     <div className="p-4 sm:p-6 max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Mon abonnement</h1>
-        <p className="text-gray-500 text-sm mt-1">Votre licence ProxyGen et l'utilisation de votre compte</p>
+        <p className="text-gray-500 text-sm mt-1">Votre licence Alice et l'utilisation de votre compte</p>
       </div>
 
       {/* Status badge */}
@@ -78,8 +78,8 @@ export default function MonAbonnement() {
             </p>
             <p className={`text-xs mt-0.5 ${noLicense ? 'text-orange-600' : 'text-red-600'}`}>
               {noLicense
-                ? "Aucune licence ProxyGen n'est liée à votre compte. Contactez votre administrateur."
-                : 'Votre compte a été suspendu. Contactez votre administrateur ProxyGen.'}
+                ? "Aucune licence Alice n'est liée à votre compte. Contactez votre administrateur."
+                : 'Votre compte a été suspendu. Contactez votre administrateur Alice.'}
             </p>
           </div>
         </div>
@@ -153,7 +153,7 @@ export default function MonAbonnement() {
       </div>
 
       <p className="text-xs text-gray-400 text-center">
-        Géré par ProxyGen — pour toute modification, contactez votre administrateur.
+        Géré par Alice — pour toute modification, contactez votre administrateur.
       </p>
     </div>
   )

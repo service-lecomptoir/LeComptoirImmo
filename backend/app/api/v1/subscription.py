@@ -1,4 +1,4 @@
-"""API Abonnement — informations de licence ProxyGen pour le gestionnaire connecté."""
+"""API Abonnement — informations de licence Alice pour le gestionnaire connecté."""
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
@@ -24,12 +24,12 @@ class SubscriptionInfo(BaseModel):
     can_create_property: bool
 
 
-@router.get("", response_model=SubscriptionInfo, summary="Mon abonnement ProxyGen")
+@router.get("", response_model=SubscriptionInfo, summary="Mon abonnement Alice")
 async def get_subscription(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Retourne les informations d'abonnement ProxyGen du gestionnaire connecté."""
+    """Retourne les informations d'abonnement Alice du gestionnaire connecté."""
     role = Role(current_user.role)
     if role not in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
@@ -39,7 +39,7 @@ async def get_subscription(
         select(func.count(Property.id)).where(Property.created_by == current_user.id)
     )).scalar_one_or_none() or 0
 
-    # Infos licence depuis ProxyGen
+    # Infos licence depuis Alice
     plan_name: Optional[str] = None
     is_blocked = False
     property_limit: Optional[int] = None
@@ -50,8 +50,8 @@ async def get_subscription(
         cfg = get_settings()
         async with httpx.AsyncClient(timeout=5.0) as hc:
             resp = await hc.get(
-                f"{cfg.PROXYGEN_URL}/api/v1/internal/license/{current_user.id}",
-                headers={"X-Internal-Key": cfg.PROXYGEN_INTERNAL_KEY},
+                f"{cfg.ALICE_URL}/api/v1/internal/license/{current_user.id}",
+                headers={"X-Internal-Key": cfg.ALICE_INTERNAL_KEY},
             )
         if resp.status_code == 200:
             data = resp.json()
@@ -62,12 +62,12 @@ async def get_subscription(
             # Pas de licence → considéré comme bloqué
             is_blocked = True
     except Exception as exc:
-        logger.warning(f"ProxyGen subscription check failed for {current_user.id}: {exc}")
-        # ProxyGen indisponible — on retourne ce qu'on sait de la DB locale
+        logger.warning(f"Alice subscription check failed for {current_user.id}: {exc}")
+        # Alice indisponible — on retourne ce qu'on sait de la DB locale
         from sqlalchemy import text as sa_text
         try:
             row = (await db.execute(
-                sa_text("SELECT is_blocked FROM proxygen_licenses WHERE gestionnaire_user_id = :uid")
+                sa_text("SELECT is_blocked FROM alice_licenses WHERE gestionnaire_user_id = :uid")
                 .bindparams(uid=current_user.id)
             )).fetchone()
             if row:

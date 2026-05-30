@@ -2,7 +2,7 @@
 Endpoints publics (sans authentification) — page d'accueil Le Comptoir Immo.
 
 La demande de souscription/démo est enregistrée dans la table partagée
-`proxygen_subscription_requests` ; elle est ensuite traitée côté ProxyGen.
+`alice_subscription_requests` ; elle est ensuite traitée côté Alice.
 """
 import uuid
 import logging
@@ -51,10 +51,10 @@ async def create_subscription_request(
     background: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
-    """Enregistre une demande publique (à traiter par l'équipe ProxyGen)."""
+    """Enregistre une demande publique (à traiter par l'équipe Alice)."""
     await db.execute(
         text(
-            "INSERT INTO proxygen_subscription_requests "
+            "INSERT INTO alice_subscription_requests "
             "(id, full_name, email, phone, company, message, source, status, created_at) "
             "VALUES (:id, :full_name, :email, :phone, :company, :message, "
             "'site_lecomptoir', 'nouveau', now())"
