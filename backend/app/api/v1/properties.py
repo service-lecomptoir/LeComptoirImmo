@@ -40,7 +40,9 @@ async def list_properties(
     # Propriétaire / Gestionnaire-Propriétaire : uniquement ses biens
     if role in (Role.PROPRIETAIRE, Role.GESTIONNAIRE_PROPRIO):
         props = (await db.execute(
-            select(Property).where(Property.owner_user_id == current_user.id)
+            select(Property)
+            .where(Property.owner_user_id == current_user.id)
+            .order_by(func.lower(Property.name))
         )).scalars().all()
         items = await _enrich_properties(db, props)
         return {"items": items, "total": len(items), "skip": 0, "limit": limit}

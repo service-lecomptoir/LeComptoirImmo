@@ -96,7 +96,7 @@ class PropertyService:
             query = query.where(filter_expr)
             count_query = count_query.where(filter_expr)
 
-        query = query.order_by(Property.name).offset(skip).limit(limit)
+        query = query.order_by(func.lower(Property.name)).offset(skip).limit(limit)
 
         results = await db.execute(query)
         count_result = await db.execute(count_query)
