@@ -17,7 +17,7 @@ interface ConfirmModalProps {
 function ConfirmModal({ action, name, onConfirm, onCancel }: ConfirmModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center gap-4 mb-5">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${action === 'block' ? 'bg-red-100' : 'bg-emerald-100'}`}>

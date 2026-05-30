@@ -50,7 +50,7 @@ function PlanModal({ plan, onClose, onSaved }: PlanModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
           <h2 className="text-base font-semibold text-gray-800">
@@ -171,6 +171,11 @@ export default function PlanList() {
     }
   }
 
+  // Classement par nombre de biens (croissant) ; illimité (null) en dernier
+  const sortedPlans = [...plans].sort(
+    (a, b) => (a.property_limit ?? Infinity) - (b.property_limit ?? Infinity)
+  )
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
@@ -211,7 +216,7 @@ export default function PlanList() {
                   </td>
                 </tr>
               ) : (
-                plans.map(plan => (
+                sortedPlans.map(plan => (
                   <tr key={plan.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div>
