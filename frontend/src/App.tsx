@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { router } from './router'
 import { useAuthStore } from './store/authStore'
+import { ToastContainer } from './components/common/ToastContainer'
 
 export default function App() {
   const { isInitializing, initialize } = useAuthStore()
@@ -18,5 +19,10 @@ export default function App() {
     )
   }
 
-  return <RouterProvider router={router} />
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastContainer />
+    </>
+  )
 }
