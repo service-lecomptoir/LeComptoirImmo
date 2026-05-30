@@ -21,6 +21,7 @@ class LicenseOut(LicenseBase):
     id: uuid.UUID
     gestionnaire_user_id: uuid.UUID
     is_blocked: bool
+    access_until: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

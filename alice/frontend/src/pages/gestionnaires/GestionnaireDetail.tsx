@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ShieldOff, ShieldCheck, Building2, Save, X, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, ShieldOff, ShieldCheck, Building2, Save, X, AlertTriangle, CalendarClock, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { gestionnairesApi } from '@/api/gestionnaires'
@@ -141,6 +141,24 @@ export default function GestionnaireDetail() {
     }
   }
 
+  const handleReactivate = async () => {
+    if (!id) return
+    setActionLoading(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const { data } = await gestionnairesApi.reactivate(id)
+      setGestionnaire(data)
+      setSuccess('Désactivation annulée — le compte reste actif')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { detail?: string } } }
+      setError(axiosError?.response?.data?.detail || 'Erreur lors de la réactivation')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center">
@@ -160,6 +178,7 @@ export default function GestionnaireDetail() {
   }
 
   const isBlocked = gestionnaire.license?.is_blocked ?? false
+  const scheduledUntil = gestionnaire.license?.access_until ?? null
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
@@ -209,6 +228,24 @@ export default function GestionnaireDetail() {
           <p className="text-sm text-red-700 font-medium">
             Ce gestionnaire est bloqué. Ses propriétaires et locataires sont désactivés en cascade.
           </p>
+        </div>
+      )}
+
+      {!isBlocked && scheduledUntil && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <CalendarClock size={16} className="text-amber-600 flex-shrink-0" />
+          <p className="text-sm text-amber-800 font-medium flex-1">
+            Désactivation programmée — le compte sera bloqué le{' '}
+            {format(new Date(scheduledUntil), 'dd/MM/yyyy', { locale: fr })}.
+          </p>
+          <button
+            onClick={handleReactivate}
+            disabled={actionLoading}
+            className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+          >
+            <RotateCcw size={15} />
+            {actionLoading ? 'En cours…' : 'Réactiver'}
+          </button>
         </div>
       )}
 
@@ -381,6 +418,14 @@ export default function GestionnaireDetail() {
                   <span className="text-gray-500">Licence depuis</span>
                   <span className="font-medium text-gray-800">
                     {format(new Date(gestionnaire.license.created_at), 'dd/MM/yyyy', { locale: fr })}
+                  </span>
+                </div>
+              )}
+              {!isBlocked && scheduledUntil && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Désactivation le</span>
+                  <span className="font-medium text-amber-700">
+                    {format(new Date(scheduledUntil), 'dd/MM/yyyy', { locale: fr })}
                   </span>
                 </div>
               )}

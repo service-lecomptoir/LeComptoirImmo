@@ -378,6 +378,50 @@ async def unblock_gestionnaire_endpoint(
     return await _build_gestionnaire_out(db, user, license, plan)
 
 
+@router.post("/{gestionnaire_id}/reactivate", response_model=GestionnaireOut)
+async def reactivate_gestionnaire_endpoint(
+    gestionnaire_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    _: AliceAdmin = Depends(get_current_alice_admin),
+):
+    """Réactive un contrat en cours de désactivation : annule la désactivation
+    programmée (access_until) et, si le compte était déjà bloqué, le débloque."""
+    user = (await db.execute(
+        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
+    )).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
+
+    license = (await db.execute(
+        select(AliceLicense).where(AliceLicense.gestionnaire_user_id == gestionnaire_id)
+    )).scalar_one_or_none()
+    if not license:
+        raise HTTPException(status_code=400, detail="Aucune licence pour ce gestionnaire")
+
+    was_blocked = license.is_blocked
+    license.access_until = None
+    if was_blocked:
+        await unblock_gestionnaire(db, license, gestionnaire_id)
+    await db.flush()
+
+    plan = None
+    if license.plan_id:
+        plan = (await db.execute(
+            select(AlicePlan).where(AlicePlan.id == license.plan_id)
+        )).scalar_one_or_none()
+
+    if was_blocked:
+        background_tasks.add_task(
+            _notify_leci_webhook, gestionnaire_id, "unblocked", False, plan.name if plan else None, None
+        )
+
+    user = (await db.execute(
+        select(LeciUser).where(LeciUser.id == gestionnaire_id)
+    )).scalar_one_or_none()
+    return await _build_gestionnaire_out(db, user, license, plan)
+
+
 @router.get("/{gestionnaire_id}/properties", response_model=List[GestionnairePropertyOut])
 async def get_gestionnaire_properties(
     gestionnaire_id: uuid.UUID,

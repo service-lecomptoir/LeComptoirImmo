@@ -24,6 +24,7 @@ export interface License {
   property_limit_override: number | null
   monthly_price_override: number | null
   is_blocked: boolean
+  access_until: string | null
   notes: string | null
   created_at: string
   updated_at: string

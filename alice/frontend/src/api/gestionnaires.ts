@@ -44,6 +44,9 @@ export const gestionnairesApi = {
   unblock: (id: string) =>
     apiClient.post<Gestionnaire>(`/gestionnaires/${id}/unblock`),
 
+  reactivate: (id: string) =>
+    apiClient.post<Gestionnaire>(`/gestionnaires/${id}/reactivate`),
+
   getProperties: (id: string) =>
     apiClient.get<GestionnaireProperty[]>(`/gestionnaires/${id}/properties`),
 }
