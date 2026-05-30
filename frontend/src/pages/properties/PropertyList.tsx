@@ -143,11 +143,12 @@ export default function PropertyList() {
               : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
         >
+          {/* Cadenas : ouvert si l'offre permet d'ajouter un bien, fermé sinon */}
           {checkingLicense
             ? <Loader2 size={16} className="animate-spin" />
             : creationBlocked
-              ? <Lock size={16} />        /* offre saturée/suspendue → cadenas fermé */
-              : <LockOpen size={16} />}   /* offre permet d'ajouter → cadenas ouvert */
+              ? <Lock size={16} />
+              : <LockOpen size={16} />}
           {checkingLicense ? 'Vérification…' : 'Nouveau bien'}
         </button>
       </div>
