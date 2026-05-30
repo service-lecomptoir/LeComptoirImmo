@@ -267,7 +267,7 @@ export default function Dashboard() {
           <h2 className="font-semibold text-gray-900 mb-4">Performance par bien</h2>
           <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
             {stats.top_properties.map(p => {
-              const occ = p.units_count > 0 ? Math.round(p.occupied_count / p.units_count * 100) : 0
+              const occupied = p.occupied_count > 0
               return (
                 <div key={p.property_id} className="flex items-center gap-4">
                   <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
@@ -279,10 +279,9 @@ export default function Dashboard() {
                       <span className="text-sm font-semibold text-gray-900 ml-2 shrink-0">{fmtEur(p.monthly_revenue)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                        <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${occ}%` }} />
-                      </div>
-                      <span className="text-xs text-gray-400 shrink-0">{occ}% · {p.occupied_count}/{p.units_count}</span>
+                      <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${occupied ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                        {occupied ? 'Occupé' : 'Disponible'}
+                      </span>
                     </div>
                     {p.outstanding > 0 && (
                       <p className="text-xs text-red-500 mt-0.5">Impayés : {fmtEur(p.outstanding)}</p>

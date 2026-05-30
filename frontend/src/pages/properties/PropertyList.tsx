@@ -346,11 +346,11 @@ export default function PropertyList() {
               </div>
 
               {/* Méta : typologie / surface / lots */}
-              {(prop.typology || prop.area_sqm != null || prop.unit_count > 0) && (
+              {(prop.typology || prop.area_sqm != null || prop.unit_count > 1) && (
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
                   {prop.typology && <span>{prop.typology}</span>}
                   {prop.area_sqm != null && <span>{prop.area_sqm} m²</span>}
-                  {prop.unit_count > 0 && <span>{prop.unit_count} lot{prop.unit_count > 1 ? 's' : ''}</span>}
+                  {prop.unit_count > 1 && <span>{prop.unit_count} lots</span>}
                 </div>
               )}
 
