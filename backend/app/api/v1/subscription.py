@@ -2,7 +2,7 @@
 import logging
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 from pydantic import BaseModel, Field
@@ -141,3 +141,58 @@ async def request_resiliation(
     await db.commit()
     background.add_task(_notify_resiliation, current_user.full_name, current_user.email, data.reason.strip())
     return {"status": "received"}
+
+
+@router.get("/invoices", summary="Mes factures d'abonnement")
+async def get_my_invoices(current_user: User = Depends(get_current_user)):
+    """Liste les factures d'abonnement du gestionnaire (proxy vers Alice)."""
+    role = Role(current_user.role)
+    if role not in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
+        raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
+    try:
+        import httpx
+        from app.config import get_settings
+        cfg = get_settings()
+        async with httpx.AsyncClient(timeout=8.0) as hc:
+            resp = await hc.get(
+                f"{cfg.ALICE_URL}/api/v1/internal/invoices/{current_user.id}",
+                headers={"X-Internal-Key": cfg.ALICE_INTERNAL_KEY},
+            )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(f"Alice invoices fetch failed for {current_user.id}: {exc}")
+    return []
+
+
+@router.get("/invoices/{invoice_id}/pdf", summary="PDF d'une facture d'abonnement")
+async def get_my_invoice_pdf(
+    invoice_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+):
+    """Renvoie le PDF d'une facture du gestionnaire (proxy vers Alice)."""
+    role = Role(current_user.role)
+    if role not in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
+        raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
+    import httpx
+    from app.config import get_settings
+    cfg = get_settings()
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as hc:
+            resp = await hc.get(
+                f"{cfg.ALICE_URL}/api/v1/internal/invoices/{current_user.id}/{invoice_id}/pdf",
+                headers={"X-Internal-Key": cfg.ALICE_INTERNAL_KEY},
+            )
+    except Exception:
+        raise HTTPException(status_code=502, detail="Service de facturation indisponible")
+    if resp.status_code != 200:
+        raise HTTPException(status_code=404, detail="Facture introuvable")
+    return Response(
+        content=resp.content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": resp.headers.get(
+                "content-disposition", 'attachment; filename="facture.pdf"'
+            )
+        },
+    )

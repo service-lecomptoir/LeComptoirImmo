@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package } from 'lucide-react'
-import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
+import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt } from 'lucide-react'
+import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice } from '@/api/subscription'
 import { toast } from '@/store/toast'
 
 function ProgressBar({ value, max }: { value: number; max: number | null }) {
@@ -29,6 +29,23 @@ export default function MonAbonnement() {
   const [submitting, setSubmitting] = useState(false)
   const [resiliationSent, setResiliationSent] = useState(false)
   const [resiliationError, setResiliationError] = useState<string | null>(null)
+  const [invoices, setInvoices] = useState<SubscriptionInvoice[]>([])
+
+  const downloadInvoice = async (inv: SubscriptionInvoice) => {
+    try {
+      const res = await subscriptionApi.downloadInvoice(inv.id)
+      const url = URL.createObjectURL(res.data as Blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `facture-${inv.period_year}-${String(inv.period_month).padStart(2, '0')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Téléchargement de la facture impossible')
+    }
+  }
 
   const submitResiliation = async () => {
     if (!reason.trim()) return
@@ -52,6 +69,10 @@ export default function MonAbonnement() {
       .then(r => setInfo(r.data))
       .catch(e => setError(e.response?.data?.detail ?? 'Erreur lors du chargement'))
       .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    subscriptionApi.invoices().then(r => setInvoices(r.data)).catch(() => {})
   }, [])
 
   if (loading) {
@@ -166,6 +187,40 @@ export default function MonAbonnement() {
           </div>
         )}
       </div>
+
+      {/* Mes factures */}
+      {invoices.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Receipt className="text-gray-500" size={18} />
+            <h2 className="font-semibold text-gray-800">Mes factures</h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {invoices.map(inv => (
+              <div key={inv.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">
+                    {String(inv.period_month).padStart(2, '0')}/{inv.period_year}
+                    {inv.plan_name ? ` · ${inv.plan_name}` : ''}
+                  </p>
+                  <p className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                    <span>{inv.amount.toFixed(2)} €</span>
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${inv.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {inv.status === 'paid' ? 'Payée' : 'À payer'}
+                    </span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => downloadInvoice(inv)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors shrink-0"
+                >
+                  <FileDown size={15} /> PDF
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Résiliation */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
