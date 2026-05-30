@@ -5,6 +5,7 @@ import { leasesApi } from '@/api/leases'
 import { LeaseForm } from './LeaseForm'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
+import { EmptyState } from '@/components/common/EmptyState'
 import { toast } from '@/store/toast'
 import { exportCsv } from '@/utils/exportCsv'
 import { LEASE_TYPE_LABELS } from '@/types/lease'
@@ -122,10 +123,7 @@ export default function LeaseList() {
       {isLoading ? (
         <CardGridSkeleton />
       ) : leases.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 text-gray-500 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <FileText size={32} className="text-gray-300 mb-2" />
-          <p className="text-sm">{search ? 'Aucun résultat' : 'Aucun contrat enregistré'}</p>
-        </div>
+        <EmptyState icon={FileText} title={search ? 'Aucun résultat' : 'Aucun contrat enregistré'} />
       ) : view === 'list' ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">

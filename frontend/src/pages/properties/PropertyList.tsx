@@ -7,6 +7,7 @@ import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
+import { EmptyState } from '@/components/common/EmptyState'
 import { toast } from '@/store/toast'
 import { exportCsv } from '@/utils/exportCsv'
 import type { Property, PropertyListItem } from '@/types/property'
@@ -237,11 +238,11 @@ export default function PropertyList() {
       {isLoading ? (
         <CardGridSkeleton />
       ) : properties.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 text-gray-400 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <Building2 size={36} className="text-gray-300 mb-3" />
-          <p className="text-sm font-medium">{search ? 'Aucun résultat' : 'Aucun bien enregistré'}</p>
-          {!search && <p className="text-xs mt-1">Cliquez sur « Nouveau bien » pour commencer</p>}
-        </div>
+        <EmptyState
+          icon={Building2}
+          title={search ? 'Aucun résultat' : 'Aucun bien enregistré'}
+          hint={!search ? 'Cliquez sur « Nouveau bien » pour commencer' : undefined}
+        />
       ) : view === 'list' ? (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">

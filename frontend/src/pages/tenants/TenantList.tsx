@@ -5,6 +5,7 @@ import { tenantsApi } from '@/api/tenants'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
+import { EmptyState } from '@/components/common/EmptyState'
 import { toast } from '@/store/toast'
 import { exportCsv } from '@/utils/exportCsv'
 import type { Tenant, TenantListItem } from '@/types/tenant'
@@ -130,10 +131,7 @@ export default function TenantList() {
       {isLoading ? (
         <CardGridSkeleton />
       ) : tenants.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 text-gray-500 bg-white rounded-xl border border-gray-200 shadow-sm">
-          <UserRound size={32} className="text-gray-300 mb-2" />
-          <p className="text-sm">{search ? 'Aucun résultat' : 'Aucun locataire enregistré'}</p>
-        </div>
+        <EmptyState icon={UserRound} title={search ? 'Aucun résultat' : 'Aucun locataire enregistré'} />
       ) : view === 'list' ? (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
