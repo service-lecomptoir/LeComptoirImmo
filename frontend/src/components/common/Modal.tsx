@@ -9,6 +9,12 @@ interface ModalProps {
   children: React.ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
   footer?: React.ReactNode
+  /**
+   * Ferme la modale lors d'un clic sur l'arrière-plan.
+   * Désactivé par défaut : un clic à côté ne doit jamais fermer un
+   * formulaire (perte de saisie). On ferme via la croix, « Annuler » ou Échap.
+   */
+  closeOnOverlayClick?: boolean
 }
 
 const sizes = {
@@ -18,7 +24,7 @@ const sizes = {
   xl: 'max-w-4xl',
 }
 
-export function Modal({ isOpen, onClose, title, children, size = 'md', footer }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = 'md', footer, closeOnOverlayClick = false }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,7 +41,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md', footer }:
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
+      onClick={(e) => { if (closeOnOverlayClick && e.target === overlayRef.current) onClose() }}
     >
       <div className={clsx('w-full bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh]', sizes[size])}>
         {/* Header */}

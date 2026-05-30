@@ -1,14 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package } from 'lucide-react'
-import { apiClient } from '@/api/client'
-
-interface SubscriptionInfo {
-  plan_name: string | null
-  is_blocked: boolean
-  property_limit: number | null
-  property_count: number
-  can_create_property: boolean
-}
+import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 
 function ProgressBar({ value, max }: { value: number; max: number | null }) {
   if (max === null) {
@@ -33,7 +25,7 @@ export default function MonAbonnement() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get<SubscriptionInfo>('/subscription')
+    subscriptionApi.get()
       .then(r => setInfo(r.data))
       .catch(e => setError(e.response?.data?.detail ?? 'Erreur lors du chargement'))
       .finally(() => setLoading(false))

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { UserRound, Plus, X } from 'lucide-react'
+import { UserRound, Plus, X, AlertTriangle } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import { propertiesApi } from '@/api/properties'
 import { ownersApi } from '@/api/owners'
@@ -115,6 +115,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
   const isGestionnairePropio = currentUser?.role === 'gestionnaire_proprio'
   const [owners, setOwners] = useState<OwnerListItem[]>([])
   const [showCreateOwner, setShowCreateOwner] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -175,6 +176,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
   }
 
   const onSubmit = async (data: FormData) => {
+    setSubmitError(null)
     // Le gestionnaire-propriétaire est lui-même le propriétaire (rattaché côté
     // serveur à sa propre fiche). Sinon une fiche propriétaire est obligatoire.
     if (!isGestionnairePropio && !data.owner_id) {
@@ -209,12 +211,23 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       has_air_conditioning: data.has_air_conditioning,
       notes: data.notes || undefined,
     }
-    if (isEdit) {
-      await propertiesApi.update(property.id, payload)
-    } else {
-      await propertiesApi.create(payload)
+    try {
+      if (isEdit) {
+        await propertiesApi.update(property.id, payload)
+      } else {
+        await propertiesApi.create(payload)
+      }
+      onSaved()
+    } catch (e: any) {
+      // Erreurs serveur : limite d'offre atteinte (400), licence absente /
+      // suspendue (403), service indisponible (503), validation, etc.
+      const detail = e?.response?.data?.detail
+      setSubmitError(
+        typeof detail === 'string'
+          ? detail
+          : "Une erreur est survenue lors de l'enregistrement. Vérifiez votre offre puis réessayez.",
+      )
     }
-    onSaved()
   }
 
   const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -240,6 +253,12 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       }
     >
       <form className="space-y-5">
+        {submitError && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
+            <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-700">{submitError}</p>
+          </div>
+        )}
         {/* Identification */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="col-span-2">

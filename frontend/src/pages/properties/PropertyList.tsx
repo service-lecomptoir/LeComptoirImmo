@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Building2, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
+import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -31,6 +32,9 @@ export default function PropertyList() {
   const [editProperty, setEditProperty] = useState<Property | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
+  const [showLimitNotice, setShowLimitNotice] = useState(false)
+  const [checkingLicense, setCheckingLicense] = useState(false)
 
   const fetchProperties = useCallback(async (q: string) => {
     setIsLoading(true)
@@ -43,10 +47,60 @@ export default function PropertyList() {
     }
   }, [])
 
+  // Interroge la licence Alice et met l'état à jour. Renvoie l'info fraîche
+  // (ou null si l'abonnement est inaccessible) pour une décision immédiate.
+  const fetchSubscription = useCallback(async (): Promise<SubscriptionInfo | null> => {
+    try {
+      const { data } = await subscriptionApi.get()
+      setSubscription(data)
+      return data
+    } catch {
+      // Abonnement inaccessible (rôle non gestionnaire ou Alice indisponible) :
+      // on laisse le backend trancher à l'enregistrement.
+      setSubscription(null)
+      return null
+    }
+  }, [])
+
   useEffect(() => {
     const t = setTimeout(() => fetchProperties(search), 300)
     return () => clearTimeout(t)
   }, [search, fetchProperties])
+
+  useEffect(() => { fetchSubscription() }, [fetchSubscription])
+
+  // Limite connue ET atteinte/bloquée → bouton désactivé + bandeau informatif.
+  const creationBlocked = subscription != null && !subscription.can_create_property
+
+  // Clic « Nouveau bien » : on RE-vérifie la licence en temps réel (l'état
+  // chargé au montage peut être périmé), puis on ouvre le formulaire seulement
+  // si la création est autorisée.
+  const handleNew = async () => {
+    if (checkingLicense) return
+    setCheckingLicense(true)
+    let info: SubscriptionInfo | null
+    try {
+      info = await fetchSubscription()
+    } finally {
+      setCheckingLicense(false)
+    }
+    // info === null → abonnement inaccessible : on laisse passer, le backend
+    // tranchera à l'enregistrement (erreur affichée dans le formulaire).
+    if (info && !info.can_create_property) {
+      setShowLimitNotice(true)
+      return
+    }
+    setEditProperty(null)
+    setShowForm(true)
+  }
+
+  const limitMessage = subscription?.is_blocked
+    ? (subscription.plan_name
+        ? "Votre compte est suspendu. Contactez votre administrateur Le Comptoir Immo pour le réactiver."
+        : "Aucune licence n'est associée à votre compte. Contactez votre administrateur Le Comptoir Immo.")
+    : subscription?.property_limit != null
+      ? `Votre offre est limitée à ${subscription.property_limit} bien${subscription.property_limit > 1 ? 's' : ''} (${subscription.property_count} utilisé${subscription.property_count > 1 ? 's' : ''}). Passez à une offre supérieure pour en ajouter davantage.`
+      : "Vous ne pouvez plus créer de nouveaux biens avec votre offre actuelle."
 
   const openEdit = async (id: string) => {
     try {
@@ -65,6 +119,7 @@ export default function PropertyList() {
       await propertiesApi.delete(deleteId)
       setDeleteId(null)
       fetchProperties(search)
+      fetchSubscription()
     } finally {
       setIsDeleting(false)
     }
@@ -79,12 +134,32 @@ export default function PropertyList() {
           <p className="text-sm text-gray-500 mt-0.5">{total} bien{total > 1 ? 's' : ''}</p>
         </div>
         <button
-          onClick={() => { setEditProperty(null); setShowForm(true) }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          onClick={handleNew}
+          disabled={checkingLicense}
+          title={creationBlocked ? limitMessage : undefined}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-70 ${
+            creationBlocked
+              ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
         >
-          <Plus size={16} /> Nouveau bien
+          {checkingLicense
+            ? <Loader2 size={16} className="animate-spin" />
+            : creationBlocked ? <Lock size={16} /> : <Plus size={16} />}
+          {checkingLicense ? 'Vérification…' : 'Nouveau bien'}
         </button>
       </div>
+
+      {/* Bandeau limite d'offre atteinte */}
+      {creationBlocked && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+          <AlertTriangle size={18} className="text-orange-500 shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-orange-800">Création de biens indisponible</p>
+            <p className="text-orange-700 mt-0.5">{limitMessage}</p>
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       <div className="relative mb-4">
@@ -179,7 +254,7 @@ export default function PropertyList() {
         <PropertyForm
           property={editProperty ?? undefined}
           onClose={() => { setShowForm(false); setEditProperty(null) }}
-          onSaved={() => { setShowForm(false); setEditProperty(null); fetchProperties(search) }}
+          onSaved={() => { setShowForm(false); setEditProperty(null); fetchProperties(search); fetchSubscription() }}
         />
       )}
       <ConfirmDialog
@@ -189,6 +264,15 @@ export default function PropertyList() {
         title="Supprimer le bien"
         message="Cette action supprimera définitivement ce bien. Êtes-vous sûr ?"
         isLoading={isDeleting}
+      />
+      <ConfirmDialog
+        isOpen={showLimitNotice}
+        onClose={() => setShowLimitNotice(false)}
+        onConfirm={() => navigate('/abonnement')}
+        title="Limite de votre offre atteinte"
+        message={limitMessage}
+        confirmLabel="Voir mon abonnement"
+        confirmVariant="blue"
       />
     </div>
   )
