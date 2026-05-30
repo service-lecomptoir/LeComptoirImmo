@@ -106,10 +106,12 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
   const lastNameValue = watch('last_name')
 
   useEffect(() => {
-    usersApi.list({ role: 'locataire' })
+    // En création : on masque les comptes déjà liés à un locataire.
+    // En édition : on garde tout pour que le compte déjà lié à CE locataire reste affiché.
+    usersApi.list({ role: 'locataire', unlinked_tenant: !isEdit })
       .then(r => setLocataireUsers(r.data))
       .catch(() => {})
-  }, [])
+  }, [isEdit])
 
   const handleCreateUser = async () => {
     const name = `${firstNameValue ?? ''} ${lastNameValue ?? ''}`.trim()

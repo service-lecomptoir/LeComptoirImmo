@@ -71,6 +71,7 @@ async def _require_gp_scope(db: AsyncSession, current_user: User, target_id: uui
 @router.get("", response_model=List[UserResponse], summary="Liste des utilisateurs")
 async def list_users(
     role: Optional[str] = Query(None, description="Filtrer par rôle (ex: proprietaire, locataire)"),
+    unlinked_tenant: bool = Query(False, description="Exclure les comptes déjà liés à un locataire (pour la création d'un locataire)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
@@ -110,6 +111,15 @@ async def list_users(
     # Filtre optionnel par rôle
     if role:
         users = [u for u in users if u.role == role]
+
+    # Exclut les comptes déjà rattachés à une fiche locataire (un compte = un locataire)
+    if unlinked_tenant:
+        from app.models.tenant import Tenant
+        linked_rows = (await db.execute(
+            select(Tenant.user_id).where(Tenant.user_id.isnot(None))
+        )).scalars().all()
+        linked_ids = {str(uid) for uid in linked_rows}
+        users = [u for u in users if str(u.id) not in linked_ids]
 
     return users
 
