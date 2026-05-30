@@ -200,81 +200,84 @@ export default function PropertyList() {
         />
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-48 text-sm text-gray-400">Chargement...</div>
-        ) : properties.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-gray-400">
-            <Building2 size={36} className="text-gray-300 mb-3" />
-            <p className="text-sm font-medium">{search ? 'Aucun résultat' : 'Aucun bien enregistré'}</p>
-            {!search && <p className="text-xs mt-1">Cliquez sur « Nouveau bien » pour commencer</p>}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nom du bien</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Propriétaire</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {properties.map(prop => (
-                <tr
-                  key={prop.id}
-                  onClick={() => navigate(`/properties/${prop.id}`)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <StatusBadge
-                      label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
-                      variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="font-medium text-gray-900">{prop.name}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {prop.owner_name ? <span className="text-gray-700 text-xs">{prop.owner_name}</span> : null}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      prop.is_occupied
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}>
-                      {prop.is_occupied ? 'Occupé' : 'Disponible'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(prop.id)}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
-                        title="Modifier"
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(prop.id)}
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors"
-                        title="Supprimer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        )}
-      </div>
+      {/* Mosaïque */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48 text-sm text-gray-400">Chargement...</div>
+      ) : properties.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-48 text-gray-400 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <Building2 size={36} className="text-gray-300 mb-3" />
+          <p className="text-sm font-medium">{search ? 'Aucun résultat' : 'Aucun bien enregistré'}</p>
+          {!search && <p className="text-xs mt-1">Cliquez sur « Nouveau bien » pour commencer</p>}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {properties.map(prop => (
+            <div
+              key={prop.id}
+              onClick={() => navigate(`/properties/${prop.id}`)}
+              className="group relative flex flex-col gap-3 bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-300"
+            >
+              {/* Type + occupation */}
+              <div className="flex items-center justify-between gap-2">
+                <StatusBadge
+                  label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
+                  variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
+                />
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  prop.is_occupied
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  {prop.is_occupied ? 'Occupé' : 'Disponible'}
+                </span>
+              </div>
+
+              {/* Icône + nom + adresse */}
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <Building2 size={18} className="text-blue-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{prop.name}</p>
+                  {(prop.full_address || prop.city) && (
+                    <p className="text-xs text-gray-500 truncate">{prop.full_address || prop.city}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Méta : typologie / surface / lots */}
+              {(prop.typology || prop.area_sqm != null || prop.unit_count > 0) && (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                  {prop.typology && <span>{prop.typology}</span>}
+                  {prop.area_sqm != null && <span>{prop.area_sqm} m²</span>}
+                  {prop.unit_count > 0 && <span>{prop.unit_count} lot{prop.unit_count > 1 ? 's' : ''}</span>}
+                </div>
+              )}
+
+              {/* Propriétaire + actions */}
+              <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
+                <span className="text-xs text-gray-600 truncate">{prop.owner_name || '—'}</span>
+                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                  <button
+                    onClick={() => openEdit(prop.id)}
+                    className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Modifier"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() => setDeleteId(prop.id)}
+                    className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors"
+                    title="Supprimer"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Modals */}
       {showForm && (
