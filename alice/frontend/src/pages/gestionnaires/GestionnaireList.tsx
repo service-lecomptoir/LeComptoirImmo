@@ -353,10 +353,10 @@ export default function GestionnaireList() {
                         <span className="text-sm text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                        <Building2 size={13} className="text-gray-400" />
-                        <span>
+                        <Building2 size={13} className="text-gray-400 flex-shrink-0" />
+                        <span className="whitespace-nowrap">
                           {g.property_count}
                           {g.effective_property_limit !== null
                             ? ` / ${g.effective_property_limit}`
