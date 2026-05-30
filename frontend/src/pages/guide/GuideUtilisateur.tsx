@@ -70,6 +70,7 @@ const GUIDE_MANDATAIRE: Guide = {
     { q: 'Pourquoi je ne génère qu\'un seul avis pour plusieurs mois ?', a: 'Si la fréquence du bail est trimestrielle, semestrielle ou annuelle, un seul avis couvre toute la période, avec le montant correspondant.' },
     { q: 'Où apparaissent mes coordonnées sur les documents ?', a: 'Les coordonnées de l\'agence (« Mes informations ») et le RIB du propriétaire (sa fiche) figurent automatiquement en en-tête des avis et quittances.' },
     { q: 'Pourquoi un compte n\'apparaît pas dans « Accès espace locataire » ?', a: 'À la création d\'un locataire, seuls les comptes non encore rattachés à une fiche sont proposés (un compte = un seul locataire). En modification, le compte déjà lié à ce locataire reste visible.' },
+    { q: 'Où voir mes factures et comment résilier mon abonnement ?', a: 'Dans « Mon abonnement » : vos factures sont téléchargeables en PDF, et le bouton « Mettre fin à mon abonnement » envoie une demande de résiliation à notre équipe. Vous pouvez aussi déclarer vos domaines e-mail autorisés dans « Mes informations ».' },
   ],
 }
 
@@ -119,6 +120,7 @@ const GUIDE_GP: Guide = {
     { q: 'Comment préparer ma déclaration fiscale ?', a: 'Ouvrez « Liasse fiscale », qui récapitule loyers et charges, et que vous pouvez imprimer.' },
     { q: 'Puis-je créer un locataire pendant la rédaction du bail ?', a: 'Oui, le formulaire de contrat permet de créer un locataire principal et des co-titulaires à la volée.' },
     { q: 'Pourquoi un compte n\'apparaît pas dans « Accès espace locataire » ?', a: 'À la création d\'un locataire, seuls les comptes non encore rattachés à une fiche sont proposés (un compte = un seul locataire). En modification, le compte déjà lié reste visible.' },
+    { q: 'Où voir mes factures et comment résilier mon abonnement ?', a: 'Dans « Mon abonnement » : factures téléchargeables en PDF et bouton « Mettre fin à mon abonnement » (envoie une demande de résiliation). Déclarez aussi vos domaines e-mail autorisés dans « Mes informations ».' },
   ],
 }
 

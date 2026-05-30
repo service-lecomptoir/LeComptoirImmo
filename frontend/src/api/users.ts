@@ -21,4 +21,17 @@ export const usersApi = {
   /** Retourne le profil de l'utilisateur connecté */
   me: () =>
     apiClient.get<User>('/users/me'),
+
+  /** Domaines e-mail autorisés du compte connecté */
+  listEmailDomains: () =>
+    apiClient.get<EmailDomain[]>('/users/me/email-domains'),
+  addEmailDomain: (domain: string) =>
+    apiClient.post<EmailDomain>('/users/me/email-domains', { domain }),
+  removeEmailDomain: (id: string) =>
+    apiClient.delete(`/users/me/email-domains/${id}`),
+}
+
+export interface EmailDomain {
+  id: string
+  domain: string
 }

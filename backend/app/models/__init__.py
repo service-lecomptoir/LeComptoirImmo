@@ -18,6 +18,7 @@ from app.models.audit_log import AuditLog
 from app.models.app_setting import AppSetting
 from app.models.irl_index import IrlIndex
 from app.models.charge_regularization import ChargeRegularization
+from app.models.email_domain import EmailDomain
 
 __all__ = [
     "User", "Tenant", "Owner", "Property", "Document",
@@ -25,4 +26,5 @@ __all__ = [
     "Contact", "AutomationRule", "CommunicationLog", "DocumentTemplate",
     "Ticket", "TicketMessage", "Prestataire", "Entretien",
     "ProprietaireMessage", "AuditLog", "IrlIndex", "ChargeRegularization",
+    "EmailDomain",
 ]

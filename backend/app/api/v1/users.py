@@ -1,6 +1,8 @@
+import re
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +11,7 @@ from app.api.deps import get_current_user, get_current_active_admin, get_current
 from app.core.permissions import Role
 from app.api.v1._isolation import gp_tenant_ids as _isolation_gp_tenant_ids
 from app.models.user import User
+from app.models.email_domain import EmailDomain
 from app.schemas.user import (
     UserCreate, UserUpdate, UserRoleUpdate,
     UserPasswordUpdate, AdminPasswordReset, UserResponse
@@ -259,3 +262,88 @@ async def admin_reset_password(
                 detail="Un gestionnaire ne peut réinitialiser que les comptes propriétaire ou locataire.",
             )
     await UserService.admin_set_password(db, user_id, data.new_password)
+
+
+# ── Domaines e-mail autorisés ────────────────────────────────────────────────
+# Domaines de fournisseurs publics : envoi depuis ces domaines impossible.
+_PUBLIC_EMAIL_DOMAINS = {
+    "gmail.com", "googlemail.com", "hotmail.com", "hotmail.fr", "outlook.com",
+    "outlook.fr", "live.com", "live.fr", "msn.com", "yahoo.com", "yahoo.fr",
+    "ymail.com", "icloud.com", "me.com", "mac.com", "aol.com", "gmx.com",
+    "gmx.fr", "proton.me", "protonmail.com", "orange.fr", "wanadoo.fr",
+    "free.fr", "sfr.fr", "laposte.net", "bbox.fr", "neuf.fr", "numericable.fr",
+}
+_DOMAIN_RE = re.compile(r"^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$")
+
+
+def _normalize_domain(raw: str) -> str:
+    d = (raw or "").strip().lower()
+    d = d.replace("https://", "").replace("http://", "")
+    if "@" in d:
+        d = d.split("@")[-1]
+    d = d.lstrip("/").split("/")[0]
+    if d.startswith("www."):
+        d = d[4:]
+    return d
+
+
+class EmailDomainIn(BaseModel):
+    domain: str
+
+
+class EmailDomainOut(BaseModel):
+    id: uuid.UUID
+    domain: str
+    model_config = {"from_attributes": True}
+
+
+@router.get("/me/email-domains", response_model=List[EmailDomainOut], summary="Mes domaines e-mail autorisés")
+async def list_my_email_domains(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    rows = (await db.execute(
+        select(EmailDomain).where(EmailDomain.user_id == current_user.id).order_by(EmailDomain.created_at)
+    )).scalars().all()
+    return list(rows)
+
+
+@router.post("/me/email-domains", response_model=EmailDomainOut, status_code=201, summary="Ajouter un domaine e-mail")
+async def add_my_email_domain(
+    data: EmailDomainIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    d = _normalize_domain(data.domain)
+    if not _DOMAIN_RE.match(d):
+        raise HTTPException(status_code=400, detail="Nom de domaine invalide (exemple : mon-agence.fr).")
+    if d in _PUBLIC_EMAIL_DOMAINS:
+        raise HTTPException(
+            status_code=400,
+            detail="Impossible d'activer l'envoi depuis un domaine d'un fournisseur public "
+                   "(gmail.com, hotmail.com, yahoo.com, etc.). Utilisez votre propre nom de domaine.",
+        )
+    existing = (await db.execute(
+        select(EmailDomain).where(EmailDomain.user_id == current_user.id, EmailDomain.domain == d)
+    )).scalar_one_or_none()
+    if existing:
+        return EmailDomainOut(id=existing.id, domain=existing.domain)
+    obj = EmailDomain(user_id=current_user.id, domain=d)
+    db.add(obj)
+    await db.flush()
+    return EmailDomainOut(id=obj.id, domain=obj.domain)
+
+
+@router.delete("/me/email-domains/{domain_id}", status_code=204, summary="Supprimer un domaine e-mail")
+async def delete_my_email_domain(
+    domain_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    obj = (await db.execute(
+        select(EmailDomain).where(EmailDomain.id == domain_id, EmailDomain.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Domaine introuvable")
+    await db.delete(obj)
+    return Response(status_code=204)

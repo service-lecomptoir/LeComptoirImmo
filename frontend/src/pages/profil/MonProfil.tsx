@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Save, Landmark, KeyRound, Eye, EyeOff } from 'lucide-react'
+import { Save, Landmark, KeyRound, Eye, EyeOff, AtSign, Plus, X, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
+import { usersApi, type EmailDomain } from '@/api/users'
+import { toast } from '@/store/toast'
 
 export default function MonProfil() {
   const { user, fetchMe } = useAuthStore()
@@ -32,6 +34,12 @@ export default function MonProfil() {
   const showRib = user?.role === 'proprietaire' || user?.role === 'gestionnaire_proprio'
   // Le locataire n'a pas d'adresse propre (son adresse = le bien loué) → champ masqué.
   const isLocataire = user?.role === 'locataire'
+  // Domaines e-mail autorisés : pour les comptes qui envoient des communications.
+  const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
+  const [domains, setDomains] = useState<EmailDomain[]>([])
+  const [newDomain, setNewDomain] = useState('')
+  const [domainErr, setDomainErr] = useState<string | null>(null)
+  const [domainBusy, setDomainBusy] = useState(false)
 
   // Charge la fiche propriétaire liée au compte : coordonnées de règlement + RIB.
   useEffect(() => {
@@ -51,6 +59,36 @@ export default function MonProfil() {
       .catch(() => {})
     return () => { cancelled = true }
   }, [showRib])
+
+  useEffect(() => {
+    if (!isManager) return
+    usersApi.listEmailDomains().then(r => setDomains(r.data)).catch(() => {})
+  }, [isManager])
+
+  const addDomain = async () => {
+    if (!newDomain.trim()) return
+    setDomainBusy(true); setDomainErr(null)
+    try {
+      const { data } = await usersApi.addEmailDomain(newDomain.trim())
+      setDomains(prev => prev.some(d => d.id === data.id) ? prev : [...prev, data])
+      setNewDomain('')
+      toast.success('Domaine ajouté')
+    } catch (e: any) {
+      setDomainErr(e?.response?.data?.detail || "Impossible d'ajouter ce domaine")
+    } finally {
+      setDomainBusy(false)
+    }
+  }
+
+  const removeDomain = async (id: string) => {
+    try {
+      await usersApi.removeEmailDomain(id)
+      setDomains(prev => prev.filter(d => d.id !== id))
+      toast.success('Domaine supprimé')
+    } catch {
+      toast.error('Suppression impossible')
+    }
+  }
 
   const save = async () => {
     setSaving(true); setMsg(null); setErr(null)
@@ -176,6 +214,56 @@ export default function MonProfil() {
           </button>
         </div>
       </div>
+
+      {/* ── Domaines e-mail autorisés (gestionnaires) ── */}
+      {isManager && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 mt-5">
+          <div className="flex items-center gap-2">
+            <AtSign size={16} className="text-blue-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Domaines e-mail autorisés</h2>
+          </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            Ajoutez votre nom de domaine pour envoyer les communications depuis ce domaine.
+          </p>
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">
+              Attention, il n'est pas possible d'activer l'envoi depuis un nom de domaine d'un fournisseur
+              public (p. ex. : @gmail.com, @hotmail.com, @yahoo.com, etc.).
+            </p>
+          </div>
+
+          {domains.length > 0 && (
+            <ul className="space-y-2">
+              {domains.map(d => (
+                <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2">
+                  <span className="text-sm font-medium text-gray-800">{d.domain}</span>
+                  <button onClick={() => removeDomain(d.id)} title="Supprimer"
+                    className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                    <X size={15} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {domainErr && <p className="text-xs text-red-600">{domainErr}</p>}
+
+          <div className="flex gap-2">
+            <input
+              className={inp}
+              value={newDomain}
+              onChange={e => setNewDomain(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDomain() } }}
+              placeholder="mon-agence.fr"
+            />
+            <button onClick={addDomain} disabled={domainBusy || !newDomain.trim()}
+              className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">
+              <Plus size={15} /> Ajouter un domaine
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Sécurité : mot de passe ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 mt-5">
