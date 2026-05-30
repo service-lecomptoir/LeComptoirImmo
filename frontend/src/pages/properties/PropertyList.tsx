@@ -148,7 +148,7 @@ export default function PropertyList() {
             ? <Loader2 size={16} className="animate-spin" />
             : creationBlocked
               ? <Lock size={16} />
-              : <Unlock size={16} />}
+              : <Unlock size={16} className="-scale-x-100" />}
           {checkingLicense ? 'Vérification…' : 'Nouveau bien'}
         </button>
       </div>
