@@ -4,6 +4,7 @@ import { Plus, Search, Building2, ShieldCheck, Pencil, Trash2, Mail, Phone } fro
 import { ownersApi } from '@/api/owners'
 import { OwnerForm } from './OwnerForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { CardGridSkeleton } from '@/components/common/Skeleton'
 import type { Owner, OwnerListItem } from '@/types/owner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -97,7 +98,7 @@ export default function OwnerList() {
 
       {/* Liste ou mosaïque */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 text-gray-500 text-sm">Chargement...</div>
+        <CardGridSkeleton />
       ) : owners.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-gray-500 bg-white rounded-xl border border-gray-200 shadow-sm">
           <Building2 size={32} className="text-gray-300 mb-2" />

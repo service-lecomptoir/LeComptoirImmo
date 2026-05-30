@@ -6,6 +6,7 @@ import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { CardGridSkeleton } from '@/components/common/Skeleton'
 import type { Property, PropertyListItem } from '@/types/property'
 import { useAuthStore } from '@/store/authStore'
 import { ViewToggle } from '@/components/common/ViewToggle'
@@ -211,7 +212,7 @@ export default function PropertyList() {
 
       {/* Mosaïque */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 text-sm text-gray-400">Chargement...</div>
+        <CardGridSkeleton />
       ) : properties.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-gray-400 bg-white rounded-xl border border-gray-200 shadow-sm">
           <Building2 size={36} className="text-gray-300 mb-3" />

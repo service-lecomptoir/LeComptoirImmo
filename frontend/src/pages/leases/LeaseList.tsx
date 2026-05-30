@@ -4,6 +4,7 @@ import { Plus, Search, FileText, Filter, Building2 } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import { LeaseForm } from './LeaseForm'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { CardGridSkeleton } from '@/components/common/Skeleton'
 import { LEASE_TYPE_LABELS } from '@/types/lease'
 import type { LeaseListItem } from '@/types/lease'
 import { format } from 'date-fns'
@@ -96,7 +97,7 @@ export default function LeaseList() {
 
       {/* Liste ou mosaïque */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 text-sm text-gray-500">Chargement...</div>
+        <CardGridSkeleton />
       ) : leases.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-gray-500 bg-white rounded-xl border border-gray-200 shadow-sm">
           <FileText size={32} className="text-gray-300 mb-2" />

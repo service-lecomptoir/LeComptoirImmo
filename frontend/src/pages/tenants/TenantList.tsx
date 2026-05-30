@@ -4,6 +4,7 @@ import { Plus, Search, UserRound, ShieldCheck, Pencil, Trash2, Mail, Phone } fro
 import { tenantsApi } from '@/api/tenants'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { CardGridSkeleton } from '@/components/common/Skeleton'
 import type { Tenant, TenantListItem } from '@/types/tenant'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -106,7 +107,7 @@ export default function TenantList() {
 
       {/* Liste ou mosaïque */}
       {isLoading ? (
-        <div className="flex items-center justify-center h-48 text-gray-500 text-sm">Chargement...</div>
+        <CardGridSkeleton />
       ) : tenants.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-48 text-gray-500 bg-white rounded-xl border border-gray-200 shadow-sm">
           <UserRound size={32} className="text-gray-300 mb-2" />

@@ -6,6 +6,40 @@
   body {
     @apply text-gray-900 antialiased;
   }
+
+  /* Anneau de focus clavier cohérent sur les éléments cliquables
+     (les champs de saisie gardent leur ring Tailwind dédié). */
+  :where(a, button, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Couleur de sélection aux teintes de marque */
+  ::selection {
+    background-color: #dbeafe;
+    color: #1e3a8a;
+  }
+}
+
+/* Scrollbar fine et discrète (Firefox + WebKit) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+  background-clip: content-box;
 }
 
 /* ── Impression ────────────────────────────────────────────────────────────────
