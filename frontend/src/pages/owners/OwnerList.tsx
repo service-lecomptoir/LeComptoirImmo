@@ -23,7 +23,7 @@ export default function OwnerList() {
   const [isDeleting, setIsDeleting] = useState(false)
   const user = useAuthStore(s => s.user)
   const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
-  const [view, setView] = useViewMode('owners', 'list')
+  const [view, setView] = useViewMode('owners', 'grid')
 
   const fetchOwners = useCallback(async (q: string) => {
     setIsLoading(true)

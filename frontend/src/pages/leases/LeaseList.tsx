@@ -22,7 +22,7 @@ export default function LeaseList() {
   const [showForm, setShowForm] = useState(false)
   const user = useAuthStore(s => s.user)
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
-  const [view, setView] = useViewMode('leases', 'list')
+  const [view, setView] = useViewMode('leases', 'grid')
 
   const fetchLeases = useCallback(async (q: string, active: boolean | undefined) => {
     setIsLoading(true)

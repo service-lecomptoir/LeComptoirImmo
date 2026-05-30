@@ -24,7 +24,7 @@ export default function TenantList() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const user = useAuthStore(s => s.user)
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
-  const [view, setView] = useViewMode('tenants', 'list')
+  const [view, setView] = useViewMode('tenants', 'grid')
 
   const fetchTenants = useCallback(async (q: string) => {
     setIsLoading(true)
