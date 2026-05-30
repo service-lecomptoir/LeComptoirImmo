@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Building2, ShieldCheck, Pencil, Trash2, Mail, Phone } from 'lucide-react'
+import { Plus, Search, Building2, ShieldCheck, Pencil, Trash2, Mail, Phone, Download } from 'lucide-react'
 import { ownersApi } from '@/api/owners'
 import { OwnerForm } from './OwnerForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
 import { toast } from '@/store/toast'
+import { exportCsv } from '@/utils/exportCsv'
 import type { Owner, OwnerListItem } from '@/types/owner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -67,6 +68,17 @@ export default function OwnerList() {
     }
   }
 
+  const handleExport = () => {
+    exportCsv('proprietaires',
+      ['Nom', 'Société', 'Email', 'Téléphone', 'Compte', 'Ajouté le'],
+      owners.map(o => [
+        o.full_name, o.company_name, o.email, o.phone,
+        o.user_id ? 'Oui' : 'Non',
+        new Date(o.created_at).toLocaleDateString('fr-FR'),
+      ]))
+    toast.success(`${owners.length} propriétaire(s) exporté(s)`)
+  }
+
   return (
     <div className="p-4 sm:p-6">
       {/* Header */}
@@ -77,6 +89,13 @@ export default function OwnerList() {
         </div>
         <div className="flex items-center gap-3">
           {isManager && <ViewToggle value={view} onChange={setView} />}
+          <button
+            onClick={handleExport}
+            disabled={owners.length === 0}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            <Download size={16} /> Exporter
+          </button>
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"

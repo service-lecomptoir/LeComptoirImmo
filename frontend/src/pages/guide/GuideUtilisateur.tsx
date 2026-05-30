@@ -62,7 +62,7 @@ const GUIDE_MANDATAIRE: Guide = {
     "Le RIB se saisit une seule fois, sur la fiche du propriétaire : il alimente automatiquement les quittances.",
     "Choisissez la bonne « règle d'appel de loyer » : calendaire (au prorata des jours) ou contractuelle (date à date).",
     "Résiliez un bail terminé pour libérer le bien et le rendre de nouveau disponible à la mise en location.",
-    "Sur Propriétés, Propriétaires, Locataires et Contrats, basculez entre vue liste et vue mosaïque via les icônes en haut à droite — votre choix est mémorisé.",
+    "Sur Propriétés, Propriétaires, Locataires et Contrats, basculez entre vue liste et vue mosaïque via les icônes en haut à droite — votre choix est mémorisé. Chaque liste s'exporte aussi en CSV (bouton « Exporter »).",
   ],
   faq: [
     { q: 'Un bien occupé n\'apparaît pas dans la liste lors de la création d\'un contrat, est-ce normal ?', a: 'Oui. Pour éviter les doublons, seuls les biens disponibles sont proposés. Un bien redevient sélectionnable dès que son bail est résilié.' },
@@ -110,7 +110,7 @@ const GUIDE_GP: Guide = {
     "Votre RIB est saisi une seule fois (Mes informations) et figure sur les quittances.",
     "Consultez régulièrement « Mes revenus » et « Liasse fiscale » pour anticiper votre déclaration.",
     "Résiliez un bail terminé pour libérer le bien.",
-    "Sur vos listes (Propriétés, Locataires, Contrats), basculez entre vue liste et mosaïque via les icônes en haut à droite — le choix est mémorisé.",
+    "Sur vos listes (Propriétés, Locataires, Contrats), basculez entre vue liste et mosaïque via les icônes en haut à droite — le choix est mémorisé. Un bouton « Exporter » génère un CSV de la liste.",
     "Le tableau de bord « Performance par bien » liste désormais tous vos biens, triés par revenu.",
   ],
   faq: [
@@ -153,7 +153,7 @@ const GUIDE_PROPRIETAIRE: Guide = {
     "Gardez votre RIB à jour : c'est la condition d'un reversement sans accroc.",
     "Utilisez les messages pour toute question : votre gestionnaire y répond.",
     "Consultez la liasse fiscale en fin d'année pour préparer sereinement votre déclaration.",
-    "Sur vos listes (biens, locataires, contrats), basculez entre vue liste et mosaïque via les icônes en haut à droite — le choix est mémorisé.",
+    "Sur vos listes (biens, locataires, contrats), basculez entre vue liste et mosaïque via les icônes en haut à droite — le choix est mémorisé. Le bouton « Exporter » télécharge la liste en CSV.",
   ],
   faq: [
     { q: 'Puis-je créer un contrat ou ajouter un locataire ?', a: 'Non : ces actions sont réalisées par votre gestionnaire mandataire. Votre espace est dédié au suivi et à la consultation.' },

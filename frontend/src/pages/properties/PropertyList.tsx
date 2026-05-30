@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2 } from 'lucide-react'
+import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2, Download } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 import { PropertyForm } from './PropertyForm'
@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
 import { toast } from '@/store/toast'
+import { exportCsv } from '@/utils/exportCsv'
 import type { Property, PropertyListItem } from '@/types/property'
 import { useAuthStore } from '@/store/authStore'
 import { ViewToggle } from '@/components/common/ViewToggle'
@@ -158,6 +159,19 @@ export default function PropertyList() {
     }
   }
 
+  const handleExport = () => {
+    exportCsv('biens',
+      ['Nom', 'Type', 'Ville', 'Adresse', 'Propriétaire', 'Occupé', 'Lots'],
+      properties.map(p => [
+        p.name,
+        PROPERTY_TYPE_LABELS[p.property_type] ?? p.property_type,
+        p.city, p.full_address, p.owner_name,
+        p.is_occupied ? 'Oui' : 'Non',
+        p.unit_count,
+      ]))
+    toast.success(`${properties.length} bien(s) exporté(s)`)
+  }
+
   return (
     <div className="p-4 sm:p-6">
       {/* Header */}
@@ -168,6 +182,13 @@ export default function PropertyList() {
         </div>
         <div className="flex items-center gap-3">
           {canToggleView && <ViewToggle value={view} onChange={setView} />}
+          <button
+            onClick={handleExport}
+            disabled={properties.length === 0}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            <Download size={16} /> Exporter
+          </button>
           <button
           onClick={handleNew}
           disabled={checkingLicense}

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, FileText, Filter, Building2 } from 'lucide-react'
+import { Plus, Search, FileText, Filter, Building2, Download } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import { LeaseForm } from './LeaseForm'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
 import { toast } from '@/store/toast'
+import { exportCsv } from '@/utils/exportCsv'
 import { LEASE_TYPE_LABELS } from '@/types/lease'
 import type { LeaseListItem } from '@/types/lease'
 import { format } from 'date-fns'
@@ -49,6 +50,20 @@ export default function LeaseList() {
   const fmtDate = (d: string) => format(new Date(d), 'd MMM yyyy', { locale: fr })
   const fmtEuro = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
 
+  const handleExport = () => {
+    exportCsv('contrats',
+      ['Locataire', 'Bien', 'Type', 'Début', 'Loyer', 'Charges', 'Loyer CC', 'Statut'],
+      leases.map(l => [
+        l.tenant_full_name, l.property_name,
+        LEASE_TYPE_LABELS[l.lease_type],
+        fmtDate(l.start_date),
+        l.rent_amount, l.charges_amount,
+        l.rent_amount + l.charges_amount,
+        l.is_active ? 'Actif' : 'Résilié',
+      ]))
+    toast.success(`${leases.length} contrat(s) exporté(s)`)
+  }
+
   return (
     <div className="p-4 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -58,6 +73,13 @@ export default function LeaseList() {
         </div>
         <div className="flex items-center gap-3">
           {canToggleView && <ViewToggle value={view} onChange={setView} />}
+          <button
+            onClick={handleExport}
+            disabled={leases.length === 0}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            <Download size={16} /> Exporter
+          </button>
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"

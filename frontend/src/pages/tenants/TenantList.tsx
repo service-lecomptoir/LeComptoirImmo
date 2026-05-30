@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, UserRound, ShieldCheck, Pencil, Trash2, Mail, Phone } from 'lucide-react'
+import { Plus, Search, UserRound, ShieldCheck, Pencil, Trash2, Mail, Phone, Download } from 'lucide-react'
 import { tenantsApi } from '@/api/tenants'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
 import { toast } from '@/store/toast'
+import { exportCsv } from '@/utils/exportCsv'
 import type { Tenant, TenantListItem } from '@/types/tenant'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -76,6 +77,17 @@ export default function TenantList() {
 
   const closeDelete = () => { setDeleteId(null); setDeleteError(null) }
 
+  const handleExport = () => {
+    exportCsv('locataires',
+      ['Nom', 'Email', 'Téléphone', 'Compte', 'Ajouté le'],
+      tenants.map(t => [
+        t.full_name, t.email, t.phone,
+        t.user_id ? 'Oui' : 'Non',
+        new Date(t.created_at).toLocaleDateString('fr-FR'),
+      ]))
+    toast.success(`${tenants.length} locataire(s) exporté(s)`)
+  }
+
   return (
     <div className="p-4 sm:p-6">
       {/* Header */}
@@ -86,6 +98,13 @@ export default function TenantList() {
         </div>
         <div className="flex items-center gap-3">
           {canToggleView && <ViewToggle value={view} onChange={setView} />}
+          <button
+            onClick={handleExport}
+            disabled={tenants.length === 0}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            <Download size={16} /> Exporter
+          </button>
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
