@@ -4,9 +4,10 @@
 # Stack : PostgreSQL (base partagée) + LeComptoirImmo (backend 8000 / frontend)
 #         + Alice (backend 8001 / frontend) + Nginx reverse proxy + Certbot
 #
-# Les secrets viennent des fichiers .env (hors git) :
-#   - backend/.env           → POSTGRES_*, SECRET_KEY, DATABASE_URL, ALICE_*
-#   - alice/backend/.env   → SECRET_KEY, DATABASE_URL (même base), INTERNAL_API_KEY
+# Les secrets viennent des fichiers .env.prod (hors git) — la prod lit .env.prod
+# DIRECTEMENT (pas .env, qui reste la config de dev avec @localhost) :
+#   - backend/.env.prod        → POSTGRES_*, SECRET_KEY, DATABASE_URL (@postgres), ALICE_*, SMTP_*
+#   - alice/backend/.env.prod  → SECRET_KEY, DATABASE_URL (@postgres, même base), INTERNAL_API_KEY
 
 services:
 
@@ -39,7 +40,7 @@ services:
     container_name: locataire_backend
     restart: always
     env_file:
-      - ../backend/.env
+      - ../backend/.env.prod
     environment:
       APP_ENV: production
       POSTGRES_HOST: postgres
@@ -78,7 +79,7 @@ services:
     container_name: alice_backend
     restart: always
     env_file:
-      - ../alice/backend/.env
+      - ../alice/backend/.env.prod
     environment:
       APP_ENV: production
       DEBUG: "false"

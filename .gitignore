@@ -46,3 +46,10 @@ backend/uploads/
 *.pdf
 !docker/nginx-spa.conf
 !docker/nginx-site.conf
+
+# ── Identifiants générés (NE JAMAIS committer) ───────────────────────────────
+credentials_*.xlsx
+
+# ── Claude Code (interne, transitoire) ───────────────────────────────────────
+.claude/worktrees/
+.claude/scheduled_tasks.lock
