@@ -265,7 +265,7 @@ export default function Dashboard() {
       {stats.top_properties.length > 0 && (
         <div className="bg-white rounded-xl border p-5">
           <h2 className="font-semibold text-gray-900 mb-4">Performance par bien</h2>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
             {stats.top_properties.map(p => {
               const occ = p.units_count > 0 ? Math.round(p.occupied_count / p.units_count * 100) : 0
               return (

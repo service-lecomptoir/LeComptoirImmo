@@ -196,17 +196,17 @@ async def get_dashboard_stats(
             outstanding=round(outstanding, 2),
         ))
 
-    # ── Top propriétés ────────────────────────────────────────────────────────
+    # ── Performance par bien (TOUS les biens du périmètre) ──────────────────────
     if is_gp:
         props_res = await db.execute(
-            select(Property).where(Property.id.in_(prop_ids_filter)).limit(10)
+            select(Property).where(Property.id.in_(prop_ids_filter))
         )
     elif is_mandataire and excluded_prop_ids:
         props_res = await db.execute(
-            select(Property).where(Property.id.notin_(excluded_prop_ids)).limit(10)
+            select(Property).where(Property.id.notin_(excluded_prop_ids))
         )
     else:
-        props_res = await db.execute(select(Property).limit(10))
+        props_res = await db.execute(select(Property))
     properties = props_res.scalars().all()
 
     top_properties = []
@@ -339,7 +339,7 @@ async def get_dashboard_stats(
             total_deposits=round(total_deposits, 2),
         ),
         monthly_revenues=monthly_revenues,
-        top_properties=top_properties[:5],
+        top_properties=top_properties,
         alerts=AlertStats(
             leases_expiring_30d=expiring_30,
             leases_expiring_90d=expiring_90,
