@@ -7,6 +7,9 @@ import { PropertyForm } from './PropertyForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import type { Property, PropertyListItem } from '@/types/property'
+import { useAuthStore } from '@/store/authStore'
+import { ViewToggle } from '@/components/common/ViewToggle'
+import { useViewMode } from '@/hooks/useViewMode'
 
 /**
  * Cadenas ouvert : corps dans le sens normal, anse ouverte pivotée vers la droite.
@@ -59,6 +62,9 @@ export default function PropertyList() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
   const [showLimitNotice, setShowLimitNotice] = useState(false)
   const [checkingLicense, setCheckingLicense] = useState(false)
+  const user = useAuthStore(s => s.user)
+  const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
+  const [view, setView] = useViewMode('properties', 'grid')
 
   const fetchProperties = useCallback(async (q: string) => {
     setIsLoading(true)
@@ -157,7 +163,9 @@ export default function PropertyList() {
           <h1 className="text-2xl font-bold text-gray-900">Propriétés</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} bien{total > 1 ? 's' : ''}</p>
         </div>
-        <button
+        <div className="flex items-center gap-3">
+          {canToggleView && <ViewToggle value={view} onChange={setView} />}
+          <button
           onClick={handleNew}
           disabled={checkingLicense}
           title={creationBlocked ? limitMessage : undefined}
@@ -174,7 +182,8 @@ export default function PropertyList() {
               ? <Lock size={16} />
               : <OpenLockRight size={16} />}
           {checkingLicense ? 'Vérification…' : 'Nouveau bien'}
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Bandeau limite d'offre atteinte */}
@@ -208,6 +217,71 @@ export default function PropertyList() {
           <Building2 size={36} className="text-gray-300 mb-3" />
           <p className="text-sm font-medium">{search ? 'Aucun résultat' : 'Aucun bien enregistré'}</p>
           {!search && <p className="text-xs mt-1">Cliquez sur « Nouveau bien » pour commencer</p>}
+        </div>
+      ) : view === 'list' ? (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nom du bien</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Propriétaire</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {properties.map(prop => (
+                  <tr
+                    key={prop.id}
+                    onClick={() => navigate(`/properties/${prop.id}`)}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <StatusBadge
+                        label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
+                        variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-gray-900">{prop.name}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {prop.owner_name ? <span className="text-gray-700 text-xs">{prop.owner_name}</span> : null}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        prop.is_occupied
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {prop.is_occupied ? 'Occupé' : 'Disponible'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openEdit(prop.id)}
+                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Modifier"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => setDeleteId(prop.id)}
+                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, FileText, Filter } from 'lucide-react'
+import { Plus, Search, FileText, Filter, Building2 } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import { LeaseForm } from './LeaseForm'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -8,6 +8,9 @@ import { LEASE_TYPE_LABELS } from '@/types/lease'
 import type { LeaseListItem } from '@/types/lease'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { useAuthStore } from '@/store/authStore'
+import { ViewToggle } from '@/components/common/ViewToggle'
+import { useViewMode } from '@/hooks/useViewMode'
 
 export default function LeaseList() {
   const navigate = useNavigate()
@@ -17,6 +20,9 @@ export default function LeaseList() {
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const user = useAuthStore(s => s.user)
+  const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
+  const [view, setView] = useViewMode('leases', 'list')
 
   const fetchLeases = useCallback(async (q: string, active: boolean | undefined) => {
     setIsLoading(true)
@@ -48,12 +54,15 @@ export default function LeaseList() {
           <h1 className="text-2xl font-bold text-gray-900">Contrats de bail</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} contrat{total > 1 ? 's' : ''}</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={16} /> Nouveau contrat
-        </button>
+        <div className="flex items-center gap-3">
+          {canToggleView && <ViewToggle value={view} onChange={setView} />}
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={16} /> Nouveau contrat
+          </button>
+        </div>
       </div>
 
       {/* Filtres */}
@@ -85,73 +94,111 @@ export default function LeaseList() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px]">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Locataire</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Bien</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Type</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Début</th>
-              <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Loyer CC</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Statut</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="text-center py-12 text-sm text-gray-500">Chargement...</td>
-              </tr>
-            ) : leases.length === 0 ? (
-              <tr>
-                <td colSpan={6}>
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <FileText size={32} className="text-gray-300 mb-2" />
-                    <p className="text-sm">{search ? 'Aucun résultat' : 'Aucun contrat enregistré'}</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              leases.map(lease => (
-                <tr
-                  key={lease.id}
-                  onClick={() => navigate(`/leases/${lease.id}`)}
-                  className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <span className="text-sm font-medium text-gray-900">{lease.tenant_full_name}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="text-sm text-gray-900">{lease.property_name}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs text-gray-600">{LEASE_TYPE_LABELS[lease.lease_type]}</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{fmtDate(lease.start_date)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <span className="text-sm font-semibold text-gray-900">
-                      {fmtEuro(lease.rent_amount + lease.charges_amount)}
-                    </span>
-                    {lease.apl_tiers_payant && (
-                      <div className="text-xs text-green-600">Tiers-payant CAF</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge
-                      label={lease.is_active ? 'Actif' : 'Résilié'}
-                      variant={lease.is_active ? 'green' : 'gray'}
-                      dot
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Liste ou mosaïque */}
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48 text-sm text-gray-500">Chargement...</div>
+      ) : leases.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-48 text-gray-500 bg-white rounded-xl border border-gray-200 shadow-sm">
+          <FileText size={32} className="text-gray-300 mb-2" />
+          <p className="text-sm">{search ? 'Aucun résultat' : 'Aucun contrat enregistré'}</p>
         </div>
-      </div>
+      ) : view === 'list' ? (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Locataire</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Bien</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Type</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Début</th>
+                  <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Loyer CC</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leases.map(lease => (
+                  <tr
+                    key={lease.id}
+                    onClick={() => navigate(`/leases/${lease.id}`)}
+                    className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-medium text-gray-900">{lease.tenant_full_name}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm text-gray-900">{lease.property_name}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs text-gray-600">{LEASE_TYPE_LABELS[lease.lease_type]}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{fmtDate(lease.start_date)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {fmtEuro(lease.rent_amount + lease.charges_amount)}
+                      </span>
+                      {lease.apl_tiers_payant && (
+                        <div className="text-xs text-green-600">Tiers-payant CAF</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge
+                        label={lease.is_active ? 'Actif' : 'Résilié'}
+                        variant={lease.is_active ? 'green' : 'gray'}
+                        dot
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {leases.map(lease => (
+            <div
+              key={lease.id}
+              onClick={() => navigate(`/leases/${lease.id}`)}
+              className="group flex flex-col gap-3 bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-300"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-gray-600">{LEASE_TYPE_LABELS[lease.lease_type]}</span>
+                <StatusBadge
+                  label={lease.is_active ? 'Actif' : 'Résilié'}
+                  variant={lease.is_active ? 'green' : 'gray'}
+                  dot
+                />
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <FileText size={18} className="text-blue-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{lease.tenant_full_name}</p>
+                  <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+                    <Building2 size={12} className="shrink-0" />
+                    {lease.property_name}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-auto flex items-end justify-between gap-2 pt-2 border-t border-gray-100">
+                <span className="text-xs text-gray-500">Début {fmtDate(lease.start_date)}</span>
+                <div className="text-right">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {fmtEuro(lease.rent_amount + lease.charges_amount)}
+                  </span>
+                  {lease.apl_tiers_payant && (
+                    <div className="text-xs text-green-600">Tiers-payant CAF</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showForm && (
         <LeaseForm
