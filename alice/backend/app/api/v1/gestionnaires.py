@@ -182,6 +182,8 @@ async def create_gestionnaire(
     )
     db.add(license)
     await db.flush()
+    await db.refresh(new_user)  # created_at server_default
+    await db.refresh(license)   # created_at / updated_at server-side
 
     # Récupérer le plan si assigné
     plan = None
@@ -269,6 +271,7 @@ async def update_gestionnaire(
             setattr(license, field, value)
 
     await db.flush()
+    await db.refresh(license)  # recharge updated_at (onupdate) dans le contexte async
 
     plan = None
     if license.plan_id:
@@ -319,6 +322,7 @@ async def block_gestionnaire_endpoint(
 
     await block_gestionnaire(db, license, gestionnaire_id)
     await db.flush()
+    await db.refresh(license)
 
     plan = None
     if license.plan_id:
@@ -361,6 +365,7 @@ async def unblock_gestionnaire_endpoint(
 
     await unblock_gestionnaire(db, license, gestionnaire_id)
     await db.flush()
+    await db.refresh(license)
 
     plan = None
     if license.plan_id:
