@@ -39,4 +39,8 @@ export const subscriptionsApi = {
     apiClient.post<{ found_account: boolean; scheduled_until: string | null; blocked_now: boolean }>(
       `/subscription-requests/${id}/deactivate-account`,
     ),
+
+  /** Supprime définitivement une demande. */
+  remove: (id: string) =>
+    apiClient.delete(`/subscription-requests/${id}`),
 }

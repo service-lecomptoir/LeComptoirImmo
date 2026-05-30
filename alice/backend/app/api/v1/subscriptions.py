@@ -2,7 +2,7 @@ import uuid
 import calendar
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
@@ -125,3 +125,19 @@ async def deactivate_account_from_request(
         "scheduled_until": scheduled_until.isoformat() if scheduled_until else None,
         "blocked_now": blocked_now,
     }
+
+
+@router.delete("/{request_id}", status_code=204)
+async def delete_request(
+    request_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: AliceAdmin = Depends(get_current_alice_admin),
+):
+    """Supprime définitivement une demande (souscription ou résiliation)."""
+    req = (await db.execute(
+        select(AliceSubscriptionRequest).where(AliceSubscriptionRequest.id == request_id)
+    )).scalar_one_or_none()
+    if not req:
+        raise HTTPException(status_code=404, detail="Demande introuvable")
+    await db.delete(req)
+    return Response(status_code=204)

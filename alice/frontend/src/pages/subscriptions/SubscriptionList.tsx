@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Inbox, Mail, Phone, Building2, Check, Clock, X } from 'lucide-react'
+import { Inbox, Mail, Phone, Building2, Check, Clock, X, Trash2 } from 'lucide-react'
 import { subscriptionsApi, type SubscriptionRequest } from '@/api/subscriptions'
 
 const STATUS = {
@@ -67,6 +67,16 @@ export default function SubscriptionList() {
 
   const handleCreateAccount = (r: SubscriptionRequest) => {
     navigate('/gestionnaires', { state: { prefill: { full_name: r.full_name, email: r.email } } })
+  }
+
+  const handleDelete = async (r: SubscriptionRequest) => {
+    if (!window.confirm(`Supprimer définitivement cette demande de ${r.full_name} ?`)) return
+    try {
+      await subscriptionsApi.remove(r.id)
+      load(filter)
+    } catch {
+      window.alert('Échec de la suppression.')
+    }
   }
 
   return (
@@ -165,6 +175,8 @@ export default function SubscriptionList() {
                         <button onClick={() => setStatus(r.id, 'rejete')} title="Rejeter"
                           className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"><X size={15} /></button>
                       )}
+                      <button onClick={() => handleDelete(r)} title="Supprimer la demande"
+                        className="p-1.5 rounded hover:bg-red-100 text-gray-400 hover:text-red-700"><Trash2 size={15} /></button>
                     </div>
                   </td>
                 </tr>
