@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/api/client'
 import {
   Zap, Plus, Trash2, Edit2, ToggleLeft, ToggleRight,
   Mail, MessageSquare, Bell, Calendar, Send,
   CheckCircle, Clock, AlertTriangle, Users, Settings, RefreshCw,
 } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
 import { schedulerApi, avisEcheancesApi } from '@/api/avis_echeances'
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const RULE_TYPES = [
   { value: 'avis_echeance', label: "Avis d'échéance", icon: Calendar, color: 'blue' },
@@ -54,7 +51,6 @@ interface Log {
 }
 
 function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: () => void, onSaved: () => void }) {
-  const { accessToken: token } = useAuthStore()
   const [form, setForm] = useState({
     name: rule?.name || '',
     rule_type: rule?.rule_type || 'avis_echeance',
@@ -71,18 +67,14 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
     setSaving(true)
     try {
       if (rule?.id) {
-        await axios.patch(`${API}/api/v1/automation/rules/${rule.id}`, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        await apiClient.patch(`/automation/rules/${rule.id}`, form)
       } else {
-        await axios.post(`${API}/api/v1/automation/rules`, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        await apiClient.post('/automation/rules', form)
       }
       onSaved()
       onClose()
     } catch {
-      alert('Erreur lors de la sauvegarde')
+      // erreur affichée par l'intercepteur (toast) — la modale reste ouverte
     } finally {
       setSaving(false)
     }
@@ -204,7 +196,6 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
 }
 
 function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
-  const { accessToken: token } = useAuthStore()
   const [form, setForm] = useState({
     subject: '',
     body: '',
@@ -218,12 +209,10 @@ function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
     e.preventDefault()
     setSending(true)
     try {
-      const r = await axios.post(`${API}/api/v1/automation/send-group`, form, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const r = await apiClient.post('/automation/send-group', form)
       setResult(r.data)
     } catch {
-      alert('Erreur lors de l\'envoi')
+      // erreur affichée par l'intercepteur (toast)
     } finally {
       setSending(false)
     }
@@ -295,7 +284,6 @@ function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function Automatisation() {
-  const { accessToken: token } = useAuthStore()
   const [rules, setRules] = useState<Rule[]>([])
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
@@ -359,8 +347,8 @@ export default function Automatisation() {
     setLoading(true)
     try {
       const [rulesRes, logsRes] = await Promise.all([
-        axios.get(`${API}/api/v1/automation/rules`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get(`${API}/api/v1/automation/logs`, { headers: { Authorization: `Bearer ${token}` } }),
+        apiClient.get('/automation/rules'),
+        apiClient.get('/automation/logs'),
       ])
       setRules(rulesRes.data)
       setLogs(logsRes.data)
@@ -371,18 +359,22 @@ export default function Automatisation() {
   useEffect(() => { load(); loadScheduler() }, [])
 
   const toggleRule = async (id: string) => {
-    await axios.post(`${API}/api/v1/automation/rules/${id}/toggle`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    load()
+    try {
+      await apiClient.post(`/automation/rules/${id}/toggle`)
+      load()
+    } catch {
+      // erreur affichée par l'intercepteur (toast)
+    }
   }
 
   const deleteRule = async (id: string) => {
     if (!confirm('Supprimer cette règle ?')) return
-    await axios.delete(`${API}/api/v1/automation/rules/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    load()
+    try {
+      await apiClient.delete(`/automation/rules/${id}`)
+      load()
+    } catch {
+      // erreur affichée par l'intercepteur (toast)
+    }
   }
 
   const getRuleInfo = (type: string) => RULE_TYPES.find(t => t.value === type)

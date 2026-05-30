@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/api/client'
 import {
   Phone, Mail, MapPin, Star, Plus, Search,
   Trash2, Edit2, Building2, Wrench, Zap, Paintbrush,
   Lock, Flame, Leaf, Sparkles, Scale, Shield, Landmark, Users, Filter
 } from 'lucide-react'
-import { useAuthStore } from '@/store/authStore'
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const CATEGORIES = [
   { value: '', label: 'Toutes catégories', icon: Filter },
@@ -71,7 +68,6 @@ interface ContactModalProps {
 }
 
 function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
-  const { accessToken: token } = useAuthStore()
   const [form, setForm] = useState({
     first_name: contact?.first_name || '',
     last_name: contact?.last_name || '',
@@ -95,18 +91,15 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
     setSaving(true)
     try {
       if (contact?.id) {
-        await axios.patch(`${API}/api/v1/contacts/${contact.id}`, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        await apiClient.patch(`/contacts/${contact.id}`, form)
       } else {
-        await axios.post(`${API}/api/v1/contacts`, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        await apiClient.post('/contacts', form)
       }
       onSaved()
       onClose()
-    } catch (err) {
-      alert('Erreur lors de la sauvegarde')
+    } catch {
+      // Le message d'erreur est affiché par l'intercepteur axios (toast).
+      // On ne ferme pas la modale : l'utilisateur peut corriger et réessayer.
     } finally {
       setSaving(false)
     }
@@ -225,7 +218,6 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
 }
 
 export default function ContactList() {
-  const { accessToken: token } = useAuthStore()
   const [contacts, setContacts] = useState<Contact[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -236,14 +228,12 @@ export default function ContactList() {
 
   const load = () => {
     setLoading(true)
-    const params = new URLSearchParams()
-    if (search) params.set('search', search)
-    if (category) params.set('category', category)
-    if (favoritesOnly) params.set('favorites_only', 'true')
+    const params: Record<string, string> = {}
+    if (search) params.search = search
+    if (category) params.category = category
+    if (favoritesOnly) params.favorites_only = 'true'
 
-    axios.get(`${API}/api/v1/contacts?${params}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    apiClient.get('/contacts', { params })
       .then(r => setContacts(r.data))
       .catch(() => setContacts([]))
       .finally(() => setLoading(false))
@@ -253,19 +243,23 @@ export default function ContactList() {
 
   const toggleFavorite = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    await axios.post(`${API}/api/v1/contacts/${id}/toggle-favorite`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    load()
+    try {
+      await apiClient.post(`/contacts/${id}/toggle-favorite`)
+      load()
+    } catch {
+      // erreur affichée par l'intercepteur (toast)
+    }
   }
 
   const deleteContact = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!confirm('Supprimer ce contact ?')) return
-    await axios.delete(`${API}/api/v1/contacts/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    load()
+    try {
+      await apiClient.delete(`/contacts/${id}`)
+      load()
+    } catch {
+      // erreur affichée par l'intercepteur (toast)
+    }
   }
 
   const catLabel = (val: string) => CATEGORIES.find(c => c.value === val)?.label || val
