@@ -46,10 +46,10 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
   autre: 'Autre',
 }
 
-const TYPE_VARIANT: Record<string, 'blue' | 'green' | 'yellow' | 'gray'> = {
+const TYPE_VARIANT: Record<string, 'blue' | 'green' | 'yellow' | 'gray' | 'purple'> = {
   maison: 'green',
   appartement: 'blue',
-  local_commercial: 'yellow',
+  local_commercial: 'purple',
   autre: 'gray',
 }
 
