@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2 } from 'lucide-react'
+import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, LockOpen, Loader2 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 import { PropertyForm } from './PropertyForm'
@@ -145,7 +145,9 @@ export default function PropertyList() {
         >
           {checkingLicense
             ? <Loader2 size={16} className="animate-spin" />
-            : creationBlocked ? <Lock size={16} /> : <Plus size={16} />}
+            : creationBlocked
+              ? <Lock size={16} />        /* offre saturée/suspendue → cadenas fermé */
+              : <LockOpen size={16} />}   /* offre permet d'ajouter → cadenas ouvert */
           {checkingLicense ? 'Vérification…' : 'Nouveau bien'}
         </button>
       </div>
