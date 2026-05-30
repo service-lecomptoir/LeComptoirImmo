@@ -62,7 +62,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <div className="px-6 py-5 border-b border-gray-700 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xs">PG</span>
+              <span className="text-white font-bold text-xs">A</span>
             </div>
             <div>
               <p className="text-white font-semibold text-sm">Alice</p>

@@ -57,7 +57,7 @@ export default function Login() {
         <div className="relative z-10 px-12 pt-12">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-400 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">PG</span>
+              <span className="text-white font-bold text-sm">A</span>
             </div>
             <span className="text-white font-bold text-lg tracking-wide">Alice</span>
           </div>
@@ -103,7 +103,7 @@ export default function Login() {
         <div className="lg:hidden mb-10 text-center">
           <div className="inline-flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center">
-              <span className="text-white font-bold text-xs">PG</span>
+              <span className="text-white font-bold text-xs">A</span>
             </div>
             <span className="font-bold text-lg text-indigo-900">Alice</span>
           </div>
