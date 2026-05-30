@@ -1,10 +1,11 @@
 """API Abonnement — informations de licence Alice pour le gestionnaire connecté."""
 import logging
+import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from pydantic import BaseModel
+from sqlalchemy import select, func, text
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.api.deps import get_current_user
@@ -84,3 +85,59 @@ async def get_subscription(
         property_count=property_count,
         can_create_property=can_create,
     )
+
+
+class ResiliationRequestIn(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
+
+
+async def _notify_resiliation(full_name: str, email: str, reason: str) -> None:
+    """Best-effort : prévient l'équipe Alice d'une demande de résiliation."""
+    try:
+        from app.config import get_settings
+        from app.services.email_service import send_email
+        cfg = get_settings()
+        recipient = cfg.LEADS_NOTIFY_EMAIL or cfg.FIRST_ADMIN_EMAIL
+        html = (
+            "<h2>Demande de résiliation d'abonnement</h2>"
+            f"<p><strong>{full_name}</strong> &lt;{email}&gt;</p>"
+            f"<p><strong>Motif&nbsp;:</strong><br>{reason}</p>"
+            "<p style='margin-top:16px'>À traiter dans Alice → <strong>Demandes</strong>.</p>"
+        )
+        await send_email(to=recipient, subject="Demande de résiliation — Le Comptoir Immo", html_body=html)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Notification de résiliation non envoyée : %s", exc)
+
+
+@router.post("/resiliation", status_code=201, summary="Demande de résiliation d'abonnement")
+async def request_resiliation(
+    data: ResiliationRequestIn,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Enregistre une demande de résiliation (vue par Alice dans « Demandes »)
+    et notifie l'équipe — même mécanisme que la demande de souscription."""
+    role = Role(current_user.role)
+    if role not in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
+        raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
+
+    await db.execute(
+        text(
+            "INSERT INTO alice_subscription_requests "
+            "(id, full_name, email, phone, company, message, source, status, created_at) "
+            "VALUES (:id, :full_name, :email, :phone, :company, :message, "
+            "'resiliation', 'nouveau', now())"
+        ),
+        {
+            "id": uuid.uuid4(),
+            "full_name": current_user.full_name,
+            "email": current_user.email,
+            "phone": getattr(current_user, "phone", None),
+            "company": None,
+            "message": data.reason.strip(),
+        },
+    )
+    await db.commit()
+    background.add_task(_notify_resiliation, current_user.full_name, current_user.email, data.reason.strip())
+    return {"status": "received"}

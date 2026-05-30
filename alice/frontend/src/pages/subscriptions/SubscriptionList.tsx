@@ -49,7 +49,7 @@ export default function SubscriptionList() {
         <Inbox size={24} className="text-gray-700" />
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Demandes de souscription</h1>
-          <p className="text-sm text-gray-500">Prospects issus de la page d'accueil Le Comptoir Immo</p>
+          <p className="text-sm text-gray-500">Souscriptions (page d'accueil) et demandes de résiliation (espaces gestionnaires)</p>
         </div>
       </div>
 
@@ -88,7 +88,12 @@ export default function SubscriptionList() {
               {items.map(r => (
                 <tr key={r.id} className="hover:bg-gray-50 align-top">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{r.full_name}</p>
+                    <p className="font-medium text-gray-900 flex items-center gap-2">
+                      {r.full_name}
+                      {r.source === 'resiliation' && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">Résiliation</span>
+                      )}
+                    </p>
                     {r.company && (
                       <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <Building2 size={11} /> {r.company}

@@ -10,4 +10,6 @@ export interface SubscriptionInfo {
 
 export const subscriptionApi = {
   get: () => apiClient.get<SubscriptionInfo>('/subscription'),
+  requestResiliation: (reason: string) =>
+    apiClient.post('/subscription/resiliation', { reason }),
 }

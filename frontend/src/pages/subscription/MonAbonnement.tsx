@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package } from 'lucide-react'
 import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
+import { toast } from '@/store/toast'
 
 function ProgressBar({ value, max }: { value: number; max: number | null }) {
   if (max === null) {
@@ -23,6 +24,28 @@ export default function MonAbonnement() {
   const [info, setInfo] = useState<SubscriptionInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showResiliation, setShowResiliation] = useState(false)
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [resiliationSent, setResiliationSent] = useState(false)
+  const [resiliationError, setResiliationError] = useState<string | null>(null)
+
+  const submitResiliation = async () => {
+    if (!reason.trim()) return
+    setSubmitting(true)
+    setResiliationError(null)
+    try {
+      await subscriptionApi.requestResiliation(reason.trim())
+      setResiliationSent(true)
+      setShowResiliation(false)
+      setReason('')
+      toast.success('Demande de résiliation envoyée')
+    } catch (e: any) {
+      setResiliationError(e?.response?.data?.detail || "Erreur lors de l'envoi de la demande")
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     subscriptionApi.get()
@@ -140,6 +163,59 @@ export default function MonAbonnement() {
             <p className="text-xs text-orange-700 font-medium">
               Limite atteinte — vous ne pouvez plus créer de nouveaux biens. Contactez votre administrateur pour upgrader votre plan.
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* Résiliation */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+        <h2 className="font-semibold text-gray-800">Résilier mon abonnement</h2>
+        <p className="text-sm text-gray-600 leading-relaxed">
+          Vous souhaitez mettre fin à votre abonnement Le Comptoir Immo ? Envoyez-nous une demande de
+          résiliation : notre équipe la traitera et reviendra vers vous. Votre accès reste actif
+          jusqu'à la confirmation de la résiliation.
+        </p>
+
+        {resiliationSent ? (
+          <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            <CheckCircle size={16} className="shrink-0" />
+            Votre demande de résiliation a bien été transmise. Notre équipe vous recontactera.
+          </div>
+        ) : !showResiliation ? (
+          <button
+            onClick={() => setShowResiliation(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-red-300 text-red-600 bg-white hover:bg-red-50 transition-colors"
+          >
+            Mettre fin à mon abonnement
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <label className="block text-xs font-medium text-gray-600">
+              Pour nous aider à nous améliorer, indiquez la raison de votre départ
+            </label>
+            <textarea
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              rows={4}
+              placeholder="Expliquez les raisons de votre résiliation…"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+            />
+            {resiliationError && <p className="text-xs text-red-600">{resiliationError}</p>}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={submitResiliation}
+                disabled={submitting || !reason.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {submitting ? 'Envoi…' : 'Confirmer la demande'}
+              </button>
+              <button
+                onClick={() => { setShowResiliation(false); setReason(''); setResiliationError(null) }}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+            </div>
           </div>
         )}
       </div>
