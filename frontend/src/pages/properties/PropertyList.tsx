@@ -9,10 +9,10 @@ import { StatusBadge } from '@/components/common/StatusBadge'
 import type { Property, PropertyListItem } from '@/types/property'
 
 /**
- * Cadenas ouvert : corps dans le sens normal, anse ouverte pivotée vers la gauche.
- * (l'anse est attachée à droite du corps et s'ouvre en arc vers le haut-gauche)
+ * Cadenas ouvert : corps dans le sens normal, anse ouverte pivotée vers la droite.
+ * (l'anse est attachée à gauche du corps et s'ouvre en arc vers le haut-droite)
  */
-function OpenLockLeft({ size = 16 }: { size?: number }) {
+function OpenLockRight({ size = 16 }: { size?: number }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -27,7 +27,7 @@ function OpenLockLeft({ size = 16 }: { size?: number }) {
       aria-hidden="true"
     >
       <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-      <path d="M17 11V7a5 5 0 0 0-9.9-1" />
+      <path d="M7 11V7a5 5 0 0 1 9.9-1" />
     </svg>
   )
 }
@@ -172,7 +172,7 @@ export default function PropertyList() {
             ? <Loader2 size={16} className="animate-spin" />
             : creationBlocked
               ? <Lock size={16} />
-              : <OpenLockLeft size={16} />}
+              : <OpenLockRight size={16} />}
           {checkingLicense ? 'Vérification…' : 'Nouveau bien'}
         </button>
       </div>
