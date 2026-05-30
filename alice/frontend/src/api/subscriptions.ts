@@ -33,4 +33,10 @@ export const subscriptionsApi = {
 
   update: (id: string, data: { status?: string; notes?: string }) =>
     apiClient.patch<SubscriptionRequest>(`/subscription-requests/${id}`, data),
+
+  /** Traite une demande de résiliation : programme la désactivation du compte. */
+  deactivateAccount: (id: string) =>
+    apiClient.post<{ found_account: boolean; scheduled_until: string | null; blocked_now: boolean }>(
+      `/subscription-requests/${id}/deactivate-account`,
+    ),
 }

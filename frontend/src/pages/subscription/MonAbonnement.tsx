@@ -126,6 +126,21 @@ export default function MonAbonnement() {
         </div>
       )}
 
+      {/* Résiliation programmée — décompte */}
+      {info?.access_until && !blocked && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3">
+          <AlertTriangle className="text-amber-500 shrink-0" size={22} />
+          <div>
+            <p className="font-semibold text-sm text-amber-800">Résiliation programmée</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Votre accès est maintenu jusqu'au {new Date(info.access_until).toLocaleDateString('fr-FR')}
+              {info.resiliation_days_remaining != null &&
+                ` — ${info.resiliation_days_remaining} jour${info.resiliation_days_remaining > 1 ? 's' : ''} restant${info.resiliation_days_remaining > 1 ? 's' : ''}`}.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Plan card */}
       <div className="bg-white rounded-xl border divide-y">
         <div className="px-5 py-4 flex items-center gap-3">

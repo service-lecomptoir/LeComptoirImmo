@@ -6,6 +6,8 @@ export interface SubscriptionInfo {
   property_limit: number | null
   property_count: number
   can_create_property: boolean
+  access_until: string | null
+  resiliation_days_remaining: number | null
 }
 
 export interface SubscriptionInvoice {

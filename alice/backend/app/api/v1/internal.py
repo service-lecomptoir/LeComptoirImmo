@@ -1,5 +1,6 @@
 """API interne Alice — service-to-service, accès restreint par clé API."""
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Header, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -30,6 +31,7 @@ class LicenseInfoResponse(BaseModel):
     is_blocked: bool
     property_limit: Optional[int]
     plan_name: Optional[str]
+    access_until: Optional[datetime] = None
 
 
 @router.get("/license/{user_id}", response_model=LicenseInfoResponse, dependencies=[Depends(_require_internal_key)])
@@ -49,6 +51,12 @@ async def get_license_info(
     if lic is None:
         raise HTTPException(status_code=404, detail="Licence introuvable pour cet utilisateur")
 
+    # Résiliation différée : si la date d'accès est dépassée, on applique le
+    # blocage maintenant (enforcement paresseux, sans tâche planifiée).
+    if lic.access_until is not None and datetime.utcnow() >= lic.access_until:
+        lic.is_blocked = True
+        lic.access_until = None
+
     # Résoudre la limite effective
     effective_limit: Optional[int] = lic.property_limit_override
     plan_name: Optional[str] = None
@@ -67,6 +75,7 @@ async def get_license_info(
         is_blocked=lic.is_blocked,
         property_limit=effective_limit,
         plan_name=plan_name,
+        access_until=lic.access_until,
     )
 
 

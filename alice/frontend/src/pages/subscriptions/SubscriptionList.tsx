@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Inbox, Mail, Phone, Building2, Check, Clock, X } from 'lucide-react'
 import { subscriptionsApi, type SubscriptionRequest } from '@/api/subscriptions'
 
@@ -41,6 +42,31 @@ export default function SubscriptionList() {
   const setStatus = async (id: string, status: string) => {
     await subscriptionsApi.update(id, { status })
     load(filter)
+  }
+
+  const navigate = useNavigate()
+
+  const handleDeactivate = async (r: SubscriptionRequest) => {
+    if (!window.confirm(
+      `Désactiver le compte de ${r.full_name} ?\n\nL'accès est maintenu jusqu'à la fin du mois de facturation en cours, puis le compte est bloqué automatiquement.`
+    )) return
+    try {
+      const { data } = await subscriptionsApi.deactivateAccount(r.id)
+      if (!data.found_account) {
+        window.alert('Aucun compte gestionnaire trouvé pour cet email. La demande est marquée traitée.')
+      } else if (data.scheduled_until) {
+        window.alert(`Désactivation programmée le ${new Date(data.scheduled_until).toLocaleDateString('fr-FR')} (accès maintenu jusque-là).`)
+      } else if (data.blocked_now) {
+        window.alert('Compte bloqué immédiatement.')
+      }
+      load(filter)
+    } catch {
+      window.alert('Échec de la désactivation.')
+    }
+  }
+
+  const handleCreateAccount = (r: SubscriptionRequest) => {
+    navigate('/gestionnaires', { state: { prefill: { full_name: r.full_name, email: r.email } } })
   }
 
   return (
@@ -115,6 +141,18 @@ export default function SubscriptionList() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
+                      {r.status !== 'traite' && r.source === 'resiliation' && (
+                        <button onClick={() => handleDeactivate(r)}
+                          className="px-2 py-1 text-xs font-medium rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap">
+                          Désactiver le compte
+                        </button>
+                      )}
+                      {r.status !== 'traite' && r.source !== 'resiliation' && (
+                        <button onClick={() => handleCreateAccount(r)}
+                          className="px-2 py-1 text-xs font-medium rounded border border-indigo-300 text-indigo-600 hover:bg-indigo-50 transition-colors whitespace-nowrap">
+                          Créer un compte
+                        </button>
+                      )}
                       {r.status !== 'en_cours' && (
                         <button onClick={() => setStatus(r.id, 'en_cours')} title="Marquer en cours"
                           className="p-1.5 rounded hover:bg-amber-50 text-gray-400 hover:text-amber-600"><Clock size={15} /></button>

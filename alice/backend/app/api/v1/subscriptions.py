@@ -1,4 +1,5 @@
 import uuid
+import calendar
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,6 +9,8 @@ from sqlalchemy import select, func
 from app.database import get_db
 from app.models.admin import AliceAdmin
 from app.models.subscription_request import AliceSubscriptionRequest
+from app.models.leci import LeciUser
+from app.models.license import AliceLicense
 from app.schemas.subscription_request import SubscriptionRequestOut, SubscriptionRequestUpdate
 from app.core.deps import get_current_alice_admin
 
@@ -74,3 +77,51 @@ async def update_request(
 
     await db.flush()
     return req
+
+
+@router.post("/{request_id}/deactivate-account")
+async def deactivate_account_from_request(
+    request_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: AliceAdmin = Depends(get_current_alice_admin),
+):
+    """Traite une demande de résiliation : programme la désactivation du compte
+    gestionnaire à la fin du mois de facturation en cours (accès maintenu jusque-là,
+    puis blocage appliqué automatiquement). Sans licence/compte trouvé : demande
+    simplement marquée traitée."""
+    req = (await db.execute(
+        select(AliceSubscriptionRequest).where(AliceSubscriptionRequest.id == request_id)
+    )).scalar_one_or_none()
+    if not req:
+        raise HTTPException(status_code=404, detail="Demande introuvable")
+
+    user = (await db.execute(
+        select(LeciUser).where(func.lower(LeciUser.email) == (req.email or "").lower())
+    )).scalar_one_or_none()
+
+    scheduled_until: Optional[datetime] = None
+    blocked_now = False
+    if user is not None:
+        lic = (await db.execute(
+            select(AliceLicense).where(AliceLicense.gestionnaire_user_id == user.id)
+        )).scalar_one_or_none()
+        if lic is not None and not lic.is_blocked:
+            now = datetime.utcnow()
+            last_day = calendar.monthrange(now.year, now.month)[1]
+            end_of_month = datetime(now.year, now.month, last_day, 23, 59, 59)
+            if end_of_month > now:
+                lic.access_until = end_of_month
+                scheduled_until = end_of_month
+            else:
+                lic.is_blocked = True
+                blocked_now = True
+
+    req.status = "traite"
+    if req.processed_at is None:
+        req.processed_at = datetime.utcnow()
+    await db.flush()
+    return {
+        "found_account": user is not None,
+        "scheduled_until": scheduled_until.isoformat() if scheduled_until else None,
+        "blocked_now": blocked_now,
+    }

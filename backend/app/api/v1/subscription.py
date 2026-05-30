@@ -23,6 +23,8 @@ class SubscriptionInfo(BaseModel):
     property_limit: Optional[int]
     property_count: int
     can_create_property: bool
+    access_until: Optional[str] = None
+    resiliation_days_remaining: Optional[int] = None
 
 
 @router.get("", response_model=SubscriptionInfo, summary="Mon abonnement Alice")
@@ -44,6 +46,7 @@ async def get_subscription(
     plan_name: Optional[str] = None
     is_blocked = False
     property_limit: Optional[int] = None
+    access_until: Optional[str] = None
 
     try:
         import httpx
@@ -59,6 +62,7 @@ async def get_subscription(
             plan_name = data.get("plan_name")
             is_blocked = data.get("is_blocked", False)
             property_limit = data.get("property_limit")
+            access_until = data.get("access_until")
         elif resp.status_code == 404:
             # Pas de licence → considéré comme bloqué
             is_blocked = True
@@ -78,12 +82,24 @@ async def get_subscription(
 
     can_create = not is_blocked and (property_limit is None or property_count < property_limit)
 
+    # Décompte jours restants si une résiliation est programmée
+    days_remaining: Optional[int] = None
+    if access_until:
+        try:
+            from datetime import datetime as _dt
+            end = _dt.fromisoformat(access_until)
+            days_remaining = max(0, (end.date() - _dt.utcnow().date()).days)
+        except Exception:
+            days_remaining = None
+
     return SubscriptionInfo(
         plan_name=plan_name,
         is_blocked=is_blocked,
         property_limit=property_limit,
         property_count=property_count,
         can_create_property=can_create,
+        access_until=access_until,
+        resiliation_days_remaining=days_remaining,
     )
 
 

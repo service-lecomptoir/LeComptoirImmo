@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, Search, Building2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -37,6 +37,7 @@ interface CreateModalProps {
   plans: Plan[]
   onClose: () => void
   onCreated: (g: Gestionnaire) => void
+  initial?: { full_name?: string; email?: string }
 }
 
 const ROLE_OPTIONS: { value: 'gestionnaire' | 'gestionnaire_proprio'; label: string; description: string }[] = [
@@ -44,10 +45,10 @@ const ROLE_OPTIONS: { value: 'gestionnaire' | 'gestionnaire_proprio'; label: str
   { value: 'gestionnaire_proprio', label: 'Gestionnaire-Propriétaire', description: 'Gère et possède ses propres biens (même personne)' },
 ]
 
-function CreateModal({ plans, onClose, onCreated }: CreateModalProps) {
+function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
   const [form, setForm] = useState<GestionnaireCreateData>({
-    email: '',
-    full_name: '',
+    email: initial?.email ?? '',
+    full_name: initial?.full_name ?? '',
     password: '',
     role: 'gestionnaire',
     plan_id: null,
@@ -237,11 +238,13 @@ function CreateModal({ plans, onClose, onCreated }: CreateModalProps) {
 
 export default function GestionnaireList() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const prefill = (location.state as { prefill?: { full_name?: string; email?: string } } | null)?.prefill
   const [gestionnaires, setGestionnaires] = useState<Gestionnaire[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
+  const [showCreate, setShowCreate] = useState(!!prefill)
 
   useEffect(() => {
     Promise.all([gestionnairesApi.list(), plansApi.list()])
@@ -381,6 +384,7 @@ export default function GestionnaireList() {
       {showCreate && (
         <CreateModal
           plans={plans}
+          initial={prefill}
           onClose={() => setShowCreate(false)}
           onCreated={handleCreated}
         />

@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional
-from sqlalchemy import String, Boolean, Text, Numeric, Integer, ForeignKey
+from datetime import datetime
+from sqlalchemy import String, Boolean, Text, Numeric, Integer, ForeignKey, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
@@ -29,6 +30,9 @@ class AliceLicense(Base, TimestampMixin):
     monthly_price_override: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
 
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Résiliation différée : accès maintenu jusqu'à cette date (fin du mois de
+    # facturation), puis blocage appliqué paresseusement au prochain contrôle de licence.
+    access_until: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=False), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Coordonnées du gestionnaire
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
