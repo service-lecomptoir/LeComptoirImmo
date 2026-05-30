@@ -17,7 +17,11 @@ export function exportCsv(
     .map(r => r.map(esc).join(sep))
     .join('\r\n')
 
-  const blob = new Blob(['﻿' + content], { type: 'text/csv;charset=utf-8;' })
+  // Préfixe BOM UTF-8 — indispensable pour qu'Excel (FR) lise les accents.
+  // Construit via fromCharCode (source ASCII) pour qu'aucun minifier ne puisse
+  // supprimer un caractère BOM littéral du bundle.
+  const BOM = String.fromCharCode(0xFEFF)
+  const blob = new Blob([BOM + content], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
