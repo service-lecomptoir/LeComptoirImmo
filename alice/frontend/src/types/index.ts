@@ -13,6 +13,7 @@ export interface Plan {
   property_limit: number | null
   monthly_price: number
   is_active: boolean
+  features: string[] | null
   created_at: string
   gestionnaire_count: number
 }

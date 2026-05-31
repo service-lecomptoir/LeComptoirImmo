@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { User, Role } from '@/types/auth'
 import { authApi } from '@/api/auth'
+import { useFeaturesStore } from '@/store/featuresStore'
 
 export type AccountType = 'gestionnaire' | 'proprietaire' | 'locataire'
 
@@ -93,6 +94,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('lecomptoirimmo-auth')
+    useFeaturesStore.getState().reset()
     set({
       user: null,
       accessToken: null,

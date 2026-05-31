@@ -3,6 +3,8 @@ import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { useAuthStore, roleHomePath } from '@/store/authStore'
+import { useFeaturesStore } from '@/store/featuresStore'
+import { featureForPath, isFeatureAllowed, firstAllowedPath } from '@/lib/features'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import TenantList from '@/pages/tenants/TenantList'
@@ -57,6 +59,13 @@ function AppLayout() {
   const mainRef = useRef<HTMLElement>(null)
   const [navOpen, setNavOpen] = useState(false)
 
+  // Entitlements par plan (gestionnaire/GP) : charge + garde les routes.
+  const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
+  const { features, loaded, loadFeatures } = useFeaturesStore()
+  useEffect(() => {
+    if (isManager) loadFeatures()
+  }, [isManager, loadFeatures])
+
   // À chaque changement de page, on repositionne en haut. Le scroll réel est porté
   // par la fenêtre (conteneur en min-h-screen, pas de hauteur bornée) → window.scrollTo ;
   // on remet aussi <main> à 0 au cas où il deviendrait le conteneur scrollable.
@@ -71,6 +80,15 @@ function AppLayout() {
   // Vérification auth AVANT tout rendu de layout — élimine le flash de la sidebar
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  // Garde d'accès : une fonctionnalité non incluse dans le plan est inaccessible
+  // même par URL directe → redirige vers la première route autorisée.
+  if (isManager && loaded) {
+    const feat = featureForPath(location.pathname)
+    if (feat && !isFeatureAllowed(features, feat)) {
+      return <Navigate to={firstAllowedPath(features)} replace />
+    }
   }
 
   return (

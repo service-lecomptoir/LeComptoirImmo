@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Infinity } from 'lucide-react'
 import { plansApi, type PlanCreateData, type PlanUpdateData } from '@/api/plans'
+import { PLAN_FEATURES, ALL_FEATURE_KEYS } from '@/constants/features'
 import type { Plan } from '@/types'
 
 interface PlanModalProps {
@@ -17,13 +18,23 @@ function PlanModal({ plan, onClose, onSaved }: PlanModalProps) {
     property_limit: plan?.property_limit ?? null,
     monthly_price: plan?.monthly_price ?? 0,
   })
+  // null = toutes les fonctionnalités → on coche tout par défaut (création ET plan legacy).
+  const [features, setFeatures] = useState<string[]>(plan?.features ?? ALL_FEATURE_KEYS)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const allChecked = features.length === ALL_FEATURE_KEYS.length
+  const toggleFeature = (key: string) =>
+    setFeatures(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+  const toggleAll = () =>
+    setFeatures(allChecked ? [] : [...ALL_FEATURE_KEYS])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     setError(null)
+    // Ordonne les clés selon le catalogue (cohérence) ; envoie toujours une liste explicite.
+    const orderedFeatures = ALL_FEATURE_KEYS.filter(k => features.includes(k))
     try {
       let data: Plan
       if (isEdit && plan) {
@@ -32,11 +43,12 @@ function PlanModal({ plan, onClose, onSaved }: PlanModalProps) {
           description: form.description,
           property_limit: form.property_limit,
           monthly_price: form.monthly_price,
+          features: orderedFeatures,
         }
         const res = await plansApi.update(plan.id, updateData)
         data = res.data
       } else {
-        const res = await plansApi.create(form)
+        const res = await plansApi.create({ ...form, features: orderedFeatures })
         data = res.data
       }
       onSaved(data)
@@ -51,7 +63,7 @@ function PlanModal({ plan, onClose, onSaved }: PlanModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
           <h2 className="text-base font-semibold text-gray-800">
             {isEdit ? 'Modifier le plan' : 'Nouveau plan'}
@@ -115,6 +127,37 @@ function PlanModal({ plan, onClose, onSaved }: PlanModalProps) {
                 required
               />
             </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-medium text-gray-600">
+                Fonctionnalités incluses
+              </label>
+              <button
+                type="button"
+                onClick={toggleAll}
+                className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+              >
+                {allChecked ? 'Tout décocher' : 'Tout cocher'}
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 max-h-56 overflow-y-auto rounded-lg border border-gray-200 p-3">
+              {PLAN_FEATURES.map(f => (
+                <label key={f.key} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={features.includes(f.key)}
+                    onChange={() => toggleFeature(f.key)}
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="truncate">{f.label}</span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-gray-400">
+              Le gestionnaire abonné à ce plan n'accède qu'aux fonctionnalités cochées.
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

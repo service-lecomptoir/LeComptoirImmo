@@ -8,6 +8,8 @@ export interface SubscriptionInfo {
   can_create_property: boolean
   access_until: string | null
   resiliation_days_remaining: number | null
+  /** Fonctionnalités autorisées par le plan ; null = toutes autorisées. */
+  features: string[] | null
 }
 
 export interface SubscriptionInvoice {

@@ -1,7 +1,7 @@
 """API Abonnement — informations de licence Alice pour le gestionnaire connecté."""
 import logging
 import uuid
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
@@ -25,6 +25,8 @@ class SubscriptionInfo(BaseModel):
     can_create_property: bool
     access_until: Optional[str] = None
     resiliation_days_remaining: Optional[int] = None
+    # Fonctionnalités incluses (null = toutes autorisées).
+    features: Optional[List[str]] = None
 
 
 @router.get("", response_model=SubscriptionInfo, summary="Mon abonnement Alice")
@@ -47,6 +49,7 @@ async def get_subscription(
     is_blocked = False
     property_limit: Optional[int] = None
     access_until: Optional[str] = None
+    features: Optional[List[str]] = None
 
     try:
         import httpx
@@ -63,6 +66,7 @@ async def get_subscription(
             is_blocked = data.get("is_blocked", False)
             property_limit = data.get("property_limit")
             access_until = data.get("access_until")
+            features = data.get("features")
         elif resp.status_code == 404:
             # Pas de licence → considéré comme bloqué
             is_blocked = True
@@ -100,6 +104,7 @@ async def get_subscription(
         can_create_property=can_create,
         access_until=access_until,
         resiliation_days_remaining=days_remaining,
+        features=features,
     )
 
 

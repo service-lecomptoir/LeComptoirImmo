@@ -7,6 +7,8 @@ import {
   MapPin, Hash, User, ShoppingBag, Package, KeyRound, TrendingUp,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useFeaturesStore } from '@/store/featuresStore'
+import { featureForPath, isFeatureAllowed } from '@/lib/features'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
 import type { Role } from '@/types/auth'
@@ -239,6 +241,13 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const proprietaireInfo = useProprietaireInfo(isProprietaire, user?.full_name ?? '')
   const agencyAddress = isGestionnaire ? (user?.address ?? '') : ''
 
+  // Fonctionnalités autorisées par le plan (gestionnaire/GP uniquement).
+  const features = useFeaturesStore(s => s.features)
+  const loadFeatures = useFeaturesStore(s => s.loadFeatures)
+  useEffect(() => {
+    if (isGestionnaire) loadFeatures()
+  }, [isGestionnaire, loadFeatures])
+
   const getNavItems = (): NavItem[] => {
     if (!user) return []
     if (user.role === 'locataire') return navLocataire
@@ -247,9 +256,19 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     return navGestionnaire
   }
 
-  const filteredItems = getNavItems().filter(
+  const roleFiltered = getNavItems().filter(
     (item) => !item.roles || item.roles.includes(user?.role as Role)
   )
+  // Masque les entrées dont la fonctionnalité n'est pas incluse dans le plan.
+  const featureFiltered = roleFiltered.filter(
+    (item) => item.isSeparator || isFeatureAllowed(features, featureForPath(item.to ?? ''))
+  )
+  // Retire les séparateurs orphelins (plus aucune entrée à leur suite).
+  const filteredItems = featureFiltered.filter((item, idx) => {
+    if (!item.isSeparator) return true
+    const next = featureFiltered[idx + 1]
+    return !!next && !next.isSeparator
+  })
 
   // ── Header sidebar ────────────────────────────────────────────────────────
   const renderHeader = () => {

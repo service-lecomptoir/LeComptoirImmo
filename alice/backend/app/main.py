@@ -43,6 +43,7 @@ async def lifespan(app: FastAPI):
             await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS phone VARCHAR(30)"))
             await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS address TEXT"))
             await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS access_until TIMESTAMP"))
+            await conn.execute(text("ALTER TABLE alice_plans ADD COLUMN IF NOT EXISTS features JSONB"))
         logger.info("Migrations colonnes Alice appliquees")
     except Exception as exc:
         logger.warning("Migration colonnes Alice ignoree : %s", exc)

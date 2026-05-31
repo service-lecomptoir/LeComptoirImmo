@@ -32,6 +32,8 @@ class LicenseInfoResponse(BaseModel):
     property_limit: Optional[int]
     plan_name: Optional[str]
     access_until: Optional[datetime] = None
+    # Fonctionnalités incluses dans le plan (null = toutes autorisées).
+    features: Optional[List[str]] = None
 
 
 @router.get("/license/{user_id}", response_model=LicenseInfoResponse, dependencies=[Depends(_require_internal_key)])
@@ -60,6 +62,7 @@ async def get_license_info(
     # Résoudre la limite effective
     effective_limit: Optional[int] = lic.property_limit_override
     plan_name: Optional[str] = None
+    features: Optional[List[str]] = None
 
     if lic.plan_id:
         plan = (await db.execute(
@@ -67,6 +70,7 @@ async def get_license_info(
         )).scalar_one_or_none()
         if plan:
             plan_name = plan.name
+            features = plan.features  # None = toutes les fonctionnalités
             if effective_limit is None:
                 effective_limit = plan.property_limit  # None = illimité
 
@@ -76,6 +80,7 @@ async def get_license_info(
         property_limit=effective_limit,
         plan_name=plan_name,
         access_until=lic.access_until,
+        features=features,
     )
 
 

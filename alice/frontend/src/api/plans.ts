@@ -6,6 +6,7 @@ export interface PlanCreateData {
   description?: string | null
   property_limit?: number | null
   monthly_price: number
+  features?: string[] | null
 }
 
 export interface PlanUpdateData {
@@ -14,6 +15,7 @@ export interface PlanUpdateData {
   property_limit?: number | null
   monthly_price?: number
   is_active?: boolean
+  features?: string[] | null
 }
 
 export const plansApi = {
