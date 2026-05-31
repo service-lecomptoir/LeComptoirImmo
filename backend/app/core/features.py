@@ -78,3 +78,28 @@ def require_feature(feature: str):
             detail="Fonctionnalité non incluse dans votre abonnement",
         )
     return _dep
+
+
+def require_any_feature(*features: str):
+    """Dépendance FastAPI : autorise si AU MOINS UNE des fonctionnalités est incluse.
+
+    Utile quand plusieurs fonctionnalités partagent le même endpoint (ex. la donnée
+    finances/performance/liasse provient d'un seul endpoint propriétaire)."""
+    async def _dep(
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        try:
+            role = Role(current_user.role)
+        except ValueError:
+            return current_user
+        if role not in _MANAGER_ROLES:
+            return current_user
+        feats = await get_plan_features(db, current_user.id)
+        if feats is None or any(f in feats for f in features):
+            return current_user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Fonctionnalité non incluse dans votre abonnement",
+        )
+    return _dep

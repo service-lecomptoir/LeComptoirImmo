@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_active_admin, get_current_gestionnaire
 from app.core.permissions import Role
+from app.core.features import require_feature
 from app.api.v1._isolation import gp_tenant_ids as _isolation_gp_tenant_ids
 from app.models.user import User
 from app.models.email_domain import EmailDomain
@@ -186,6 +187,7 @@ async def get_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_admin),
+    _feat: User = Depends(require_feature("admin")),
 ):
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         await _require_gp_scope(db, current_user, user_id)
@@ -198,6 +200,7 @@ async def update_user(
     data: UserUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_admin),
+    _feat: User = Depends(require_feature("admin")),
 ):
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         await _require_gp_scope(db, current_user, user_id)
@@ -210,6 +213,7 @@ async def update_role(
     data: UserRoleUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_admin),
+    _feat: User = Depends(require_feature("admin")),
 ):
     """Modifie le rôle d'un utilisateur (admin et gestionnaire mandataire uniquement)."""
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
@@ -232,6 +236,7 @@ async def delete_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_admin),
+    _feat: User = Depends(require_feature("admin")),
 ):
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         await _require_gp_scope(db, current_user, user_id)
@@ -244,6 +249,7 @@ async def admin_reset_password(
     data: AdminPasswordReset,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_admin),
+    _feat: User = Depends(require_feature("admin")),
 ):
     """Permet à un gestionnaire/admin de définir un nouveau mot de passe pour un
     utilisateur (ex. locataire), sans connaître l'ancien — comme le ferait le locataire

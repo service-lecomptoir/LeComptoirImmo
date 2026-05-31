@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.core.permissions import Role
 from app.api.deps import require_role, get_current_gestionnaire, get_current_user
+from app.core.features import require_feature
 from app.models.user import User
 from app.services import audit_service
 from app.models.payment import PaymentStatus
@@ -466,6 +467,7 @@ async def download_quittance(
     payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _feat: User = Depends(require_feature("quittances")),
 ):
     from datetime import datetime, timezone
     from app.models.tenant import Tenant as TenantModel
@@ -599,6 +601,7 @@ async def send_quittance(
     payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    _feat: User = Depends(require_feature("quittances")),
 ):
     """Marque la quittance comme envoyée au locataire."""
     from fastapi import HTTPException

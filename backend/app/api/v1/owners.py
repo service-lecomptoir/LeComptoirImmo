@@ -7,6 +7,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
+from app.core.features import require_feature, require_any_feature
 from app.api.v1._isolation import gp_owner_ids as _gp_owner_ids
 from app.models.user import User
 from app.models.owner import Owner
@@ -137,6 +138,7 @@ async def owner_finances(
     year: int = Query(..., ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_gestionnaire),
+    _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
 ):
     return await OwnerService.get_finances(db, owner_id, year)
 
@@ -147,6 +149,7 @@ async def owner_fiscal_pdf(
     year: int = Query(..., ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_gestionnaire),
+    _feat: User = Depends(require_feature("liasse_fiscale")),
 ):
     from fastapi.responses import Response
     from app.services.pdf_service import render_template, html_to_pdf

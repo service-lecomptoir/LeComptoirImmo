@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import get_current_user
+from app.core.features import require_any_feature
 from app.models.property import Property
 from app.models.lease import Lease
 from app.models.payment import Payment, PaymentStatus
@@ -18,6 +19,7 @@ async def get_proprietaire_performance(
     year: int,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _feat=Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
 ):
     """Performance des biens du propriétaire : loyer théorique vs perçu, par mois."""
     from app.core.permissions import Role as R
