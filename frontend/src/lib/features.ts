@@ -71,6 +71,28 @@ export const FEATURE_LABELS: Record<string, string> = {
   liasse_fiscale: 'Liasse fiscale',
 }
 
+/** Descriptions courtes des fonctionnalités (infobulles, page Tarification). */
+export const FEATURE_DESCRIPTIONS: Record<string, string> = {
+  dashboard: "Vue d'ensemble : indicateurs clés, revenus et alertes en un coup d'œil.",
+  properties: 'Gérez tous vos biens : caractéristiques, adresse, équipements et occupation.',
+  tenants: 'Fiches locataires : coordonnées, pièces justificatives et historique.',
+  leases: 'Contrats de location : baux, co-titulaires, dates et conditions.',
+  avis_echeances: "Génération automatique des avis d'échéance selon la fréquence du bail.",
+  payments: 'Suivi des paiements : encaissements, déclarations, relances et soldes.',
+  quittances: 'Quittances de loyer en PDF, à votre charte, prêtes à envoyer.',
+  actualisation: 'Révision annuelle des loyers (IRL) et régularisation des charges.',
+  automatisation: 'Automatisation des tâches récurrentes (avis, quittances, relances).',
+  templates: 'Vos modèles de documents personnalisés (logo, en-tête, mentions).',
+  incidents: 'Messagerie avec vos locataires et suivi des incidents déclarés.',
+  entretiens: 'Planification et suivi des entretiens et interventions sur vos biens.',
+  contacts: "Carnet d'adresses : artisans, prestataires et contacts utiles.",
+  offres: 'Offres & services partenaires proposés à vos locataires.',
+  admin: 'Gestion des comptes utilisateurs et des accès de votre espace.',
+  finances: 'Suivi des revenus locatifs par propriétaire et par période.',
+  performance_biens: 'Performance par bien : loyer théorique vs perçu, taux d’occupation.',
+  liasse_fiscale: 'Génération de la liasse fiscale (revenus fonciers) pour vos déclarations.',
+}
+
 /** Première route autorisée (cible de repli quand l'actuelle est bloquée). */
 export function firstAllowedPath(features: string[] | null): string {
   if (features === null) return '/dashboard'

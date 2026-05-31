@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom'
 import {
   ArrowRight, Check, Building2, Users, Calendar, CreditCard,
   FileCheck, TrendingUp, Zap, PenSquare, MessageSquare, Calculator, Infinity as InfinityIcon,
-  Menu, X,
+  Menu, X, Info,
 } from 'lucide-react'
 import SubscriptionModal from '@/pages/SubscriptionModal'
 import { publicPlansApi, type PublicPlan } from '@/api/publicPlans'
-import { FEATURE_LABELS } from '@/lib/features'
+import { FEATURE_LABELS, FEATURE_DESCRIPTIONS } from '@/lib/features'
 
 const NAVY = '#0D2F5C'
 const ORANGE = '#F07800'
@@ -279,6 +279,30 @@ function Features() {
   )
 }
 
+function FeatureItem({ featureKey }: { featureKey: string }) {
+  const desc = FEATURE_DESCRIPTIONS[featureKey]
+  return (
+    <li className="flex items-start gap-2 text-sm text-gray-600">
+      <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
+      <span className="inline-flex items-center gap-1.5">
+        {FEATURE_LABELS[featureKey]}
+        {desc && (
+          <span className="group relative inline-flex items-center">
+            <Info size={13} className="text-gray-300 hover:text-gray-500 cursor-help" aria-label={desc} />
+            <span
+              role="tooltip"
+              className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-52 rounded-lg bg-gray-900 text-white text-[11px] leading-snug px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-lg"
+            >
+              {desc}
+              <span className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-gray-900" />
+            </span>
+          </span>
+        )}
+      </span>
+    </li>
+  )
+}
+
 function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: () => void; highlight: boolean }) {
   const included = plan.features === null ? FEATURE_ORDER : FEATURE_ORDER.filter(k => plan.features!.includes(k))
   // « Toutes » dès que l'intégralité des modules est incluse (null OU les 18 cochés).
@@ -319,10 +343,7 @@ function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: () =>
         ) : (
           <ul className="space-y-2">
             {included.map(k => (
-              <li key={k} className="flex items-start gap-2 text-sm text-gray-600">
-                <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
-                {FEATURE_LABELS[k]}
-              </li>
+              <FeatureItem key={k} featureKey={k} />
             ))}
           </ul>
         )}
