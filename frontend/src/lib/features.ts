@@ -48,6 +48,29 @@ export function isFeatureAllowed(features: string[] | null, key: string | null):
   return features.includes(key)
 }
 
+/** Libellés lisibles des fonctionnalités (miroir de alice constants/features.ts).
+ *  Utilisés notamment sur la page Tarification publique. */
+export const FEATURE_LABELS: Record<string, string> = {
+  dashboard: 'Tableau de bord',
+  properties: 'Propriétés',
+  tenants: 'Locataires',
+  leases: 'Contrats',
+  avis_echeances: "Avis d'échéances",
+  payments: 'Paiements',
+  quittances: 'Quittances de loyer',
+  actualisation: 'Actualisation loyers et charges',
+  automatisation: 'Automatisation',
+  templates: 'Ma papeterie',
+  incidents: 'Messages et Incidents',
+  entretiens: 'Entretiens',
+  contacts: "Carnet d'adresses",
+  offres: 'Offres & Services',
+  admin: 'Administration',
+  finances: 'Mes finances',
+  performance_biens: 'Performance bien',
+  liasse_fiscale: 'Liasse fiscale',
+}
+
 /** Première route autorisée (cible de repli quand l'actuelle est bloquée). */
 export function firstAllowedPath(features: string[] | null): string {
   if (features === null) return '/dashboard'

@@ -6,6 +6,7 @@ import { useAuthStore, roleHomePath } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed, firstAllowedPath } from '@/lib/features'
 import Login from '@/pages/Login'
+import Landing from '@/pages/Landing'
 import Dashboard from '@/pages/Dashboard'
 import TenantList from '@/pages/tenants/TenantList'
 import TenantDetail from '@/pages/tenants/TenantDetail'
@@ -51,6 +52,14 @@ function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
   if (!isAuthenticated || !user) return <Navigate to="/login" replace />
   return <Navigate to={roleHomePath(user.role)} replace />
+}
+
+// Accueil public : landing marketing pour les visiteurs, redirection vers l'espace
+// pour les utilisateurs déjà connectés.
+function PublicHome() {
+  const { user, isAuthenticated } = useAuthStore()
+  if (isAuthenticated && user) return <Navigate to={roleHomePath(user.role)} replace />
+  return <Landing />
 }
 
 function AppLayout() {
@@ -106,11 +115,10 @@ function AppLayout() {
 
 export const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
+  { path: '/', element: <PublicHome /> },
   {
-    path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: <RoleBasedRedirect /> },
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'tenants', element: <TenantList /> },
       { path: 'tenants/:id', element: <TenantDetail /> },
