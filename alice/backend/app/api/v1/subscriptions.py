@@ -13,6 +13,7 @@ from app.models.leci import LeciUser
 from app.models.license import AliceLicense
 from app.schemas.subscription_request import SubscriptionRequestOut, SubscriptionRequestUpdate
 from app.core.deps import get_current_alice_admin
+from app.services.block_service import unblock_gestionnaire
 
 router = APIRouter(prefix="/subscription-requests", tags=["Demandes de souscription"])
 
@@ -124,6 +125,51 @@ async def deactivate_account_from_request(
         "found_account": user is not None,
         "scheduled_until": scheduled_until.isoformat() if scheduled_until else None,
         "blocked_now": blocked_now,
+    }
+
+
+@router.post("/{request_id}/reactivate-account")
+async def reactivate_account_from_request(
+    request_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: AliceAdmin = Depends(get_current_alice_admin),
+):
+    """Annule la désactivation programmée d'un compte (suite à une demande de
+    résiliation) : efface access_until et débloque le compte s'il était déjà
+    bloqué. Sans licence/compte trouvé, ou si rien n'était programmé, renvoie
+    simplement l'état (reactivated=False)."""
+    req = (await db.execute(
+        select(AliceSubscriptionRequest).where(AliceSubscriptionRequest.id == request_id)
+    )).scalar_one_or_none()
+    if not req:
+        raise HTTPException(status_code=404, detail="Demande introuvable")
+
+    user = (await db.execute(
+        select(LeciUser).where(func.lower(LeciUser.email) == (req.email or "").lower())
+    )).scalar_one_or_none()
+
+    was_scheduled = False
+    was_blocked = False
+    reactivated = False
+    if user is not None:
+        lic = (await db.execute(
+            select(AliceLicense).where(AliceLicense.gestionnaire_user_id == user.id)
+        )).scalar_one_or_none()
+        if lic is not None:
+            was_scheduled = lic.access_until is not None
+            was_blocked = lic.is_blocked
+            if was_scheduled:
+                lic.access_until = None
+            if was_blocked:
+                await unblock_gestionnaire(db, lic, user.id)
+            reactivated = was_scheduled or was_blocked
+
+    await db.flush()
+    return {
+        "found_account": user is not None,
+        "reactivated": reactivated,
+        "was_scheduled": was_scheduled,
+        "was_blocked": was_blocked,
     }
 
 

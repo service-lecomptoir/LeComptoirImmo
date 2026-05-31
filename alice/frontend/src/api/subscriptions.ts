@@ -40,6 +40,12 @@ export const subscriptionsApi = {
       `/subscription-requests/${id}/deactivate-account`,
     ),
 
+  /** Annule la désactivation programmée d'un compte (suite à une résiliation). */
+  reactivateAccount: (id: string) =>
+    apiClient.post<{ found_account: boolean; reactivated: boolean; was_scheduled: boolean; was_blocked: boolean }>(
+      `/subscription-requests/${id}/reactivate-account`,
+    ),
+
   /** Supprime définitivement une demande. */
   remove: (id: string) =>
     apiClient.delete(`/subscription-requests/${id}`),

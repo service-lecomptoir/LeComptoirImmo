@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Inbox, Mail, Phone, Building2, Check, Clock, X, Trash2 } from 'lucide-react'
+import { Inbox, Mail, Phone, Building2, Check, Clock, X, Trash2, RotateCcw } from 'lucide-react'
 import { subscriptionsApi, type SubscriptionRequest } from '@/api/subscriptions'
 
 const STATUS = {
@@ -62,6 +62,25 @@ export default function SubscriptionList() {
       load(filter)
     } catch {
       window.alert('Échec de la désactivation.')
+    }
+  }
+
+  const handleReactivate = async (r: SubscriptionRequest) => {
+    if (!window.confirm(
+      `Réactiver le compte de ${r.full_name} ?\n\nLa désactivation programmée est annulée et le compte est débloqué s'il l'était déjà.`
+    )) return
+    try {
+      const { data } = await subscriptionsApi.reactivateAccount(r.id)
+      if (!data.found_account) {
+        window.alert('Aucun compte gestionnaire trouvé pour cet email.')
+      } else if (data.reactivated) {
+        window.alert('Compte réactivé : la désactivation a été annulée.')
+      } else {
+        window.alert('Aucune désactivation en cours pour ce compte.')
+      }
+      load(filter)
+    } catch {
+      window.alert('Échec de la réactivation.')
     }
   }
 
@@ -155,6 +174,12 @@ export default function SubscriptionList() {
                         <button onClick={() => handleDeactivate(r)}
                           className="px-2 py-1 text-xs font-medium rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap">
                           Désactiver le compte
+                        </button>
+                      )}
+                      {r.status === 'traite' && r.source === 'resiliation' && (
+                        <button onClick={() => handleReactivate(r)}
+                          className="px-2 py-1 text-xs font-medium rounded border border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition-colors whitespace-nowrap inline-flex items-center gap-1">
+                          <RotateCcw size={12} /> Réactiver
                         </button>
                       )}
                       {r.status !== 'traite' && r.source !== 'resiliation' && (
