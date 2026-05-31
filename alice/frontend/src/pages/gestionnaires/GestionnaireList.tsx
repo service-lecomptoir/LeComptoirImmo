@@ -6,6 +6,7 @@ import { fr } from 'date-fns/locale'
 import clsx from 'clsx'
 import { gestionnairesApi, type GestionnaireCreateData } from '@/api/gestionnaires'
 import { plansApi } from '@/api/plans'
+import PhoneInput from '@/components/PhoneInput'
 import type { Gestionnaire, Plan } from '@/types'
 
 function StatusBadge({ isActive, isBlocked }: { isActive: boolean; isBlocked: boolean }) {
@@ -40,7 +41,7 @@ interface CreateModalProps {
   initial?: { full_name?: string; email?: string }
 }
 
-const ROLE_OPTIONS: { value: 'gestionnaire' | 'gestionnaire_proprio'; label: string; description: string }[] = [
+export const ROLE_OPTIONS: { value: 'gestionnaire' | 'gestionnaire_proprio'; label: string; description: string }[] = [
   { value: 'gestionnaire', label: 'Gestionnaire mandataire', description: 'Gère des biens pour le compte de propriétaires tiers' },
   { value: 'gestionnaire_proprio', label: 'Gestionnaire-Propriétaire', description: 'Gère et possède ses propres biens (même personne)' },
 ]
@@ -153,12 +154,9 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1">Téléphone</label>
-              <input
-                type="tel"
-                value={form.phone || ''}
-                onChange={e => setForm(f => ({ ...f, phone: e.target.value || null }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="06 12 34 56 78"
+              <PhoneInput
+                value={form.phone}
+                onChange={v => setForm(f => ({ ...f, phone: v }))}
               />
             </div>
             <div className="col-span-2">

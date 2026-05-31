@@ -17,6 +17,7 @@ export interface GestionnaireCreateData {
 export interface GestionnaireUpdateData {
   email?: string
   full_name?: string
+  role?: 'gestionnaire' | 'gestionnaire_proprio'
   plan_id?: string | null
   property_limit_override?: number | null
   monthly_price_override?: number | null

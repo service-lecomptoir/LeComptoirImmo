@@ -3,8 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ShieldOff, ShieldCheck, Building2, Save, X, AlertTriangle, CalendarClock, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import clsx from 'clsx'
 import { gestionnairesApi } from '@/api/gestionnaires'
 import { plansApi } from '@/api/plans'
+import PhoneInput from '@/components/PhoneInput'
+import { ROLE_OPTIONS } from './GestionnaireList'
 import type { Gestionnaire, Plan, GestionnaireProperty } from '@/types'
 
 interface ConfirmModalProps {
@@ -71,6 +74,8 @@ export default function GestionnaireDetail() {
   // Form state
   const [editFullName, setEditFullName] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  const [editRole, setEditRole] = useState<'gestionnaire' | 'gestionnaire_proprio'>('gestionnaire')
+  const [editPhone, setEditPhone] = useState<string | null>(null)
   const [editPlanId, setEditPlanId] = useState<string>('')
   const [editLimitOverride, setEditLimitOverride] = useState<string>('')
   const [editPriceOverride, setEditPriceOverride] = useState<string>('')
@@ -90,6 +95,8 @@ export default function GestionnaireDetail() {
       // Init form
       setEditFullName(g.full_name)
       setEditEmail(g.email)
+      setEditRole(g.role === 'gestionnaire_proprio' ? 'gestionnaire_proprio' : 'gestionnaire')
+      setEditPhone(g.license?.phone ?? null)
       setEditPlanId(g.license?.plan_id || '')
       setEditLimitOverride(g.license?.property_limit_override?.toString() || '')
       setEditPriceOverride(g.license?.monthly_price_override?.toString() || '')
@@ -106,6 +113,8 @@ export default function GestionnaireDetail() {
       const { data } = await gestionnairesApi.update(id, {
         full_name: editFullName,
         email: editEmail,
+        role: editRole,
+        phone: editPhone,
         plan_id: editPlanId || null,
         property_limit_override: editLimitOverride ? parseInt(editLimitOverride) : null,
         monthly_price_override: editPriceOverride ? parseFloat(editPriceOverride) : null,
@@ -257,6 +266,27 @@ export default function GestionnaireDetail() {
             <h2 className="text-base font-semibold text-gray-800 mb-5">Informations du compte</h2>
             <div className="space-y-4">
               <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Type de compte</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ROLE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setEditRole(opt.value)}
+                      className={clsx(
+                        'text-left px-3 py-2.5 rounded-lg border text-xs transition-colors',
+                        editRole === opt.value
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      )}
+                    >
+                      <div className="font-semibold">{opt.label}</div>
+                      <div className={clsx('mt-0.5', editRole === opt.value ? 'text-indigo-500' : 'text-gray-400')}>{opt.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nom complet</label>
                 <input
                   type="text"
@@ -273,6 +303,10 @@ export default function GestionnaireDetail() {
                   onChange={e => setEditEmail(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Téléphone</label>
+                <PhoneInput value={editPhone} onChange={setEditPhone} />
               </div>
             </div>
           </div>

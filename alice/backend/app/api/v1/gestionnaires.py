@@ -240,6 +240,8 @@ async def update_gestionnaire(
         user.email = data.email
     if data.full_name is not None:
         user.full_name = data.full_name
+    if data.role is not None:
+        user.role = data.role
     if data.phone is not None:
         user.phone = data.phone
     if data.address is not None:

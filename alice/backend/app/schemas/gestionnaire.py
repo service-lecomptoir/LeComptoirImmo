@@ -23,6 +23,7 @@ class GestionnaireCreate(BaseModel):
 class GestionnaireUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=150)
+    role: Optional[str] = Field(None, pattern="^(gestionnaire|gestionnaire_proprio)$")
     plan_id: Optional[uuid.UUID] = None
     property_limit_override: Optional[int] = Field(None, ge=1)
     monthly_price_override: Optional[float] = Field(None, ge=0)
