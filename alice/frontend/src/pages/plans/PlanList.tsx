@@ -176,6 +176,28 @@ function PlanModal({ plan, onClose, onSaved }: PlanModalProps) {
   )
 }
 
+function FeaturesBadge({ features }: { features: string[] | null }) {
+  const total = ALL_FEATURE_KEYS.length
+  // null OU liste complète = toutes les fonctionnalités.
+  if (features === null || features.length >= total) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700">
+        Toutes
+      </span>
+    )
+  }
+  const labels = PLAN_FEATURES.filter(f => features.includes(f.key)).map(f => f.label)
+  const title = labels.length ? `Incluses : ${labels.join(', ')}` : 'Aucune fonctionnalité'
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 cursor-help"
+    >
+      {features.length} / {total}
+    </span>
+  )
+}
+
 export default function PlanList() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [loading, setLoading] = useState(true)
@@ -248,13 +270,14 @@ export default function PlanList() {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Limite biens</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Prix/mois</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Gestionnaires</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fonctionnalités</th>
                 <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {plans.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-400">
                     Aucun plan tarifaire
                   </td>
                 </tr>
@@ -288,6 +311,9 @@ export default function PlanList() {
                       <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700">
                         {plan.gestionnaire_count} abonné{plan.gestionnaire_count > 1 ? 's' : ''}
                       </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <FeaturesBadge features={plan.features} />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
