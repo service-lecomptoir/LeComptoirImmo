@@ -280,8 +280,9 @@ function Features() {
 }
 
 function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: () => void; highlight: boolean }) {
-  const allFeatures = plan.features === null
-  const included = allFeatures ? FEATURE_ORDER : FEATURE_ORDER.filter(k => plan.features!.includes(k))
+  const included = plan.features === null ? FEATURE_ORDER : FEATURE_ORDER.filter(k => plan.features!.includes(k))
+  // « Toutes » dès que l'intégralité des modules est incluse (null OU les 18 cochés).
+  const allFeatures = included.length === FEATURE_ORDER.length
   return (
     <div
       className={`relative bg-white rounded-2xl border p-6 flex flex-col ${highlight ? 'shadow-xl' : 'border-gray-100 shadow-sm'}`}
@@ -310,14 +311,21 @@ function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: () =>
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
           {allFeatures ? 'Toutes les fonctionnalités' : 'Fonctionnalités incluses'}
         </p>
-        <ul className="space-y-2">
-          {included.map(k => (
-            <li key={k} className="flex items-start gap-2 text-sm text-gray-600">
-              <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
-              {FEATURE_LABELS[k]}
-            </li>
-          ))}
-        </ul>
+        {allFeatures ? (
+          <p className="flex items-start gap-2 text-sm text-gray-600">
+            <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
+            Accès à l'ensemble des modules de la plateforme.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {included.map(k => (
+              <li key={k} className="flex items-start gap-2 text-sm text-gray-600">
+                <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
+                {FEATURE_LABELS[k]}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <button

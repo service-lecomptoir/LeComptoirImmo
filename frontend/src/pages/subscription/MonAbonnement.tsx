@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
-import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt } from 'lucide-react'
+import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt, ListChecks, Check } from 'lucide-react'
 import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice } from '@/api/subscription'
+import { FEATURE_LABELS } from '@/lib/features'
 import { toast } from '@/store/toast'
+
+const FEATURE_ORDER = Object.keys(FEATURE_LABELS)
 
 function ProgressBar({ value, max }: { value: number; max: number | null }) {
   if (max === null) {
@@ -202,6 +205,35 @@ export default function MonAbonnement() {
           </div>
         )}
       </div>
+
+      {/* Fonctionnalités incluses */}
+      {info?.plan_name && !noLicense && (() => {
+        const isAll = info.features == null || info.features.length >= FEATURE_ORDER.length
+        const included = info.features == null ? FEATURE_ORDER : FEATURE_ORDER.filter(k => info.features!.includes(k))
+        return (
+          <div className="bg-white rounded-xl border p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <ListChecks className="text-gray-500" size={18} />
+              <h2 className="font-semibold text-gray-800">Fonctionnalités incluses</h2>
+            </div>
+            {isAll ? (
+              <p className="text-sm text-gray-600 flex items-center gap-2">
+                <Check size={16} className="text-green-600 shrink-0" /> Toutes les fonctionnalités sont incluses dans votre plan.
+              </p>
+            ) : included.length === 0 ? (
+              <p className="text-sm text-gray-400">Aucune fonctionnalité activée pour ce plan.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                {included.map(k => (
+                  <span key={k} className="flex items-center gap-2 text-sm text-gray-700">
+                    <Check size={15} className="text-green-600 shrink-0" /> {FEATURE_LABELS[k]}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Mes factures */}
       {invoices.length > 0 && (
