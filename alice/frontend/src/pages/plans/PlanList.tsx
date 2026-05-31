@@ -243,7 +243,7 @@ export default function PlanList() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700">
-                        {plan.gestionnaire_count} abonne{plan.gestionnaire_count > 1 ? 's' : ''}
+                        {plan.gestionnaire_count} abonné{plan.gestionnaire_count > 1 ? 's' : ''}
                       </span>
                     </td>
                     <td className="px-6 py-4">
