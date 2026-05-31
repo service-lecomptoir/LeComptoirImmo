@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   ArrowRight, Check, Building2, Users, Calendar, CreditCard,
   FileCheck, TrendingUp, Zap, PenSquare, MessageSquare, Calculator, Infinity as InfinityIcon,
+  Menu, X,
 } from 'lucide-react'
 import SubscriptionModal from '@/pages/SubscriptionModal'
 import { publicPlansApi, type PublicPlan } from '@/api/publicPlans'
@@ -38,10 +39,11 @@ const FEATURES = [
 ]
 
 function Header({ onDemo }: { onDemo: () => void }) {
+  const [open, setOpen] = useState(false)
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <a href="#top" className="flex items-center gap-2.5 shrink-0">
+        <a href="#top" onClick={() => setOpen(false)} className="flex items-center gap-2.5 shrink-0">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: ORANGE }}>
             <span className="text-white font-bold text-xs">LC</span>
           </div>
@@ -56,10 +58,10 @@ function Header({ onDemo }: { onDemo: () => void }) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="hidden md:flex items-center gap-3">
           <button
             onClick={onDemo}
-            className="hidden sm:inline-flex text-sm font-medium px-3.5 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            className="text-sm font-medium px-3.5 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
           >
             Demander une démo
           </button>
@@ -71,39 +73,155 @@ function Header({ onDemo }: { onDemo: () => void }) {
             Vers le site <ArrowRight size={15} />
           </Link>
         </div>
+
+        {/* Bouton hamburger (mobile) */}
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="md:hidden p-2 -mr-2 rounded-lg text-gray-700 hover:bg-gray-100"
+          aria-label="Menu"
+          aria-expanded={open}
+        >
+          {open ? <X size={22} /> : <Menu size={22} />}
+        </button>
       </div>
+
+      {/* Panneau de navigation mobile */}
+      {open && (
+        <div className="md:hidden border-t border-gray-100 bg-white">
+          <nav className="px-4 py-3 flex flex-col gap-1">
+            {NAV.map(n => (
+              <a
+                key={n.href}
+                href={n.href}
+                onClick={() => setOpen(false)}
+                className="px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+              >
+                {n.label}
+              </a>
+            ))}
+            <button
+              onClick={() => { setOpen(false); onDemo() }}
+              className="text-left px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Demander une démo
+            </button>
+            <Link
+              to="/login"
+              onClick={() => setOpen(false)}
+              className="mt-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-white"
+              style={{ background: NAVY }}
+            >
+              Vers le site <ArrowRight size={15} />
+            </Link>
+          </nav>
+        </div>
+      )}
     </header>
+  )
+}
+
+function HeroPreview() {
+  const kpis = [
+    { label: 'Loyers perçus', value: '24 800 €' },
+    { label: "Taux d'occupation", value: '96 %' },
+    { label: 'Quittances émises', value: '38' },
+  ]
+  const bars = [40, 65, 50, 80, 60, 90, 75]
+  return (
+    <div className="relative">
+      <div className="rounded-2xl bg-white shadow-2xl overflow-hidden ring-1 ring-black/5">
+        <div className="flex items-center gap-1.5 px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-green-300" />
+          <span className="ml-3 text-[11px] text-gray-400">Tableau de bord — Le Comptoir Immo</span>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-3 gap-3">
+            {kpis.map(k => (
+              <div key={k.label} className="rounded-xl border border-gray-100 p-3">
+                <p className="text-[10px] text-gray-400 leading-tight">{k.label}</p>
+                <p className="text-sm font-bold mt-0.5" style={{ color: NAVY }}>{k.value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-xl border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-semibold text-gray-500">Revenus mensuels</p>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: `${ORANGE}1A`, color: ORANGE }}>+12 %</span>
+            </div>
+            <div className="flex items-end gap-2 h-24">
+              {bars.map((h, i) => (
+                <div key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%`, background: i === bars.length - 1 ? ORANGE : '#C7D2E4' }} />
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {['Quittance — Appartement Rivoli', "Avis d'échéance — Studio Bastille"].map((t, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
+                <span className="text-[11px] text-gray-600 truncate">{t}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 shrink-0">Payé</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-xl px-3 py-2 ring-1 ring-black/5 flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${ORANGE}1A`, color: ORANGE }}>
+          <Zap size={14} />
+        </div>
+        <div>
+          <p className="text-[10px] text-gray-400 leading-none">Automatisé</p>
+          <p className="text-[11px] font-semibold text-gray-700 leading-tight">Quittances envoyées</p>
+        </div>
+      </div>
+    </div>
   )
 }
 
 function Hero({ onDemo }: { onDemo: () => void }) {
   return (
     <section id="top" className="relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${NAVY} 0%, #1A4A8A 100%)` }}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20 sm:py-28 text-center">
-        <span className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white/90 bg-white/10 mb-6">
-          La gestion locative, simplifiée
-        </span>
-        <h1 className="text-3xl sm:text-5xl font-bold text-white leading-tight max-w-3xl mx-auto">
-          Gérez vos biens, locataires et loyers depuis un seul espace
-        </h1>
-        <p className="mt-5 text-base sm:text-lg text-blue-100 max-w-2xl mx-auto">
-          Le Comptoir Immo automatise vos avis d'échéances, quittances, relances et révisions de loyer —
-          pour les gestionnaires et les propriétaires.
-        </p>
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            onClick={onDemo}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white shadow-lg hover:opacity-90 transition-opacity"
-            style={{ background: ORANGE }}
-          >
-            Demander une démo
-          </button>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-white/10 hover:bg-white/20 transition-colors"
-          >
-            Vers le site <ArrowRight size={16} />
-          </Link>
+      {/* halos décoratifs */}
+      <div className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-20 blur-3xl" style={{ background: ORANGE }} />
+      <div className="pointer-events-none absolute -bottom-32 -left-24 w-96 h-96 rounded-full opacity-10 blur-3xl bg-white" />
+
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 grid lg:grid-cols-2 gap-12 items-center">
+        <div className="text-center lg:text-left">
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium text-white/90 bg-white/10 mb-6">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: ORANGE }} /> Logiciel de gestion locative
+          </span>
+          <h1 className="text-3xl sm:text-5xl font-bold text-white leading-[1.1]">
+            Toute votre gestion locative<br className="hidden sm:block" /> dans un seul outil
+          </h1>
+          <p className="mt-5 text-base sm:text-lg text-blue-100 max-w-xl mx-auto lg:mx-0">
+            Avis d'échéances, quittances, relances, révision des loyers (IRL) et liasse fiscale —
+            automatisés. Pour les gestionnaires comme pour les propriétaires.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-3">
+            <button
+              onClick={onDemo}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white shadow-lg hover:opacity-90 transition-opacity"
+              style={{ background: ORANGE }}
+            >
+              Demander une démo
+            </button>
+            <Link
+              to="/login"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              Vers le site <ArrowRight size={16} />
+            </Link>
+          </div>
+          <div className="mt-7 flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 text-xs text-blue-100/90">
+            {['Sans installation', 'Sans engagement', 'Mise en place rapide'].map(t => (
+              <span key={t} className="inline-flex items-center gap-1.5"><Check size={14} style={{ color: ORANGE }} /> {t}</span>
+            ))}
+          </div>
+        </div>
+
+        <div className="hidden lg:block">
+          <HeroPreview />
         </div>
       </div>
     </section>
