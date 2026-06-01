@@ -6,7 +6,6 @@ import {
 } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import { inspectionsApi } from '@/api/inspections'
-import { lettersApi } from '@/api/payments'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LeaseForm } from './LeaseForm'
@@ -148,7 +147,6 @@ export default function LeaseDetail() {
   const [isTerminating, setIsTerminating] = useState(false)
   const [showInspectionForm, setShowInspectionForm] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
-  const [cafLoading, setCafLoading] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
 
   const fetchLease = async () => {
@@ -192,19 +190,6 @@ export default function LeaseDetail() {
       setDownloadError('Erreur lors de la génération du bail non meublé')
     } finally {
       setPdfLoading(false)
-    }
-  }
-
-  const handleDownloadCaf = async () => {
-    if (!id || !lease || cafLoading) return
-    setCafLoading(true)
-    setDownloadError(null)
-    try {
-      await lettersApi.downloadAttestationCaf(id, docFilename('attestation_caf', { tenant: lease.tenant?.full_name, property: lease.parent_property?.name, year: new Date().getFullYear() }))
-    } catch {
-      setDownloadError("Erreur lors de la génération de l'attestation de loyer")
-    } finally {
-      setCafLoading(false)
     }
   }
 
@@ -255,13 +240,6 @@ export default function LeaseDetail() {
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <FileDown size={15} /> {pdfLoading ? 'Génération…' : 'Bail non meublé'}
-          </button>
-          <button
-            onClick={handleDownloadCaf}
-            disabled={cafLoading}
-            className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            <FileDown size={15} /> {cafLoading ? 'Génération…' : 'Attestation de loyer'}
           </button>
           {lease.is_active && (
             <button
