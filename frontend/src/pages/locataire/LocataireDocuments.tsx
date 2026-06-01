@@ -125,7 +125,7 @@ const TYPE_LABELS: Record<string, string> = {
   justificatif_domicile: 'Justificatif de domicile',
   justificatif_revenus: 'Justificatif de revenus',
   avis_imposition: "Avis d'imposition",
-  attestation_caf: 'Attestation CAF',
+  attestation_caf: 'Attestation de loyer',
   attestation_tiers: 'Attestation tiers',
   photo: 'Photo',
   autre: 'Autre',

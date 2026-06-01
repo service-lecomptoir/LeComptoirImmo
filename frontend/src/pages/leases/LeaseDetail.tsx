@@ -202,7 +202,7 @@ export default function LeaseDetail() {
     try {
       await lettersApi.downloadAttestationCaf(id, docFilename('attestation_caf', { tenant: lease.tenant?.full_name, property: lease.parent_property?.name, year: new Date().getFullYear() }))
     } catch {
-      setDownloadError("Erreur lors de la génération de l'attestation CAF")
+      setDownloadError("Erreur lors de la génération de l'attestation de loyer")
     } finally {
       setCafLoading(false)
     }
@@ -261,7 +261,7 @@ export default function LeaseDetail() {
             disabled={cafLoading}
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <FileDown size={15} /> {cafLoading ? 'Génération…' : 'Attestation CAF'}
+            <FileDown size={15} /> {cafLoading ? 'Génération…' : 'Attestation de loyer'}
           </button>
           {lease.is_active && (
             <button
