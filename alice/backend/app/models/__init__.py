@@ -3,4 +3,5 @@ from app.models.plan import AlicePlan  # noqa
 from app.models.license import AliceLicense  # noqa
 from app.models.subscription_request import AliceSubscriptionRequest  # noqa
 from app.models.invoice import AliceInvoice  # noqa
+from app.models.feature_registry import AliceFeatureRegistry  # noqa
 from app.models.leci import LeciUser, LeciProperty, LeciLease, LeciUnit, LeciTenant  # noqa

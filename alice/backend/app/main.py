@@ -54,12 +54,57 @@ async def lifespan(app: FastAPI):
     # Seed plans par défaut
     await _seed_default_plans()
 
+    # Propage les nouvelles fonctionnalités du catalogue aux plans existants
+    await _propagate_new_features()
+
     logger.info("Alice pret")
     yield
 
     _executor.shutdown(wait=False)
     await engine.dispose()
     logger.info("Arret de Alice")
+
+
+async def _propagate_new_features() -> None:
+    """Ajoute toute NOUVELLE clé du catalogue (cochée) aux plans existants.
+
+    Le registre `alice_feature_registry` mémorise les clés déjà connues. Les clés
+    nouvellement introduites dans `FEATURE_KEYS` sont ajoutées aux listes de
+    fonctionnalités des plans (sauf plans `features = null` = déjà toutes), sans
+    réactiver les fonctionnalités que l'admin a décochées. 1er démarrage : le
+    registre est amorcé sur BASELINE_KEYS (→ `documents_caf` est propagée)."""
+    try:
+        from sqlalchemy import select
+        from app.core.feature_catalog import FEATURE_KEYS, BASELINE_KEYS
+        from app.models.feature_registry import AliceFeatureRegistry
+        from app.models.plan import AlicePlan
+
+        async with AsyncSessionLocal() as db:
+            reg = (await db.execute(
+                select(AliceFeatureRegistry).where(AliceFeatureRegistry.id == 1)
+            )).scalar_one_or_none()
+            known = set(reg.known_keys or []) if reg else set(BASELINE_KEYS)
+            new_keys = [k for k in FEATURE_KEYS if k not in known]
+
+            if new_keys:
+                plans = (await db.execute(select(AlicePlan))).scalars().all()
+                for p in plans:
+                    if p.features is None:
+                        continue  # null = toutes les fonctionnalités → rien à faire
+                    current = set(p.features)
+                    current.update(k for k in new_keys)
+                    # Réordonne selon le catalogue, ne garde que des clés connues
+                    p.features = [k for k in FEATURE_KEYS if k in current]
+
+            if reg is None:
+                db.add(AliceFeatureRegistry(id=1, known_keys=list(FEATURE_KEYS)))
+            else:
+                reg.known_keys = list(FEATURE_KEYS)
+            await db.commit()
+        if new_keys:
+            logger.info("Nouvelles fonctionnalités propagées aux plans : %s", new_keys)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Propagation des nouvelles fonctionnalités ignorée : %s", exc)
 
 
 async def _seed_superadmin() -> None:

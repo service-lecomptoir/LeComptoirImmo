@@ -24,8 +24,9 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: 'entretiens', label: 'Entretiens' },
   { key: 'contacts', label: "Carnet d'adresses" },
   { key: 'offres', label: 'Offres & Services' },
-  { key: 'admin', label: 'Administration' },
-  { key: 'finances', label: 'Mes finances' },
+  { key: 'documents_caf', label: 'Documents CAF' },
+  { key: 'admin', label: 'Gestion des utilisateurs' },
+  { key: 'finances', label: 'Mes revenus' },
   { key: 'performance_biens', label: 'Performance bien' },
   { key: 'liasse_fiscale', label: 'Liasse fiscale' },
 ]

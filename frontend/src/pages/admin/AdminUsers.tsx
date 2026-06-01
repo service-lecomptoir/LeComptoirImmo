@@ -264,8 +264,8 @@ export default function AdminUsers() {
         <div className="flex items-center gap-3">
           <ShieldCheck size={24} className="text-gray-700" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
-            <p className="text-sm text-gray-500">Gestion des utilisateurs</p>
+            <h1 className="text-2xl font-bold text-gray-900">Gestion des utilisateurs</h1>
+            <p className="text-sm text-gray-500">Comptes de connexion (propriétaires, locataires)</p>
           </div>
         </div>
         <button

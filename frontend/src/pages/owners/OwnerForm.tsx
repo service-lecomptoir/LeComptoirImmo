@@ -160,7 +160,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
           <Building2 size={14} />
           Fiche propriétaire (bailleur). Le compte de connexion en ligne est facultatif et se crée
-          depuis <span className="font-semibold">Administration</span>.
+          depuis <span className="font-semibold">Gestion des utilisateurs</span>.
         </div>
 
         {/* Identité */}

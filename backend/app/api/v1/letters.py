@@ -15,6 +15,7 @@ from app.api.deps import require_role
 from app.models.user import User
 from app.models.owner import Owner
 from app.models.lease import LeaseType
+from app.core.features import require_feature
 from app.services.lease_service import LeaseService
 from app.services.payment_service import PaymentService
 from app.services.pdf_service import render_template, html_to_pdf
@@ -115,6 +116,7 @@ async def attestation_caf(
     lease_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    _feat: User = Depends(require_feature("documents_caf")),
 ):
     """Génère une attestation de loyer pour la CAF."""
     lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
@@ -191,6 +193,7 @@ async def versement_direct_caf(
     lease_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    _feat: User = Depends(require_feature("documents_caf")),
 ):
     """Génère la demande de versement direct de l'aide au logement (CERFA 11362*04)."""
     lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)

@@ -42,7 +42,7 @@ const GUIDE_MANDATAIRE: Guide = {
     { title: '3. Créez les fiches Locataires', desc: "Onglet Locataires → « Nouveau ». Vous pourrez aussi en créer un à la volée depuis le formulaire de contrat." },
     { title: '4. Rédigez le Contrat de bail', desc: "Onglet Contrats → « Nouveau ». Reliez un bien et un locataire principal, ajoutez d'éventuels co-titulaires, puis renseignez loyer, charges, dépôt, jour et fréquence de paiement, règle d'appel de loyer, aide au logement et garant." },
     { title: '5. Pilotez les loyers', desc: "Les avis d'échéances et les paiements se génèrent automatiquement selon la fréquence choisie. Enregistrez les règlements reçus, puis générez/envoyez les quittances." },
-    { title: '6. Donnez les accès', desc: "Dans Administration, créez les comptes de connexion pour vos propriétaires et locataires en les rattachant à leur fiche, afin qu'ils accèdent à leur propre espace." },
+    { title: '6. Donnez les accès', desc: "Dans Gestion des utilisateurs, créez les comptes de connexion pour vos propriétaires et locataires en les rattachant à leur fiche, afin qu'ils accèdent à leur propre espace." },
   ],
   features: [
     { icon: Building2, title: 'Propriétés', desc: "Le parc géré, avec caractéristiques, statut d'occupation et propriétaire rattaché." },
@@ -55,7 +55,7 @@ const GUIDE_MANDATAIRE: Guide = {
     { icon: MessageSquare, title: 'Incidents & messages', desc: 'La communication avec les locataires et le suivi des signalements.' },
     { icon: Wrench, title: 'Entretiens', desc: 'La planification et le suivi des interventions et prestataires.' },
     { icon: Zap, title: 'Automatisation', desc: 'Les règles automatiques (rappels, relances) pour gagner du temps.' },
-    { icon: Settings, title: 'Administration', desc: 'La création et la gestion des comptes de connexion (propriétaires, locataires).' },
+    { icon: Settings, title: 'Gestion des utilisateurs', desc: 'La création et la gestion des comptes de connexion (propriétaires, locataires).' },
   ],
   tips: [
     "Respectez l'ordre Propriétaire → Bien → Locataire → Contrat : chaque étape s'appuie sur la précédente.",
@@ -104,7 +104,7 @@ const GUIDE_GP: Guide = {
     { icon: Calculator, title: 'Mes finances', desc: 'Revenus, performance des biens et liasse fiscale.' },
     { icon: MessageSquare, title: 'Incidents', desc: 'Le suivi des signalements de vos locataires.' },
     { icon: Wrench, title: 'Entretiens', desc: 'La gestion des interventions et prestataires.' },
-    { icon: Settings, title: 'Administration', desc: 'Les comptes de connexion de vos locataires.' },
+    { icon: Settings, title: 'Gestion des utilisateurs', desc: 'Les comptes de connexion de vos locataires.' },
   ],
   tips: [
     "Suivez l'ordre Bien → Locataire → Contrat : tout en découle.",
