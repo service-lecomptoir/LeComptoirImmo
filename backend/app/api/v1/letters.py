@@ -1,6 +1,7 @@
 """
 API de génération de lettres et documents PDF.
 """
+import re
 import uuid
 from datetime import date
 from fastapi import APIRouter, Depends
@@ -39,6 +40,18 @@ MONTHS_FR = [
 def _today_str() -> str:
     d = date.today()
     return f"{d.day} {MONTHS_FR[d.month]} {d.year}"
+
+
+def _split_address(raw):
+    """Coupe une adresse libre en (rue, 'CP Ville') devant le 1er code postal à
+    5 chiffres. Normalise les espaces/sauts de ligne. Retourne ('', '') si vide."""
+    if not raw:
+        return "", ""
+    s = " ".join(str(raw).split())
+    m = re.search(r"\b\d{5}\b", s)
+    if m and m.start() > 0:
+        return s[:m.start()].rstrip(" ,"), s[m.start():].strip()
+    return s, ""
 
 
 @router.get("/relance/{payment_id}")
@@ -111,16 +124,24 @@ async def attestation_caf(
     is_furnished = str(lease.lease_type) == "meuble"
     sd = lease.start_date
 
+    # Adresse bailleur (texte libre) → coupée en « rue » / « CP Ville » devant le code postal
+    bailleur_addr1, bailleur_addr2 = _split_address(owner.address if owner else None)
+    # Adresse logement → rue (champ structuré) puis « CP Ville »
+    logement_street = (prop.address if prop else "") or ""
+    logement_cpville = " ".join(p for p in [(prop.zip_code if prop else ""), (prop.city if prop else "")] if p).strip()
+
     ctx = {
         "bailleur_name": (owner.full_name if owner else None) or (prop.owner_name if prop else None) or current_user.full_name,
-        "bailleur_address": (owner.address if owner else None) or "",
+        "bailleur_addr1": bailleur_addr1,
+        "bailleur_addr2": bailleur_addr2,
         "bailleur_phone": (owner.phone if owner else None) or (prop.owner_phone if prop else None) or getattr(current_user, "phone", None) or "",
         "bailleur_email": (owner.email if owner else None) or (prop.owner_email if prop else None) or current_user.email,
         "bailleur_siret": (owner.national_id if owner else None) or "",
         "tenant_name": tenant.full_name if tenant else "",
         "tenant2_name": tenant2.full_name if tenant2 else None,
         "start_date": sd.strftime("%d/%m/%Y"),
-        "logement_address": prop.full_address if prop else "",
+        "logement_street": logement_street,
+        "logement_cpville": logement_cpville,
         "ville": prop.city if prop and prop.city else "",
         "is_chambre": False,
         "area_sqm": f"{float(prop.area_sqm):.0f}" if prop and prop.area_sqm else None,

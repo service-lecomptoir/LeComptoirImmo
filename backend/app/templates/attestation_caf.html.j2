@@ -50,7 +50,7 @@
     </tr>
     <tr>
       <td>Adresse :</td>
-      <td class="v line">{{ bailleur_address or '' }}</td>
+      <td class="v">{{ bailleur_addr1 }}{% if bailleur_addr2 %}<br>{{ bailleur_addr2 }}{% endif %}</td>
     </tr>
     <tr>
       <td>N° de téléphone : <span class="v">{{ bailleur_phone or '' }}</span></td>
@@ -66,7 +66,8 @@
     certifie sur l'honneur que M. ou Mme : <span class="v">{{ tenant_name }}</span>
     {% if tenant2_name %} et M. ou Mme : <span class="v">{{ tenant2_name }}</span>{% endif %}
     est (sont) locataire(s) en titre depuis le <span class="v">{{ start_date }}</span>
-    du logement situé (adresse complète) : <span class="v">{{ logement_address }}</span>
+    du logement situé (adresse complète) :
+    <span class="v">{{ logement_street }}{% if logement_cpville %}<br>{{ logement_cpville }}{% endif %}</span>
   </p>
 
   <div class="item"><span class="bul">&bull;</span> S'agit-il d'une chambre (pièce unique sans WC) ?
