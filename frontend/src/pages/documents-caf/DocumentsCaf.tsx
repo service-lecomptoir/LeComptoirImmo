@@ -47,7 +47,7 @@ export default function DocumentsCaf() {
       } else {
         await lettersApi.downloadVersementDirect(
           lease.id,
-          docFilename('versement_direct_caf', {
+          docFilename('formulaire_tiers_payant', {
             tenant: lease.tenant_full_name,
             property: lease.property_name,
             year: new Date().getFullYear(),
@@ -135,7 +135,7 @@ export default function DocumentsCaf() {
                           className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-60 whitespace-nowrap"
                         >
                           {downloading === `${l.id}:versement` ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
-                          Versement direct
+                          Formulaire tiers payant
                         </button>
                       </div>
                     </td>

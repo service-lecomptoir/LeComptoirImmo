@@ -10,6 +10,7 @@ import { toast } from '@/store/toast'
 export default function MonProfil() {
   const { user, fetchMe } = useAuthStore()
   const [fullName, setFullName] = useState(user?.full_name ?? '')
+  const [ownerFullName, setOwnerFullName] = useState(user?.owner_full_name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [address, setAddress] = useState(user?.address ?? '')
@@ -103,6 +104,7 @@ export default function MonProfil() {
         email: email.trim() || undefined,
         phone: phone || null,
         ...(isLocataire ? {} : { address: address || null }),
+        ...(isManager ? { owner_full_name: ownerFullName || null } : {}),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
       if (showRib && ownerId) {
@@ -158,9 +160,19 @@ export default function MonProfil() {
         {msg && <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{msg}</div>}
         {err && <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{err}</div>}
         <div>
-          <label className={lbl}>Nom complet</label>
+          <label className={lbl}>{isManager ? 'Nom de la résidence' : 'Nom complet'}</label>
           <input className={inp} value={fullName} onChange={e => setFullName(e.target.value)} />
+          {isManager && (
+            <p className="text-xs text-gray-400 mt-1">Affiché dans l'application et sur la plupart des documents.</p>
+          )}
         </div>
+        {isManager && (
+          <div>
+            <label className={lbl}>Nom et prénom du propriétaire</label>
+            <input className={inp} value={ownerFullName} onChange={e => setOwnerFullName(e.target.value)} placeholder="Ex : Jean Dupont" />
+            <p className="text-xs text-gray-400 mt-1">Utilisé comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
+          </div>
+        )}
         <div>
           <label className={lbl}>Email (identifiant de connexion)</label>
           <input className={inp} type="email" value={email} onChange={e => setEmail(e.target.value)} />

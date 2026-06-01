@@ -142,7 +142,7 @@ async def attestation_caf(
     logement_cpville = " ".join(p for p in [(prop.zip_code if prop else ""), (prop.city if prop else "")] if p).strip()
 
     ctx = {
-        "bailleur_name": (owner.full_name if owner else None) or (prop.owner_name if prop else None) or current_user.full_name,
+        "bailleur_name": getattr(current_user, "owner_full_name", None) or (owner.full_name if owner else None) or (prop.owner_name if prop else None) or current_user.full_name,
         "bailleur_addr1": bailleur_addr1,
         "bailleur_addr2": bailleur_addr2,
         "bailleur_phone": (owner.phone if owner else None) or (prop.owner_phone if prop else None) or getattr(current_user, "phone", None) or "",
@@ -202,8 +202,10 @@ async def versement_direct_caf(
     if prop and prop.owner_id:
         owner = (await db.execute(select(Owner).where(Owner.id == prop.owner_id))).scalar_one_or_none()
 
-    # Bailleur : raison sociale OU nom/prénom + adresse découpée
-    if owner and owner.company_name:
+    # Bailleur : « Nom et prénom du propriétaire » du profil en priorité, sinon fiche
+    if getattr(current_user, "owner_full_name", None):
+        bailleur_nom, bailleur_prenom = current_user.owner_full_name, ""
+    elif owner and owner.company_name:
         bailleur_nom, bailleur_prenom = owner.company_name, ""
     elif owner:
         bailleur_nom, bailleur_prenom = owner.last_name or "", owner.first_name or ""

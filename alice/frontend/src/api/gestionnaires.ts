@@ -4,6 +4,7 @@ import type { Gestionnaire, GestionnaireProperty } from '@/types'
 export interface GestionnaireCreateData {
   email: string
   full_name: string
+  owner_full_name?: string | null
   password: string
   role: 'gestionnaire' | 'gestionnaire_proprio'
   plan_id?: string | null
@@ -17,6 +18,7 @@ export interface GestionnaireCreateData {
 export interface GestionnaireUpdateData {
   email?: string
   full_name?: string
+  owner_full_name?: string | null
   role?: 'gestionnaire' | 'gestionnaire_proprio'
   plan_id?: string | null
   property_limit_override?: number | null

@@ -86,6 +86,12 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
         bailleur_address = ""
         bailleur_email = (getattr(prop, "owner_email", None) if prop else "") or ""
 
+    # « Nom et prénom du propriétaire » du compte gestionnaire = bailleur prioritaire
+    _owner_name = getattr(manager, "owner_full_name", None) if manager else None
+    if _owner_name:
+        bailleur_name = _owner_name
+        is_morale = False  # nom et prénom d'une personne physique
+
     bailleur_addr1, bailleur_addr2 = _split_addr(bailleur_address)
 
     logement_parts = []

@@ -90,6 +90,8 @@ class UserService:
             user.phone = data.phone or None
         if data.address is not None:
             user.address = data.address or None
+        if getattr(data, "owner_full_name", None) is not None:
+            user.owner_full_name = data.owner_full_name or None
 
         await db.flush()
         await db.refresh(user)

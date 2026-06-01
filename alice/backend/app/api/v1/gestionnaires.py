@@ -93,6 +93,7 @@ async def _build_gestionnaire_out(
         id=user.id,
         email=user.email,
         full_name=user.full_name,
+        owner_full_name=getattr(user, "owner_full_name", None),
         role=user.role,
         is_active=user.is_active,
         created_at=user.created_at,
@@ -163,6 +164,7 @@ async def create_gestionnaire(
         is_active=True,
         phone=data.phone,
         address=data.address,
+        owner_full_name=data.owner_full_name,
     )
     db.add(new_user)
     await db.flush()
@@ -240,6 +242,8 @@ async def update_gestionnaire(
         user.email = data.email
     if data.full_name is not None:
         user.full_name = data.full_name
+    if data.owner_full_name is not None:
+        user.owner_full_name = data.owner_full_name
     if data.role is not None:
         user.role = data.role
     if data.phone is not None:

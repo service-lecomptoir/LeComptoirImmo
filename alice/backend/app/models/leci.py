@@ -41,6 +41,8 @@ class LeciUser(LeciBase):
     # Coordonnées (profil LeCI) — peuplées depuis Alice à la création
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    # Nom et prénom du propriétaire (bailleur) — full_name = nom de la résidence.
+    owner_full_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 

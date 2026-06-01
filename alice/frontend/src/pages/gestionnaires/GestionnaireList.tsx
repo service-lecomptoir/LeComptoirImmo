@@ -50,6 +50,7 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
   const [form, setForm] = useState<GestionnaireCreateData>({
     email: initial?.email ?? '',
     full_name: initial?.full_name ?? '',
+    owner_full_name: null,
     password: '',
     role: 'gestionnaire',
     plan_id: null,
@@ -119,15 +120,26 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
               </div>
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Nom complet *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nom de la résidence *</label>
               <input
                 type="text"
                 value={form.full_name}
                 onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Jean Dupont"
+                placeholder="Ex : Résidence Tatie"
                 required
               />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nom et prénom du propriétaire</label>
+              <input
+                type="text"
+                value={form.owner_full_name ?? ''}
+                onChange={e => setForm(f => ({ ...f, owner_full_name: e.target.value || null }))}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Ex : Jean Dupont"
+              />
+              <p className="mt-1 text-[11px] text-gray-400">Bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1">Email *</label>

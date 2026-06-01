@@ -8,6 +8,7 @@ export interface User {
   is_active: boolean
   phone?: string | null
   address?: string | null
+  owner_full_name?: string | null
   created_at: string
   updated_at: string
 }

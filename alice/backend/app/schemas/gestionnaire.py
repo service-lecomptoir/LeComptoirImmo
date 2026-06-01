@@ -10,6 +10,7 @@ from app.schemas.plan import PlanOut
 class GestionnaireCreate(BaseModel):
     email: EmailStr
     full_name: str = Field(..., max_length=150)
+    owner_full_name: Optional[str] = Field(None, max_length=150)
     password: str = Field(..., min_length=8)
     role: str = Field("gestionnaire", pattern="^(gestionnaire|gestionnaire_proprio)$")
     plan_id: Optional[uuid.UUID] = None
@@ -23,6 +24,7 @@ class GestionnaireCreate(BaseModel):
 class GestionnaireUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=150)
+    owner_full_name: Optional[str] = Field(None, max_length=150)
     role: Optional[str] = Field(None, pattern="^(gestionnaire|gestionnaire_proprio)$")
     plan_id: Optional[uuid.UUID] = None
     property_limit_override: Optional[int] = Field(None, ge=1)
@@ -36,6 +38,7 @@ class GestionnaireOut(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str
+    owner_full_name: Optional[str] = None
     role: str
     is_active: bool
     created_at: datetime

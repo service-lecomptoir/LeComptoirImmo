@@ -29,8 +29,12 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # ── Coordonnées (profil — agence/gestionnaire) ────────────────────────────
+    # full_name = NOM DE LA RÉSIDENCE (marque/affichage partout).
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    # Nom et prénom du propriétaire (bailleur) — utilisé pour le bail, l'attestation
+    # de loyer et le formulaire tiers payant. Distinct du nom de la résidence.
+    owner_full_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
 
     # NB : le RIB du bailleur vit désormais sur la fiche propriétaire (table owners),
     # plus sur le compte utilisateur (colonnes iban/bic/bank_holder supprimées).
