@@ -43,24 +43,12 @@
   <div class="bar">&nbsp;</div>
   <p class="red" style="margin:0 0 6px 0;">À remplir par le propriétaire, le bailleur, la famille d'accueil…</p>
 
-  <table class="kv">
-    <tr>
-      <td style="width:48%;">Nom et prénom ou raison sociale <span style="font-style:italic;color:#666;">(propriétaire / bailleur / mandataire)</span> :</td>
-      <td class="v line">{{ bailleur_name }}</td>
-    </tr>
-    <tr>
-      <td>Adresse :</td>
-      <td class="v">{{ bailleur_addr1 }}{% if bailleur_addr2 %}<br>{{ bailleur_addr2 }}{% endif %}</td>
-    </tr>
-    <tr>
-      <td>N° de téléphone : <span class="v">{{ bailleur_phone or '' }}</span></td>
-      <td>Adresse mél : <span class="v">{{ bailleur_email or '' }}</span></td>
-    </tr>
-    <tr>
-      <td>N° SIRET :</td>
-      <td class="v line">{{ bailleur_siret or '' }}</td>
-    </tr>
-  </table>
+  <p class="item">Nom et prénom ou raison sociale <span style="font-style:italic;color:#666;">(propriétaire / bailleur / mandataire)</span> :
+    <span class="v">{{ bailleur_name }}</span></p>
+  <p class="item">Adresse : <span class="v">{{ bailleur_addr1 }}{% if bailleur_addr2 %}<br>{{ bailleur_addr2 }}{% endif %}</span></p>
+  <p class="item">N° de téléphone : <span class="v">{{ bailleur_phone or '' }}</span>
+    &nbsp;&nbsp;&nbsp; Adresse mél : <span class="v">{{ bailleur_email or '' }}</span></p>
+  <p class="item">N° SIRET : <span class="v">{{ bailleur_siret or '' }}</span></p>
 
   <p class="item">
     certifie sur l'honneur que M. ou Mme : <span class="v">{{ tenant_name }}</span>
