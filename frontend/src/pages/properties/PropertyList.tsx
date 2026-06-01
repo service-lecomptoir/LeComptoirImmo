@@ -197,7 +197,7 @@ export default function PropertyList() {
           title={creationBlocked ? limitMessage : undefined}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-70 ${
             creationBlocked
-              ? 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              ? 'bg-red-600 text-white hover:bg-red-700'
               : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
         >
