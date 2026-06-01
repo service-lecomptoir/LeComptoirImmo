@@ -3,14 +3,56 @@ import {
   BookOpen, CheckCircle2, Lightbulb, HelpCircle, ListChecks,
   Building2, Users, KeyRound, FileText, CreditCard, Calendar,
   FileCheck, MessageSquare, Wrench, Calculator, Wallet, Receipt,
-  Settings, Zap, ShoppingBag,
+  Settings, Zap, ShoppingBag, LayoutDashboard, TrendingUp, PenSquare,
+  BookUser, Landmark, BarChart3,
 } from 'lucide-react'
 import type { ElementType } from 'react'
+import { FEATURE_LABELS, FEATURE_DESCRIPTIONS } from '@/lib/features'
 
 // ─── Types du contenu de guide ────────────────────────────────────────────────
 interface Step { title: string; desc: string }
 interface Feature { icon: ElementType; title: string; desc: string }
 interface Faq { q: string; a: string }
+
+// ─── Rubriques gestionnaire générées depuis le catalogue de fonctionnalités ─────
+// (source de vérité unique : lib/features.ts). Tout ajout/renommage futur d'une
+// fonctionnalité met ainsi le guide à jour automatiquement.
+const FEATURE_ICONS: Record<string, ElementType> = {
+  dashboard: LayoutDashboard,
+  properties: Building2,
+  tenants: Users,
+  leases: FileText,
+  avis_echeances: Calendar,
+  payments: CreditCard,
+  quittances: FileCheck,
+  actualisation: TrendingUp,
+  automatisation: Zap,
+  templates: PenSquare,
+  incidents: MessageSquare,
+  entretiens: Wrench,
+  contacts: BookUser,
+  offres: ShoppingBag,
+  documents_caf: Landmark,
+  admin: Settings,
+  finances: Wallet,
+  performance_biens: BarChart3,
+  liasse_fiscale: Calculator,
+}
+
+/** Liste des rubriques (= fonctionnalités du catalogue), dans l'ordre du catalogue. */
+function catalogFeatures(): Feature[] {
+  return Object.keys(FEATURE_LABELS).map(key => ({
+    icon: FEATURE_ICONS[key] ?? ListChecks,
+    title: FEATURE_LABELS[key],
+    desc: FEATURE_DESCRIPTIONS[key] ?? '',
+  }))
+}
+
+const OWNERS_FEATURE: Feature = {
+  icon: KeyRound,
+  title: 'Propriétaires',
+  desc: 'Les fiches des bailleurs (identité, RIB unique, biens rattachés).',
+}
 interface Guide {
   badge: string
   title: string
@@ -33,33 +75,23 @@ const GUIDE_MANDATAIRE: Guide = {
   prerequisites: [
     "Disposer des informations de chaque propriétaire (identité, coordonnées et RIB pour le reversement des loyers).",
     "Avoir les caractéristiques de chaque bien (adresse, type, surface, DPE, équipements).",
-    "Connaître les informations des locataires (identité, contact) et les conditions du bail (loyer, charges, dépôt de garantie).",
-    "Renseigner vos coordonnées d'agence dans « Mes informations » : elles apparaissent en en-tête des documents.",
+    "Connaître les informations des locataires (identité, n° de sécurité sociale, date de naissance, contact) et les conditions du bail (loyer, charges, dépôt de garantie).",
+    "Renseigner dans « Mes informations » le « Nom de la résidence » (affiché dans l'app) et le « Nom et prénom du propriétaire » (bailleur sur les documents officiels), ainsi que vos coordonnées d'agence.",
   ],
   steps: [
     { title: '1. Créez les fiches Propriétaires', desc: "Onglet Propriétaires → « Nouveau ». Saisissez l'identité, le contact et surtout le RIB : c'est lui qui figure sur les quittances. Une fiche peut exister sans compte de connexion." },
-    { title: '2. Enregistrez les Propriétés', desc: "Onglet Propriétés → « Nouveau ». Décrivez le bien et rattachez-le à une fiche propriétaire. Un bien occupé ne sera plus proposé lors de la création d'un nouveau contrat." },
-    { title: '3. Créez les fiches Locataires', desc: "Onglet Locataires → « Nouveau ». Vous pourrez aussi en créer un à la volée depuis le formulaire de contrat." },
-    { title: '4. Rédigez le Contrat de bail', desc: "Onglet Contrats → « Nouveau ». Reliez un bien et un locataire principal, ajoutez d'éventuels co-titulaires, puis renseignez loyer, charges, dépôt, jour et fréquence de paiement, règle d'appel de loyer, aide au logement et garant." },
+    { title: '2. Enregistrez les Propriétés', desc: "Onglet Propriétés → « Nouveau ». Décrivez le bien (le code postal et la ville bénéficient d'une autocomplétion) et rattachez-le à une fiche propriétaire. Un bien occupé ne sera plus proposé lors de la création d'un contrat." },
+    { title: '3. Créez les fiches Locataires', desc: "Onglet Locataires → « Nouveau ». Le n° de sécurité sociale et la date de naissance sont obligatoires. Vous pouvez aussi créer un locataire à la volée depuis le formulaire de contrat." },
+    { title: '4. Rédigez le Contrat de bail', desc: "Onglet Contrats → « Nouveau ». Reliez un bien et un locataire principal, ajoutez d'éventuels co-titulaires, puis renseignez loyer, charges, dépôt, jour et fréquence de paiement, règle d'appel de loyer, aide au logement et garant. Le bail PDF (« Bail non meublé ») se télécharge depuis la fiche du contrat." },
     { title: '5. Pilotez les loyers', desc: "Les avis d'échéances et les paiements se génèrent automatiquement selon la fréquence choisie. Enregistrez les règlements reçus, puis générez/envoyez les quittances." },
-    { title: '6. Donnez les accès', desc: "Dans Gestion des utilisateurs, créez les comptes de connexion pour vos propriétaires et locataires en les rattachant à leur fiche, afin qu'ils accèdent à leur propre espace." },
+    { title: '6. Éditez les Documents CAF', desc: "Onglet « Documents CAF » : générez l'attestation de loyer et le formulaire tiers payant pré-remplis pour chaque contrat (le bailleur n'a plus qu'à vérifier et signer)." },
+    { title: '7. Donnez les accès', desc: "Dans « Gestion des utilisateurs », créez les comptes de connexion pour vos propriétaires et locataires en les rattachant à leur fiche, afin qu'ils accèdent à leur propre espace." },
   ],
-  features: [
-    { icon: Building2, title: 'Propriétés', desc: "Le parc géré, avec caractéristiques, statut d'occupation et propriétaire rattaché." },
-    { icon: KeyRound, title: 'Propriétaires', desc: 'Les fiches des bailleurs (identité, RIB unique, biens rattachés).' },
-    { icon: Users, title: 'Locataires', desc: 'Les fiches locataires, indépendantes de leur compte de connexion.' },
-    { icon: FileText, title: 'Contrats', desc: 'Les baux : loyer, charges, dépôt, co-titulaires, règle et fréquence d\'appel.' },
-    { icon: Calendar, title: "Avis d'échéances", desc: 'Les appels de loyer, générés et imprimables en PDF selon la fréquence du bail.' },
-    { icon: CreditCard, title: 'Paiements', desc: 'Le suivi des règlements : encaissement, relance, génération de quittance.' },
-    { icon: FileCheck, title: 'Quittances', desc: 'Les quittances de loyer officielles, à télécharger ou envoyer au locataire.' },
-    { icon: MessageSquare, title: 'Incidents & messages', desc: 'La communication avec les locataires et le suivi des signalements.' },
-    { icon: Wrench, title: 'Entretiens', desc: 'La planification et le suivi des interventions et prestataires.' },
-    { icon: Zap, title: 'Automatisation', desc: 'Les règles automatiques (rappels, relances) pour gagner du temps.' },
-    { icon: Settings, title: 'Gestion des utilisateurs', desc: 'La création et la gestion des comptes de connexion (propriétaires, locataires).' },
-  ],
+  features: [OWNERS_FEATURE, ...catalogFeatures()],
   tips: [
     "Respectez l'ordre Propriétaire → Bien → Locataire → Contrat : chaque étape s'appuie sur la précédente.",
     "Le RIB se saisit une seule fois, sur la fiche du propriétaire : il alimente automatiquement les quittances.",
+    "Renseignez le « Nom et prénom du propriétaire » dans « Mes informations » : c'est lui qui apparaît comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.",
     "Choisissez la bonne « règle d'appel de loyer » : calendaire (au prorata des jours) ou contractuelle (date à date).",
     "Résiliez un bail terminé pour libérer le bien et le rendre de nouveau disponible à la mise en location.",
     "Sur Propriétés, Propriétaires, Locataires et Contrats, basculez entre vue liste et vue mosaïque via les icônes en haut à droite — votre choix est mémorisé. Chaque liste s'exporte aussi en CSV (bouton « Exporter »).",
@@ -69,6 +101,7 @@ const GUIDE_MANDATAIRE: Guide = {
     { q: 'Comment ajouter un co-locataire ?', a: 'Dans le formulaire de contrat, section « Co-titulaires », choisissez un locataire existant ou créez-en un avec le bouton « Nouveau ». C\'est possible en création comme en modification.' },
     { q: 'Pourquoi je ne génère qu\'un seul avis pour plusieurs mois ?', a: 'Si la fréquence du bail est trimestrielle, semestrielle ou annuelle, un seul avis couvre toute la période, avec le montant correspondant.' },
     { q: 'Où apparaissent mes coordonnées sur les documents ?', a: 'Les coordonnées de l\'agence (« Mes informations ») et le RIB du propriétaire (sa fiche) figurent automatiquement en en-tête des avis et quittances.' },
+    { q: 'Comment générer une attestation de loyer ou un formulaire tiers payant pour la CAF ?', a: 'Onglet « Documents CAF » : sélectionnez le contrat et téléchargez l\'attestation de loyer ou le formulaire tiers payant, pré-remplis à partir du bailleur, du locataire et du bail. Cette rubrique peut être incluse ou non selon votre formule.' },
     { q: 'Pourquoi un compte n\'apparaît pas dans « Accès espace locataire » ?', a: 'À la création d\'un locataire, seuls les comptes non encore rattachés à une fiche sont proposés (un compte = un seul locataire). En modification, le compte déjà lié à ce locataire reste visible.' },
     { q: 'Où voir mes factures et comment résilier mon abonnement ?', a: 'Dans « Mon abonnement » : vos factures sont téléchargeables en PDF, et le bouton « Mettre fin à mon abonnement » envoie une demande de résiliation à notre équipe. Vous pouvez aussi déclarer vos domaines e-mail autorisés dans « Mes informations ».' },
   ],
@@ -82,30 +115,20 @@ const GUIDE_GP: Guide = {
     "(biens, locataires, contrats, loyers, documents) et, en plus, d'une vue financière sur vos revenus et votre liasse fiscale. " +
     "Ce guide vous montre comment démarrer et tirer parti de votre double casquette.",
   prerequisites: [
-    "Renseigner vos coordonnées et votre RIB dans « Mes informations » : ils alimentent l'en-tête et les quittances.",
+    "Renseigner dans « Mes informations » le « Nom de la résidence », le « Nom et prénom du propriétaire » (bailleur des documents), vos coordonnées et votre RIB.",
     "Réunir les caractéristiques de vos biens (adresse, type, surface, DPE, équipements).",
-    "Disposer des informations des locataires et des conditions de chaque bail.",
+    "Disposer des informations des locataires (dont n° de sécurité sociale et date de naissance) et des conditions de chaque bail.",
   ],
   steps: [
-    { title: '1. Complétez votre profil', desc: "Dans « Mes informations », vérifiez vos coordonnées et votre RIB : ils servent aux documents et au reversement des loyers." },
+    { title: '1. Complétez votre profil', desc: "Dans « Mes informations », renseignez le « Nom de la résidence », le « Nom et prénom du propriétaire » (qui apparaît comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant), vos coordonnées et votre RIB." },
     { title: '2. Enregistrez vos Propriétés', desc: "Onglet Propriétés → « Nouveau ». Vous êtes automatiquement le propriétaire rattaché — pas besoin de créer une fiche propriétaire séparée." },
     { title: '3. Créez les fiches Locataires', desc: "Onglet Locataires → « Nouveau », ou directement depuis le formulaire de contrat." },
     { title: '4. Rédigez le Contrat de bail', desc: "Onglet Contrats → « Nouveau » : bien, locataire principal, co-titulaires, loyer, charges, dépôt, jour et fréquence de paiement, règle d'appel, aide au logement, garant." },
     { title: '5. Suivez les loyers', desc: "Avis d'échéances et paiements se génèrent selon la fréquence. Enregistrez les règlements et éditez les quittances." },
-    { title: '6. Pilotez vos finances', desc: "Section « Mes finances » : suivez vos revenus, la performance de vos biens et préparez votre liasse fiscale." },
+    { title: '6. Éditez vos Documents CAF', desc: "Onglet « Documents CAF » : attestation de loyer et formulaire tiers payant pré-remplis, prêts à signer." },
+    { title: '7. Pilotez vos finances', desc: "Section « Mes finances » : suivez « Mes revenus », la « Performance bien » et préparez votre « Liasse fiscale »." },
   ],
-  features: [
-    { icon: Building2, title: 'Propriétés', desc: 'Vos biens et leur statut d\'occupation.' },
-    { icon: Users, title: 'Locataires', desc: 'Les fiches de vos locataires.' },
-    { icon: FileText, title: 'Contrats', desc: 'Vos baux et leurs conditions financières.' },
-    { icon: Calendar, title: "Avis d'échéances", desc: 'Les appels de loyer en PDF, selon la fréquence du bail.' },
-    { icon: CreditCard, title: 'Paiements', desc: 'Le suivi des encaissements et des relances.' },
-    { icon: FileCheck, title: 'Quittances', desc: 'Vos quittances de loyer officielles.' },
-    { icon: Calculator, title: 'Mes finances', desc: 'Revenus, performance des biens et liasse fiscale.' },
-    { icon: MessageSquare, title: 'Incidents', desc: 'Le suivi des signalements de vos locataires.' },
-    { icon: Wrench, title: 'Entretiens', desc: 'La gestion des interventions et prestataires.' },
-    { icon: Settings, title: 'Gestion des utilisateurs', desc: 'Les comptes de connexion de vos locataires.' },
-  ],
+  features: catalogFeatures(),
   tips: [
     "Suivez l'ordre Bien → Locataire → Contrat : tout en découle.",
     "Votre RIB est saisi une seule fois (Mes informations) et figure sur les quittances.",
