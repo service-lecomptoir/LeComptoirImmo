@@ -65,6 +65,16 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
     cots = list(getattr(lease, "co_tenants", []) or [])
     tenant2 = cots[0] if cots else None
 
+    def _split_addr(raw):
+        """(rue, 'CP Ville') depuis une adresse libre, normalisée. ('', '') si vide."""
+        if not raw:
+            return "", ""
+        s = " ".join(str(raw).split())
+        mm = _re.search(r"\b\d{5}\b", s)
+        if mm and mm.start() > 0:
+            return s[:mm.start()].rstrip(" ,"), s[mm.start():].strip()
+        return s, ""
+
     if owner is not None:
         is_morale = bool(getattr(owner, "company_name", None))
         bailleur_name = owner.full_name
@@ -75,6 +85,8 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
         bailleur_name = (getattr(prop, "owner_name", None) if prop else "") or ""
         bailleur_address = ""
         bailleur_email = (getattr(prop, "owner_email", None) if prop else "") or ""
+
+    bailleur_addr1, bailleur_addr2 = _split_addr(bailleur_address)
 
     logement_parts = []
     if prop:
@@ -93,6 +105,8 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
         "is_morale": is_morale,
         "bailleur_name": bailleur_name,
         "bailleur_address": bailleur_address,
+        "bailleur_addr1": bailleur_addr1,
+        "bailleur_addr2": bailleur_addr2,
         "bailleur_email": bailleur_email,
         "is_mandataire": bool(is_mandataire and manager is not None),
         "mandataire_name": (getattr(manager, "full_name", "") if manager else "") or "",
