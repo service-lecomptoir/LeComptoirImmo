@@ -76,7 +76,8 @@ class Owner(Base, TimestampMixin):
     def full_name(self) -> str:
         if self.company_name:
             return self.company_name
-        parts = [self.civility or "", self.first_name or "", self.last_name]
+        # « Nom Prénom » sans la civilité (séparée du nom, cf. documents/listes).
+        parts = [self.last_name, self.first_name or ""]
         return " ".join(p for p in parts if p).strip()
 
     def __repr__(self) -> str:
