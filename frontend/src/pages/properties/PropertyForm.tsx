@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { UserRound, Plus, X, AlertTriangle } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
+import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
 import { propertiesApi } from '@/api/properties'
 import { ownersApi } from '@/api/owners'
 import { useAuthStore } from '@/store/authStore'
@@ -161,6 +162,13 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
 
   const selectedOwnerId = watch('owner_id')
 
+  // Code postal / ville sont pilotés par CommuneAutocomplete (setValue) → on les
+  // enregistre manuellement auprès de react-hook-form (plus d'input register()).
+  useEffect(() => {
+    register('zip_code')
+    register('city')
+  }, [register])
+
   useEffect(() => {
     if (isGestionnairePropio) return
     ownersApi.list({ limit: 200 })
@@ -289,12 +297,34 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <label className={lbl}>Code postal <span className="text-red-500">*</span></label>
-                <input {...register('zip_code')} className={inp} />
+                <CommuneAutocomplete
+                  value={watch('zip_code') || ''}
+                  onChange={v => { setValue('zip_code', v, { shouldValidate: true }); clearErrors('zip_code') }}
+                  onSelect={({ zip, city }) => {
+                    setValue('zip_code', zip, { shouldValidate: true })
+                    setValue('city', city, { shouldValidate: true })
+                    clearErrors(['zip_code', 'city'])
+                  }}
+                  display="postcode"
+                  className={inp}
+                  placeholder="ex. 75001"
+                />
                 {errors.zip_code && <p className={err}>{errors.zip_code.message}</p>}
               </div>
               <div>
                 <label className={lbl}>Ville <span className="text-red-500">*</span></label>
-                <input {...register('city')} className={inp} />
+                <CommuneAutocomplete
+                  value={watch('city') || ''}
+                  onChange={v => { setValue('city', v, { shouldValidate: true }); clearErrors('city') }}
+                  onSelect={({ zip, city }) => {
+                    setValue('zip_code', zip, { shouldValidate: true })
+                    setValue('city', city, { shouldValidate: true })
+                    clearErrors(['zip_code', 'city'])
+                  }}
+                  display="city"
+                  className={inp}
+                  placeholder="ex. Paris"
+                />
                 {errors.city && <p className={err}>{errors.city.message}</p>}
               </div>
               <div>
