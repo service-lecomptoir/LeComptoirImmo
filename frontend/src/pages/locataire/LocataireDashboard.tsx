@@ -105,7 +105,7 @@ export default function LocataireDashboard() {
             </h2>
             {lease && (
               <button
-                onClick={() => leasesApi.downloadPdf(lease.id, docFilename('bail', { tenant: lease.tenant_full_name, property: lease.property_name }))}
+                onClick={() => leasesApi.downloadPdf(lease.id, docFilename('bail_non_meuble', { tenant: lease.tenant_full_name, property: lease.property_name }))}
                 className="flex items-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 transition-colors"
               >
                 <Download size={12} />

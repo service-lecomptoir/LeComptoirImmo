@@ -197,7 +197,15 @@ async def download_lease_pdf(
         if not tenant or lease.tenant_id != tenant.id:
             raise HTTPException(status_code=403, detail="Accès non autorisé")
 
-    pdf_bytes = generate_lease_pdf(lease)
+    # Bailleur = fiche propriétaire du bien ; mandataire = gestionnaire (rôle mandataire)
+    owner = None
+    prop = getattr(lease, "parent_property", None)
+    if prop is not None and getattr(prop, "owner_id", None):
+        from app.models.owner import Owner
+        owner = (await db.execute(select(Owner).where(Owner.id == prop.owner_id))).scalar_one_or_none()
+    is_mandataire = Role(current_user.role) == Role.GESTIONNAIRE
+
+    pdf_bytes = generate_lease_pdf(lease, owner=owner, manager=current_user, is_mandataire=is_mandataire)
     from app.utils.filename import doc_filename
     _prop = lease.parent_property.name if getattr(lease, "parent_property", None) else None
     filename = doc_filename(

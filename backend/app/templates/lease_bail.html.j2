@@ -3,408 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    @page {
-      size: A4;
-      margin: 2cm 2.5cm 2.5cm 2.5cm;
-    }
-    body {
-      font-family: Arial, sans-serif;
-      font-size: 10pt;
-      color: #1a1a1a;
-      line-height: 1.6;
-    }
-    h1 {
-      font-size: 15pt;
-      text-align: center;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #1e3a5f;
-      margin-bottom: 4px;
-    }
-    .subtitle {
-      text-align: center;
-      font-size: 9pt;
-      color: #555;
-      margin-bottom: 20px;
-    }
-    hr.separator {
-      border: none;
-      border-top: 2px solid #1e3a5f;
-      margin: 12px 0;
-    }
-    .section-title {
-      font-size: 10pt;
-      font-weight: bold;
-      color: #1e3a5f;
-      background: #f0f4f8;
-      padding: 5px 8px;
-      margin-top: 18px;
-      margin-bottom: 8px;
-      border-left: 4px solid #1e3a5f;
-    }
-    /* Grille simulée avec table */
-    .row-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 6px;
-    }
-    .row-table td {
-      vertical-align: top;
-      padding: 2px 6px 2px 0;
-    }
-    .label {
-      font-size: 8pt;
-      color: #666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .value {
-      font-size: 10pt;
-      font-weight: bold;
-      color: #111;
-      border-bottom: 1px dotted #bbb;
-      padding-bottom: 2px;
-    }
-    .badge {
-      background: #1e3a5f;
-      color: white;
-      padding: 1px 6px;
-      font-size: 8pt;
-      font-weight: bold;
-    }
-    .badge-green { background: #166534; }
-    .badge-orange { background: #9a3412; }
-    /* Tableau montants */
-    .amounts-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 8px;
-    }
-    .amounts-table th {
-      background: #1e3a5f;
-      color: white;
-      padding: 5px 8px;
-      text-align: left;
-      font-size: 9pt;
-    }
-    .amounts-table td {
-      padding: 5px 8px;
-      border-bottom: 1px solid #e5e7eb;
-      font-size: 10pt;
-    }
-    .amounts-table tr.even td { background: #f9fafb; }
-    .amounts-table tr.total td {
-      font-weight: bold;
-      background: #f0f4f8;
-      font-size: 10pt;
-    }
-    .amount-right { text-align: right; }
-    /* Signatures en table */
-    .sign-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 30px;
-    }
-    .sign-table td {
-      border: 1px solid #ddd;
-      padding: 10px;
-      vertical-align: top;
-      width: 33%;
-    }
-    .sign-label {
-      font-size: 9pt;
-      color: #555;
-      margin-bottom: 4px;
-      font-weight: bold;
-    }
-    .sign-space {
-      min-height: 60px;
-    }
-    .alert {
-      background: #fef9c3;
-      border: 1px solid #ca8a04;
-      padding: 6px 10px;
-      margin: 8px 0;
-      font-size: 9pt;
-    }
-    .footer-notice {
-      font-size: 8pt;
-      color: #888;
-      margin-top: 16px;
-      text-align: center;
-      border-top: 1px solid #e5e7eb;
-      padding-top: 8px;
-    }
-    .page-num {
-      font-size: 8pt;
-      color: #888;
-      text-align: right;
-    }
+    @page { size: A4; margin: 1.3cm 1.5cm; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 8.7pt; color: #1a1a1a; line-height: 1.45; }
+    h1 { font-size: 14pt; text-align: center; color: #1f3864; margin: 0 0 2px 0; text-transform: uppercase; letter-spacing: .5px; }
+    .law { text-align: center; color: #666; font-size: 8pt; margin: 0 0 6px 0; }
+    .bar { background-color: #1f3864; height: 2px; font-size: 1px; line-height: 2px; margin: 4px 0 10px 0; }
+    .sec { color: #c0392b; font-weight: bold; font-size: 10pt; margin: 14px 0 4px 0; border-bottom: 1px solid #e2c4c0; padding-bottom: 2px; }
+    .sub { font-weight: bold; color: #1f3864; margin: 8px 0 2px 0; }
+    p, .row { margin: 3px 0; }
+    .lbl { color: #333; }
+    .v { font-weight: bold; color: #1f3864; }
+    .dots { border-bottom: 1px dotted #999; display: inline-block; min-width: 120px; }
+    .cb { border: 1px solid #555; padding: 0 2px; font-size: 8pt; }
+    .cbon { border: 1px solid #1f3864; padding: 0 2px; font-size: 8pt; font-weight: bold; color: #1f3864; }
+    .note { font-size: 7.5pt; color: #777; font-style: italic; }
+    table.fin { width: 100%; border-collapse: collapse; margin: 4px 0; }
+    table.fin td { padding: 2px 4px; }
+    .sign { width: 100%; border-collapse: collapse; margin-top: 18px; }
+    .sign td { border: 1px solid #999; padding: 10px; vertical-align: top; height: 90px; width: 50%; }
+    .small { font-size: 7.5pt; color: #777; }
   </style>
 </head>
 <body>
 
-  <h1>Contrat de bail d&apos;habitation</h1>
-  <p class="subtitle">
-    {% if lease.lease_type == 'meuble' %}Location meublée
-    {% elif lease.lease_type == 'mobilite' %}Bail mobilité
-    {% elif lease.lease_type == 'commercial' %}Bail commercial
-    {% else %}Location vide (loi du 6 juillet 1989)
-    {% endif %}
-    &nbsp;&bull;&nbsp; Réf. {{ lease.id | string | truncate(8, end='') }}
-  </p>
-  <hr class="separator">
+  <h1>Contrat de location — Logement non meublé</h1>
+  <p class="law">(Loi n°89-462 du 6 juillet 1989)</p>
+  <div class="bar">&nbsp;</div>
 
-  <!-- PARTIES -->
-  <div class="section-title">1. Les parties</div>
+  <div class="sec">I. Désignation des parties</div>
+  <p>Le présent contrat est conclu entre les soussignés :</p>
+  <p class="row"><span class="lbl">Nom et prénom ou dénomination du bailleur :</span> <span class="v">{{ bailleur_name }}</span></p>
+  <p class="row"><span class="lbl">Domicile ou siège social du bailleur :</span> <span class="v">{{ bailleur_address }}</span></p>
+  <p class="row"><span class="lbl">Qualité du bailleur :</span>
+    {% if is_morale %}<span class="cb">&nbsp;&nbsp;</span> Personne physique &nbsp; <span class="cbon">X</span> Personne morale
+    {% else %}<span class="cbon">X</span> Personne physique &nbsp; <span class="cb">&nbsp;&nbsp;</span> Personne morale{% endif %}</p>
+  <p class="row"><span class="lbl">Adresse email du bailleur :</span> <span class="v">{{ bailleur_email }}</span></p>
+  <p class="small">désigné(s) ci-après « le bailleur ».</p>
 
-  <table class="row-table">
-    <tr>
-      <td style="width:50%">
-        <div class="label">Bailleur (bien)</div>
-        <div class="value">{{ lease.parent_property.name if lease.parent_property else '' }}</div>
-      </td>
-      <td style="width:50%">
-        <div class="label">Adresse du bien</div>
-        <div class="value">{{ lease.parent_property.full_address if lease.parent_property else '' }}</div>
-      </td>
-    </tr>
-  </table>
-
-  <table class="row-table" style="margin-top:8px">
-    <tr>
-      <td style="width:34%">
-        <div class="label">Locataire principal</div>
-        <div class="value">{{ lease.tenant.full_name if lease.tenant else '' }}</div>
-      </td>
-      <td style="width:33%">
-        <div class="label">Email</div>
-        <div class="value">{{ lease.tenant.email if lease.tenant and lease.tenant.email else '' }}</div>
-      </td>
-      <td style="width:33%">
-        <div class="label">Téléphone</div>
-        <div class="value">{{ lease.tenant.phone if lease.tenant and lease.tenant.phone else '' }}</div>
-      </td>
-    </tr>
-  </table>
-
-  {% if lease.co_tenants and lease.co_tenants|length > 0 %}
-  <table class="row-table" style="margin-top:8px">
-    <tr>
-      <td>
-        <div class="label">Co-titulaires</div>
-        <div class="value">
-          {% for ct in lease.co_tenants %}{{ ct.full_name }}{% if ct.email %} — {{ ct.email }}{% endif %}{% if not loop.last %} ; {% endif %}{% endfor %}
-        </div>
-      </td>
-    </tr>
-  </table>
-  <div style="margin-top:6px; font-size:9px; color:#555; font-style:italic">
-    Les co-titulaires sont solidairement et indivisiblement tenus de l'ensemble des obligations du présent bail (clause de solidarité).
-  </div>
+  {% if is_mandataire %}
+  <p class="sub">Le cas échéant, représenté par le mandataire :</p>
+  <p class="row"><span class="lbl">Nom ou raison sociale du mandataire :</span> <span class="v">{{ mandataire_name }}</span></p>
+  <p class="row"><span class="lbl">Adresse du mandataire :</span> <span class="v">{{ mandataire_address or '' }}</span></p>
+  <p class="row"><span class="lbl">Activité exercée :</span> Gestion locative</p>
   {% endif %}
 
-  {% if lease.has_guarantor and lease.guarantor_name %}
-  <table class="row-table" style="margin-top:8px">
-    <tr>
-      <td style="width:34%">
-        <div class="label">Garant</div>
-        <div class="value">{{ lease.guarantor_name }}</div>
-      </td>
-      {% if lease.guarantor_email %}
-      <td style="width:33%">
-        <div class="label">Email garant</div>
-        <div class="value">{{ lease.guarantor_email }}</div>
-      </td>
-      {% endif %}
-      {% if lease.guarantor_phone %}
-      <td style="width:33%">
-        <div class="label">Téléphone garant</div>
-        <div class="value">{{ lease.guarantor_phone }}</div>
-      </td>
-      {% endif %}
-    </tr>
-  </table>
+  {% if has_guarantor %}
+  <p class="row"><span class="lbl">Nom et adresse du garant :</span> <span class="v">{{ guarantor_name }}</span></p>
   {% endif %}
 
-  <!-- LOGEMENT -->
-  <div class="section-title">2. Le logement</div>
+  <p class="row"><span class="lbl">Nom et prénom du locataire :</span> <span class="v">{{ tenant_name }}</span></p>
+  {% if tenant2_name %}<p class="row"><span class="lbl">Second locataire :</span> <span class="v">{{ tenant2_name }}</span></p>{% endif %}
+  <p class="row"><span class="lbl">Adresse email du locataire :</span> <span class="v">{{ tenant_email }}</span></p>
+  {% if tenant2_email %}<p class="row"><span class="lbl">Adresse email du second locataire :</span> <span class="v">{{ tenant2_email }}</span></p>{% endif %}
+  <p class="small">désigné(s) ci-après « le locataire ». Il a été convenu ce qui suit :</p>
 
-  <table class="row-table">
-    <tr>
-      <td style="width:25%">
-        <div class="label">Référence du bien</div>
-        <div class="value">{{ lease.parent_property.name if lease.parent_property else '' }}</div>
-      </td>
-      <td style="width:25%">
-        <div class="label">Type</div>
-        <div class="value">{{ lease.parent_property.property_type if lease.parent_property else '' }}</div>
-      </td>
-      {% if lease.parent_property and lease.parent_property.floor is not none %}
-      <td style="width:25%">
-        <div class="label">Étage</div>
-        <div class="value">{{ lease.parent_property.floor }}</div>
-      </td>
-      {% endif %}
-      {% if lease.parent_property and lease.parent_property.area_sqm %}
-      <td style="width:25%">
-        <div class="label">Surface</div>
-        <div class="value">{{ "%.2f" | format(lease.parent_property.area_sqm) }} m²</div>
-      </td>
-      {% endif %}
-    </tr>
-  </table>
+  <div class="sec">II. Objet du contrat</div>
+  <p class="sub">A. Consistance du logement</p>
+  <p class="row"><span class="lbl">Adresse du logement :</span> <span class="v">{{ logement_address }}</span></p>
+  <p class="row"><span class="lbl">Code postal / Commune :</span> <span class="v">{{ logement_cp }} {{ logement_city }}</span></p>
+  <p class="row"><span class="lbl">Étage :</span> <span class="v">{{ floor if floor != '' else '—' }}</span>
+    &nbsp;&nbsp; <span class="lbl">Période de construction :</span> <span class="v">{{ year_built if year_built else '………' }}</span></p>
+  <p class="row"><span class="lbl">Surface habitable (m²) :</span> <span class="v">{{ surface if surface else '………' }}</span>
+    &nbsp;&nbsp; <span class="lbl">Nombre de pièces principales :</span> <span class="v">{{ nb_pieces if nb_pieces else '………' }}</span></p>
+  <p class="row"><span class="lbl">Modalité de production de chauffage :</span> <span class="v">{{ heating if heating else 'Individuel' }}</span></p>
+  <p class="row"><span class="lbl">Niveau de performance énergétique (DPE) :</span> <span class="v">{{ dpe if dpe else '………' }}</span></p>
+  <p class="sub">Destination des locaux</p>
+  <p class="row"><span class="cbon">X</span> Usage d'habitation &nbsp; <span class="cb">&nbsp;&nbsp;</span> Usage mixte professionnel et d'habitation</p>
 
-  <!-- DURÉE -->
-  <div class="section-title">3. Durée du contrat</div>
+  <div class="sec">III. Date de prise d'effet et durée du contrat</div>
+  <p class="row"><span class="lbl">Date de prise d'effet du contrat :</span> <span class="v">{{ start_date }}</span></p>
+  <p class="row"><span class="lbl">Durée du contrat :</span>
+    {% if duration_morale %}<span class="cb">&nbsp;&nbsp;</span> 3 ans (personne physique) &nbsp; <span class="cbon">X</span> 6 ans (personne morale)
+    {% else %}<span class="cbon">X</span> 3 ans (personne physique) &nbsp; <span class="cb">&nbsp;&nbsp;</span> 6 ans (personne morale){% endif %}</p>
+  <p class="small">À défaut de proposition de renouvellement, le contrat est reconduit tacitement dans les mêmes conditions.
+    Le locataire peut donner congé à tout moment ; le bailleur à l'échéance, pour reprise, vente ou motif légitime.</p>
 
-  <table class="row-table">
-    <tr>
-      <td style="width:25%">
-        <div class="label">Date d&apos;entrée</div>
-        <div class="value">{{ lease.start_date.strftime('%d/%m/%Y') }}</div>
-      </td>
-      <td style="width:25%">
-        {% if lease.end_date %}
-        <div class="label">Date de fin</div>
-        <div class="value">{{ lease.end_date.strftime('%d/%m/%Y') }}</div>
-        {% else %}
-        <div class="label">Durée légale</div>
-        <div class="value">
-          {% if lease.lease_type == 'meuble' %}1 an renouvelable
-          {% elif lease.lease_type == 'mobilite' %}10 mois maximum
-          {% elif lease.lease_type == 'commercial' %}9 ans minimum
-          {% else %}3 ans renouvelable{% endif %}
-        </div>
-        {% endif %}
-      </td>
-      {% if lease.notice_date %}
-      <td style="width:25%">
-        <div class="label">Congé donné le</div>
-        <div class="value">{{ lease.notice_date.strftime('%d/%m/%Y') }}</div>
-      </td>
-      {% endif %}
-      <td style="width:25%">
-        <div class="label">Statut</div>
-        <div class="value">
-          {% if lease.is_active %}
-            <span class="badge badge-green">Actif</span>
-          {% else %}
-            <span class="badge badge-orange">Résilié</span>
-          {% endif %}
-        </div>
-      </td>
-    </tr>
-  </table>
-
-  <!-- FINANCES -->
-  <div class="section-title">4. Loyer et charges</div>
-
-  <table class="amounts-table">
-    <thead>
-      <tr>
-        <th>Désignation</th>
-        <th class="amount-right">Montant mensuel</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Loyer hors charges</td>
-        <td class="amount-right">{{ "%.2f" | format(lease.rent_amount | float) }} €</td>
-      </tr>
-      <tr class="even">
-        <td>Charges récupérables</td>
-        <td class="amount-right">{{ "%.2f" | format(lease.charges_amount | float) }} €</td>
-      </tr>
-      {% if lease.apl_tiers_payant and lease.apl_amount %}
-      <tr>
-        <td>Aide personnelle au logement versée par la CAF (tiers-payant)</td>
-        <td class="amount-right">- {{ "%.2f" | format(lease.apl_amount | float) }} €</td>
-      </tr>
-      {% endif %}
-      <tr class="total">
-        <td>Total charges comprises (TCC)</td>
-        <td class="amount-right">{{ "%.2f" | format(lease.total_monthly) }} €</td>
-      </tr>
-      {% if lease.apl_tiers_payant and lease.apl_amount %}
-      <tr class="total">
-        <td>Solde dû par le locataire</td>
-        <td class="amount-right">{{ "%.2f" | format((lease.net_rent | float) + (lease.charges_amount | float)) }} €</td>
-      </tr>
-      {% endif %}
-    </tbody>
-  </table>
-
-  <table class="row-table" style="margin-top:12px">
-    <tr>
-      <td style="width:34%">
-        <div class="label">Dépôt de garantie</div>
-        <div class="value">{{ "%.2f" | format(lease.deposit_amount | float) }} €</div>
-      </td>
-      <td style="width:33%">
-        <div class="label">Jour de paiement</div>
-        <div class="value">Le {{ lease.payment_day }} de chaque mois</div>
-      </td>
-      <td style="width:33%">
-        <div class="label">Mode de paiement</div>
-        <div class="value">
-          {% if lease.payment_method == 'virement' %}Virement bancaire
-          {% elif lease.payment_method == 'cheque' %}Chèque
-          {% elif lease.payment_method == 'prelevement' %}Prélèvement automatique
-          {% else %}Espèces{% endif %}
-        </div>
-      </td>
-    </tr>
-  </table>
-
-  {% if lease.apl_tiers_payant %}
-  <div class="alert">
-    <strong>Tiers-payant CAF :</strong> Une partie du loyer est versée directement par la CAF au bailleur.
-    Le locataire s&apos;acquitte uniquement du loyer résiduel.
-  </div>
+  <div class="sec">IV. Conditions financières</div>
+  <p class="sub">A. Loyer</p>
+  <p class="row"><span class="lbl">Montant du loyer mensuel (hors charges) :</span> <span class="v">{{ rent }} €</span></p>
+  <p class="sub">B. Charges récupérables</p>
+  <p class="row"><span class="cbon">X</span> Provisions sur charges avec régularisation annuelle &nbsp;
+    <span class="cb">&nbsp;&nbsp;</span> Paiement périodique sans provision &nbsp;
+    <span class="cb">&nbsp;&nbsp;</span> Forfait de charges (colocation)</p>
+  <p class="row"><span class="lbl">Montant des provisions sur charges :</span> <span class="v">{{ charges }} €</span></p>
+  {% if irl_quarter %}
+  <p class="row"><span class="lbl">Révision annuelle — trimestre de référence de l'IRL :</span> <span class="v">T{{ irl_quarter }}</span></p>
   {% endif %}
-
-  {% if lease.notes %}
-  <!-- NOTES -->
-  <div class="section-title">5. Clauses particulières et notes</div>
-  <p style="font-size: 10pt; white-space: pre-wrap;">{{ lease.notes }}</p>
-  {% endif %}
-
-  <!-- SIGNATURES -->
-  <div class="section-title">{{ '6' if lease.notes else '5' }}. Signatures</div>
-
-  <table class="sign-table">
-    <tr>
-      <td>
-        <div class="sign-label">Le bailleur</div>
-        <div class="sign-space">
-          <br/>Date : _______________<br/><br/>
-          Signature :
-        </div>
-      </td>
-      <td>
-        <div class="sign-label">Le locataire — {{ lease.tenant.full_name if lease.tenant else '' }}</div>
-        <div class="sign-space">
-          <br/>Date : _______________<br/><br/>
-          Signature :
-        </div>
-      </td>
-      {% if lease.has_guarantor and lease.guarantor_name %}
-      <td>
-        <div class="sign-label">Le garant — {{ lease.guarantor_name }}</div>
-        <div class="sign-space">
-          <br/>Date : _______________<br/><br/>
-          Signature :
-        </div>
-      </td>
-      {% endif %}
-    </tr>
+  <p class="sub">E. Modalités de paiement</p>
+  <p class="row">Le loyer est payé d'avance, mensuellement, et dû avant le <span class="v">{{ payment_day }}</span> de chaque mois.</p>
+  <table class="fin">
+    <tr><td style="width:60%;">Montant total dû pour un mois de location :</td><td class="v">{{ total }} €</td></tr>
+    <tr><td>&nbsp;&nbsp;— Loyer :</td><td class="v">{{ rent }} €</td></tr>
+    <tr><td>&nbsp;&nbsp;— Charges récupérables :</td><td class="v">{{ charges }} €</td></tr>
   </table>
 
-  <p class="footer-notice">
-    Document généré par Le Comptoir Immo &bull;
-    Ce document est fourni à titre indicatif et ne remplace pas un acte authentique.
-  </p>
+  <div class="sec">V. Travaux</div>
+  <p class="small">Le cas échéant, travaux d'amélioration, de mise en conformité, majoration ou diminution de loyer
+    consécutive à des travaux : <span class="dots" style="min-width:280px;">&nbsp;</span></p>
+
+  <div class="sec">VI. Garanties</div>
+  <p class="row"><span class="lbl">Montant du dépôt de garantie :</span>
+    <span class="v">{{ deposit if deposit else '0.00' }} €</span>
+    <span class="note">(inférieur ou égal à un mois de loyer hors charges)</span></p>
+
+  <div class="sec">VII. Clause de solidarité</div>
+  <p class="small">En cas de pluralité de locataires, il y aura solidarité et indivisibilité entre eux pour l'exécution
+    de toutes les obligations du présent contrat.</p>
+
+  <div class="sec">VIII. Clause résolutoire</div>
+  <p class="small">Le présent contrat sera résilié de plein droit en cas de défaut de paiement du loyer, des provisions
+    de charges ou de la régularisation annuelle, de défaut de versement du dépôt de garantie, de défaut d'assurance
+    des risques locatifs, ou de trouble de voisinage constaté par décision de justice.</p>
+
+  <div class="sec">IX. Honoraires de location</div>
+  <p class="small">Le cas échéant, lorsque le contrat est conclu avec le concours d'une personne mandatée et rémunérée
+    à cette fin, les honoraires sont partagés et plafonnés conformément à l'article 5 (I) de la loi du 6 juillet 1989.</p>
+
+  <div class="sec">X. Autres conditions particulières</div>
+  <p class="dots" style="min-width:100%;">&nbsp;</p>
+  <p class="dots" style="min-width:100%;">&nbsp;</p>
+
+  <div class="sec">XI. Annexes</div>
+  <p class="small">Sont annexées au contrat : le dossier de diagnostic technique (DPE, etc.), une notice d'information
+    relative aux droits et obligations des locataires et des bailleurs, l'état des lieux, et le cas échéant l'extrait
+    du règlement de copropriété.</p>
+
+  <p style="margin-top:14px;">Le <span class="v">{{ today }}</span>, à <span class="dots" style="min-width:180px;">&nbsp;</span></p>
+  <table class="sign">
+    <tr>
+      <td>
+        <strong>Signature du bailleur</strong> (ou de son mandataire)<br>
+        <span class="small">Précédée de la mention « Lu et approuvé »</span>
+      </td>
+      <td>
+        <strong>Signature du locataire</strong><br>
+        <span class="small">Précédée de la mention « Lu et approuvé »</span>
+      </td>
+    </tr>
+  </table>
+  <p class="small" style="margin-top:6px;">Exemplaires originaux dont un remis à chaque signataire.
+    &middot; Pré-rempli par Le Comptoir Immo — à vérifier et signer par les parties.</p>
 
 </body>
 </html>

@@ -47,13 +47,83 @@ def html_to_pdf(html_content: str) -> bytes:
     return pdf_buffer.getvalue()
 
 
-def generate_lease_pdf(lease: Any) -> bytes:
-    """Génère le PDF d'un contrat de bail."""
+def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_mandataire: bool = False) -> bytes:
+    """Génère le PDF d'un contrat de bail — logement non meublé (loi 89-462).
+
+    - `owner` : fiche propriétaire du bien (bailleur). Si absent, repli sur les
+      champs dénormalisés du bien.
+    - `manager` / `is_mandataire` : gestionnaire mandataire (bloc « représenté par »).
+    """
+    import re as _re
+    from datetime import date as _date
+
+    def _fr(d):
+        return d.strftime("%d/%m/%Y") if d else ""
+
+    prop = getattr(lease, "parent_property", None)
+    tenant = getattr(lease, "tenant", None)
+    cots = list(getattr(lease, "co_tenants", []) or [])
+    tenant2 = cots[0] if cots else None
+
+    if owner is not None:
+        is_morale = bool(getattr(owner, "company_name", None))
+        bailleur_name = owner.full_name
+        bailleur_address = getattr(owner, "address", None) or ""
+        bailleur_email = getattr(owner, "email", None) or ""
+    else:
+        is_morale = False
+        bailleur_name = (getattr(prop, "owner_name", None) if prop else "") or ""
+        bailleur_address = ""
+        bailleur_email = (getattr(prop, "owner_email", None) if prop else "") or ""
+
+    logement_parts = []
+    if prop:
+        logement_parts = [p for p in [prop.address, getattr(prop, "address2", None)] if p]
+    nb_pieces = ""
+    if prop and getattr(prop, "typology", None):
+        m = _re.search(r"\d+", prop.typology)
+        nb_pieces = m.group(0) if m else ""
+
     try:
         tenant_names = lease.all_tenant_names
     except Exception:
-        tenant_names = lease.tenant.full_name if getattr(lease, "tenant", None) else ""
-    html = render_template("lease_bail.html.j2", {"lease": lease, "tenant_names": tenant_names})
+        tenant_names = tenant.full_name if tenant else ""
+
+    ctx = {
+        "is_morale": is_morale,
+        "bailleur_name": bailleur_name,
+        "bailleur_address": bailleur_address,
+        "bailleur_email": bailleur_email,
+        "is_mandataire": bool(is_mandataire and manager is not None),
+        "mandataire_name": (getattr(manager, "full_name", "") if manager else "") or "",
+        "mandataire_address": (getattr(manager, "address", "") if manager else "") or "",
+        "has_guarantor": bool(getattr(lease, "has_guarantor", False)),
+        "guarantor_name": getattr(lease, "guarantor_name", "") or "",
+        "tenant_name": tenant.full_name if tenant else "",
+        "tenant_email": (getattr(tenant, "email", "") if tenant else "") or "",
+        "tenant2_name": tenant2.full_name if tenant2 else "",
+        "tenant2_email": (getattr(tenant2, "email", "") if tenant2 else "") or "",
+        "logement_address": ", ".join(logement_parts),
+        "logement_cp": (prop.zip_code if prop else "") or "",
+        "logement_city": (prop.city if prop else "") or "",
+        "floor": (prop.floor if prop and prop.floor is not None else ""),
+        "surface": (f"{float(prop.area_sqm):.0f}" if prop and prop.area_sqm else ""),
+        "nb_pieces": nb_pieces,
+        "heating": (getattr(prop, "heating_type", None) if prop else "") or "",
+        "dpe": (getattr(prop, "energy_class", None) if prop else "") or "",
+        "year_built": (prop.year_built if prop and getattr(prop, "year_built", None) else ""),
+        "start_date": _fr(getattr(lease, "start_date", None)),
+        "duration_morale": is_morale,
+        "rent": f"{float(lease.rent_amount):.2f}",
+        "charges": f"{float(lease.charges_amount):.2f}",
+        "total": f"{lease.total_monthly:.2f}",
+        "payment_day": getattr(lease, "payment_day", 1),
+        "deposit": (f"{float(lease.deposit_amount):.2f}" if getattr(lease, "deposit_amount", None) is not None else ""),
+        "irl_quarter": getattr(lease, "irl_quarter", None),
+        "tenant_names": tenant_names,
+        "today": _fr(_date.today()),
+    }
+    html = render_template("lease_bail.html.j2", ctx)
     return html_to_pdf(html)
 
 

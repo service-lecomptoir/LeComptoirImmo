@@ -187,9 +187,9 @@ export default function LeaseDetail() {
     setPdfLoading(true)
     setDownloadError(null)
     try {
-      await leasesApi.downloadPdf(id, docFilename('bail', { tenant: lease.tenant?.full_name, property: lease.parent_property?.name }))
+      await leasesApi.downloadPdf(id, docFilename('bail_non_meuble', { tenant: lease.tenant?.full_name, property: lease.parent_property?.name }))
     } catch {
-      setDownloadError('Erreur lors de la génération du PDF bail')
+      setDownloadError('Erreur lors de la génération du bail non meublé')
     } finally {
       setPdfLoading(false)
     }
@@ -254,7 +254,7 @@ export default function LeaseDetail() {
             disabled={pdfLoading}
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <FileDown size={15} /> {pdfLoading ? 'Génération…' : 'PDF bail'}
+            <FileDown size={15} /> {pdfLoading ? 'Génération…' : 'Bail non meublé'}
           </button>
           <button
             onClick={handleDownloadCaf}
