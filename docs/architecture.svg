@@ -1,0 +1,269 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1180" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3 L0,6 z" fill="#475569"/></marker>
+    <marker id="ao" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3 L0,6 z" fill="#ea580c"/></marker>
+    <marker id="ag" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7,3 L0,6 z" fill="#94a3b8"/></marker>
+  </defs>
+  <rect width="1500" height="1180" fill="#f8fafc"/>
+  <text x="40" y="34" font-size="22" font-weight="700" fill="#0D2F5C">Architecture technique — Le Comptoir Immo &amp; Alice</text>
+  <text x="40" y="55" font-size="12.5" fill="#64748b">Vue ingénieur · 2 applications couplées · base PostgreSQL partagée · Docker Compose + nginx/TLS sur VPS OVH</text>
+
+  <!-- ============ LAYER LABELS ============ -->
+  <g font-size="11" font-weight="700" fill="#0D2F5C">
+    <text x="40" y="86">① CLIENTS &amp; SERVICES EXTERNES</text>
+    <text x="40" y="200">② EDGE — REVERSE PROXY / TLS</text>
+    <text x="40" y="320">③ APPLICATIF (conteneurs Docker)</text>
+    <text x="40" y="772">④ DONNÉES</text>
+    <text x="40" y="952">⑤ BUILD &amp; DÉPLOIEMENT</text>
+  </g>
+
+  <!-- ============ ① CLIENTS ============ -->
+  <rect x="40" y="96" width="320" height="74" rx="9" fill="#fff" stroke="#cbd5e1"/>
+  <text x="200" y="120" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f172a">Navigateur — Gestionnaire / Propriétaire / Locataire</text>
+  <text x="200" y="138" text-anchor="middle" font-size="10.5" fill="#475569">SPA React  ·  immo.lecomptoir.services</text>
+  <text x="200" y="155" text-anchor="middle" font-size="10" fill="#94a3b8">JWT en mémoire (access/refresh)</text>
+
+  <rect x="372" y="96" width="250" height="74" rx="9" fill="#fff" stroke="#cbd5e1"/>
+  <text x="497" y="120" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f172a">Navigateur — Admin Alice</text>
+  <text x="497" y="138" text-anchor="middle" font-size="10.5" fill="#475569">SPA React  ·  alice.lecomptoir.services</text>
+  <text x="497" y="155" text-anchor="middle" font-size="10" fill="#94a3b8">JWT admin</text>
+
+  <rect x="660" y="96" width="180" height="34" rx="8" fill="#fff" stroke="#cbd5e1" stroke-dasharray="4 3"/>
+  <text x="750" y="117" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">API BAN (adresses)</text>
+  <rect x="660" y="136" width="180" height="34" rx="8" fill="#fff" stroke="#cbd5e1" stroke-dasharray="4 3"/>
+  <text x="750" y="157" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">SMTP (e-mails)</text>
+  <rect x="852" y="96" width="178" height="74" rx="8" fill="#fff" stroke="#cbd5e1" stroke-dasharray="4 3"/>
+  <text x="941" y="128" text-anchor="middle" font-size="10.5" font-weight="700" fill="#0f172a">Let's Encrypt</text>
+  <text x="941" y="144" text-anchor="middle" font-size="10" fill="#475569">(ACME / certbot)</text>
+
+  <!-- ============ ② EDGE / NGINX ============ -->
+  <rect x="40" y="210" width="800" height="92" rx="10" fill="#0D2F5C"/>
+  <text x="58" y="232" font-size="13" font-weight="700" fill="#fff">nginx 1.25-alpine — reverse proxy + TLS (ports 80 / 443)</text>
+  <text x="58" y="252" font-size="10.5" fill="#cbd5e1">immo.lecomptoir.services →  /api/  ·  /uploads/  ·  /health  → backend:8000     |     / → frontend:80</text>
+  <text x="58" y="270" font-size="10.5" fill="#cbd5e1">alice.lecomptoir.services →  /api/  ·  /health  → alice-backend:8001     |     / → alice-frontend:80</text>
+  <text x="58" y="288" font-size="10.5" fill="#cbd5e1">:80 → /.well-known/acme-challenge (ACME)  +  redirection 443 · lecomptoir.services → site vitrine</text>
+  <rect x="852" y="210" width="178" height="92" rx="9" fill="#fff" stroke="#0D2F5C"/>
+  <text x="941" y="248" text-anchor="middle" font-size="11" font-weight="700" fill="#0D2F5C">certbot</text>
+  <text x="941" y="266" text-anchor="middle" font-size="10" fill="#475569">émission / renouvellement</text>
+  <text x="941" y="281" text-anchor="middle" font-size="10" fill="#475569">des certificats SSL</text>
+
+  <!-- ============ ③ APPLICATIF — LeCI ============ -->
+  <rect x="40" y="332" width="490" height="408" rx="12" fill="#eff6ff" stroke="#1A4A8A" stroke-width="1.5"/>
+  <text x="58" y="354" font-size="13" font-weight="700" fill="#1A4A8A">Le Comptoir Immo</text>
+
+  <rect x="58" y="366" width="454" height="66" rx="9" fill="#fff" stroke="#1A4A8A"/>
+  <text x="70" y="386" font-size="11.5" font-weight="700" fill="#0f172a">frontend — conteneur nginx:alpine (sert le build Vite statique)</text>
+  <text x="70" y="404" font-size="10" fill="#475569">React 18 · TypeScript · Vite · Tailwind · react-router-dom 6</text>
+  <text x="70" y="420" font-size="10" fill="#475569">react-hook-form + Zod · Zustand · Axios · Recharts · lucide-react</text>
+
+  <rect x="58" y="442" width="454" height="288" rx="9" fill="#fff" stroke="#1A4A8A"/>
+  <text x="70" y="462" font-size="11.5" font-weight="700" fill="#0f172a">backend — conteneur FastAPI · uvicorn[standard] (2 workers) · Python 3.12</text>
+  <text x="70" y="478" font-size="9.5" fill="#94a3b8">démarrage : bootstrap_db.py (create_all + ALTER IF NOT EXISTS) puis uvicorn</text>
+  <g font-size="10" fill="#334155">
+    <rect x="70" y="488" width="430" height="40" rx="6" fill="#f1f5f9"/>
+    <text x="80" y="503" font-weight="700" fill="#1A4A8A">API /api/v1 (routers)</text>
+    <text x="80" y="519">auth · users · owners · properties · tenants · leases · payments · avis_echeances ·</text>
+    <text x="80" y="519" dy="0"></text>
+    <rect x="70" y="532" width="430" height="16" rx="0" fill="#f1f5f9"/>
+    <text x="80" y="544">quittances · letters · actualisation · automation · templates · subscription · public · webhook</text>
+
+    <rect x="70" y="554" width="430" height="34" rx="6" fill="#f1f5f9"/>
+    <text x="80" y="569" font-weight="700" fill="#1A4A8A">Sécurité / Deps</text>
+    <text x="80" y="583">JWT (python-jose) · bcrypt · RBAC require_role · require_feature/any (entitlements) · CORS</text>
+
+    <rect x="70" y="594" width="210" height="50" rx="6" fill="#f1f5f9"/>
+    <text x="80" y="609" font-weight="700" fill="#1A4A8A">Services métier</text>
+    <text x="80" y="624">lease / payment / avis /</text>
+    <text x="80" y="638">owner / tenant / user / irl …</text>
+
+    <rect x="290" y="594" width="210" height="50" rx="6" fill="#f1f5f9"/>
+    <text x="300" y="609" font-weight="700" fill="#1A4A8A">Persistance</text>
+    <text x="300" y="624">SQLAlchemy 2 (async) + asyncpg</text>
+    <text x="300" y="638">Pydantic v2 (schemas) · Alembic</text>
+
+    <rect x="70" y="650" width="210" height="34" rx="6" fill="#f1f5f9"/>
+    <text x="80" y="665" font-weight="700" fill="#1A4A8A">Documents PDF</text>
+    <text x="80" y="679">Jinja2 + xhtml2pdf</text>
+
+    <rect x="290" y="650" width="210" height="34" rx="6" fill="#f1f5f9"/>
+    <text x="300" y="665" font-weight="700" fill="#1A4A8A">Jobs &amp; e-mails</text>
+    <text x="300" y="679">APScheduler · aiosmtplib</text>
+
+    <rect x="70" y="690" width="430" height="30" rx="6" fill="#fff7ed" stroke="#fed7aa"/>
+    <text x="80" y="709" fill="#9a3412">core/features.py — lit alice_plans.features (SQL direct) pour l'enforcement</text>
+  </g>
+
+  <!-- ============ ③ APPLICATIF — Alice ============ -->
+  <rect x="545" y="332" width="485" height="408" rx="12" fill="#f5f3ff" stroke="#6d28d9" stroke-width="1.5"/>
+  <text x="563" y="354" font-size="13" font-weight="700" fill="#6d28d9">Alice — back-office SaaS</text>
+
+  <rect x="563" y="366" width="449" height="66" rx="9" fill="#fff" stroke="#6d28d9"/>
+  <text x="575" y="386" font-size="11.5" font-weight="700" fill="#0f172a">alice-frontend — conteneur nginx:alpine (build Vite)</text>
+  <text x="575" y="404" font-size="10" fill="#475569">React 18 · TypeScript · Vite · Tailwind · Zustand · Axios</text>
+  <text x="575" y="420" font-size="10" fill="#475569">Gestionnaires · Plans · Licences · Factures · Demandes</text>
+
+  <rect x="563" y="442" width="449" height="288" rx="9" fill="#fff" stroke="#6d28d9"/>
+  <text x="575" y="462" font-size="11.5" font-weight="700" fill="#0f172a">alice-backend — FastAPI · uvicorn · Python 3.12 (:8001)</text>
+  <text x="575" y="478" font-size="9.5" fill="#94a3b8">migrations légères au démarrage (create_all + ALTER) + seed plans/superadmin</text>
+  <g font-size="10" fill="#334155">
+    <rect x="575" y="488" width="425" height="40" rx="6" fill="#f3f0ff"/>
+    <text x="585" y="503" font-weight="700" fill="#6d28d9">API /api/v1 (routers)</text>
+    <text x="585" y="519">auth · gestionnaires · plans · invoices · subscriptions ·</text>
+    <rect x="575" y="532" width="425" height="16" fill="#f3f0ff"/>
+    <text x="585" y="544">internal (licence/factures, X-Internal-Key) · dashboard</text>
+
+    <rect x="575" y="554" width="425" height="34" rx="6" fill="#f3f0ff"/>
+    <text x="585" y="569" font-weight="700" fill="#6d28d9">Sécurité / Deps</text>
+    <text x="585" y="583">JWT admin (python-jose) · CORS · clé interne service-à-service</text>
+
+    <rect x="575" y="594" width="205" height="50" rx="6" fill="#f3f0ff"/>
+    <text x="585" y="609" font-weight="700" fill="#6d28d9">Services</text>
+    <text x="585" y="624">block_service (cascade)</text>
+    <text x="585" y="638">invoice_pdf · plans · licences</text>
+
+    <rect x="790" y="594" width="210" height="50" rx="6" fill="#f3f0ff"/>
+    <text x="800" y="609" font-weight="700" fill="#6d28d9">Modèles</text>
+    <text x="800" y="624">AlicePlan/License/Invoice…</text>
+    <text x="800" y="638">LeciUser/Property (mapping)</text>
+
+    <rect x="575" y="650" width="425" height="34" rx="6" fill="#fef9c3" stroke="#fde68a"/>
+    <text x="585" y="669" fill="#854d0e" font-weight="700">feature_catalog.py + alice_feature_registry</text>
+    <text x="585" y="681" fill="#854d0e" font-size="9.5">auto-ajout des nouvelles fonctionnalités aux plans au démarrage</text>
+
+    <rect x="575" y="690" width="425" height="30" rx="6" fill="#f3f0ff"/>
+    <text x="585" y="709">Documents : Jinja2 + xhtml2pdf (factures)  ·  e-mails : aiosmtplib</text>
+  </g>
+
+  <!-- ============ ④ DONNÉES ============ -->
+  <rect x="40" y="784" width="800" height="140" rx="12" fill="#0f766e"/>
+  <text x="58" y="808" font-size="13" font-weight="700" fill="#fff">PostgreSQL 16-alpine — conteneur · base unique « lecomptoirimmo » · asyncpg</text>
+  <rect x="58" y="820" width="378" height="92" rx="8" fill="#0d5d56"/>
+  <text x="70" y="839" font-size="10.5" font-weight="700" fill="#a7f3d0">Tables Le Comptoir Immo</text>
+  <text x="70" y="856" font-size="9.6" fill="#d1fae5">users · owners · properties · tenants · leases ·</text>
+  <text x="70" y="871" font-size="9.6" fill="#d1fae5">lease_tenants · payments · avis_echeances ·</text>
+  <text x="70" y="886" font-size="9.6" fill="#d1fae5">documents · contacts · tickets · entretiens ·</text>
+  <text x="70" y="901" font-size="9.6" fill="#d1fae5">charge_regularizations · irl_indices · user_email_domains</text>
+  <rect x="446" y="820" width="382" height="92" rx="8" fill="#0d5d56"/>
+  <text x="458" y="839" font-size="10.5" font-weight="700" fill="#a7f3d0">Tables Alice (alice_*)</text>
+  <text x="458" y="856" font-size="9.6" fill="#d1fae5">alice_admins · alice_plans (features JSONB) ·</text>
+  <text x="458" y="871" font-size="9.6" fill="#d1fae5">alice_licenses (is_blocked, access_until) ·</text>
+  <text x="458" y="886" font-size="9.6" fill="#d1fae5">alice_invoices · alice_subscription_requests ·</text>
+  <text x="458" y="901" font-size="9.6" fill="#d1fae5">alice_feature_registry</text>
+
+  <rect x="852" y="784" width="178" height="140" rx="9" fill="#fff" stroke="#0f766e"/>
+  <text x="941" y="806" text-anchor="middle" font-size="11" font-weight="700" fill="#0f766e">Volumes Docker</text>
+  <text x="861" y="828" font-size="9.6" fill="#475569">• postgres_data (données)</text>
+  <text x="861" y="845" font-size="9.6" fill="#475569">• uploads_data (/app/uploads)</text>
+  <text x="861" y="862" font-size="9.6" fill="#475569">• certbot_www</text>
+  <text x="861" y="879" font-size="9.6" fill="#475569">• certbot_certs</text>
+  <text x="861" y="901" font-size="9" fill="#94a3b8">réseau bridge : locataire_net</text>
+
+  <!-- ============ ⑤ BUILD / DEPLOY ============ -->
+  <rect x="40" y="962" width="990" height="74" rx="10" fill="#fff" stroke="#cbd5e1"/>
+  <text x="58" y="984" font-size="11.5" font-weight="700" fill="#0f172a">Build &amp; déploiement</text>
+  <text x="58" y="1003" font-size="10.5" fill="#475569">Poste dev → git push (GitHub origin/main)  ·  tar ustar + scp → VPS  ·  docker compose -f docker/docker-compose.prod.yml up -d --build &lt;service&gt;</text>
+  <text x="58" y="1020" font-size="10.5" fill="#475569">Front : Vite build (esbuild, multi-stage node→nginx)  ·  Back : image python:3.12-slim multi-stage  ·  contrôles : tsc --noEmit, pytest, import-check</text>
+
+  <!-- ============ ARROWS ============ -->
+  <!-- browsers -> nginx -->
+  <line x1="200" y1="170" x2="200" y2="210" stroke="#475569" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="208" y="190" font-size="9" fill="#475569">HTTPS</text>
+  <line x1="497" y1="170" x2="497" y2="210" stroke="#475569" stroke-width="1.6" marker-end="url(#a)"/>
+  <!-- ACME / certbot -->
+  <line x1="941" y1="170" x2="941" y2="210" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+  <!-- nginx -> frontends/backends -->
+  <line x1="280" y1="302" x2="285" y2="366" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="240" y="330" font-size="9" fill="#475569">/ (SPA)</text>
+  <line x1="430" y1="302" x2="430" y2="442" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="436" y="330" font-size="9" fill="#475569">/api → :8000</text>
+  <line x1="700" y1="302" x2="760" y2="366" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="690" y="330" font-size="9" fill="#475569">/ (SPA)</text>
+  <line x1="820" y1="302" x2="850" y2="442" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="828" y="330" font-size="9" fill="#475569">/api → :8001</text>
+
+  <!-- backend <-> alice-backend (internal API + webhook) -->
+  <line x1="512" y1="556" x2="563" y2="556" stroke="#ea580c" stroke-width="1.8" marker-end="url(#ao)"/>
+  <line x1="563" y1="576" x2="512" y2="576" stroke="#ea580c" stroke-width="1.8" marker-end="url(#ao)"/>
+  <text x="537" y="548" text-anchor="middle" font-size="8.6" fill="#9a3412">API interne</text>
+  <text x="537" y="590" text-anchor="middle" font-size="8.6" fill="#9a3412">webhook</text>
+
+  <!-- backends -> PG -->
+  <line x1="300" y1="730" x2="300" y2="784" stroke="#475569" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="306" y="760" font-size="9" fill="#475569">SQL (asyncpg)</text>
+  <line x1="760" y1="730" x2="640" y2="784" stroke="#475569" stroke-width="1.6" marker-end="url(#a)"/>
+  <text x="690" y="760" font-size="9" fill="#475569">SQL alice_*</text>
+  <!-- LeCI backend reads alice_* (dotted) -->
+  <line x1="470" y1="720" x2="520" y2="784" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+  <text x="486" y="762" font-size="8.6" fill="#64748b">lecture alice_*</text>
+
+  <!-- frontend -> BAN, backends -> SMTP (dotted, long, via right) -->
+  <path d="M512,399 C612,399 700,250 745,170" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+  <text x="612" y="402" font-size="8.6" fill="#64748b">BAN (adresses)</text>
+  <path d="M760,718 C840,640 800,300 752,170" fill="none" stroke="#94a3b8" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#ag)"/>
+
+  <!-- ============ RIGHT RAIL : STACK ============ -->
+  <g>
+    <rect x="1055" y="96" width="410" height="210" rx="10" fill="#fff" stroke="#cbd5e1"/>
+    <text x="1070" y="118" font-size="12" font-weight="700" fill="#0D2F5C">Stack backend (LeCI &amp; Alice)</text>
+    <g font-size="10.2" fill="#334155">
+      <text x="1070" y="140">• FastAPI 0.111 · uvicorn[standard] 0.30 (2 workers)</text>
+      <text x="1070" y="158">• SQLAlchemy 2.0 (async) · asyncpg · greenlet</text>
+      <text x="1070" y="176">• Alembic 1.13 (+ create_all / ALTER bootstrap)</text>
+      <text x="1070" y="194">• Pydantic 2.7 + pydantic-settings · email-validator</text>
+      <text x="1070" y="212">• Auth : python-jose (JWT) · bcrypt · multipart</text>
+      <text x="1070" y="230">• httpx (service-à-service) · APScheduler (cron)</text>
+      <text x="1070" y="248">• PDF : Jinja2 · xhtml2pdf (weasyprint dispo)</text>
+      <text x="1070" y="266">• E-mails : aiosmtplib  ·  Tests : pytest / asyncio</text>
+      <text x="1070" y="288" fill="#94a3b8">Python 3.12-slim · images multi-stage</text>
+    </g>
+
+    <rect x="1055" y="320" width="410" height="150" rx="10" fill="#fff" stroke="#cbd5e1"/>
+    <text x="1070" y="342" font-size="12" font-weight="700" fill="#0D2F5C">Stack frontend (LeCI &amp; Alice)</text>
+    <g font-size="10.2" fill="#334155">
+      <text x="1070" y="364">• React 18.3 · TypeScript · Vite 5 (build esbuild)</text>
+      <text x="1070" y="382">• Tailwind CSS · lucide-react · clsx</text>
+      <text x="1070" y="400">• react-router-dom 6 · Zustand (état/auth/features)</text>
+      <text x="1070" y="418">• react-hook-form 7 + Zod (formulaires)</text>
+      <text x="1070" y="436">• Axios (intercepteurs : JWT, refresh, toasts)</text>
+      <text x="1070" y="454">• Recharts · date-fns  ·  servi en statique par nginx</text>
+    </g>
+
+    <rect x="1055" y="484" width="410" height="180" rx="10" fill="#fff" stroke="#cbd5e1"/>
+    <text x="1070" y="506" font-size="12" font-weight="700" fill="#0D2F5C">Infra &amp; conteneurs (Docker Compose)</text>
+    <g font-size="10.2" fill="#334155">
+      <text x="1070" y="528">• 7 conteneurs : postgres · backend · frontend ·</text>
+      <text x="1078" y="544">alice-backend · alice-frontend · nginx · certbot</text>
+      <text x="1070" y="562">• nginx 1.25-alpine (80/443) — TLS Let's Encrypt</text>
+      <text x="1070" y="580">• postgres 16-alpine (5432 interne, healthcheck)</text>
+      <text x="1070" y="598">• Réseau bridge locataire_net (privé)</text>
+      <text x="1070" y="616">• Volumes : postgres_data · uploads_data · certbot_*</text>
+      <text x="1070" y="634">• env_file : backend/.env.prod · alice/backend/.env.prod</text>
+      <text x="1070" y="652" fill="#94a3b8">VPS OVH AlmaLinux · accès SSH (port 58007)</text>
+    </g>
+
+    <rect x="1055" y="678" width="410" height="200" rx="10" fill="#fff" stroke="#cbd5e1"/>
+    <text x="1070" y="700" font-size="12" font-weight="700" fill="#0D2F5C">Sécurité &amp; transverse</text>
+    <g font-size="10.2" fill="#334155">
+      <text x="1070" y="722">• Auth JWT (access/refresh) ; rôles : admin,</text>
+      <text x="1078" y="738">gestionnaire, gestionnaire_proprio, proprietaire,</text>
+      <text x="1078" y="754">locataire, lecture — hiérarchie RBAC (require_role)</text>
+      <text x="1070" y="774">• Entitlements de plan : menu + URL + API</text>
+      <text x="1078" y="790">(require_feature / require_any_feature)</text>
+      <text x="1070" y="810">• Service-à-service : en-tête X-Internal-Key</text>
+      <text x="1070" y="828">• Licence : blocage cascade + résiliation différée</text>
+      <text x="1078" y="844">(access_until, enforcement paresseux, sans cron)</text>
+      <text x="1070" y="864">• Secrets hors git (.env.prod) · CORS · DB non exposée</text>
+    </g>
+
+    <!-- Legend -->
+    <rect x="1055" y="892" width="410" height="120" rx="10" fill="#f1f5f9" stroke="#e2e8f0"/>
+    <text x="1070" y="912" font-size="11" font-weight="700" fill="#0D2F5C">Légende</text>
+    <line x1="1070" y1="930" x2="1100" y2="930" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+    <text x="1108" y="934" font-size="10" fill="#334155">HTTP(S) / SQL synchrone</text>
+    <line x1="1070" y1="952" x2="1100" y2="952" stroke="#ea580c" stroke-width="2" marker-end="url(#ao)"/>
+    <text x="1108" y="956" font-size="10" fill="#334155">intégration LeCI ↔ Alice (API interne / webhook)</text>
+    <line x1="1070" y1="974" x2="1100" y2="974" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+    <text x="1108" y="978" font-size="10" fill="#334155">accès secondaire (lecture alice_*, BAN, SMTP, ACME)</text>
+    <text x="1070" y="998" font-size="9.5" fill="#94a3b8">Domaines : immo.lecomptoir.services · alice.lecomptoir.services</text>
+  </g>
+</svg>
