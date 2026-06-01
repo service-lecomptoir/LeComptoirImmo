@@ -77,7 +77,8 @@ class Tenant(Base, TimestampMixin):
 
     @property
     def full_name(self) -> str:
-        parts = [self.civility or "", self.first_name, self.last_name]
+        # « Prénom Nom » sans la civilité (cf. bail / documents / listes).
+        parts = [self.first_name, self.last_name]
         return " ".join(p for p in parts if p).strip()
 
     def __repr__(self) -> str:
