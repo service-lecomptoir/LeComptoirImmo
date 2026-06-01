@@ -272,7 +272,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
               <select {...register('civility')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value=""></option>
+                <option value="">— Sélectionner —</option>
                 <option value="M">M.</option>
                 <option value="Mme">Mme</option>
                 <option value="Autre">Autre</option>

@@ -312,7 +312,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
             <div>
               <label className={lbl}>Type (nombre de pièces)</label>
               <select {...register('typology')} className={inp}>
-                <option value=""></option>
+                <option value="">— Sélectionner —</option>
                 {TYPOLOGY_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -327,21 +327,21 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
             <div>
               <label className={lbl}>Salle d'eau / salle de bain</label>
               <select {...register('bathrooms')} className={inp}>
-                <option value=""></option>
+                <option value="">— Sélectionner —</option>
                 {[0, 1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
             <div>
               <label className={lbl}>Chauffage</label>
               <select {...register('heating_type')} className={inp}>
-                <option value=""></option>
+                <option value="">— Sélectionner —</option>
                 {HEATING_OPTIONS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
               </select>
             </div>
             <div>
               <label className={lbl}>Classe énergie (DPE)</label>
               <select {...register('energy_class')} className={inp}>
-                <option value=""></option>
+                <option value="">— Sélectionner —</option>
                 {ENERGY_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
