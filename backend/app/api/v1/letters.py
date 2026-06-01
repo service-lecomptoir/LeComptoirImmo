@@ -54,6 +54,17 @@ def _split_address(raw):
     return s, ""
 
 
+def _split_address_parts(raw):
+    """(rue, code_postal, commune) depuis une adresse libre. CP = 1er groupe de 5 chiffres."""
+    if not raw:
+        return "", "", ""
+    s = " ".join(str(raw).split())
+    m = re.search(r"\b(\d{5})\b", s)
+    if m:
+        return s[:m.start()].rstrip(" ,"), m.group(1), s[m.end():].lstrip(" ,").strip()
+    return s, "", ""
+
+
 @router.get("/relance/{payment_id}")
 async def lettre_relance(
     payment_id: uuid.UUID,
@@ -164,6 +175,68 @@ async def attestation_caf(
     from app.utils.filename import doc_filename
     filename = doc_filename(
         "attestation_caf",
+        tenant=tenant.full_name if tenant else None,
+        property_name=prop.name if prop else None,
+        year=today.year,
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/versement-direct/{lease_id}")
+async def versement_direct_caf(
+    lease_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Génère la demande de versement direct de l'aide au logement (CERFA 11362*04)."""
+    lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
+    tenant = lease.tenant
+    prop = lease.parent_property
+    today = date.today()
+
+    owner = None
+    if prop and prop.owner_id:
+        owner = (await db.execute(select(Owner).where(Owner.id == prop.owner_id))).scalar_one_or_none()
+
+    # Bailleur : raison sociale OU nom/prénom + adresse découpée
+    if owner and owner.company_name:
+        bailleur_nom, bailleur_prenom = owner.company_name, ""
+    elif owner:
+        bailleur_nom, bailleur_prenom = owner.last_name or "", owner.first_name or ""
+    else:
+        bailleur_nom, bailleur_prenom = current_user.full_name, ""
+    b_rue, b_cp, b_commune = _split_address_parts(owner.address if owner else None)
+
+    ctx = {
+        "bailleur_nom": bailleur_nom,
+        "bailleur_prenom": bailleur_prenom,
+        "bailleur_rue": b_rue,
+        "bailleur_cp": b_cp,
+        "bailleur_commune": b_commune,
+        "bailleur_phone": (owner.phone if owner else None) or (prop.owner_phone if prop else None) or getattr(current_user, "phone", None) or "",
+        "bailleur_email": (owner.email if owner else None) or (prop.owner_email if prop else None) or current_user.email,
+        "bailleur_siret": (owner.national_id if owner else None) or "",
+        # Allocataire = locataire ; adresse = logement
+        "alloc_nom": tenant.last_name if tenant else "",
+        "alloc_prenom": tenant.first_name if tenant else "",
+        "alloc_rue": (prop.address if prop else "") or "",
+        "alloc_cp": (prop.zip_code if prop else "") or "",
+        "alloc_commune": (prop.city if prop else "") or "",
+        "alloc_secu": (tenant.national_id if tenant else "") or "",
+        "ville": prop.city if prop and prop.city else "",
+        "today": _today_str(),
+    }
+
+    html = render_template("versement_direct_caf.html.j2", ctx)
+    pdf = html_to_pdf(html)
+
+    from app.utils.filename import doc_filename
+    filename = doc_filename(
+        "versement_direct_caf",
         tenant=tenant.full_name if tenant else None,
         property_name=prop.name if prop else None,
         year=today.year,

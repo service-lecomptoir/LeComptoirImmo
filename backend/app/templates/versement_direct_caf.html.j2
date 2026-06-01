@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4; margin: 1.3cm 1.5cm; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #1a1a1a; line-height: 1.55; }
+    .head { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+    .head td { vertical-align: middle; }
+    .brand { color: #c0392b; font-weight: bold; font-size: 9pt; }
+    .title { font-size: 16pt; font-weight: bold; color: #1f3864; }
+    .sub { font-size: 10pt; color: #1f3864; }
+    .cerfa { text-align: right; color: #1f3864; font-weight: bold; font-size: 10pt; }
+    .legalref { text-align: right; font-size: 7pt; color: #555; }
+    .bar { background-color: #1f3864; height: 2px; font-size: 1px; line-height: 2px; margin: 4px 0 8px 0; }
+    .red { color: #c0392b; font-weight: bold; }
+    .warn { font-style: italic; color: #555; margin: 6px 0; }
+    .sec { color: #1f3864; font-weight: bold; margin: 12px 0 4px 0; }
+    .sec .italic { font-weight: normal; font-style: italic; color: #666; font-size: 8pt; }
+    table.kv { width: 100%; border-collapse: collapse; }
+    table.kv td { padding: 3px 4px; vertical-align: bottom; }
+    .lbl { color: #333; }
+    .v { font-weight: bold; color: #1f3864; }
+    .fill { border-bottom: 1px dotted #888; }
+    .engage { margin-top: 10px; font-size: 8.5pt; }
+    .sign { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    .sign td { vertical-align: top; padding: 4px; }
+    .signbox { border: 1px solid #999; padding: 8px; height: 70px; }
+    .legal { font-size: 6.5pt; color: #777; margin-top: 12px; border-top: 1px solid #ddd; padding-top: 5px; text-align: justify; }
+  </style>
+</head>
+<body>
+
+  <table class="head">
+    <tr>
+      <td style="width: 62%;">
+        <span class="brand">CAF &middot; Allocations familiales</span><br>
+        <span class="title">Demande de versement direct</span><br>
+        <span class="sub">allocation de logement</span>
+      </td>
+      <td style="width: 38%;">
+        <div class="cerfa">cerfa 11362*04</div>
+        <div class="legalref">Art. L.553-4 et L.835-2 du code de la Sécurité sociale</div>
+      </td>
+    </tr>
+  </table>
+  <div class="bar">&nbsp;</div>
+
+  <p class="red" style="margin:0;">À remplir par le propriétaire-bailleur, le gestionnaire de l'établissement ou le prêteur.</p>
+  <p style="margin:4px 0;">L'allocation de logement peut être versée directement au propriétaire-bailleur, au gestionnaire ou à
+  l'organisme de prêt, s'il le demande. Dans ce cas, elle est déduite du montant du loyer ou de la redevance ou
+  des remboursements de prêt.</p>
+  <p class="warn">&#9888; En location, cette demande n'est possible que si le logement répond aux caractéristiques
+  de la décence (décret 2002-120 du 30 janvier 2002).</p>
+
+  <div class="sec">&#9642; Le propriétaire-bailleur, le gestionnaire ou le prêteur : <span class="italic">je soussigné(e) (ou le mandataire éventuellement)</span></div>
+  <table class="kv">
+    <tr>
+      <td style="width:62%;"><span class="lbl">Nom ou raison sociale :</span> <span class="v">{{ bailleur_nom }}</span></td>
+      <td><span class="lbl">Prénom :</span> <span class="v">{{ bailleur_prenom or '' }}</span></td>
+    </tr>
+    <tr><td colspan="2"><span class="lbl">Adresse :</span> <span class="v">{{ bailleur_rue }}</span></td></tr>
+    <tr>
+      <td><span class="lbl">Code postal :</span> <span class="v">{{ bailleur_cp }}</span></td>
+      <td><span class="lbl">Commune :</span> <span class="v">{{ bailleur_commune }}</span></td>
+    </tr>
+    <tr>
+      <td><span class="lbl">N° de téléphone :</span> <span class="v">{{ bailleur_phone or '' }}</span></td>
+      <td><span class="lbl">Adresse mél :</span> <span class="v">{{ bailleur_email or '' }}</span></td>
+    </tr>
+    <tr><td colspan="2"><span class="lbl">N° SIRET :</span> <span class="v">{{ bailleur_siret or '' }}</span></td></tr>
+  </table>
+  <p style="margin:4px 0;">demande que tous les paiements d'allocation de logement dus à l'allocataire désigné
+  ci-dessous me soient versés directement <span style="font-style:italic;color:#666;">(joindre un relevé d'identité bancaire, postal ou d'épargne).</span></p>
+
+  <div class="sec">&#9642; L'allocataire :</div>
+  <table class="kv">
+    <tr>
+      <td style="width:62%;"><span class="lbl">Nom :</span> <span class="v">{{ alloc_nom }}</span></td>
+      <td><span class="lbl">Prénom :</span> <span class="v">{{ alloc_prenom }}</span></td>
+    </tr>
+    <tr><td colspan="2"><span class="lbl">Adresse :</span> <span class="v">{{ alloc_rue }}</span></td></tr>
+    <tr>
+      <td><span class="lbl">Code postal :</span> <span class="v">{{ alloc_cp }}</span></td>
+      <td><span class="lbl">Commune :</span> <span class="v">{{ alloc_commune }}</span></td>
+    </tr>
+    <tr><td colspan="2"><span class="lbl">N° d'allocataire ou N° de sécurité sociale :</span> <span class="v">{{ alloc_secu }}</span></td></tr>
+  </table>
+
+  <p class="engage">Je m'engage en contrepartie à signaler à la Caisse tout impayé dans les 3 mois suivant sa
+  constitution et immédiatement le départ de l'allocataire du logement concerné ou la rupture du contrat de prêt.
+  Je prends connaissance, qu'à défaut, je devrai rembourser à la Caisse l'allocation de logement versée indûment.</p>
+
+  <table class="sign">
+    <tr>
+      <td style="width:54%;">
+        À <span class="v">{{ ville or '________________' }}</span>, le <span class="v">{{ today }}</span>.
+      </td>
+      <td style="width:46%;">
+        <div class="signbox">
+          <strong>Signature - cachet</strong><br>
+          <span style="font-size:7.5pt;color:#777;">(du propriétaire ou du bailleur, du gestionnaire de l'établissement ou du prêteur)</span>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="legal">
+    Vous avez l'obligation de signaler immédiatement tout changement modifiant cette déclaration. La Caf/MSA
+    vérifie l'exactitude des déclarations (Article L. 114-19 du code de la Sécurité sociale). La loi punit
+    quiconque se rend coupable de fraude ou de fausse déclaration (Articles L. 114-9, L. 583-3, L. 831-7 et
+    L. 114-17 du code de la Sécurité sociale). La loi 78-17 du 06/01/1978 modifiée s'applique aux réponses faites
+    sur ce formulaire et garantit un droit d'accès et de rectification des données vous concernant. &middot;
+    Pré-rempli par Le Comptoir Immo — à vérifier et signer par le bailleur ; joindre un RIB.
+  </div>
+
+</body>
+</html>

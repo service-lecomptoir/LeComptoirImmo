@@ -10,7 +10,7 @@ export default function DocumentsCaf() {
   const [leases, setLeases] = useState<LeaseListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState<string | null>(null)
 
   useEffect(() => {
     leasesApi.list({ is_active: true, limit: 200 })
@@ -28,21 +28,36 @@ export default function DocumentsCaf() {
     )
   }, [leases, search])
 
-  const downloadAttestation = async (lease: LeaseListItem) => {
-    setDownloadingId(lease.id)
+  const download = async (
+    lease: LeaseListItem,
+    kind: 'attestation' | 'versement',
+  ) => {
+    const key = `${lease.id}:${kind}`
+    setDownloading(key)
     try {
-      await lettersApi.downloadAttestationCaf(
-        lease.id,
-        docFilename('attestation_loyer_caf', {
-          tenant: lease.tenant_full_name,
-          property: lease.property_name,
-          year: new Date().getFullYear(),
-        }),
-      )
+      if (kind === 'attestation') {
+        await lettersApi.downloadAttestationCaf(
+          lease.id,
+          docFilename('attestation_loyer_caf', {
+            tenant: lease.tenant_full_name,
+            property: lease.property_name,
+            year: new Date().getFullYear(),
+          }),
+        )
+      } else {
+        await lettersApi.downloadVersementDirect(
+          lease.id,
+          docFilename('versement_direct_caf', {
+            tenant: lease.tenant_full_name,
+            property: lease.property_name,
+            year: new Date().getFullYear(),
+          }),
+        )
+      }
     } catch {
-      toast.error("Génération de l'attestation impossible")
+      toast.error('Génération du document impossible')
     } finally {
-      setDownloadingId(null)
+      setDownloading(null)
     }
   }
 
@@ -86,7 +101,7 @@ export default function DocumentsCaf() {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Locataire</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Bien</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Depuis le</th>
-                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Attestation</th>
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Documents</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -104,15 +119,25 @@ export default function DocumentsCaf() {
                     <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                       {l.start_date ? new Date(l.start_date).toLocaleDateString('fr-FR') : '—'}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => downloadAttestation(l)}
-                        disabled={downloadingId === l.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-60"
-                      >
-                        {downloadingId === l.id ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
-                        Attestation de loyer
-                      </button>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                        <button
+                          onClick={() => download(l, 'attestation')}
+                          disabled={downloading === `${l.id}:attestation`}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-60 whitespace-nowrap"
+                        >
+                          {downloading === `${l.id}:attestation` ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
+                          Attestation de loyer
+                        </button>
+                        <button
+                          onClick={() => download(l, 'versement')}
+                          disabled={downloading === `${l.id}:versement`}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-60 whitespace-nowrap"
+                        >
+                          {downloading === `${l.id}:versement` ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />}
+                          Versement direct
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
