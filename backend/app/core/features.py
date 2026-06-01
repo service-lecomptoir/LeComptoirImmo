@@ -58,6 +58,22 @@ async def get_plan_features(db: AsyncSession, user_id: UUID) -> Optional[List[st
     return feats if isinstance(feats, list) else None
 
 
+async def get_plan_name(db: AsyncSession, user_id: UUID) -> Optional[str]:
+    """Nom du plan tarifaire du gestionnaire (lecture directe des tables Alice)."""
+    try:
+        row = (await db.execute(
+            text(
+                "SELECT p.name FROM alice_licenses l "
+                "JOIN alice_plans p ON p.id = l.plan_id "
+                "WHERE l.gestionnaire_user_id = :uid"
+            ).bindparams(uid=user_id)
+        )).fetchone()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Lecture du nom de plan échouée pour %s : %s", user_id, exc)
+        return None
+    return row[0] if row else None
+
+
 def require_feature(feature: str):
     """Dépendance FastAPI : 403 si le plan du gestionnaire n'inclut pas `feature`."""
     async def _dep(

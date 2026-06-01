@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_active_admin, get_current_gestionnaire
 from app.core.permissions import Role
-from app.core.features import require_feature
+from app.core.features import require_feature, get_plan_name
 from app.api.v1._isolation import gp_tenant_ids as _isolation_gp_tenant_ids
 from app.models.user import User
 from app.models.email_domain import EmailDomain
@@ -152,6 +152,16 @@ async def create_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Un gestionnaire-propriétaire ne peut créer que des comptes locataire.",
             )
+
+    # Règle : le plan Free ne permet pas de créer des comptes locataire.
+    if Role(data.role) == Role.LOCATAIRE:
+        plan_name = await get_plan_name(db, current_user.id)
+        if plan_name and plan_name.strip().lower() == "free":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Le plan Free ne permet pas de créer des comptes locataire. Faites évoluer votre formule.",
+            )
+
     # Passer current_user.id pour tracer le créateur (isolation GP)
     new_user = await UserService.create(db, data, created_by=current_user.id)
     from app.services import audit_service

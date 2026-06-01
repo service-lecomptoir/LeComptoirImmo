@@ -55,6 +55,25 @@ def _manager_roles():
         LeciUser.role_eq("gestionnaire"),
         LeciUser.role_eq("gestionnaire_proprio"),
     )
+
+
+# Règle métier : le plan « Free » est réservé aux comptes Gestionnaire-Propriétaire.
+FREE_PLAN_NAME = "free"
+
+
+async def _is_free_plan(db, plan_id) -> bool:
+    if not plan_id:
+        return False
+    p = (await db.execute(select(AlicePlan).where(AlicePlan.id == plan_id))).scalar_one_or_none()
+    return bool(p and (p.name or "").strip().lower() == FREE_PLAN_NAME)
+
+
+def _check_free_plan_role(is_free: bool, role: str) -> None:
+    if is_free and role != "gestionnaire_proprio":
+        raise HTTPException(
+            status_code=400,
+            detail="Le plan Free est réservé aux comptes Gestionnaire-Propriétaire.",
+        )
 from app.schemas.license import LicenseOut
 from app.schemas.plan import PlanOut
 from app.core.security import hash_password
@@ -150,6 +169,9 @@ async def create_gestionnaire(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail=f"L'email '{data.email}' est déjà utilisé")
 
+    # Règle : plan Free → uniquement pour un Gestionnaire-Propriétaire
+    _check_free_plan_role(await _is_free_plan(db, data.plan_id), data.role)
+
     # Hash du mot de passe dans un thread (bcrypt est synchrone)
     loop = asyncio.get_event_loop()
     hashed = await loop.run_in_executor(_executor, hash_password, data.password)
@@ -236,6 +258,14 @@ async def update_gestionnaire(
     user = user_result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
+
+    # Règle : plan Free → uniquement Gestionnaire-Propriétaire (vérif sur l'état final)
+    _existing_lic = (await db.execute(
+        select(AliceLicense).where(AliceLicense.gestionnaire_user_id == gestionnaire_id)
+    )).scalar_one_or_none()
+    final_role = data.role if data.role is not None else str(user.role)
+    final_plan_id = data.plan_id if data.plan_id is not None else (_existing_lic.plan_id if _existing_lic else None)
+    _check_free_plan_role(await _is_free_plan(db, final_plan_id), final_role)
 
     # Mise à jour user (+ coordonnées profil LeCI)
     if data.email is not None:

@@ -63,6 +63,11 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Règle : le plan Free est réservé aux comptes Gestionnaire-Propriétaire.
+  const selectedPlanIsFree = plans.some(
+    p => p.id === form.plan_id && (p.name || '').trim().toLowerCase() === 'free',
+  )
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -101,13 +106,17 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1.5">Type de compte *</label>
               <div className="grid grid-cols-2 gap-2">
-                {ROLE_OPTIONS.map(opt => (
+                {ROLE_OPTIONS.map(opt => {
+                  const disabled = selectedPlanIsFree && opt.value !== 'gestionnaire_proprio'
+                  return (
                   <button
                     key={opt.value}
                     type="button"
+                    disabled={disabled}
                     onClick={() => setForm(f => ({ ...f, role: opt.value }))}
                     className={clsx(
                       'text-left px-3 py-2.5 rounded-lg border text-xs transition-colors',
+                      disabled && 'opacity-40 cursor-not-allowed',
                       form.role === opt.value
                         ? 'border-indigo-500 bg-indigo-50 text-indigo-900'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700'
@@ -116,8 +125,12 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
                     <div className="font-semibold">{opt.label}</div>
                     <div className={clsx('mt-0.5', form.role === opt.value ? 'text-indigo-500' : 'text-gray-400')}>{opt.description}</div>
                   </button>
-                ))}
+                  )
+                })}
               </div>
+              {selectedPlanIsFree && (
+                <p className="mt-1.5 text-[11px] text-amber-600">Le plan Free est réservé aux comptes Gestionnaire-Propriétaire.</p>
+              )}
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1">Nom de la résidence *</label>
@@ -185,7 +198,11 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
               <label className="block text-xs font-medium text-gray-600 mb-1">Plan tarifaire</label>
               <select
                 value={form.plan_id || ''}
-                onChange={e => setForm(f => ({ ...f, plan_id: e.target.value || null }))}
+                onChange={e => {
+                  const id = e.target.value || null
+                  const isFree = plans.some(p => p.id === id && (p.name || '').trim().toLowerCase() === 'free')
+                  setForm(f => ({ ...f, plan_id: id, role: isFree ? 'gestionnaire_proprio' : f.role }))
+                }}
                 className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">-- Aucun plan --</option>
