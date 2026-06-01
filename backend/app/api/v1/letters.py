@@ -5,12 +5,14 @@ import uuid
 from datetime import date
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.core.permissions import Role
 from app.api.deps import require_role
 from app.models.user import User
+from app.models.owner import Owner
 from app.models.lease import LeaseType
 from app.services.lease_service import LeaseService
 from app.services.payment_service import PaymentService
@@ -97,23 +99,41 @@ async def attestation_caf(
     prop = lease.parent_property
     today = date.today()
 
+    # Bailleur = fiche propriétaire du bien (sinon copie dénormalisée, sinon utilisateur)
+    owner = None
+    if prop and prop.owner_id:
+        owner = (await db.execute(select(Owner).where(Owner.id == prop.owner_id))).scalar_one_or_none()
+
+    co_tenants = list(lease.co_tenants or [])
+    tenant2 = co_tenants[0] if co_tenants else None
+    nb_coloc = 1 + len(co_tenants)
+    is_coloc = nb_coloc > 1
+    is_furnished = str(lease.lease_type) == "meuble"
+    sd = lease.start_date
+
     ctx = {
-        "bailleur_name": current_user.full_name,
-        "property_address": prop.full_address if prop else "",
-        "property_city": prop.city if prop and prop.city else "",
-        "unit_ref": prop.name if prop else "",
-        "unit_type": prop.property_type if prop else "",
-        "area_sqm": f"{float(prop.area_sqm):.0f}" if prop and prop.area_sqm else None,
+        "bailleur_name": (owner.full_name if owner else None) or (prop.owner_name if prop else None) or current_user.full_name,
+        "bailleur_address": (owner.address if owner else None) or "",
+        "bailleur_phone": (owner.phone if owner else None) or (prop.owner_phone if prop else None) or getattr(current_user, "phone", None) or "",
+        "bailleur_email": (owner.email if owner else None) or (prop.owner_email if prop else None) or current_user.email,
+        "bailleur_siret": (owner.national_id if owner else None) or "",
         "tenant_name": tenant.full_name if tenant else "",
-        "tenant_birth_date": (
-            tenant.birth_date.strftime("%d/%m/%Y") if tenant and tenant.birth_date else None
-        ),
-        "start_date": lease.start_date.strftime("%d/%m/%Y"),
-        "lease_type_label": LEASE_TYPE_LABELS.get(lease.lease_type, lease.lease_type),
-        "is_active": lease.is_active,
-        "rent_amount": f"{float(lease.rent_amount):.2f}",
-        "charges_amount": f"{float(lease.charges_amount):.2f}",
-        "total_monthly": f"{lease.total_monthly:.2f}",
+        "tenant2_name": tenant2.full_name if tenant2 else None,
+        "start_date": sd.strftime("%d/%m/%Y"),
+        "logement_address": prop.full_address if prop else "",
+        "ville": prop.city if prop and prop.city else "",
+        "is_chambre": False,
+        "area_sqm": f"{float(prop.area_sqm):.0f}" if prop and prop.area_sqm else None,
+        "is_coloc": is_coloc,
+        "nb_coloc": nb_coloc,
+        "is_furnished": is_furnished,
+        "month_entry": f"{MONTHS_FR[sd.month]} {sd.year}",
+        "july_year": today.year,
+        "rent_no_charges": f"{float(lease.rent_amount):.2f}",
+        "charges": f"{float(lease.charges_amount):.2f}",
+        "total_tcc": f"{lease.total_monthly:.2f}",
+        "a_jour": True,
+        "decence": True,
         "today": _today_str(),
     }
 

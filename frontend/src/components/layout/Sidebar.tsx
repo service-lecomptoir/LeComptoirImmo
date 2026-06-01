@@ -4,7 +4,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  MapPin, Hash, User, ShoppingBag, Package, KeyRound, TrendingUp,
+  MapPin, Hash, User, ShoppingBag, Package, KeyRound, TrendingUp, Landmark,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
@@ -41,6 +41,7 @@ const navGestionnaire: NavItem[] = [
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
+  { to: '/documents-caf', icon: Landmark, label: 'Documents CAF' },
   { to: '/admin', icon: Settings, label: 'Administration' },
   { label: 'Finances', isSeparator: true },
   { to: '/finances/revenus', icon: Wallet, label: 'Revenus' },
@@ -79,6 +80,7 @@ const navGestionnairePropio: NavItem[] = [
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
+  { to: '/documents-caf', icon: Landmark, label: 'Documents CAF' },
   { to: '/admin', icon: Settings, label: 'Administration' },
   { label: 'Mes finances', isSeparator: true },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },

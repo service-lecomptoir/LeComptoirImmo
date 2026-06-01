@@ -47,6 +47,7 @@ import MonProfil from '@/pages/profil/MonProfil'
 import GuideUtilisateur from '@/pages/guide/GuideUtilisateur'
 import FinancesParProprietaire from '@/pages/finances/FinancesParProprietaire'
 import Actualisation from '@/pages/actualisation/Actualisation'
+import DocumentsCaf from '@/pages/documents-caf/DocumentsCaf'
 
 function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
@@ -142,6 +143,7 @@ export const router = createBrowserRouter([
       { path: 'finances/biens', element: <FinancesParProprietaire view="biens" /> },
       { path: 'finances/fiscal', element: <FinancesParProprietaire view="fiscal" /> },
       { path: 'actualisation', element: <Actualisation /> },
+      { path: 'documents-caf', element: <DocumentsCaf /> },
       { path: 'proprietaire', element: <ProprietaireDashboard /> },
       { path: 'proprietaire/biens', element: <ProprietaireBiens /> },
       { path: 'proprietaire/revenus', element: <ProprietaireRevenus /> },
