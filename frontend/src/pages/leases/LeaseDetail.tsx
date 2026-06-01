@@ -316,7 +316,7 @@ export default function LeaseDetail() {
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
             <User size={15} className="text-blue-500" /> Locataire
           </h2>
-          <InfoRow label={lease.co_tenants && lease.co_tenants.length > 0 ? 'Locataire principal' : 'Nom'} value={lease.tenant?.full_name} />
+          <InfoRow label={lease.co_tenants && lease.co_tenants.length > 0 ? 'Locataire principal' : 'Nom et prénom'} value={lease.tenant?.full_name} />
           <InfoRow label="Email" value={lease.tenant?.email} />
           <InfoRow label="Numéro de sécurité sociale" value={lease.tenant?.national_id} />
           <InfoRow label="Téléphone" value={lease.tenant?.phone} />
