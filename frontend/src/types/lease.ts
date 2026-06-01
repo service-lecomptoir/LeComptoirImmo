@@ -40,6 +40,7 @@ export interface TenantInLease {
   full_name: string
   email?: string
   phone?: string
+  national_id?: string
 }
 
 export interface PropertyInLease {

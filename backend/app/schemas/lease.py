@@ -18,6 +18,7 @@ class TenantInLease(BaseModel):
     full_name: str
     email: Optional[str] = None
     phone: Optional[str] = None
+    national_id: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
