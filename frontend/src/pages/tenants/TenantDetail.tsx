@@ -115,7 +115,7 @@ export default function TenantDetail() {
             <Field label="Nom" value={tenant.last_name} />
             <Field label="Date de naissance" value={birthDate} />
             <Field label="Lieu de naissance" value={tenant.birth_place} />
-            <Field label="Pièce d'identité" value={tenant.national_id} />
+            <Field label="Numéro de sécurité sociale" value={tenant.national_id} />
           </div>
         </div>
 
@@ -125,7 +125,6 @@ export default function TenantDetail() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" value={tenant.email} full />
             <Field label="Téléphone" value={tenant.phone} />
-            <Field label="Téléphone 2" value={tenant.phone2} />
           </div>
         </div>
 

@@ -16,10 +16,9 @@ const schema = z.object({
   last_name: z.string().min(1, 'Nom requis'),
   email: z.string().email('Email invalide').optional().or(z.literal('')),
   phone: z.string().optional(),
-  phone2: z.string().optional(),
-  birth_date: z.string().optional(),
+  birth_date: z.string().min(1, 'Date de naissance requise'),
   birth_place: z.string().optional(),
-  national_id: z.string().optional(),
+  national_id: z.string().min(1, 'Numéro de sécurité sociale requis'),
   employer: z.string().optional(),
   employer_phone: z.string().optional(),
   monthly_income: z.number().positive().optional().or(z.literal('')),
@@ -89,7 +88,6 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       last_name: tenant.last_name,
       email: tenant.email ?? '',
       phone: tenant.phone ?? '',
-      phone2: tenant.phone2 ?? '',
       birth_date: tenant.birth_date ?? '',
       birth_place: tenant.birth_place ?? '',
       national_id: tenant.national_id ?? '',
@@ -158,7 +156,6 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       national_id: clean(data.national_id),
       email: clean(data.email),
       phone: clean(data.phone),
-      phone2: clean(data.phone2),
       employer: clean(data.employer),
       employer_phone: clean(data.employer_phone),
       monthly_income: data.monthly_income ? Number(data.monthly_income) : null,
@@ -285,9 +282,9 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
             <TenantField label="Nom" name="last_name" required register={register} errors={errors} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-            <TenantField label="Date de naissance" name="birth_date" type="date" register={register} errors={errors} />
+            <TenantField label="Date de naissance" name="birth_date" type="date" required register={register} errors={errors} />
             <TenantField label="Lieu de naissance" name="birth_place" register={register} errors={errors} />
-            <TenantField label="N° pièce d'identité" name="national_id" register={register} errors={errors} />
+            <TenantField label="Numéro de sécurité sociale" name="national_id" required register={register} errors={errors} />
           </div>
         </div>
 
@@ -299,7 +296,6 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
             <TenantField label="Email" name="email" type="email" register={register} errors={errors} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
-              <PhoneField label="Téléphone 2" value={watch('phone2') || ''} onChange={v => setValue('phone2', v)} />
             </div>
           </div>
         </div>
