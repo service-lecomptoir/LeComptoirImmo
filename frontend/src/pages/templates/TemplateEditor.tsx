@@ -687,13 +687,9 @@ export default function TemplateEditor() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map(t => (
             <div key={t.id} className="bg-white rounded-xl border overflow-hidden hover:shadow-md transition-shadow">
-              {/* Bande couleur + logo */}
+              {/* Bande couleur (le logo vient du profil « Mes informations », pas du modèle) */}
               <div style={{ backgroundColor: t.header_color ?? '#1E3A5F' }}
                 className="h-12 flex items-center px-4 gap-3">
-                {t.logo_url && (
-                  <img src={`${API_BASE}${t.logo_url}`} alt="logo"
-                    className="h-8 w-auto max-w-[80px] object-contain" />
-                )}
                 <span className="text-white text-sm font-semibold truncate">
                   {t.company_name || t.name}
                 </span>
