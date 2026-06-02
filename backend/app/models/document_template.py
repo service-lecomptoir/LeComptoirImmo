@@ -12,10 +12,24 @@ from app.database import Base, TimestampMixin
 class TemplateType(str, Enum):
     AVIS_ECHEANCE = "avis_echeance"
     QUITTANCE = "quittance"
+    REGULARISATION_CHARGES = "regularisation_charges"
+    REVISION_LOYER = "revision_loyer"
+    TAXES_FONCIERES = "taxes_foncieres"
+    # Types historiques (plus proposés dans la papeterie, conservés pour compat).
     LETTRE_RELANCE = "lettre_relance"
     LETTRE_RESILIATION = "lettre_resiliation"
     CONTRAT_BAIL = "contrat_bail"
     ETAT_DES_LIEUX = "etat_des_lieux"
+
+
+# Ordre d'affichage dans « Ma papeterie » + liste des types proposés.
+PAPETERIE_ORDER = [
+    TemplateType.AVIS_ECHEANCE.value,
+    TemplateType.QUITTANCE.value,
+    TemplateType.REGULARISATION_CHARGES.value,
+    TemplateType.REVISION_LOYER.value,
+    TemplateType.TAXES_FONCIERES.value,
+]
 
 
 class DocumentTemplate(Base, TimestampMixin):

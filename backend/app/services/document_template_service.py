@@ -7,14 +7,14 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.document_template import DocumentTemplate, TemplateType
-from app.services.avis_blocks_render_service import default_avis_blocks, FONCIA_THEME
+from app.models.document_template import DocumentTemplate, TemplateType, PAPETERIE_ORDER
+from app.services.avis_blocks_render_service import default_avis_blocks, default_blocks, FONCIA_THEME
 
 # Rôles qui génèrent des documents → reçoivent les templates par défaut.
 TEMPLATE_OWNER_ROLES = {"admin", "gestionnaire", "gestionnaire_proprio"}
 
 # Anciens noms canoniques de templates par défaut à migrer vers le nom courant.
-_OLD_DEFAULT_NAMES = {"Avis d'échéance standard"}
+_OLD_DEFAULT_NAMES = {"Avis d'échéance standard", "Quittance de loyer standard"}
 
 
 DEFAULT_TEMPLATES = {
@@ -38,7 +38,7 @@ DEFAULT_TEMPLATES = {
         "theme": FONCIA_THEME,
     },
     TemplateType.QUITTANCE: {
-        "name": "Quittance de loyer standard",
+        "name": "Quittance de loyer",
         "content_html": """<h2>Quittance de loyer</h2>
 <p style="text-align:center;color:#6b7280;margin-top:0;">{{month}}</p>
 <p>Madame, Monsieur,</p>
@@ -53,72 +53,37 @@ DEFAULT_TEMPLATES = {
 <p>La présente quittance annule tous les reçus établis précédemment pour la même période.</p>
 <p style="color:#6b7280;">Fait le {{date}}.</p>""",
         "footer_text": "Quittance délivrée conformément à l'article 21 de la loi n°89-462 du 6 juillet 1989. Valable sous réserve d'encaissement.",
+        "blocks": default_blocks("quittance"),
+        "theme": FONCIA_THEME,
     },
-    TemplateType.LETTRE_RELANCE: {
-        "name": "Lettre de relance standard",
-        "content_html": """<h2>MISE EN DEMEURE DE PAYER</h2>
-<p>Cher(e) {{tenant_name}},</p>
-<p>Sauf erreur ou omission de notre part, nous constatons que votre loyer du mois de <strong>{{month}}</strong> d'un montant de <strong>{{amount}} €</strong> n'a pas été réglé à ce jour.</p>
-<p>Nous vous demandons de bien vouloir régulariser cette situation dans les <strong>8 jours</strong>.</p>
-<p>Sans réponse de votre part, nous nous verrons dans l'obligation d'engager les procédures légales en vigueur.</p>
-<p>Cordialement,<br>{{company_name}}</p>""",
-        "footer_text": "Lettre recommandée avec accusé de réception.",
+    TemplateType.REGULARISATION_CHARGES: {
+        "name": "Régularisation de charges locatives",
+        "content_html": "<p>Régularisation de charges locatives — {{period_range}}.</p>",
+        "footer_text": "Document établi conformément à l'article 23 de la loi n° 89-462 du 6 juillet 1989.",
+        "blocks": default_blocks("regularisation_charges"),
+        "theme": FONCIA_THEME,
     },
-    TemplateType.LETTRE_RESILIATION: {
-        "name": "Lettre de résiliation standard",
-        "content_html": """<h2>CONGÉ DONNÉ PAR LE BAILLEUR</h2>
-<p>Cher(e) {{tenant_name}},</p>
-<p>Nous vous informons par la présente que nous mettons fin à votre contrat de location concernant le logement situé au :</p>
-<p><strong>{{property_address}}</strong></p>
-<p>Ce congé prend effet à la date d'échéance du bail suivant le délai légal de préavis.</p>
-<p>Nous vous remercions de bien vouloir libérer les lieux à cette date et de nous restituer les clés.</p>
-<p>Cordialement,<br>{{company_name}}</p>""",
-        "footer_text": "Lettre recommandée avec accusé de réception.",
+    TemplateType.REVISION_LOYER: {
+        "name": "Révision loyer",
+        "content_html": "<p>Révision de loyer (IRL).</p>",
+        "footer_text": "Révision effectuée conformément à l'article 17-1 de la loi n° 89-462 du 6 juillet 1989.",
+        "blocks": default_blocks("revision_loyer"),
+        "theme": FONCIA_THEME,
     },
-    TemplateType.CONTRAT_BAIL: {
-        "name": "Contrat de bail standard",
-        "content_html": """<h2>CONTRAT DE LOCATION</h2>
-<p><strong>ENTRE LES SOUSSIGNÉS :</strong></p>
-<p>Le bailleur : <strong>{{company_name}}</strong>, ci-après dénommé « le Bailleur »,</p>
-<p>ET</p>
-<p>Le preneur : <strong>{{tenant_name}}</strong>, ci-après dénommé « le Locataire »,</p>
-<p><strong>IL A ÉTÉ CONVENU CE QUI SUIT :</strong></p>
-<p><strong>Article 1 — Objet du bail</strong></p>
-<p>Le Bailleur loue au Locataire le logement désigné ci-après : <strong>{{unit_ref}}</strong> situé à <strong>{{property_address}}</strong>.</p>
-<p><strong>Article 2 — Durée</strong></p>
-<p>Le présent bail est consenti pour une durée de 3 ans, à compter du <strong>{{date}}</strong>.</p>
-<p><strong>Article 3 — Loyer</strong></p>
-<p>Le loyer mensuel est fixé à <strong>{{rent_amount}} €</strong> hors charges, auxquelles s'ajoutent des provisions sur charges de <strong>{{charges_amount}} €</strong>, soit un total de <strong>{{total_due}} €</strong> par mois.</p>
-<p>Le loyer est payable le {{due_date}} de chaque mois.</p>
-<p>Fait en deux exemplaires,<br>{{company_name}}</p>""",
-        "footer_text": "Document établi conformément à la loi n° 89-462 du 6 juillet 1989.",
-    },
-    TemplateType.ETAT_DES_LIEUX: {
-        "name": "État des lieux standard",
-        "content_html": """<h2>ÉTAT DES LIEUX</h2>
-<p><strong>Logement :</strong> {{unit_ref}} — {{property_address}}</p>
-<p><strong>Locataire :</strong> {{tenant_name}}</p>
-<p><strong>Date :</strong> {{date}}</p>
-<hr/>
-<h3>ÉTAT GÉNÉRAL DU LOGEMENT</h3>
-<table style="width:100%;border-collapse:collapse;">
-  <tr style="background:#f3f4f6;">
-    <th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Pièce</th>
-    <th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">État</th>
-    <th style="padding:8px;border:1px solid #e5e7eb;text-align:left;">Observations</th>
-  </tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;">Entrée</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;">Séjour</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;">Cuisine</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;">Chambre</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td></tr>
-  <tr><td style="padding:8px;border:1px solid #e5e7eb;">Salle de bain</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td><td style="padding:8px;border:1px solid #e5e7eb;">&nbsp;</td></tr>
-</table>
-<br/>
-<p>Signatures :</p>
-<p>Le Bailleur : __________________ Le Locataire : __________________</p>""",
-        "footer_text": "Cet état des lieux a été établi contradictoirement entre le bailleur et le locataire.",
+    TemplateType.TAXES_FONCIERES: {
+        "name": "Décompte Taxes Foncières",
+        "content_html": "<p>Décompte taxes foncières (TEOM) — {{period_range}}.</p>",
+        "footer_text": "Récupération conforme à l'article 23 de la loi n° 89-462 du 6 juillet 1989.",
+        "blocks": default_blocks("taxes_foncieres"),
+        "theme": FONCIA_THEME,
     },
 }
+
+# Types de documents retirés de la papeterie (désactivés au démarrage).
+_RETIRED_TYPES = [
+    TemplateType.LETTRE_RELANCE.value, TemplateType.LETTRE_RESILIATION.value,
+    TemplateType.CONTRAT_BAIL.value, TemplateType.ETAT_DES_LIEUX.value,
+]
 
 
 async def backfill_all_managers(db: AsyncSession) -> int:

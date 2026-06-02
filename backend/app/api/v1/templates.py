@@ -52,11 +52,15 @@ async def list_templates(
     # possède son propre jeu par défaut, et afficher ceux de tous les comptes
     # produisait des doublons apparents (un même type répété par gestionnaire).
     q = q.where(DocumentTemplate.gestionnaire_id == current_user.id)
-    q = q.where(DocumentTemplate.is_active.is_(True)).order_by(
-        DocumentTemplate.template_type, DocumentTemplate.name
-    )
+    q = q.where(DocumentTemplate.is_active.is_(True))
     result = await db.execute(q)
-    return list(result.scalars().all())
+    items = list(result.scalars().all())
+    # Ne garder que les types proposés dans la papeterie, dans l'ordre voulu.
+    from app.models.document_template import PAPETERIE_ORDER
+    order = {t: i for i, t in enumerate(PAPETERIE_ORDER)}
+    items = [t for t in items if t.template_type in order]
+    items.sort(key=lambda t: (order[t.template_type], t.name))
+    return items
 
 
 class TemplatePreviewIn(BaseModel):
@@ -115,6 +119,18 @@ async def preview_document_pdf(
         "period_range": "du 01/06/2026 au 30/06/2026",
         "due_date": today_fr, "date": today_fr, "today_date": today_fr,
         "lease_start_date": "01/01/2024",
+        # Régularisation de charges (exemple)
+        "regul_real": f"{eur(526.35)} €", "regul_provisions": f"{eur(960.20)} €",
+        "regul_quote_part": f"{eur(108.30)} €",
+        "regul_result_label": "Montant en votre faveur", "regul_result_amount": f"{eur(851.70)} €",
+        # Révision de loyer (exemple)
+        "rev_old_rent": f"{eur(726.46)} €", "rev_old_index": "144,51", "rev_new_index": "145,77",
+        "rev_coeff": "145,77 / 144,51 = 1,00871912", "rev_new_rent": f"{eur(732.79)} €",
+        "rev_effective_date": "30 novembre 2025", "rev_quarter": "3",
+        "rev_old_index_year": "2024", "rev_new_index_year": "2025",
+        # Taxes foncières (exemple)
+        "tax_label": "TAXE ENLÈVEMENT O.M. 2025", "tax_total": f"{eur(178)} €",
+        "tax_days": "365", "tax_quote_part": f"{eur(178)} €", "tax_provisions": f"{eur(0)} €",
     }
 
     # Éditeur par blocs (avis d'échéance « façon Foncia ») : rendu prioritaire.

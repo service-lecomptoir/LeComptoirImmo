@@ -163,6 +163,165 @@ def default_avis_blocks() -> list[dict]:
     ]
 
 
+# ── Blocs communs (réutilisés par tous les documents façon Foncia) ───────────
+def _common_sidebar() -> dict:
+    return {"id": "sidebar", "type": "sidebar", "enabled": True, "props": {
+        "sections": [
+            {"title": "VOS INFORMATIONS", "icon": "user",
+             "lines": ["{{tenant_name}}", "{{property_address}}",
+                       "{{tenant_phone}}", "{{tenant_email}}"]},
+            {"title": "VOS RÉFÉRENCES CLIENT", "icon": "references",
+             "lines": ["Référence du bien : {{property_reference}}",
+                       "{{#if tenant_login}}Identifiant locataire : {{tenant_login}}{{/if}}"]},
+            {"title": "VOTRE AGENCE", "icon": "agency",
+             "lines": ["{{company_name}}", "{{company_address}}"]},
+            {"title": "VOS LOTS", "icon": "lots", "lines": ["{{property_name}}"]},
+            {"title": "VOTRE MODE DE PAIEMENT", "icon": "payment",
+             "lines": ["Virement / prélèvement"]},
+        ],
+    }}
+
+
+def _common_recipient() -> dict:
+    return {"id": "recipient", "type": "recipient", "enabled": True, "props": {
+        "date_text": "Le {{today_date}}",
+        "lines": ["{{tenant_civil_name}}", "{{property_address2}}",
+                  "{{property_street}}", "{{property_city_line}}"],
+    }}
+
+
+def _common_reference() -> dict:
+    return {"id": "reference", "type": "reference", "enabled": True, "props": {
+        "lines": ["{{property_name}}", "{{property_address}}"],
+        "ref_line": "Référence du bien : {{property_reference}}",
+        "tenant_line": "Locataire : {{tenant_name}}",
+    }}
+
+
+def _common_footer() -> dict:
+    return {"id": "footer", "type": "legal_footer", "enabled": True, "props": {
+        "text": "{{company_name}} — {{company_address}}. "
+                "Document généré électroniquement, ne nécessite pas de signature.",
+    }}
+
+
+def _header(title: str, subtitle1: str = "{{period_range}}", subtitle2: str = "") -> dict:
+    return {"id": "header", "type": "header", "enabled": True, "props": {
+        "title": title, "subtitle1": subtitle1, "subtitle2": subtitle2,
+    }}
+
+
+def _greeting(intro: str, salutation: str = "Cher locataire,") -> dict:
+    return {"id": "greeting", "type": "greeting", "enabled": True, "props": {
+        "salutation": salutation, "intro": intro,
+    }}
+
+
+def default_blocks(template_type: str) -> Optional[list[dict]]:
+    """Blocs par défaut (façon Foncia) selon le type de document de la papeterie."""
+    if template_type == "avis_echeance":
+        return default_avis_blocks()
+
+    if template_type == "quittance":
+        return [
+            _header("Quittance", "{{period_range}}", "MENSUEL / AVANCE"),
+            _common_sidebar(), _common_recipient(), _common_reference(),
+            _greeting("Concernant votre quittance de loyer ou indemnité d'occupation "
+                      "{{period_range}}, vous trouverez ci-dessous le détail des sommes "
+                      "appelées et réglées."),
+            {"id": "details", "type": "details_table", "enabled": True, "props": {
+                "heading": "Votre quittance",
+                "section_label": "Détail",
+                "col_appel": "MONTANTS APPELÉS", "col_regle": "MONTANTS RÉGLÉS",
+                "show_regle": True, "custom_rows": [],
+                "total_label": "Total pour la période {{period_range}}",
+                "pay_label": "Montant total réglé pour la période",
+            }},
+            _common_footer(),
+        ]
+
+    if template_type == "regularisation_charges":
+        return [
+            _header("Régularisation de charges locatives", "PÉRIODE {{period_range}}", ""),
+            _common_sidebar(), _common_recipient(), _common_reference(),
+            _greeting("Veuillez trouver dans ce document votre régularisation de charges "
+                      "locatives pour la période {{period_range}}. Vous trouverez ci-dessous "
+                      "le détail des dépenses et de votre quote-part."),
+            {"id": "table", "type": "table", "enabled": True, "props": {
+                "heading": "Régularisation de vos charges",
+                "columns": [{"label": "MONTANT TOTAL", "align": "right"},
+                            {"label": "VOTRE QUOTE-PART", "align": "right"}],
+                "rows": [
+                    {"kind": "data", "label": "Montant des dépenses",
+                     "cells": ["{{regul_real}}", "{{regul_quote_part}}"]},
+                    {"kind": "data", "label": "Déduction des provisions appelées",
+                     "cells": ["{{regul_provisions}}", ""]},
+                    {"kind": "result", "label": "{{regul_result_label}}",
+                     "cells": ["", "{{regul_result_amount}}"]},
+                ],
+            }},
+            _common_footer(),
+        ]
+
+    if template_type == "revision_loyer":
+        return [
+            _header("Révision de loyer", "{{period_range}}", ""),
+            _common_sidebar(), _common_recipient(), _common_reference(),
+            _greeting("Conformément à votre contrat de location, votre loyer est révisé "
+                      "chaque année selon un indice de référence (IRL). Votre loyer sera "
+                      "révisé le {{rev_effective_date}} pour atteindre {{rev_new_rent}} "
+                      "(hors charges)."),
+            {"id": "formule", "type": "highlight", "enabled": True, "props": {
+                "title": "La formule",
+                "text": "Loyer actuel × (nouvelle valeur de l'indice / ancienne valeur de l'indice)",
+            }},
+            {"id": "calcul", "type": "table", "enabled": True, "props": {
+                "heading": "Le mode de calcul",
+                "columns": [{"label": "", "align": "right"}],
+                "rows": [
+                    {"kind": "data", "label": "Votre loyer principal actuel",
+                     "cells": ["{{rev_old_rent}}"]},
+                    {"kind": "data", "label": "Ancienne valeur de l'indice : IRL T{{rev_quarter}} {{rev_old_index_year}}",
+                     "cells": ["{{rev_old_index}}"]},
+                    {"kind": "data", "label": "Nouvelle valeur de l'indice : IRL T{{rev_quarter}} {{rev_new_index_year}}",
+                     "cells": ["{{rev_new_index}}"]},
+                    {"kind": "data", "label": "Calcul du coefficient d'augmentation",
+                     "cells": ["{{rev_coeff}}"]},
+                    {"kind": "result", "label": "Calcul de votre nouveau loyer principal",
+                     "cells": ["{{rev_new_rent}}"]},
+                ],
+            }},
+            _common_footer(),
+        ]
+
+    if template_type == "taxes_foncieres":
+        return [
+            _header("Décompte Taxes Foncières", "PÉRIODE {{period_range}}", ""),
+            _common_sidebar(), _common_recipient(), _common_reference(),
+            _greeting("Chaque année, votre propriétaire peut récupérer auprès du locataire "
+                      "la taxe d'enlèvement des ordures ménagères, au prorata de la durée "
+                      "d'occupation (art. 23 de la loi du 06/07/1989). Le montant sera inclus "
+                      "dans votre prochain avis d'échéance."),
+            {"id": "table", "type": "table", "enabled": True, "props": {
+                "heading": "Décompte",
+                "columns": [{"label": "MONTANT TOTAL", "align": "right"},
+                            {"label": "NOMBRE DE JOURS", "align": "right"},
+                            {"label": "VOTRE QUOTE-PART", "align": "right"}],
+                "rows": [
+                    {"kind": "data", "label": "{{tax_label}}",
+                     "cells": ["{{tax_total}}", "{{tax_days}}", "{{tax_quote_part}}"]},
+                    {"kind": "data", "label": "Déduction des provisions appelées",
+                     "cells": ["{{tax_provisions}}", "", ""]},
+                    {"kind": "result", "label": "TOTAL",
+                     "cells": ["", "", "{{tax_quote_part}}"]},
+                ],
+            }},
+            _common_footer(),
+        ]
+
+    return None
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 def _sub(text: Optional[str], variables: dict) -> str:
     """Substitue les {{variables}} et renvoie du HTML échappé (sauts de ligne -> <br/>)."""
@@ -382,10 +541,78 @@ def _render_legal_footer(props: dict, t: dict, variables: dict) -> str:
             f'{_sub(props.get("text"), variables)}</div>')
 
 
+def _render_highlight(props: dict, t: dict, variables: dict) -> str:
+    """Encadré cyan (ex. « La formule » de la révision de loyer)."""
+    title = _sub(props.get("title"), variables)
+    text = _sub(props.get("text"), variables)
+    title_html = (f'<div style="color:{t["navy"]}; font-weight:bold; font-size:10pt;">{title}</div>'
+                  if title else "")
+    text_html = (f'<div style="color:{t["navy"]}; font-size:8.5pt; margin-top:2px;">{text}</div>'
+                 if text else "")
+    return (f'<div style="background:{t["section_bg"]}; padding:9px 12px; margin:8px 0 12px 0;">'
+            f'{title_html}{text_html}</div>')
+
+
+def _render_table(props: dict, t: dict, variables: dict) -> str:
+    """Tableau générique multi-colonnes (façon Foncia). Colonnes configurables ;
+    lignes de type section / data / total / result (bandeau teal)."""
+    heading = _sub(props.get("heading"), variables)
+    columns = props.get("columns") or []
+    ncols = 1 + len(columns)
+    aw = 92
+    out = []
+
+    # En-tête de colonnes (omis si toutes les colonnes sont sans libellé).
+    if any((c.get("label") or "").strip() for c in columns):
+        head = f'<td style="background:{t["header_cell_bg"]};">&nbsp;</td>'
+        for c in columns:
+            lbl = _sub(c.get("label", ""), variables).replace(" ", "<br/>")
+            head += (f'<td width="{aw}" style="background:{t["header_cell_bg"]}; color:{t["col_header"]}; '
+                     f'font-size:7.8pt; padding:6px 8px; text-align:right; vertical-align:bottom;">{lbl}</td>')
+        out.append(f"<tr>{head}</tr>")
+
+    di = 0
+    for r in props.get("rows", []):
+        kind = (r.get("kind") or "data").lower()
+        label = _sub(r.get("label", ""), variables)
+        sub = _sub(r.get("sublabel", ""), variables)
+        if sub:
+            label = f'{label}<div style="font-weight:normal; font-size:6.8pt; color:{t["gray"]};">{sub}</div>'
+        raw_cells = list(r.get("cells") or [])
+        cells = [re.sub(r'\s', ' ', _sub(str(c), variables)) for c in raw_cells]
+        cells = (cells + [""] * len(columns))[:len(columns)]
+
+        if kind == "section":
+            out.append(f'<tr><td colspan="{ncols}" style="background:{t["section_bg"]}; '
+                       f'color:{t["navy"]}; font-weight:bold; font-size:9pt; padding:6px 10px;">{label}</td></tr>')
+        elif kind in ("total", "result"):
+            bg = t["section_bg"] if kind == "total" else t["teal"]
+            fg = t["navy"] if kind == "total" else "#fff"
+            tds = (f'<td style="background:{bg}; color:{fg}; font-weight:bold; font-size:9pt; '
+                   f'padding:8px 10px;">{label}</td>')
+            for cv in cells:
+                tds += (f'<td width="{aw}" style="background:{bg}; color:{fg}; font-weight:bold; '
+                        f'font-size:9pt; padding:8px; text-align:right;">{cv or "&nbsp;"}</td>')
+            out.append(f"<tr>{tds}</tr>")
+        else:  # data
+            bg = t["row_bg"] if di % 2 == 0 else "#ffffff"
+            di += 1
+            tds = (f'<td style="background:{bg}; color:{t["navy"]}; font-weight:bold; '
+                   f'font-size:8pt; padding:6px 10px;">{label}</td>')
+            for cv in cells:
+                tds += (f'<td width="{aw}" style="background:{bg}; color:{t["navy"]}; font-style:italic; '
+                        f'font-size:8pt; padding:6px 8px; text-align:right;">{cv or "&nbsp;"}</td>')
+            out.append(f"<tr>{tds}</tr>")
+
+    heading_html = (f'<div style="color:{t["navy"]}; font-size:17pt; font-weight:bold; '
+                    f'margin:6px 0 10px 0;">{heading}</div>') if heading else ""
+    return f'{heading_html}<table class="details">{"".join(out)}</table>'
+
+
 # Blocs qui vont dans la colonne de DROITE de la zone deux-colonnes.
 _BODY_TYPES = {"recipient", "reference", "greeting", "amount_bar", "free_text"}
 # Blocs pleine largeur (rendus après la zone deux-colonnes, dans l'ordre).
-_FULL_TYPES = {"details_table", "legal_footer"}
+_FULL_TYPES = {"details_table", "table", "highlight", "legal_footer"}
 
 
 def render_avis_blocks_html(
@@ -427,6 +654,10 @@ def render_avis_blocks_html(
             body_parts.append(_render_free_text(props, t, variables))
         elif btype == "details_table":
             full_parts.append(_render_details_table(props, t, variables, line_items))
+        elif btype == "table":
+            full_parts.append(_render_table(props, t, variables))
+        elif btype == "highlight":
+            full_parts.append(_render_highlight(props, t, variables))
         elif btype == "legal_footer":
             full_parts.append(_render_legal_footer(props, t, variables))
 

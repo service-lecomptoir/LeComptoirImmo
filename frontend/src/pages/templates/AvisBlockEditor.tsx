@@ -33,6 +33,8 @@ const BLOCK_META: Record<string, { label: string; hint: string }> = {
   greeting: { label: "Formule d'appel", hint: 'Salutation et phrase d’introduction.' },
   amount_bar: { label: 'Bandeau « Montant à payer »', hint: 'Titre + bandeau coloré avec le montant.' },
   details_table: { label: 'Tableau détaillé des montants', hint: 'Lignes appelées / réglées + total.' },
+  table: { label: 'Tableau', hint: 'Colonnes + lignes (section / donnée / total / résultat).' },
+  highlight: { label: 'Encadré', hint: 'Bloc mis en avant (titre + texte), ex. « La formule ».' },
   legal_footer: { label: 'Pied de page légal', hint: 'Mentions légales en bas de document.' },
   free_text: { label: 'Texte libre', hint: 'Paragraphe libre que vous rédigez.' },
 }
@@ -53,6 +55,22 @@ const VARS: { k: string; l: string }[] = [
   { k: '{{rent_amount}}', l: 'Loyer' },
   { k: '{{charges_amount}}', l: 'Charges' },
   { k: '{{today_date}}', l: 'Date du jour' },
+  // Régularisation de charges
+  { k: '{{regul_real}}', l: 'Régul : dépenses' },
+  { k: '{{regul_provisions}}', l: 'Régul : provisions' },
+  { k: '{{regul_quote_part}}', l: 'Régul : quote-part' },
+  { k: '{{regul_result_amount}}', l: 'Régul : solde' },
+  // Révision de loyer
+  { k: '{{rev_old_rent}}', l: 'Révision : loyer actuel' },
+  { k: '{{rev_new_rent}}', l: 'Révision : nouveau loyer' },
+  { k: '{{rev_old_index}}', l: 'Révision : ancien indice' },
+  { k: '{{rev_new_index}}', l: 'Révision : nouvel indice' },
+  { k: '{{rev_coeff}}', l: 'Révision : coefficient' },
+  { k: '{{rev_effective_date}}', l: 'Révision : date d’effet' },
+  // Taxes foncières
+  { k: '{{tax_total}}', l: 'Taxe : montant total' },
+  { k: '{{tax_days}}', l: 'Taxe : nb de jours' },
+  { k: '{{tax_quote_part}}', l: 'Taxe : quote-part' },
 ]
 
 const THEME_FIELDS: { key: string; label: string }[] = [
@@ -200,6 +218,64 @@ function BlockEditor({ block, update, registerActive }: {
             className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"><Plus size={12} /> Ajouter une ligne</button>
         </div>
       </div>)
+    case 'highlight':
+      return (<div className="space-y-2">
+        <div>{L('Titre')}{V({ value: p.title, onChange: (v: string) => set('title', v) })}</div>
+        <div>{L('Texte')}{V({ value: p.text, onChange: (v: string) => set('text', v), textarea: true })}</div>
+      </div>)
+    case 'table': {
+      const cols: any[] = p.columns || []
+      const rows: any[] = p.rows || []
+      const setCols = (c: any[]) => set('columns', c)
+      const setRows = (r: any[]) => set('rows', r)
+      return (<div className="space-y-3">
+        <div>{L('Titre du tableau')}{V({ value: p.heading, onChange: (v: string) => set('heading', v) })}</div>
+        <div>
+          {L('Colonnes')}
+          <div className="space-y-1.5">
+            {cols.map((c, ci) => (
+              <div key={ci} className="flex items-center gap-1">
+                {V({ value: c.label, onChange: (v: string) => { const n = [...cols]; n[ci] = { ...c, label: v }; setCols(n) }, placeholder: `Colonne ${ci + 1}` })}
+                <button type="button" onClick={() => { setCols(cols.filter((_, j) => j !== ci)); setRows(rows.map(r => ({ ...r, cells: (r.cells || []).filter((_: any, j: number) => j !== ci) }))) }}
+                  className="p-1 text-gray-400 hover:text-red-500" title="Supprimer la colonne"><Trash2 size={13} /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => setCols([...cols, { label: '', align: 'right' }])}
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"><Plus size={12} /> Ajouter une colonne</button>
+          </div>
+        </div>
+        <div>
+          {L('Lignes')}
+          <div className="space-y-2">
+            {rows.map((r, ri) => (
+              <div key={ri} className="border border-gray-200 rounded-lg p-2 bg-gray-50 space-y-1.5">
+                <div className="flex items-center gap-1">
+                  <select value={r.kind || 'data'} onChange={e => { const n = [...rows]; n[ri] = { ...r, kind: e.target.value }; setRows(n) }}
+                    className="text-xs border border-gray-200 rounded px-1 py-1 bg-white">
+                    <option value="section">Section</option>
+                    <option value="data">Donnée</option>
+                    <option value="total">Total</option>
+                    <option value="result">Résultat</option>
+                  </select>
+                  {V({ value: r.label, onChange: (v: string) => { const n = [...rows]; n[ri] = { ...r, label: v }; setRows(n) }, placeholder: 'Libellé' })}
+                  <button type="button" onClick={() => setRows(rows.filter((_, j) => j !== ri))}
+                    className="p-1 text-gray-400 hover:text-red-500" title="Supprimer la ligne"><Trash2 size={13} /></button>
+                </div>
+                {r.kind !== 'section' && cols.length > 0 && (
+                  <div className="grid grid-cols-2 gap-1">
+                    {cols.map((c, ci) => (
+                      <div key={ci}>{V({ value: (r.cells || [])[ci] || '', onChange: (v: string) => { const n = [...rows]; const cells = [...(r.cells || [])]; cells[ci] = v; n[ri] = { ...r, cells }; setRows(n) }, placeholder: c.label || `Col ${ci + 1}` })}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={() => setRows([...rows, { kind: 'data', label: '', cells: [] }])}
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"><Plus size={12} /> Ajouter une ligne</button>
+          </div>
+        </div>
+      </div>)
+    }
     case 'legal_footer':
     case 'free_text':
       return <div>{L(block.type === 'free_text' ? 'Texte' : 'Mentions légales')}{V({ value: p.text, onChange: (v: string) => set('text', v), textarea: true })}</div>
@@ -243,7 +319,7 @@ export default function AvisBlockEditor({ template, onBack, onSaved }: Props) {
       setPreviewLoading(true)
       try {
         const r = await apiClient.post('/templates/preview', {
-          template_type: 'avis_echeance',
+          template_type: template.template_type,
           blocks, theme, template_id: template.id,
         }, { responseType: 'blob' })
         if (cancelled) return
@@ -281,7 +357,7 @@ export default function AvisBlockEditor({ template, onBack, onSaved }: Props) {
           <button onClick={onBack} className="p-1.5 rounded hover:bg-gray-100 text-gray-500"><ArrowLeft size={18} /></button>
           <input value={name} onChange={e => setName(e.target.value)}
             className="font-semibold text-gray-900 px-2 py-1 rounded hover:bg-gray-50 focus:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 min-w-0" />
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium shrink-0">Avis d'échéance · éditeur par blocs</span>
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium shrink-0">Éditeur par blocs</span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowTheme(s => !s)}
