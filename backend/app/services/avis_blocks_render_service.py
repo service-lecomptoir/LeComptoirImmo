@@ -249,7 +249,7 @@ def _render_recipient(props: dict, t: dict, variables: dict) -> str:
             line_html.append(
                 f'<div style="color:{t["navy"]}; font-size:8.5pt; line-height:1.2;">{val}</div>')
     lines = "".join(line_html)
-    return (f'{date_html}<div style="text-align:left; padding-left:18px; margin-bottom:14px;">'
+    return (f'{date_html}<div style="text-align:left; padding-left:130px; margin-bottom:14px;">'
             f'{lines}</div>')
 
 
