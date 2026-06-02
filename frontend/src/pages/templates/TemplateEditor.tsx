@@ -57,6 +57,7 @@ const VAR_CATEGORIES = [
     vars: [
       { key: '{{due_date}}', label: 'Échéance' },
       { key: '{{month}}', label: 'Mois' },
+      { key: '{{lease_start_date}}', label: "Date d'entrée" },
       { key: '{{date}}', label: "Date du jour" },
     ],
   },

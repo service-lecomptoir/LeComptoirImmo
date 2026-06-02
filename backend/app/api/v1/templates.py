@@ -101,18 +101,19 @@ async def preview_document_pdf(
         "company_name": sender_name,
         "property_name": "Résidence Les Tilleuls",
         "unit_ref": "Appartement B12",
-        "property_address": "12 avenue des Tilleuls, 75001 Paris",
+        "property_address": "12 avenue des Tilleuls APPART B12\n75001 Paris",
         "rent_amount": eur(800), "charges_amount": eur(80),
         "total_due": eur(880), "amount_paid": eur(880), "apl_amount": eur(0),
         "month": f"{_MONTHS_FR[_d.month - 1].capitalize()} {_d.year}",
         "due_date": today_fr, "date": today_fr,
+        "lease_start_date": "01/01/2024",
     }
     html = build_document_html(
         header_color=data.header_color, footer_text=data.footer_text,
         content_html=data.content_html, logo_path=logo_path,
         sender_name=sender_name, sender_addr=sender_addr,
         recipient_lines=["Marie Dupont"],
-        property_address="12 avenue des Tilleuls, 75001 Paris",
+        property_address="12 avenue des Tilleuls APPART B12\n75001 Paris",
         variables=variables, layout=(data.layout or get_layout()),
     )
     pdf_bytes = html_to_pdf(html)

@@ -544,6 +544,10 @@ async def download_quittance(
         "apl_amount": eur(payment.amount_apl) if payment.amount_apl else "",
         "month": payment.period_label,
         "date": today_fr,
+        "lease_start_date": (
+            _lease_obj.start_date.strftime("%d/%m/%Y")
+            if _lease_obj and getattr(_lease_obj, "start_date", None) else ""
+        ),
     }
     custom = await render_saved_document(
         db, template_type="quittance", gestionnaire_id=_gid,

@@ -227,6 +227,10 @@ class AvisEcheancePDFService:
             "property_address": property_obj.full_address_block if property_obj else "",
             "company_name": "",
             "date": today_fr,
+            "lease_start_date": (
+                _lease.start_date.strftime("%d/%m/%Y")
+                if _lease is not None and getattr(_lease, "start_date", None) else ""
+            ),
         }
         custom = await render_saved_document(
             db, template_type="avis_echeance",
