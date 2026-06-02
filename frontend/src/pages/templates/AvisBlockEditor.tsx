@@ -42,11 +42,13 @@ const BLOCK_META: Record<string, { label: string; hint: string }> = {
 // Variables insérables.
 const VARS: { k: string; l: string }[] = [
   { k: '{{tenant_name}}', l: 'Nom locataire' },
+  { k: '{{tenant_civil_name}}', l: 'Civilité + nom' },
   { k: '{{tenant_email}}', l: 'Email locataire' },
   { k: '{{tenant_phone}}', l: 'Tél locataire' },
+  { k: '{{tenant_login}}', l: 'Identifiant locataire' },
   { k: '{{property_name}}', l: 'Bien' },
   { k: '{{property_address}}', l: 'Adresse bien' },
-  { k: '{{property_reference}}', l: 'Réf. immeuble' },
+  { k: '{{property_reference}}', l: 'Réf. du bien' },
   { k: '{{company_name}}', l: 'Gestionnaire' },
   { k: '{{company_address}}', l: 'Adresse gestionnaire' },
   { k: '{{period_range}}', l: 'Période' },
@@ -54,6 +56,7 @@ const VARS: { k: string; l: string }[] = [
   { k: '{{total_due}}', l: 'Total dû' },
   { k: '{{rent_amount}}', l: 'Loyer' },
   { k: '{{charges_amount}}', l: 'Charges' },
+  { k: '{{apl_amount}}', l: 'APL (aide au logement)' },
   { k: '{{today_date}}', l: 'Date du jour' },
   // Régularisation de charges
   { k: '{{regul_real}}', l: 'Régul : dépenses' },

@@ -185,7 +185,7 @@ def _common_sidebar() -> dict:
 def _common_recipient() -> dict:
     return {"id": "recipient", "type": "recipient", "enabled": True, "props": {
         "date_text": "Le {{today_date}}",
-        "lines": ["{{tenant_civil_name}}", "{{property_address2}}",
+        "lines": ["{{tenant_civil_name}}", "**{{property_address2}}**",
                   "{{property_street}}", "{{property_city_line}}"],
     }}
 
@@ -348,10 +348,11 @@ def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
     # Emplacement du logo TOUJOURS réservé (hauteur fixe) : s'il n'y a pas de logo,
     # la case reste vide mais la mise en page ne remonte pas.
     if logo_uri:
-        brand = (f'<div style="height:64px;">'
-                 f'<img src="{logo_uri}" style="max-width:170px; max-height:64px;" alt="logo"/></div>')
+        # Logo façon « photo d'identité » : cadré petit (pas large pour rien).
+        brand = (f'<div style="height:72px;">'
+                 f'<img src="{logo_uri}" style="max-width:64px; max-height:72px;" alt="logo"/></div>')
     else:
-        brand = '<div style="height:64px;">&nbsp;</div>'
+        brand = '<div style="height:72px;">&nbsp;</div>'
     title = _sub(props.get("title"), variables)
     sub1 = _sub(props.get("subtitle1"), variables)
     sub2 = _sub(props.get("subtitle2"), variables)
@@ -403,15 +404,16 @@ def _render_recipient(props: dict, t: dict, variables: dict) -> str:
         date_html = (f'<div style="color:{t["navy"]}; font-size:8pt; margin-bottom:10px; text-align:right;">'
                      f'{_sub(props.get("date_text"), variables)}</div>')
     # Adresse du destinataire : alignée à gauche, interligne serré (façon Foncia),
-    # légèrement décalée. Les lignes vides (ex. complément absent) sont ignorées.
+    # décalée vers le centre-droite. `**texte**` → gras. Lignes vides ignorées.
     line_html = []
     for l in props.get("lines", []):
         val = _sub(l, variables).strip()
         if val:
+            val = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', val)
             line_html.append(
                 f'<div style="color:{t["navy"]}; font-size:8.5pt; line-height:1.2;">{val}</div>')
     lines = "".join(line_html)
-    return (f'{date_html}<div style="text-align:left; padding-left:130px; margin-bottom:14px;">'
+    return (f'{date_html}<div style="text-align:left; padding-left:165px; margin-bottom:14px;">'
             f'{lines}</div>')
 
 

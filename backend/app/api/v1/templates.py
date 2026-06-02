@@ -141,7 +141,8 @@ async def preview_document_pdf(
         block_vars = {**variables,
                       "total_due": f"{eur(880)} €",
                       "rent_amount": f"{eur(800)} €",
-                      "charges_amount": f"{eur(80)} €"}
+                      "charges_amount": f"{eur(80)} €",
+                      "apl_amount": f"{eur(200)} €"}
         line_items = [
             {"label": "LOYER PRINCIPAL", "appele": f"{eur(800)} €"},
             {"label": "PROVISION CHARGES", "appele": f"{eur(80)} €"},
