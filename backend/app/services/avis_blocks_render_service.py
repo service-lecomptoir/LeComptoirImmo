@@ -435,10 +435,11 @@ def _render_recipient(props: dict, t: dict, variables: dict) -> str:
 
 
 def _render_reference(props: dict, t: dict, variables: dict) -> str:
-    lines = "".join(
-        f'<div style="color:{t["orange"]}; font-size:8.5pt; line-height:1.4;">{_sub(l, variables)}</div>'
-        for l in props.get("lines", []) if (l or "").strip()
-    )
+    # Interligne serré (façon Foncia) : lignes regroupées dans un seul bloc.
+    _vals = [_sub(l, variables).strip() for l in props.get("lines", []) if (l or "").strip()]
+    _inner = "<br/>".join(v for v in _vals if v)
+    lines = (f'<div style="color:{t["orange"]}; font-size:8.5pt; line-height:1.15;">{_inner}</div>'
+             if _inner else "")
     ref = (f'<div style="color:{t["orange"]}; font-size:8.5pt; font-weight:bold; margin-top:2px;">'
            f'{_sub(props.get("ref_line"), variables)}</div>') if props.get("ref_line") else ""
     ten = (f'<div style="color:{t["navy"]}; font-size:8.5pt; margin-top:6px;">'
