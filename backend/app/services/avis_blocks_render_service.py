@@ -116,7 +116,7 @@ def default_avis_blocks() -> list[dict]:
                  "lines": ["{{tenant_name}}", "{{property_address}}",
                            "{{tenant_phone}}", "{{tenant_email}}"]},
                 {"title": "VOS RÉFÉRENCES CLIENT", "icon": "references",
-                 "lines": ["Référence immeuble : {{property_reference}}",
+                 "lines": ["Référence du bien : {{property_reference}}",
                            "{{#if tenant_login}}Identifiant locataire : {{tenant_login}}{{/if}}"]},
                 {"title": "VOTRE AGENCE", "icon": "agency",
                  "lines": ["{{company_name}}", "{{company_address}}"]},
@@ -128,12 +128,12 @@ def default_avis_blocks() -> list[dict]:
         }},
         {"id": "recipient", "type": "recipient", "enabled": True, "props": {
             "date_text": "Le {{today_date}}",
-            "lines": ["{{tenant_name}}", "{{property_name}}",
-                      "{{property_address}}"],
+            "lines": ["{{tenant_civil_name}}", "{{property_address2}}",
+                      "{{property_street}}", "{{property_city_line}}"],
         }},
         {"id": "reference", "type": "reference", "enabled": True, "props": {
             "lines": ["{{property_name}}", "{{property_address}}"],
-            "ref_line": "Référence immeuble : {{property_reference}}",
+            "ref_line": "Référence du bien : {{property_reference}}",
             "tenant_line": "Locataire : {{tenant_name}}",
         }},
         {"id": "greeting", "type": "greeting", "enabled": True, "props": {
@@ -199,9 +199,9 @@ def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
     <table class="band"><tr>
       <td style="width:50%; vertical-align:middle;">{brand}</td>
       <td style="width:50%; text-align:right; vertical-align:middle;">
-        <div style="font-size:23pt; font-weight:bold; color:{t['navy']};">{title}</div>
-        <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; letter-spacing:.5px;">{sub1}</div>
-        <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; letter-spacing:.5px;">{sub2}</div>
+        <div style="font-size:23pt; font-weight:bold; color:{t['navy']}; line-height:1.05; margin:0;">{title}</div>
+        <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; letter-spacing:.5px; line-height:1.15; margin:3px 0 0 0;">{sub1}</div>
+        <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; letter-spacing:.5px; line-height:1.15; margin:0;">{sub2}</div>
       </td>
     </tr></table>
     """
@@ -238,13 +238,19 @@ def _render_sidebar(props: dict, t: dict, variables: dict) -> str:
 def _render_recipient(props: dict, t: dict, variables: dict) -> str:
     date_html = ""
     if props.get("date_text"):
-        date_html = (f'<div style="color:{t["navy"]}; font-size:8pt; margin-bottom:10px;">'
+        date_html = (f'<div style="color:{t["navy"]}; font-size:8pt; margin-bottom:10px; text-align:right;">'
                      f'{_sub(props.get("date_text"), variables)}</div>')
-    lines = "".join(
-        f'<div style="color:{t["navy"]}; font-size:8pt; line-height:1.35;">{_sub(l, variables)}</div>'
-        for l in props.get("lines", []) if (l or "").strip()
-    )
-    return f'{date_html}<div style="text-align:right; margin-bottom:14px;">{lines}</div>'
+    # Adresse du destinataire : alignée à gauche, interligne serré (façon Foncia),
+    # légèrement décalée. Les lignes vides (ex. complément absent) sont ignorées.
+    line_html = []
+    for l in props.get("lines", []):
+        val = _sub(l, variables).strip()
+        if val:
+            line_html.append(
+                f'<div style="color:{t["navy"]}; font-size:8.5pt; line-height:1.2;">{val}</div>')
+    lines = "".join(line_html)
+    return (f'{date_html}<div style="text-align:left; padding-left:18px; margin-bottom:14px;">'
+            f'{lines}</div>')
 
 
 def _render_reference(props: dict, t: dict, variables: dict) -> str:

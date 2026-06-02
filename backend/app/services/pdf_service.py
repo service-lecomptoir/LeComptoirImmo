@@ -147,6 +147,24 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
     return html_to_pdf(html)
 
 
+_CIVILITY_SHORT = {
+    "monsieur": "M", "m": "M", "m.": "M", "mr": "M",
+    "madame": "Mme", "mme": "Mme",
+    "mademoiselle": "Mlle", "mlle": "Mlle",
+}
+
+
+def _civil_name(tenant) -> str:
+    """Nom du destinataire « façon Foncia » : civilité + prénom + NOM, en majuscules.
+    Ex. « M JOHNNY MONERVILLE ». Vide si pas de locataire."""
+    if not tenant:
+        return ""
+    civ = (getattr(tenant, "civility", "") or "").strip()
+    civ = _CIVILITY_SHORT.get(civ.lower(), civ)
+    parts = [civ, getattr(tenant, "first_name", "") or "", getattr(tenant, "last_name", "") or ""]
+    return " ".join(p for p in parts if p).upper()
+
+
 class AvisEcheancePDFService:
     """Génère le PDF d'un avis d'échéance."""
 
@@ -239,6 +257,15 @@ class AvisEcheancePDFService:
             ),
             "property_reference": (getattr(property_obj, "reference", "") or
                                    getattr(property_obj, "name", "")) if property_obj else "",
+            # Nom du destinataire « façon Foncia » : civilité + prénom + NOM (majuscules).
+            "tenant_civil_name": _civil_name(getattr(avis_full, "tenant", None)),
+            # Adresse du bien décomposée pour le bloc destinataire (lignes séparées).
+            "property_address2": (getattr(property_obj, "address2", "") or "") if property_obj else "",
+            "property_street": (getattr(property_obj, "address", "") or "") if property_obj else "",
+            "property_city_line": (
+                " ".join(p for p in [getattr(property_obj, "zip_code", ""),
+                                     getattr(property_obj, "city", "")] if p)
+                if property_obj else ""),
             "company_address": "",
             "lease_start_date": (
                 _lease.start_date.strftime("%d/%m/%Y")

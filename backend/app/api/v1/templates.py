@@ -101,9 +101,13 @@ async def preview_document_pdf(
 
     variables = {
         "tenant_name": "Marie Dupont",
+        "tenant_civil_name": "MME MARIE DUPONT",
         "tenant_email": "marie.dupont@email.fr",
         "tenant_phone": "06 12 34 56 78",
         "tenant_login": "marie.dupont@email.fr",
+        "property_address2": "APPART 11",
+        "property_street": "12 avenue des Tilleuls",
+        "property_city_line": "75001 Paris",
         "company_name": sender_name or "Le Comptoir Immo",
         "company_address": sender_addr or "10 rue de la Paix\n75002 Paris",
         "property_name": "Résidence Les Tilleuls",

@@ -381,9 +381,9 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
             <div>
-              <label className={lbl}>Jour de paiement</label>
+              <label className={lbl}>Jour d'échéance du loyer</label>
               <input type="number" min="1" max="28" {...register('payment_day')} className={inp} />
-              <p className="text-xs text-gray-400 mt-1">Jour d'échéance du loyer — sert aux relances.</p>
+              <p className="text-xs text-gray-400 mt-1">Jour du mois où le loyer est exigible (ex. 6). Affiché sur l'avis d'échéance et les quittances.</p>
             </div>
             <div>
               <label className={lbl}>Fréquence de paiement</label>
