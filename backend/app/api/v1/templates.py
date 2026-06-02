@@ -66,6 +66,8 @@ class TemplatePreviewIn(BaseModel):
     header_color: str = "#1E3A5F"
     template_id: Optional[uuid.UUID] = None  # pour récupérer le logo enregistré
     layout: Optional[dict] = None            # surcharge de mise en page (sinon globale)
+    blocks: Optional[list] = None            # éditeur par blocs (avis façon Foncia)
+    theme: Optional[dict] = None             # thème (palette/police) des blocs
 
 
 @router.post("/preview")
@@ -98,16 +100,43 @@ async def preview_document_pdf(
 
     variables = {
         "tenant_name": "Marie Dupont",
-        "company_name": sender_name,
+        "tenant_email": "marie.dupont@email.fr",
+        "tenant_phone": "06 12 34 56 78",
+        "company_name": sender_name or "Le Comptoir Immo",
+        "company_address": sender_addr or "10 rue de la Paix\n75002 Paris",
         "property_name": "Résidence Les Tilleuls",
+        "property_reference": "REF-2024-001",
         "unit_ref": "Appartement B12",
         "property_address": "12 avenue des Tilleuls APPART B12\n75001 Paris",
         "rent_amount": eur(800), "charges_amount": eur(80),
         "total_due": eur(880), "amount_paid": eur(880), "apl_amount": eur(0),
         "month": f"{_MONTHS_FR[_d.month - 1].capitalize()} {_d.year}",
-        "due_date": today_fr, "date": today_fr,
+        "period_range": "du 01/06/2026 au 30/06/2026",
+        "due_date": today_fr, "date": today_fr, "today_date": today_fr,
         "lease_start_date": "01/01/2024",
     }
+
+    # Éditeur par blocs (avis d'échéance « façon Foncia ») : rendu prioritaire.
+    if data.blocks is not None:
+        from app.services.avis_blocks_render_service import render_avis_blocks_html
+        # Le moteur de blocs n'ajoute pas le symbole € → on l'inclut dans les
+        # variables/lignes factices de l'aperçu (contexte blocs uniquement).
+        block_vars = {**variables,
+                      "total_due": f"{eur(880)} €",
+                      "rent_amount": f"{eur(800)} €",
+                      "charges_amount": f"{eur(80)} €"}
+        line_items = [
+            {"label": "LOYER PRINCIPAL", "appele": f"{eur(800)} €"},
+            {"label": "PROVISION CHARGES", "appele": f"{eur(80)} €"},
+        ]
+        html = render_avis_blocks_html(
+            data.blocks, data.theme, block_vars,
+            line_items=line_items, logo_path=logo_path,
+        )
+        pdf_bytes = html_to_pdf(html)
+        return Response(content=pdf_bytes, media_type="application/pdf",
+                        headers={"Content-Disposition": 'inline; filename="apercu.pdf"'})
+
     html = build_document_html(
         header_color=data.header_color, footer_text=data.footer_text,
         content_html=data.content_html, logo_path=logo_path,

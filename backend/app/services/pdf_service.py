@@ -227,14 +227,81 @@ class AvisEcheancePDFService:
             "property_address": property_obj.full_address_block if property_obj else "",
             "company_name": "",
             "date": today_fr,
+            "today_date": today_fr,
+            "period_range": avis_full.period_range_label,
+            "tenant_email": getattr(avis_full.tenant, "email", "") if getattr(avis_full, "tenant", None) else "",
+            "tenant_phone": getattr(avis_full.tenant, "phone", "") if getattr(avis_full, "tenant", None) else "",
+            "property_reference": (getattr(property_obj, "reference", "") or
+                                   getattr(property_obj, "name", "")) if property_obj else "",
+            "company_address": "",
             "lease_start_date": (
                 _lease.start_date.strftime("%d/%m/%Y")
                 if _lease is not None and getattr(_lease, "start_date", None) else ""
             ),
         }
+        _gid = getattr(_lease_rel, "created_by", None)
+
+        # 1a) Éditeur par blocs « façon Foncia » : si le template par défaut de
+        # l'avis en possède, on rend via le moteur de blocs (prioritaire).
+        from app.models.document_template import DocumentTemplate
+        from app.models.user import User
+        avis_tmpl = None
+        if _gid:
+            avis_tmpl = (await db.execute(
+                select(DocumentTemplate).where(
+                    DocumentTemplate.gestionnaire_id == _gid,
+                    DocumentTemplate.template_type == "avis_echeance",
+                    DocumentTemplate.is_default.is_(True),
+                    DocumentTemplate.is_active.is_(True),
+                )
+            )).scalar_one_or_none()
+        if avis_tmpl is not None and getattr(avis_tmpl, "blocks", None):
+            from app.services.avis_blocks_render_service import render_avis_blocks_html
+            # Nom + adresse de l'expéditeur depuis le profil du gestionnaire.
+            sender_name, sender_addr = "", ""
+            try:
+                user = (await db.execute(
+                    select(User).where(User.id == _gid)
+                )).scalar_one_or_none()
+                if user:
+                    sender_name = user.full_name or avis_tmpl.company_name or ""
+                    sender_addr = getattr(user, "address", "") or avis_tmpl.company_address or ""
+            except Exception:
+                pass
+            if not variables.get("company_name"):
+                variables["company_name"] = sender_name
+            if not variables.get("company_address"):
+                variables["company_address"] = sender_addr
+            # Le moteur de blocs n'ajoute pas le symbole € (contrairement aux anciens
+            # templates HTML) → on le préfixe ici, dans le contexte blocs uniquement.
+            def _eur(v):
+                return f"{eur(v)} €"
+            variables["total_due"] = _eur(_total)
+            variables["rent_amount"] = _eur(avis_full.amount_rent)
+            variables["charges_amount"] = _eur(avis_full.amount_charges)
+            line_items = [
+                {"label": "LOYER PRINCIPAL", "appele": _eur(avis_full.amount_rent)},
+                {"label": "PROVISION CHARGES", "appele": _eur(avis_full.amount_charges)},
+            ]
+            if avis_full.amount_apl:
+                line_items.append({"label": "AIDE AU LOGEMENT (APL)",
+                                   "appele": "-" + _eur(avis_full.amount_apl)})
+            html = render_avis_blocks_html(
+                avis_tmpl.blocks, getattr(avis_tmpl, "theme", None), variables,
+                line_items=line_items, logo_path=getattr(avis_tmpl, "logo_path", None),
+            )
+            notice = None
+            if _lease_rel is not None:
+                from app.services.irl_notice import upcoming_revision_notice, inject_notice
+                notice = await upcoming_revision_notice(
+                    db, _lease_rel, avis_full.period_year, avis_full.period_month)
+                if notice:
+                    html = inject_notice(html, notice)
+            return html_to_pdf(html)
+
         custom = await render_saved_document(
             db, template_type="avis_echeance",
-            gestionnaire_id=getattr(_lease_rel, "created_by", None),
+            gestionnaire_id=_gid,
             variables=variables, recipient_lines=names,
             property_address=property_obj.full_address_block if property_obj else "",
             layout=layout,

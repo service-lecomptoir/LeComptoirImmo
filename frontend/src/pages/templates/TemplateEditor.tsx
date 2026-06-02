@@ -6,6 +6,7 @@ import {
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import RichTextEditor, { type RichTextEditorHandle } from '@/components/common/RichTextEditor'
+import AvisBlockEditor from './AvisBlockEditor'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -85,6 +86,8 @@ interface Template {
   company_siret?: string
   content_html?: string
   footer_text?: string
+  blocks?: any[] | null
+  theme?: Record<string, string> | null
   logo_url?: string | null
   is_default: boolean
   is_active: boolean
@@ -630,14 +633,27 @@ export default function TemplateEditor() {
 
   // Mode éditeur plein écran
   if (editMode) {
+    // Avis d'échéance doté de blocs → éditeur par blocs « façon Foncia ».
+    const useBlockEditor =
+      editTemplate?.template_type === 'avis_echeance' &&
+      Array.isArray(editTemplate?.blocks) && editTemplate.blocks.length > 0
     return (
       <div className="fixed inset-0 z-50 overflow-hidden">
-        <TemplateEditorPanel
-          key={editTemplate?.id ?? 'new'}
-          template={editTemplate}
-          onBack={handleBack}
-          onSaved={onSaved}
-        />
+        {useBlockEditor ? (
+          <AvisBlockEditor
+            key={editTemplate!.id}
+            template={editTemplate as any}
+            onBack={handleBack}
+            onSaved={onSaved}
+          />
+        ) : (
+          <TemplateEditorPanel
+            key={editTemplate?.id ?? 'new'}
+            template={editTemplate}
+            onBack={handleBack}
+            onSaved={onSaved}
+          />
+        )}
       </div>
     )
   }

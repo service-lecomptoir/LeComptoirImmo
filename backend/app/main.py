@@ -322,6 +322,11 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE entretiens DROP COLUMN IF EXISTS unit_id",
         "ALTER TABLE tickets DROP COLUMN IF EXISTS unit_id",
         "DROP TABLE IF EXISTS units",
+        # Complément d'adresse du bien (ligne 1 des documents : « APPART 11 »…)
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS address2 VARCHAR(200)",
+        # ── Éditeur « Ma papeterie » par blocs (avis d'échéance façon Foncia) ────
+        "ALTER TABLE document_templates ADD COLUMN IF NOT EXISTS blocks JSONB",
+        "ALTER TABLE document_templates ADD COLUMN IF NOT EXISTS theme JSONB",
     ]
     try:
         async with engine.begin() as conn:

@@ -1,9 +1,9 @@
 """Modèle DocumentTemplate — templates personnalisables pour documents générés."""
 import uuid
-from typing import Optional
+from typing import Optional, Any
 from sqlalchemy import String, Text, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from enum import Enum
 
 from app.database import Base, TimestampMixin
@@ -41,6 +41,12 @@ class DocumentTemplate(Base, TimestampMixin):
     # Contenu HTML du template
     content_html: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     footer_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Éditeur par blocs (avis d'échéance « façon Foncia » et futurs documents) :
+    # liste ordonnée de blocs réordonnables + thème (palette/police). NULL = pas
+    # encore migré → on retombe sur le rendu HTML classique (content_html).
+    blocks: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+    theme: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
 
     # Isolation par gestionnaire (NULL = ancien template global, visible admin seulement)
     gestionnaire_id: Mapped[Optional[uuid.UUID]] = mapped_column(

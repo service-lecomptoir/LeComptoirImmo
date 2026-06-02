@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document_template import DocumentTemplate, TemplateType
+from app.services.avis_blocks_render_service import default_avis_blocks, FONCIA_THEME
 
 # Rôles qui génèrent des documents → reçoivent les templates par défaut.
 TEMPLATE_OWNER_ROLES = {"admin", "gestionnaire", "gestionnaire_proprio"}
@@ -29,6 +30,9 @@ DEFAULT_TEMPLATES = {
 </table>
 <p style="color:#6b7280;">Nous vous remercions de votre confiance et restons à votre disposition pour toute question.</p>""",
         "footer_text": "Document généré par Le Comptoir Immo. Pour toute question, contactez votre gestionnaire.",
+        # Éditeur par blocs « façon Foncia » (rendu prioritaire si présent).
+        "blocks": default_avis_blocks(),
+        "theme": FONCIA_THEME,
     },
     TemplateType.QUITTANCE: {
         "name": "Quittance de loyer standard",
@@ -150,6 +154,12 @@ async def refresh_default_bodies(db: AsyncSession) -> int:
             if t.content_html != d["content_html"] or t.footer_text != d["footer_text"]:
                 t.content_html = d["content_html"]
                 t.footer_text = d["footer_text"]
+                updated += 1
+            # Dote les avis par défaut existants des blocs/thème Foncia s'ils n'en
+            # ont pas encore (rétro-compat des comptes créés avant la refonte).
+            if d.get("blocks") and not getattr(t, "blocks", None):
+                t.blocks = d["blocks"]
+                t.theme = d.get("theme")
                 updated += 1
     if updated:
         await db.flush()

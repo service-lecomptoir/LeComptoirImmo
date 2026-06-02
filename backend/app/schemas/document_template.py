@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime
 from pydantic import BaseModel
 from app.models.document_template import TemplateType
@@ -16,6 +16,8 @@ class DocumentTemplateCreate(BaseModel):
     company_siret: Optional[str] = None
     content_html: Optional[str] = None
     footer_text: Optional[str] = None
+    blocks: Optional[list[Any]] = None
+    theme: Optional[dict[str, Any]] = None
     is_default: bool = False
     is_active: bool = True
 
@@ -30,6 +32,8 @@ class DocumentTemplateUpdate(BaseModel):
     company_siret: Optional[str] = None
     content_html: Optional[str] = None
     footer_text: Optional[str] = None
+    blocks: Optional[list[Any]] = None
+    theme: Optional[dict[str, Any]] = None
     is_default: Optional[bool] = None
     is_active: Optional[bool] = None
 
@@ -47,6 +51,8 @@ class DocumentTemplateResponse(BaseModel):
     company_siret: Optional[str] = None
     content_html: Optional[str] = None
     footer_text: Optional[str] = None
+    blocks: Optional[list[Any]] = None
+    theme: Optional[dict[str, Any]] = None
     is_default: bool
     is_active: bool
     created_at: datetime
