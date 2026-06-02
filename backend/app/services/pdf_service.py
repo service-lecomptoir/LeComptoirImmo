@@ -231,6 +231,12 @@ class AvisEcheancePDFService:
             "period_range": avis_full.period_range_label,
             "tenant_email": getattr(avis_full.tenant, "email", "") if getattr(avis_full, "tenant", None) else "",
             "tenant_phone": getattr(avis_full.tenant, "phone", "") if getattr(avis_full, "tenant", None) else "",
+            # Identifiant locataire : l'email, uniquement si un compte locataire existe.
+            "tenant_login": (
+                getattr(avis_full.tenant, "email", "") or ""
+                if getattr(avis_full, "tenant", None) and getattr(avis_full.tenant, "user_id", None)
+                else ""
+            ),
             "property_reference": (getattr(property_obj, "reference", "") or
                                    getattr(property_obj, "name", "")) if property_obj else "",
             "company_address": "",

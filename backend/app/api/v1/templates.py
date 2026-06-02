@@ -103,6 +103,7 @@ async def preview_document_pdf(
         "tenant_name": "Marie Dupont",
         "tenant_email": "marie.dupont@email.fr",
         "tenant_phone": "06 12 34 56 78",
+        "tenant_login": "marie.dupont@email.fr",
         "company_name": sender_name or "Le Comptoir Immo",
         "company_address": sender_addr or "10 rue de la Paix\n75002 Paris",
         "property_name": "Résidence Les Tilleuls",

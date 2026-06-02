@@ -15,11 +15,76 @@ de façon fiable. Couleurs et placements proviennent du thème.
 """
 from __future__ import annotations
 
+import base64
 import html as _html
+import io
 import re
+from functools import lru_cache
 from typing import Optional
 
 from app.services.document_render_service import substitute, _logo_data_uri
+
+try:  # svglib/reportlab : conversion des icônes SVG en PNG (rendu fiable en PDF)
+    from svglib.svglib import svg2rlg
+    from reportlab.graphics import renderPM
+    _SVG_OK = True
+except Exception:  # pragma: no cover
+    _SVG_OK = False
+
+
+# Icônes de la sidebar (style ligne, façon Foncia). Tracé SVG (viewBox 24×24).
+_ICON_PATHS = {
+    "info": "<circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/>"
+            "<line x1='12' y1='8' x2='12.01' y2='8'/>",
+    "references": "<rect width='18' height='18' x='3' y='4' rx='2'/><circle cx='9' cy='10' r='2'/>"
+                  "<path d='M15 8h2'/><path d='M15 12h2'/><path d='M7 15.5c0-1.5 4-1.5 4 0'/>",
+    "agency": "<rect width='16' height='20' x='4' y='2' rx='2'/><path d='M9 22v-4h6v4'/>"
+              "<path d='M8 6h.01'/><path d='M12 6h.01'/><path d='M16 6h.01'/>"
+              "<path d='M8 10h.01'/><path d='M12 10h.01'/><path d='M16 10h.01'/>"
+              "<path d='M8 14h.01'/><path d='M16 14h.01'/>",
+    "lots": "<circle cx='7.5' cy='15.5' r='5.5'/><path d='m21 2-9.6 9.6'/>"
+            "<path d='m15.5 7.5 3 3L22 7l-3-3'/>",
+    "payment": "<rect width='20' height='14' x='2' y='5' rx='2'/><line x1='2' y1='10' x2='22' y2='10'/>",
+    "dot": "<circle cx='12' cy='12' r='4'/>",
+}
+
+# Inférence de l'icône depuis le titre de section (pour les blocs déjà enregistrés).
+_ICON_KEYWORDS = [
+    ("references", ("référence", "reference", "réf", "client")),
+    ("agency", ("agence", "gestionnaire", "société", "societe")),
+    ("lots", ("lot", "bien", "logement")),
+    ("payment", ("paiement", "règlement", "reglement", "rib", "banc", "iban", "prélèvement", "prelevement")),
+    ("info", ("information", "informations", "coordonnée", "coordonnees")),
+]
+
+
+def _icon_for(section: dict) -> Optional[str]:
+    """Nom d'icône d'une section : clé explicite `icon`, sinon déduit du titre."""
+    name = (section.get("icon") or "").strip().lower()
+    if name in _ICON_PATHS:
+        return name
+    title = (section.get("title") or "").lower()
+    for icon, kws in _ICON_KEYWORDS:
+        if any(k in title for k in kws):
+            return icon
+    return "info"
+
+
+@lru_cache(maxsize=64)
+def _icon_data_uri(name: str, color: str) -> Optional[str]:
+    """Rend une icône SVG en PNG (data-URI) — xhtml2pdf affiche mal le SVG direct."""
+    if not _SVG_OK:
+        return None
+    paths = _ICON_PATHS.get(name) or _ICON_PATHS["dot"]
+    svg = (f"<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' "
+           f"fill='none' stroke='{color}' stroke-width='2' stroke-linecap='round' "
+           f"stroke-linejoin='round'>{paths}</svg>")
+    try:
+        drawing = svg2rlg(io.StringIO(svg))
+        png = renderPM.drawToString(drawing, fmt="PNG", bg=0xFFFFFF)
+        return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
+    except Exception:  # pragma: no cover
+        return None
 
 
 # ── Thème Foncia (palette extraite du PDF de référence) ──────────────────────
@@ -47,16 +112,17 @@ def default_avis_blocks() -> list[dict]:
         }},
         {"id": "sidebar", "type": "sidebar", "enabled": True, "props": {
             "sections": [
-                {"title": "VOS INFORMATIONS",
+                {"title": "VOS INFORMATIONS", "icon": "info",
                  "lines": ["{{tenant_name}}", "{{property_address}}",
                            "{{tenant_phone}}", "{{tenant_email}}"]},
-                {"title": "VOS RÉFÉRENCES CLIENT",
-                 "lines": ["Référence immeuble : {{property_reference}}"]},
-                {"title": "VOTRE AGENCE",
+                {"title": "VOS RÉFÉRENCES CLIENT", "icon": "references",
+                 "lines": ["Référence immeuble : {{property_reference}}",
+                           "{{#if tenant_login}}Identifiant locataire : {{tenant_login}}{{/if}}"]},
+                {"title": "VOTRE AGENCE", "icon": "agency",
                  "lines": ["{{company_name}}", "{{company_address}}"]},
-                {"title": "VOS LOTS",
+                {"title": "VOS LOTS", "icon": "lots",
                  "lines": ["{{property_name}}"]},
-                {"title": "VOTRE MODE DE PAIEMENT",
+                {"title": "VOTRE MODE DE PAIEMENT", "icon": "payment",
                  "lines": ["Virement / prélèvement"]},
             ],
         }},
@@ -145,14 +211,25 @@ def _render_sidebar(props: dict, t: dict, variables: dict) -> str:
     out = []
     for sec in props.get("sections", []):
         title = _sub(sec.get("title"), variables)
-        lines = "".join(
-            f'<div style="color:{t["gray"]}; font-size:6.8pt; margin:1px 0;">{_sub(l, variables)}</div>'
-            for l in sec.get("lines", []) if (l or "").strip()
-        )
+        # Lignes : on substitue d'abord puis on ignore les résultats vides
+        # (variables non renseignées, blocs {{#if}} → pas de ligne fantôme).
+        line_html = []
+        for l in sec.get("lines", []):
+            val = _sub(l, variables).strip()
+            if val:
+                line_html.append(
+                    f'<div style="color:{t["gray"]}; font-size:6.8pt; margin:1px 0;">{val}</div>')
+        lines = "".join(line_html)
+
+        # Icône de section (façon Foncia) à gauche du titre.
+        icon_uri = _icon_data_uri(_icon_for(sec), t["navy"])
+        icon_html = (f'<img src="{icon_uri}" style="width:9px; height:9px;"/> ' if icon_uri else "")
+
         out.append(
             f'<div style="margin-bottom:10px;">'
             f'<div style="color:{t["navy"]}; font-weight:bold; font-size:7pt; '
-            f'text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px;">{title}</div>'
+            f'text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px;">'
+            f'{icon_html}{title}</div>'
             f'{lines}</div>'
         )
     return "".join(out)

@@ -155,11 +155,14 @@ async def refresh_default_bodies(db: AsyncSession) -> int:
                 t.content_html = d["content_html"]
                 t.footer_text = d["footer_text"]
                 updated += 1
-            # Dote les avis par défaut existants des blocs/thème Foncia s'ils n'en
-            # ont pas encore (rétro-compat des comptes créés avant la refonte).
-            if d.get("blocks") and not getattr(t, "blocks", None):
-                t.blocks = d["blocks"]
-                t.theme = d.get("theme")
+            # Modèle par blocs (avis) : on garde les templates PAR DÉFAUT alignés sur
+            # le modèle canonique courant — comme pour content_html ci-dessus — afin
+            # que les évolutions (icônes, nouvelles lignes…) atteignent les comptes
+            # existants. (Une personnalisation se fait sur un modèle dupliqué.)
+            if d.get("blocks") and getattr(t, "blocks", None) != d["blocks"]:
+                # Réassignation (objet neuf) pour que SQLAlchemy détecte le changement JSONB.
+                t.blocks = [dict(b) for b in d["blocks"]]
+                t.theme = dict(d["theme"]) if d.get("theme") else None
                 updated += 1
     if updated:
         await db.flush()
