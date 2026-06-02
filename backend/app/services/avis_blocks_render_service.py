@@ -343,14 +343,32 @@ def _theme(theme: Optional[dict]) -> dict:
 
 
 # ── Rendu de chaque type de bloc ─────────────────────────────────────────────
+def _logo_dims(logo_path, box: int = 64) -> tuple:
+    """Dimensions d'affichage du logo pour tenir dans une boîte `box`×`box`,
+    en conservant le ratio. xhtml2pdf ignore max-width/max-height : il FAUT des
+    attributs width/height explicites, sinon l'image garde sa taille naturelle."""
+    try:
+        from PIL import Image
+        with Image.open(logo_path) as im:
+            w, h = im.size
+        if w <= 0 or h <= 0:
+            return box, box
+        scale = min(box / w, box / h)
+        return max(1, round(w * scale)), max(1, round(h * scale))
+    except Exception:  # SVG ou format non lisible par PIL → repli carré
+        return box, box
+
+
 def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
     logo_uri = _logo_data_uri(logo_path)
     # Emplacement du logo TOUJOURS réservé (hauteur fixe) : s'il n'y a pas de logo,
     # la case reste vide mais la mise en page ne remonte pas.
     if logo_uri:
-        # Logo façon « photo d'identité » : cadré petit (pas large pour rien).
+        # Logo façon « photo d'identité » : dimensions EXPLICITES (≤64px) car
+        # xhtml2pdf n'applique pas max-width/max-height.
+        _lw, _lh = _logo_dims(logo_path, 64)
         brand = (f'<div style="height:72px;">'
-                 f'<img src="{logo_uri}" style="max-width:64px; max-height:72px;" alt="logo"/></div>')
+                 f'<img src="{logo_uri}" width="{_lw}" height="{_lh}" alt="logo"/></div>')
     else:
         brand = '<div style="height:72px;">&nbsp;</div>'
     title = _sub(props.get("title"), variables)
