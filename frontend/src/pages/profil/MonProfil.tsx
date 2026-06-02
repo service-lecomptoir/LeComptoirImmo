@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
-import { Save, Landmark, KeyRound, Eye, EyeOff, AtSign, Plus, X, AlertTriangle } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Save, Landmark, KeyRound, Eye, EyeOff, AtSign, Plus, X, AlertTriangle, Image as ImageIcon, Trash2, UploadCloud } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
@@ -41,6 +43,40 @@ export default function MonProfil() {
   const [newDomain, setNewDomain] = useState('')
   const [domainErr, setDomainErr] = useState<string | null>(null)
   const [domainBusy, setDomainBusy] = useState(false)
+
+  // Logo du gestionnaire (en-tête des documents).
+  const logoInputRef = useRef<HTMLInputElement>(null)
+  const [logoBusy, setLogoBusy] = useState(false)
+
+  const handleLogoFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) { toast.error('Choisissez une image (PNG, JPG, SVG, WebP).'); return }
+    setLogoBusy(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      await apiClient.post('/auth/me/logo', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await fetchMe()
+      toast.success('Logo mis à jour')
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Échec du téléversement du logo")
+    } finally {
+      setLogoBusy(false)
+      if (logoInputRef.current) logoInputRef.current.value = ''
+    }
+  }
+
+  const removeLogo = async () => {
+    setLogoBusy(true)
+    try {
+      await apiClient.delete('/auth/me/logo')
+      await fetchMe()
+      toast.success('Logo supprimé')
+    } catch {
+      toast.error('Suppression du logo impossible')
+    } finally {
+      setLogoBusy(false)
+    }
+  }
 
   // Charge la fiche propriétaire liée au compte : coordonnées de règlement + RIB.
   useEffect(() => {
@@ -186,6 +222,40 @@ export default function MonProfil() {
             <label className={lbl}>Adresse</label>
             <textarea className={`${inp} resize-none`} rows={2} value={address}
               onChange={e => setAddress(e.target.value)} placeholder="12 rue de la République, 75001 Paris" />
+          </div>
+        )}
+
+        {/* ── Logo (affiché en en-tête des documents) ── */}
+        {isManager && (
+          <div>
+            <label className={lbl}>Logo</label>
+            <div className="flex items-center gap-4">
+              <div className="w-40 h-20 shrink-0 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden">
+                {user?.logo_url ? (
+                  <img src={`${API_BASE}${user.logo_url}`} alt="logo" className="max-w-full max-h-full object-contain" />
+                ) : (
+                  <ImageIcon size={22} className="text-gray-300" />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                  className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f) }} />
+                <button type="button" onClick={() => logoInputRef.current?.click()} disabled={logoBusy}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                  <UploadCloud size={15} /> {logoBusy ? 'Envoi…' : (user?.logo_url ? 'Remplacer le logo' : 'Téléverser un logo')}
+                </button>
+                {user?.logo_url && (
+                  <button type="button" onClick={removeLogo} disabled={logoBusy}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50">
+                    <Trash2 size={15} /> Supprimer
+                  </button>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Apparaît en haut à gauche de vos documents (avis d'échéance…). Format conseillé : PNG/JPG, ~170×64 px.
+              S'il n'y a pas de logo, l'emplacement reste vide.
+            </p>
           </div>
         )}
 

@@ -259,6 +259,7 @@ class AvisEcheancePDFService:
             from app.services.avis_blocks_render_service import render_avis_blocks_html
             # Nom + adresse de l'expéditeur depuis le profil du gestionnaire.
             sender_name, sender_addr = "", ""
+            user = None
             try:
                 user = (await db.execute(
                     select(User).where(User.id == _gid)
@@ -286,9 +287,12 @@ class AvisEcheancePDFService:
             if avis_full.amount_apl:
                 line_items.append({"label": "AIDE AU LOGEMENT (APL)",
                                    "appele": "-" + _eur(avis_full.amount_apl)})
+            # Logo : priorité au logo du profil gestionnaire (« Mes informations »),
+            # sinon celui éventuellement enregistré sur le modèle.
+            _logo = getattr(user, "logo_path", None) or getattr(avis_tmpl, "logo_path", None)
             html = render_avis_blocks_html(
                 avis_tmpl.blocks, getattr(avis_tmpl, "theme", None), variables,
-                line_items=line_items, logo_path=getattr(avis_tmpl, "logo_path", None),
+                line_items=line_items, logo_path=_logo,
             )
             notice = None
             if _lease_rel is not None:

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Request
+import os
+from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -68,6 +69,53 @@ async def update_me(
     """Met à jour le profil de l'utilisateur connecté (nom, téléphone, adresse)."""
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(current_user, field, value)
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+_LOGO_DIR = "uploads/logos"
+os.makedirs(_LOGO_DIR, exist_ok=True)
+
+
+@router.post("/me/logo", response_model=UserMeResponse, summary="Téléverser mon logo")
+async def upload_my_logo(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Téléverse le logo du gestionnaire (affiché en en-tête des documents)."""
+    if file.content_type not in ("image/png", "image/jpeg", "image/svg+xml", "image/webp"):
+        raise HTTPException(status_code=400, detail="Format d'image non supporté (PNG, JPG, SVG, WebP)")
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "png"
+    if ext not in ("png", "jpg", "jpeg", "svg", "webp"):
+        ext = "png"
+    filename = f"user_{current_user.id}.{ext}"
+    filepath = os.path.join(_LOGO_DIR, filename)
+    with open(filepath, "wb") as f:
+        f.write(await file.read())
+    current_user.logo_path = filepath
+    current_user.logo_url = f"/uploads/logos/{filename}"
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+@router.delete("/me/logo", response_model=UserMeResponse, summary="Supprimer mon logo")
+async def delete_my_logo(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Supprime le logo du gestionnaire (l'emplacement reste vide sur les documents)."""
+    if current_user.logo_path:
+        try:
+            os.remove(current_user.logo_path)
+        except OSError:
+            pass
+    current_user.logo_path = None
+    current_user.logo_url = None
     db.add(current_user)
     await db.commit()
     await db.refresh(current_user)

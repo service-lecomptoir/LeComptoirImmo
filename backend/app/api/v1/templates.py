@@ -82,9 +82,10 @@ async def preview_document_pdf(
     from app.services.pdf_service import html_to_pdf
     from app.services.template_layout_service import get_layout
 
-    # Logo : repris du template enregistré si on en édite un.
-    logo_path = None
-    if data.template_id:
+    # Logo : priorité au logo du profil (« Mes informations »), sinon celui du
+    # template enregistré qu'on édite.
+    logo_path = getattr(current_user, "logo_path", None)
+    if not logo_path and data.template_id:
         t = await db.get(DocumentTemplate, data.template_id)
         if t:
             _check_ownership(t, current_user)

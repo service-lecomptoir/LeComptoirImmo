@@ -36,6 +36,11 @@ class User(Base, TimestampMixin):
     # de loyer et le formulaire tiers payant. Distinct du nom de la résidence.
     owner_full_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
 
+    # Logo du gestionnaire (« Mes informations ») — affiché en en-tête des documents
+    # (avis d'échéance « façon Foncia », à la place du logo).
+    logo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
     # NB : le RIB du bailleur vit désormais sur la fiche propriétaire (table owners),
     # plus sur le compte utilisateur (colonnes iban/bic/bank_holder supprimées).
 

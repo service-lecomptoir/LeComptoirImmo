@@ -9,6 +9,7 @@ export interface User {
   phone?: string | null
   address?: string | null
   owner_full_name?: string | null
+  logo_url?: string | null
   created_at: string
   updated_at: string
 }

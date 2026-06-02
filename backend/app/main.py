@@ -327,6 +327,9 @@ async def _apply_column_migrations() -> None:
         # ── Éditeur « Ma papeterie » par blocs (avis d'échéance façon Foncia) ────
         "ALTER TABLE document_templates ADD COLUMN IF NOT EXISTS blocks JSONB",
         "ALTER TABLE document_templates ADD COLUMN IF NOT EXISTS theme JSONB",
+        # Logo du gestionnaire (profil « Mes informations »)
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS logo_path VARCHAR(500)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
     ]
     try:
         async with engine.begin() as conn:

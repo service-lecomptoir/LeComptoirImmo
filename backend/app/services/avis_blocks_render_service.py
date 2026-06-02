@@ -119,11 +119,13 @@ def _theme(theme: Optional[dict]) -> dict:
 # ── Rendu de chaque type de bloc ─────────────────────────────────────────────
 def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
     logo_uri = _logo_data_uri(logo_path)
+    # Emplacement du logo TOUJOURS réservé (hauteur fixe) : s'il n'y a pas de logo,
+    # la case reste vide mais la mise en page ne remonte pas.
     if logo_uri:
-        brand = f'<img src="{logo_uri}" style="max-width:150px; max-height:64px;" alt="logo"/>'
+        brand = (f'<div style="height:64px;">'
+                 f'<img src="{logo_uri}" style="max-width:170px; max-height:64px;" alt="logo"/></div>')
     else:
-        brand = (f'<div style="font-size:20pt; font-weight:bold; color:{t["navy"]};">'
-                 f'{_sub("{{company_name}}", variables)}</div>')
+        brand = '<div style="height:64px;">&nbsp;</div>'
     title = _sub(props.get("title"), variables)
     sub1 = _sub(props.get("subtitle1"), variables)
     sub2 = _sub(props.get("subtitle2"), variables)

@@ -78,6 +78,7 @@ class UserResponse(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     owner_full_name: Optional[str] = None
+    logo_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
