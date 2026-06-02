@@ -54,7 +54,10 @@ def substitute(content_html: str, variables: dict) -> str:
     def _var_repl(m: re.Match) -> str:
         key = m.group(1)
         val = variables.get(key)
-        return _html.escape(str(val)) if val is not None else ""
+        if val is None:
+            return ""
+        # Échappe puis préserve les sauts de ligne (ex. adresse « rue / CP Ville »).
+        return _html.escape(str(val)).replace("\n", "<br/>")
 
     return _VAR_RE.sub(_var_repl, out)
 

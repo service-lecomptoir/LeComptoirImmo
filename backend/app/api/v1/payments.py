@@ -537,7 +537,7 @@ async def download_quittance(
         "company_name": "",
         "property_name": _prop_obj.name if _prop_obj else "",
         "unit_ref": _prop_obj.name if _prop_obj else "",
-        "property_address": _prop_obj.full_address if _prop_obj else "",
+        "property_address": _prop_obj.full_address_block if _prop_obj else "",
         "amount_paid": eur(payment.amount_paid),
         "rent_amount": eur(payment.amount_rent),
         "charges_amount": eur(payment.amount_charges),
@@ -548,7 +548,7 @@ async def download_quittance(
     custom = await render_saved_document(
         db, template_type="quittance", gestionnaire_id=_gid,
         variables=variables, recipient_lines=names,
-        property_address=_prop_obj.full_address if _prop_obj else "",
+        property_address=_prop_obj.full_address_block if _prop_obj else "",
         layout=layout,
     )
     # Mention « révision de loyer à venir » (1 mois à l'avance), si applicable.

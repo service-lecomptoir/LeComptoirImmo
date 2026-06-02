@@ -224,7 +224,7 @@ class AvisEcheancePDFService:
             "total_due": eur(_total),
             "property_name": property_obj.name if property_obj else "",
             "unit_ref": property_obj.name if property_obj else "",
-            "property_address": property_obj.full_address if property_obj else "",
+            "property_address": property_obj.full_address_block if property_obj else "",
             "company_name": "",
             "date": today_fr,
         }
@@ -232,7 +232,7 @@ class AvisEcheancePDFService:
             db, template_type="avis_echeance",
             gestionnaire_id=getattr(_lease_rel, "created_by", None),
             variables=variables, recipient_lines=names,
-            property_address=property_obj.full_address if property_obj else "",
+            property_address=property_obj.full_address_block if property_obj else "",
             layout=layout,
         )
 
