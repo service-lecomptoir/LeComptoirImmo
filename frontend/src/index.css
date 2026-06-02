@@ -22,6 +22,26 @@
   }
 }
 
+/* Éditeur de texte enrichi (TemplateEditor) : restaure la mise en forme que le
+   preflight Tailwind neutralise, pour un WYSIWYG fidèle au rendu du document. */
+.rte-content h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  color: #111827;
+}
+.rte-content p { margin: 0 0 0.5em; }
+.rte-content ul { list-style: disc; padding-left: 1.4em; margin: 0 0 0.5em; }
+.rte-content ol { list-style: decimal; padding-left: 1.4em; margin: 0 0 0.5em; }
+.rte-content li { margin: 0.15em 0; }
+.rte-content strong, .rte-content b { font-weight: 700; }
+.rte-content em, .rte-content i { font-style: italic; }
+.rte-content u { text-decoration: underline; }
+.rte-content:empty::before {
+  content: "Rédigez le contenu du document ici…";
+  color: #9ca3af;
+}
+
 /* Scrollbar fine et discrète (Firefox + WebKit) */
 * {
   scrollbar-width: thin;

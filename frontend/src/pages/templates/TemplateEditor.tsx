@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
+import RichTextEditor, { type RichTextEditorHandle } from '@/components/common/RichTextEditor'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -166,7 +167,6 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [dragOverTextarea, setDragOverTextarea] = useState(false)
 
   // ── Mise en page (globale) + aperçu PDF réel ───────────────────────────────
   const [layout, setLayout] = useState<any>(null)
@@ -192,8 +192,7 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
   const setSpacing = (key: string, value: number | string) =>
     setLayout((l: any) => ({ ...(l || {}), spacing: { ...((l || {}).spacing || {}), [key]: value } }))
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const cursorPosRef = useRef(0)
+  const editorRef = useRef<RichTextEditorHandle>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const set = (field: keyof FormData, value: string | boolean) =>
@@ -261,51 +260,15 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
     if (file && file.type.startsWith('image/')) handleLogoChange(file)
   }
 
-  // ── Variable drag & drop vers textarea ──────────────────────────────────────
+  // ── Insertion de variable (clic) + drag & drop ──────────────────────────────
 
-  const insertVar = useCallback((varKey: string, pos?: number) => {
-    const ta = textareaRef.current
-    if (!ta) {
-      set('content_html', (form.content_html ?? '') + varKey)
-      return
-    }
-    const insertAt = pos ?? cursorPosRef.current
-    const cur = form.content_html ?? ''
-    const next = cur.slice(0, insertAt) + varKey + cur.slice(insertAt)
-    set('content_html', next)
-    setTimeout(() => {
-      ta.focus()
-      ta.setSelectionRange(insertAt + varKey.length, insertAt + varKey.length)
-    }, 0)
-  }, [form.content_html])
-
-  const handleTextareaClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
-    cursorPosRef.current = e.currentTarget.selectionStart
-  }
-  const handleTextareaKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    cursorPosRef.current = e.currentTarget.selectionStart
-  }
+  const insertVar = useCallback((varKey: string) => {
+    editorRef.current?.insertText(varKey)
+  }, [])
 
   const handleVarDragStart = (e: React.DragEvent, varKey: string) => {
     e.dataTransfer.setData('text/plain', varKey)
     e.dataTransfer.effectAllowed = 'copy'
-  }
-
-  const handleTextareaDragOver = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-    setDragOverTextarea(true)
-  }
-
-  const handleTextareaDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault()
-    setDragOverTextarea(false)
-    const varKey = e.dataTransfer.getData('text/plain')
-    if (!varKey) return
-    const ta = e.currentTarget
-    // Obtenir la position d'insertion
-    const pos = (ta as any).selectionStart ?? form.content_html.length
-    insertVar(varKey, pos)
   }
 
   // ── Sauvegarde ───────────────────────────────────────────────────────────────
@@ -532,40 +495,14 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Contenu du document
               </p>
-              <span className="text-xs text-gray-400">Glissez les marqueurs ci-dessus dans le texte</span>
+              <span className="text-xs text-gray-400">Mettez en forme le texte ; glissez les marqueurs dedans</span>
             </div>
 
-            <div className={`relative flex-1 min-h-0 rounded-xl border-2 transition-colors ${
-              dragOverTextarea ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
-            }`}>
-              {dragOverTextarea && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                  <div className="bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
-                    Déposer ici
-                  </div>
-                </div>
-              )}
-              <textarea
-                ref={textareaRef}
-                id="tpl-content"
-                className="w-full h-full px-3 py-3 text-sm font-mono resize-none focus:outline-none bg-transparent rounded-xl"
-                placeholder="Rédigez le contenu du document ici…
-&#10;Exemple :
-&#10;Cher(e) {{tenant_name}},
-&#10;Votre loyer du mois de {{month}} d'un montant de {{total_due}} € est à régler avant le {{due_date}}.
-&#10;
-&#10;Cordialement,
-&#10;{{company_name}}"
-                value={form.content_html}
-                onChange={e => {
-                  set('content_html', e.target.value)
-                  cursorPosRef.current = e.target.selectionStart
-                }}
-                onClick={handleTextareaClick}
-                onKeyUp={handleTextareaKeyUp}
-                onDragOver={handleTextareaDragOver}
-                onDragLeave={() => setDragOverTextarea(false)}
-                onDrop={handleTextareaDrop}
+            <div className="flex-1 min-h-0 rounded-xl border-2 border-gray-200 overflow-hidden">
+              <RichTextEditor
+                ref={editorRef}
+                html={form.content_html}
+                onChange={v => set('content_html', v)}
               />
             </div>
           </div>
