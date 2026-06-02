@@ -36,6 +36,7 @@ except Exception:  # pragma: no cover
 _ICON_PATHS = {
     "info": "<circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/>"
             "<line x1='12' y1='8' x2='12.01' y2='8'/>",
+    "user": "<path d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/>",
     "references": "<rect width='18' height='18' x='3' y='4' rx='2'/><circle cx='9' cy='10' r='2'/>"
                   "<path d='M15 8h2'/><path d='M15 12h2'/><path d='M7 15.5c0-1.5 4-1.5 4 0'/>",
     "agency": "<rect width='16' height='20' x='4' y='2' rx='2'/><path d='M9 22v-4h6v4'/>"
@@ -54,7 +55,7 @@ _ICON_KEYWORDS = [
     ("agency", ("agence", "gestionnaire", "société", "societe")),
     ("lots", ("lot", "bien", "logement")),
     ("payment", ("paiement", "règlement", "reglement", "rib", "banc", "iban", "prélèvement", "prelevement")),
-    ("info", ("information", "informations", "coordonnée", "coordonnees")),
+    ("user", ("information", "informations", "coordonnée", "coordonnees")),
 ]
 
 
@@ -112,7 +113,7 @@ def default_avis_blocks() -> list[dict]:
         }},
         {"id": "sidebar", "type": "sidebar", "enabled": True, "props": {
             "sections": [
-                {"title": "VOS INFORMATIONS", "icon": "info",
+                {"title": "VOS INFORMATIONS", "icon": "user",
                  "lines": ["{{tenant_name}}", "{{property_address}}",
                            "{{tenant_phone}}", "{{tenant_email}}"]},
                 {"title": "VOS RÉFÉRENCES CLIENT", "icon": "references",
@@ -221,15 +222,17 @@ def _render_sidebar(props: dict, t: dict, variables: dict) -> str:
                     f'<div style="color:{t["gray"]}; font-size:6.8pt; margin:1px 0;">{val}</div>')
         lines = "".join(line_html)
 
-        # Icône de section (façon Foncia) à gauche du titre.
+        # Icône de section (façon Foncia) AU-DESSUS du titre, sur sa propre ligne.
         icon_uri = _icon_data_uri(_icon_for(sec), t["navy"])
-        icon_html = (f'<img src="{icon_uri}" style="width:9px; height:9px;"/> ' if icon_uri else "")
+        icon_html = (f'<div style="margin-bottom:2px;"><img src="{icon_uri}" '
+                     f'style="width:13px; height:13px;"/></div>' if icon_uri else "")
 
         out.append(
             f'<div style="margin-bottom:10px;">'
+            f'{icon_html}'
             f'<div style="color:{t["navy"]}; font-weight:bold; font-size:7pt; '
             f'text-transform:uppercase; letter-spacing:.4px; margin-bottom:3px;">'
-            f'{icon_html}{title}</div>'
+            f'{title}</div>'
             f'{lines}</div>'
         )
     return "".join(out)

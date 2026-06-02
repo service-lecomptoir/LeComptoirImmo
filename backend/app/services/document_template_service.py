@@ -13,10 +13,13 @@ from app.services.avis_blocks_render_service import default_avis_blocks, FONCIA_
 # Rôles qui génèrent des documents → reçoivent les templates par défaut.
 TEMPLATE_OWNER_ROLES = {"admin", "gestionnaire", "gestionnaire_proprio"}
 
+# Anciens noms canoniques de templates par défaut à migrer vers le nom courant.
+_OLD_DEFAULT_NAMES = {"Avis d'échéance standard"}
+
 
 DEFAULT_TEMPLATES = {
     TemplateType.AVIS_ECHEANCE: {
-        "name": "Avis d'échéance standard",
+        "name": "Avis d'échéance",
         "content_html": """<h2>Avis d'échéance</h2>
 <p style="text-align:center;color:#6b7280;margin-top:0;">Loyer · {{month}}</p>
 <p>Madame, Monsieur,</p>
@@ -154,6 +157,11 @@ async def refresh_default_bodies(db: AsyncSession) -> int:
             if t.content_html != d["content_html"] or t.footer_text != d["footer_text"]:
                 t.content_html = d["content_html"]
                 t.footer_text = d["footer_text"]
+                updated += 1
+            # Renomme les anciens noms canoniques vers le nom courant (sans toucher
+            # aux modèles renommés par l'utilisateur).
+            if t.name in _OLD_DEFAULT_NAMES and t.name != d["name"]:
+                t.name = d["name"]
                 updated += 1
             # Modèle par blocs (avis) : on garde les templates PAR DÉFAUT alignés sur
             # le modèle canonique courant — comme pour content_html ci-dessus — afin

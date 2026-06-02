@@ -82,14 +82,9 @@ async def preview_document_pdf(
     from app.services.pdf_service import html_to_pdf
     from app.services.template_layout_service import get_layout
 
-    # Logo : priorité au logo du profil (« Mes informations »), sinon celui du
-    # template enregistré qu'on édite.
+    # Logo : UNIQUEMENT celui du profil (« Mes informations »). Jamais le logo_path
+    # résiduel du modèle → par défaut, aucun logo dans l'aperçu.
     logo_path = getattr(current_user, "logo_path", None)
-    if not logo_path and data.template_id:
-        t = await db.get(DocumentTemplate, data.template_id)
-        if t:
-            _check_ownership(t, current_user)
-            logo_path = getattr(t, "logo_path", None)
 
     sender_name = getattr(current_user, "full_name", "") or ""
     sender_addr = getattr(current_user, "address", "") or ""

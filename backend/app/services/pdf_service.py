@@ -320,9 +320,10 @@ class AvisEcheancePDFService:
             if avis_full.amount_apl:
                 line_items.append({"label": "AIDE AU LOGEMENT (APL)",
                                    "appele": "-" + _eur(avis_full.amount_apl)})
-            # Logo : priorité au logo du profil gestionnaire (« Mes informations »),
-            # sinon celui éventuellement enregistré sur le modèle.
-            _logo = getattr(user, "logo_path", None) or getattr(avis_tmpl, "logo_path", None)
+            # Logo : UNIQUEMENT celui du profil gestionnaire (« Mes informations »).
+            # On n'utilise PAS le logo_path résiduel du modèle (ancien upload par
+            # template) → par défaut, pas de logo (emplacement vide réservé).
+            _logo = getattr(user, "logo_path", None)
             html = render_avis_blocks_html(
                 avis_tmpl.blocks, getattr(avis_tmpl, "theme", None), variables,
                 line_items=line_items, logo_path=_logo,
