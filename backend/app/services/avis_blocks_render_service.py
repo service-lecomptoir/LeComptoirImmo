@@ -364,13 +364,13 @@ def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
     # Emplacement du logo TOUJOURS réservé (hauteur fixe) : s'il n'y a pas de logo,
     # la case reste vide mais la mise en page ne remonte pas.
     if logo_uri:
-        # Logo : dimensions EXPLICITES (boîte 100×80) car xhtml2pdf n'applique pas
+        # Logo : dimensions EXPLICITES (boîte 150×120) car xhtml2pdf n'applique pas
         # max-width/max-height.
-        _lw, _lh = _logo_dims(logo_path, 100, 80)
-        brand = (f'<div style="height:84px;">'
+        _lw, _lh = _logo_dims(logo_path, 150, 120)
+        brand = (f'<div style="height:124px;">'
                  f'<img src="{logo_uri}" width="{_lw}" height="{_lh}" alt="logo"/></div>')
     else:
-        brand = '<div style="height:84px;">&nbsp;</div>'
+        brand = '<div style="height:124px;">&nbsp;</div>'
     title = _sub(props.get("title"), variables)
     sub1 = _sub(props.get("subtitle1"), variables)
     sub2 = _sub(props.get("subtitle2"), variables)
