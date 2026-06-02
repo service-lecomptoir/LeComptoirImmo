@@ -3,124 +3,164 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    @page { size: A4; margin: 1.2cm 1.4cm; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #1a1a1a; line-height: 1.5; }
-    .head { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+    @page { size: A4; margin: 1cm 1.3cm; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #111; line-height: 1.45; }
+    .head { width: 100%; border-collapse: collapse; }
     .head td { vertical-align: middle; }
-    .brand { color: #c0392b; font-weight: bold; font-size: 9pt; }
-    .title { font-size: 17pt; font-weight: bold; color: #1f3864; }
-    .cerfa { text-align: right; color: #1f3864; font-weight: bold; font-size: 10pt; }
-    .legalref { text-align: right; font-size: 7pt; color: #555; }
-    .bar { background-color: #1f3864; height: 2px; font-size: 1px; line-height: 2px; margin: 4px 0 8px 0; }
-    .red { color: #c0392b; font-weight: bold; }
-    .line { border-bottom: 1px dotted #888; }
-    .v { font-weight: bold; color: #1f3864; }
-    table.kv { width: 100%; border-collapse: collapse; }
-    table.kv td { padding: 2px 3px; vertical-align: top; }
+    .caf { display: inline-block; background: #0b6ab0; color: #fff; font-weight: bold;
+           font-size: 15pt; padding: 6px 10px; letter-spacing: 1px; }
+    .title { font-size: 17pt; font-weight: bold; color: #111; }
+    .cerfa { text-align: right; }
+    .cerfa .num { display: inline-block; border: 1px solid #333; padding: 2px 8px; font-weight: bold; font-size: 11pt; }
+    .legalref { text-align: right; font-size: 7pt; color: #333; margin-top: 3px; }
+    .rule { border: 0; border-top: 2px solid #0b6ab0; margin: 6px 0 8px 0; }
+    .strong { font-weight: bold; margin: 0 0 5px 0; }
+    .sec { background: #e8eef5; border-left: 4px solid #0b6ab0; padding: 3px 8px; font-weight: bold;
+           color: #0b3a5c; margin: 9px 0 5px 0; }
+    .sec .it { font-weight: normal; font-style: italic; color: #555; font-size: 8pt; }
+    .lbl { color: #333; }
+    .val { font-weight: bold; color: #111; border-bottom: 1px solid #999; padding: 0 4px 1px 4px; }
+    .cells { border-collapse: collapse; display: inline-block; vertical-align: middle; }
+    .cells td { border: 1px solid #444; width: 15px; height: 17px; text-align: center; font-weight: bold; font-size: 10pt; }
     .item { margin: 4px 0; }
-    .bul { color: #c0392b; font-weight: bold; }
-    .cb { border: 1px solid #555; padding: 0 2px; font-size: 8pt; }
-    .cbon { border: 1px solid #1f3864; padding: 0 2px; font-size: 8pt; font-weight: bold; color: #1f3864; }
-    .sign { width: 100%; border-collapse: collapse; margin-top: 14px; }
-    .sign td { border: 1px solid #999; padding: 8px; vertical-align: top; }
-    .legal { font-size: 6.5pt; color: #777; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 5px; text-align: justify; }
+    .bul { color: #0b6ab0; font-weight: bold; }
+    .box { display: inline-block; border: 1px solid #444; width: 11px; height: 11px; line-height: 11px;
+           text-align: center; font-weight: bold; font-size: 9pt; }
+    .boxon { background: #0b6ab0; color: #fff; }
+    table.kv { width: 100%; border-collapse: collapse; }
+    table.kv td { padding: 3px 4px; vertical-align: bottom; }
+    table.amt { width: 100%; border-collapse: collapse; margin: 3px 0; }
+    table.amt td { padding: 2px 4px; }
+    .sign { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .sign td { border: 1px solid #333; padding: 8px; vertical-align: top; }
+    .legal { font-size: 6.5pt; color: #555; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 5px; text-align: justify; }
   </style>
 </head>
 <body>
 
   <table class="head">
     <tr>
-      <td style="width: 62%;">
-        <span class="brand">CAF &middot; Allocations familiales</span><br>
-        <span class="title">Attestation de loyer</span>
+      <td style="width: 60%;">
+        <span class="caf">caf</span>
+        <span class="title" style="margin-left:10px;">Attestation de loyer</span>
       </td>
-      <td style="width: 38%;">
-        <div class="cerfa">cerfa 10842*07</div>
-        <div class="legalref">Art. D 542-17 et R 831-11 du code de la Sécurité sociale<br>Arrêté du 22 août 1986</div>
+      <td style="width: 40%;">
+        <div class="cerfa"><span class="num">N° 10842*07</span></div>
+        <div class="legalref">Art. D. 542-17 et R. 831-11 du code de la Sécurité sociale &mdash; Arrêté du 22 août 1986</div>
       </td>
     </tr>
   </table>
-  <div class="bar">&nbsp;</div>
-  <p class="red" style="margin:0 0 6px 0;">À remplir par le propriétaire, le bailleur, la famille d'accueil…</p>
+  <hr class="rule"/>
+  <p class="strong">À remplir par le propriétaire, le bailleur ou la famille d'accueil.</p>
 
-  <p class="item">Nom et prénom ou raison sociale <span style="font-style:italic;color:#666;">(propriétaire / bailleur / mandataire)</span> :
-    <span class="v">{{ bailleur_name }}</span></p>
-  <p class="item">Adresse : <span class="v">{{ bailleur_addr1 }}{% if bailleur_addr2 %}<br>{{ bailleur_addr2 }}{% endif %}</span></p>
-  <p class="item">N° de téléphone : <span class="v">{{ bailleur_phone or '' }}</span>
-    &nbsp;&nbsp;&nbsp; Adresse mél : <span class="v">{{ bailleur_email or '' }}</span></p>
-  <p class="item">N° SIRET : <span class="v">{{ bailleur_siret or '' }}</span></p>
+  <table class="kv">
+    <tr>
+      <td style="width:52%;">
+        <span class="lbl">N° allocataire</span>&nbsp;
+        <table class="cells"><tr>
+          <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+        </tr></table>
+      </td>
+      <td><span class="lbl">Nom et prénom de l'allocataire</span> &nbsp;<span class="val">{{ tenant_name }}</span></td>
+    </tr>
+  </table>
 
-  <p class="item">
-    certifie sur l'honneur que M. ou Mme : <span class="v">{{ tenant_name }}</span>
-    {% if tenant2_name %} et M. ou Mme : <span class="v">{{ tenant2_name }}</span>{% endif %}
-    est (sont) locataire(s) en titre depuis le <span class="v">{{ start_date }}</span>
-    du logement situé (adresse complète) :
-    <span class="v">{{ logement_street }}{% if logement_cpville %}<br>{{ logement_cpville }}{% endif %}</span>
-  </p>
+  <div class="sec">&#9632; Le propriétaire, le bailleur ou la famille d'accueil
+    <span class="it">— je soussigné(e)</span></div>
+  <table class="kv">
+    <tr><td colspan="2"><span class="lbl">Nom et prénom ou raison sociale</span> &nbsp;<span class="val">{{ bailleur_name }}</span></td></tr>
+    <tr><td colspan="2"><span class="lbl">Adresse</span> &nbsp;<span class="val">{{ bailleur_addr1 }}{% if bailleur_addr2 %} &mdash; {{ bailleur_addr2 }}{% endif %}</span></td></tr>
+    <tr>
+      <td style="width:52%;"><span class="lbl">N° de téléphone</span> &nbsp;<span class="val">{{ bailleur_phone or '&nbsp;' }}</span></td>
+      <td><span class="lbl">Adresse mail</span> &nbsp;<span class="val">{{ bailleur_email or '&nbsp;' }}</span></td>
+    </tr>
+    <tr><td colspan="2"><span class="lbl">N° SIRET</span> &nbsp;<span class="val">{{ bailleur_siret or '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' }}</span></td></tr>
+  </table>
+
+  <p class="item">certifie sur l'honneur que M. ou Mme <span class="val">{{ tenant_name }}</span>{% if tenant2_name %}
+    et M. ou Mme <span class="val">{{ tenant2_name }}</span>{% endif %}
+    est (sont) locataire(s) en titre depuis le <span class="val">{{ start_date }}</span> du logement situé :
+    <span class="val">{{ logement_street }}{% if logement_cpville %} &mdash; {{ logement_cpville }}{% endif %}</span></p>
+
+  <div class="sec">&#9632; Le logement</div>
 
   <div class="item"><span class="bul">&bull;</span> S'agit-il d'une chambre (pièce unique sans WC) ?
-    {% if is_chambre %}<span class="cbon">X</span> oui &nbsp; <span class="cb">&nbsp;&nbsp;</span> non{% else %}<span class="cb">&nbsp;&nbsp;</span> oui &nbsp; <span class="cbon">X</span> non{% endif %}</div>
+    &nbsp;<span class="box {% if is_chambre %}boxon{% endif %}">{% if is_chambre %}X{% else %}&nbsp;{% endif %}</span> oui
+    &nbsp;<span class="box {% if not is_chambre %}boxon{% endif %}">{% if not is_chambre %}X{% else %}&nbsp;{% endif %}</span> non</div>
 
-  <div class="item"><span class="bul">&bull;</span> Surface réelle du logement (en m²) :
-    <span class="v">{{ area_sqm if area_sqm else '______' }}</span> m²</div>
+  <div class="item"><span class="bul">&bull;</span> Surface réelle du logement :
+    <span class="val">{{ area_sqm if area_sqm else '&nbsp;&nbsp;&nbsp;&nbsp;' }}</span> m²</div>
 
-  <div class="item"><span class="bul">&bull;</span> S'agit-il d'une colocation (sauf concubinage) ?
-    {% if is_coloc %}<span class="cbon">X</span> oui &nbsp; <span class="cb">&nbsp;&nbsp;</span> non. Nombre de colocataires (y compris le demandeur) : <span class="v">{{ nb_coloc }}</span>{% else %}<span class="cb">&nbsp;&nbsp;</span> oui &nbsp; <span class="cbon">X</span> non{% endif %}</div>
+  <div class="item"><span class="bul">&bull;</span> S'agit-il d'une colocation (hors concubinage) ?
+    &nbsp;<span class="box {% if is_coloc %}boxon{% endif %}">{% if is_coloc %}X{% else %}&nbsp;{% endif %}</span> oui
+    &nbsp;<span class="box {% if not is_coloc %}boxon{% endif %}">{% if not is_coloc %}X{% else %}&nbsp;{% endif %}</span> non
+    {% if is_coloc %}&nbsp;&mdash; Nombre de colocataires (demandeur compris) : <span class="val">{{ nb_coloc }}</span>{% endif %}</div>
 
-  <div class="item"><span class="bul">&bull;</span> <strong>Montant mensuel du loyer</strong>
-    <span style="font-style:italic;color:#666;">(payé par le locataire pour un mois complet)</span></div>
-  <table class="kv">
-    <tr><td colspan="3" style="padding-left:14px;">— Mois d'entrée dans les lieux : <span class="v">{{ month_entry }}</span></td></tr>
+  <div class="item"><span class="bul">&bull;</span> S'agit-il d'un logement meublé ?
+    &nbsp;<span class="box {% if is_furnished %}boxon{% endif %}">{% if is_furnished %}X{% else %}&nbsp;{% endif %}</span> oui
+    &nbsp;<span class="box {% if not is_furnished %}boxon{% endif %}">{% if not is_furnished %}X{% else %}&nbsp;{% endif %}</span> non</div>
+
+  <div class="sec">&#9632; Le montant mensuel du loyer
+    <span class="it">— payé par le locataire pour un mois complet</span></div>
+  <table class="amt">
+    <tr><td colspan="3"><strong>— Mois d'entrée dans les lieux :</strong> <span class="val">{{ month_entry }}</span></td></tr>
     <tr>
-      <td style="padding-left:14px;">Loyer sans les charges : <span class="v">{{ rent_no_charges }} €</span></td>
-      <td>Montant des charges : <span class="v">{{ charges }} €</span></td>
-      <td>{% if is_furnished %}Si meublé, charges comprises : <span class="v">{{ total_tcc }} €</span>{% endif %}</td>
+      <td style="width:34%;">Loyer hors charges : <span class="val">{{ rent_no_charges }} €</span></td>
+      <td style="width:33%;">Montant des charges : <span class="val">{{ charges }} €</span></td>
+      <td>Loyer charges comprises : <span class="val">{{ total_tcc }} €</span></td>
     </tr>
     {% if is_coloc %}
-    <tr><td colspan="3" style="padding-left:14px;">Montant total du loyer en cas de colocation : <span class="v">{{ total_tcc }} €</span></td></tr>
+    <tr><td colspan="3">Montant total du loyer (colocation) : <span class="val">{{ total_tcc }} €</span></td></tr>
     {% endif %}
-    <tr><td colspan="3" style="padding-left:14px;">— Mois de juillet, année : <span class="v">{{ july_year }}</span></td></tr>
+    <tr><td colspan="3" style="padding-top:5px;"><strong>— Mois de juillet, année :</strong> <span class="val">{{ july_year }}</span></td></tr>
     <tr>
-      <td style="padding-left:14px;">Loyer sans les charges : <span class="v">{{ rent_no_charges }} €</span></td>
-      <td>Montant des charges : <span class="v">{{ charges }} €</span></td>
-      <td>{% if is_furnished %}Si meublé, charges comprises : <span class="v">{{ total_tcc }} €</span>{% endif %}</td>
+      <td>Loyer hors charges : <span class="val">{{ rent_no_charges }} €</span></td>
+      <td>Montant des charges : <span class="val">{{ charges }} €</span></td>
+      <td>Loyer charges comprises : <span class="val">{{ total_tcc }} €</span></td>
     </tr>
   </table>
 
-  <div class="item"><span class="bul">&bull;</span> Votre locataire est-il à jour dans le règlement de ses loyers ?
-    {% if a_jour %}<span class="cbon">X</span> oui &nbsp; <span class="cb">&nbsp;&nbsp;</span> non{% else %}<span class="cb">&nbsp;&nbsp;</span> oui &nbsp; <span class="cbon">X</span> non{% endif %}</div>
+  <div class="sec">&#9632; Renseignements complémentaires</div>
 
-  <div class="item"><span class="bul">&bull;</span> S'agit-il d'une sous-location ? <span class="cb">&nbsp;&nbsp;</span> oui &nbsp; <span class="cbon">X</span> non</div>
-  <div class="item"><span class="bul">&bull;</span> S'agit-il d'un hôtel ou d'une pension de famille ? <span class="cb">&nbsp;&nbsp;</span> oui &nbsp; <span class="cbon">X</span> non</div>
+  <div class="item"><span class="bul">&bull;</span> Le locataire est-il à jour du règlement de ses loyers ?
+    &nbsp;<span class="box {% if a_jour %}boxon{% endif %}">{% if a_jour %}X{% else %}&nbsp;{% endif %}</span> oui
+    &nbsp;<span class="box {% if not a_jour %}boxon{% endif %}">{% if not a_jour %}X{% else %}&nbsp;{% endif %}</span> non</div>
 
-  <div class="item"><span class="bul">&bull;</span> Dans les autres cas, souhaitez-vous recevoir directement l'aide au logement ?
-    <span class="cb">&nbsp;&nbsp;</span> oui &nbsp; <span class="cb">&nbsp;&nbsp;</span> non
-    <span style="font-style:italic;color:#666;">(à compléter si vous remplissez ce document pour la première fois — joindre la demande de versement direct)</span></div>
+  <div class="item"><span class="bul">&bull;</span> S'agit-il d'une sous-location ?
+    &nbsp;<span class="box">&nbsp;</span> oui &nbsp;<span class="box boxon">X</span> non</div>
 
-  <div class="item"><span class="bul">&bull;</span> Le logement répond-il aux caractéristiques de décence (décret 2002-120 du 30 janvier 2002) ?
-    {% if decence %}<span class="cbon">X</span> oui &nbsp; <span class="cb">&nbsp;&nbsp;</span> non{% else %}<span class="cb">&nbsp;&nbsp;</span> oui &nbsp; <span class="cbon">X</span> non{% endif %}</div>
+  <div class="item"><span class="bul">&bull;</span> S'agit-il d'un hôtel ou d'une pension de famille ?
+    &nbsp;<span class="box">&nbsp;</span> oui &nbsp;<span class="box boxon">X</span> non</div>
+
+  <div class="item"><span class="bul">&bull;</span> Souhaitez-vous recevoir directement l'aide au logement ?
+    &nbsp;<span class="box">&nbsp;</span> oui &nbsp;<span class="box">&nbsp;</span> non
+    <span style="font-style:italic;color:#555;">(si oui, joindre la demande de versement direct &mdash; cerfa 11362*04)</span></div>
+
+  <div class="item"><span class="bul">&bull;</span> Le logement répond-il aux caractéristiques de décence (décret n° 2002-120 du 30 janvier 2002) ?
+    &nbsp;<span class="box {% if decence %}boxon{% endif %}">{% if decence %}X{% else %}&nbsp;{% endif %}</span> oui
+    &nbsp;<span class="box {% if not decence %}boxon{% endif %}">{% if not decence %}X{% else %}&nbsp;{% endif %}</span> non</div>
 
   <table class="sign">
     <tr>
       <td style="width:58%;">
-        Fait à <span class="v">{{ ville or '________________' }}</span>, le <span class="v">{{ today }}</span>.<br><br>
-        <span style="font-size:7.5pt;color:#777;">Vous avez l'obligation de signaler immédiatement tout changement modifiant cette déclaration.</span>
+        Fait à <span class="val">{{ ville or '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' }}</span>,
+        le <span class="val">{{ today }}</span>.<br><br>
+        <span style="font-size:7.5pt;color:#555;">Vous avez l'obligation de signaler immédiatement tout changement modifiant cette déclaration.</span>
       </td>
       <td style="width:42%;">
-        <strong>Signature - cachet</strong><br>
-        <span style="font-size:7.5pt;color:#777;">(du propriétaire, du bailleur ou de la famille d'accueil)</span>
-        <div style="height:48px;">&nbsp;</div>
+        <strong>Signature &ndash; cachet</strong><br>
+        <span style="font-size:7.5pt;color:#555;">(du propriétaire, du bailleur ou de la famille d'accueil)</span>
+        <div style="height:46px;">&nbsp;</div>
       </td>
     </tr>
   </table>
 
   <div class="legal">
-    La Caf/MSA vérifie l'exactitude des déclarations (Article L. 114-19 du code de la Sécurité sociale). La loi punit
-    quiconque se rend coupable de fraude ou de fausse déclaration (Articles L. 114-9, L. 583-3, L. 831-7 du code de la
+    La Caf/MSA vérifie l'exactitude des déclarations (art. L. 114-19 du code de la Sécurité sociale). La loi punit
+    quiconque se rend coupable de fraude ou de fausse déclaration (art. L. 114-9, L. 583-3, L. 831-7 du code de la
     Sécurité sociale et L. 351-12 du code de la Construction et de l'habitation ; L. 114-17 du code de la Sécurité
-    sociale). La loi 78-17 du 06/01/1978 modifiée s'applique aux réponses faites sur ce formulaire et garantit un droit
-    d'accès et de rectification des données vous concernant. &middot; Pré-rempli par Le Comptoir Immo —
-    à vérifier et signer par le bailleur.
+    sociale). La loi n° 78-17 du 6 janvier 1978 modifiée garantit un droit d'accès et de rectification des données
+    vous concernant. &mdash; Pré-rempli par Le Comptoir Immo : à vérifier et signer par le bailleur.
   </div>
 
 </body>
