@@ -83,4 +83,24 @@ export const actualisationApi = {
   updateCharge: (regId: string, data: { period_start: string; period_end: string; real_total: number; new_monthly_provision: number; notes?: string }) =>
     apiClient.put<ChargeRow>(`/actualisation/charges/regularizations/${regId}`, data),
   deleteCharge: (regId: string) => apiClient.delete(`/actualisation/charges/regularizations/${regId}`),
+
+  // ── Téléchargement PDF (façon Foncia) ──
+  downloadRegularizationPdf: (regId: string, filename: string) =>
+    _downloadBlob(apiClient.get(`/actualisation/charges/regularizations/${regId}/pdf`, { responseType: 'blob' }), filename),
+  downloadRevisionPdf: (leaseId: string, filename: string) =>
+    _downloadBlob(apiClient.get(`/actualisation/loyers/${leaseId}/revision-pdf`, { responseType: 'blob' }), filename),
+  downloadTaxesPdf: (data: { lease_id: string; year: number; teom_amount: number }, filename: string) =>
+    _downloadBlob(apiClient.post('/actualisation/taxes/pdf', data, { responseType: 'blob' }), filename),
+}
+
+async function _downloadBlob(req: Promise<{ data: any }>, filename: string) {
+  const response = await req
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
 }

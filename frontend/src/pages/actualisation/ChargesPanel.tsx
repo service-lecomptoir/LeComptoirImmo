@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { KeyRound, RefreshCw, Calculator, CheckCircle2, Pencil, Trash2, X } from 'lucide-react'
+import { KeyRound, RefreshCw, Calculator, CheckCircle2, Pencil, Trash2, X, FileDown } from 'lucide-react'
 import { actualisationApi, type ChargeRow, type ChargePreview } from '@/api/actualisation'
 
 const fmtEuro = (n: number | null | undefined) =>
@@ -135,6 +135,18 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
     } finally { setBusyId(null) }
   }
 
+  const downloadRegul = async (row: ChargeRow) => {
+    const r = row.last_regularization
+    if (!r) return
+    setBusyId(row.lease_id)
+    try {
+      await actualisationApi.downloadRegularizationPdf(
+        r.id, `regularisation_charges_${row.tenant_full_name}.pdf`)
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Téléchargement du PDF impossible')
+    } finally { setBusyId(null) }
+  }
+
   const groups = rows.reduce<Record<string, ChargeRow[]>>((acc, r) => {
     (acc[r.owner_name] ||= []).push(r); return acc
   }, {})
@@ -174,6 +186,11 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
                           Dernière régul. {r.last_regularization.applied_at ? fmtDate(r.last_regularization.applied_at.slice(0, 10)) : ''} ·
                           nouvelle provision {fmtEuro(r.last_regularization.new_monthly_provision)}
                         </span>
+                        <button onClick={() => downloadRegul(r)} disabled={busyId === r.lease_id}
+                          title="Télécharger le PDF de régularisation"
+                          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 disabled:opacity-50">
+                          <FileDown size={13} />
+                        </button>
                         <button onClick={() => startEditRegul(r)} disabled={busyId === r.lease_id}
                           title="Modifier cette régularisation"
                           className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 disabled:opacity-50">

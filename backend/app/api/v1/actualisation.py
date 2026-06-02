@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -398,3 +399,62 @@ async def delete_charge_regularization(
 ):
     reg, lease = await _get_regul_and_lease(db, reg_id)
     await ChargeRegularizationService.delete(db, reg, lease)
+
+
+# ── Génération PDF (façon Foncia, par blocs) ─────────────────────────────────
+def _pdf_response(pdf: bytes, filename: str) -> Response:
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@router.get("/charges/regularizations/{reg_id}/pdf")
+async def regularization_pdf(
+    reg_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """PDF de la régularisation de charges (façon Foncia)."""
+    from app.services.document_blocks_pdf_service import ChargeRegularizationPDFService
+    reg, _lease = await _get_regul_and_lease(db, reg_id)
+    pdf = await ChargeRegularizationPDFService.generate(db, reg)
+    return _pdf_response(pdf, f"regularisation_charges_{reg_id}.pdf")
+
+
+@router.get("/loyers/{lease_id}/revision-pdf")
+async def revision_pdf(
+    lease_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """PDF de révision de loyer (IRL, façon Foncia)."""
+    from app.services.document_blocks_pdf_service import RevisionLoyerPDFService
+    lease = (await db.execute(select(Lease).where(Lease.id == lease_id))).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    if not lease.irl_quarter or lease.irl_base_index is None:
+        raise HTTPException(status_code=400, detail="Indice IRL de référence non renseigné sur ce bail")
+    pdf = await RevisionLoyerPDFService.generate(db, lease)
+    return _pdf_response(pdf, f"revision_loyer_{lease_id}.pdf")
+
+
+class TaxesPdfIn(BaseModel):
+    lease_id: uuid.UUID
+    year: int
+    teom_amount: float
+
+
+@router.post("/taxes/pdf")
+async def taxes_pdf(
+    data: TaxesPdfIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """PDF de décompte de taxes foncières (TEOM) — saisie ponctuelle."""
+    from app.services.document_blocks_pdf_service import TaxesFoncieresPDFService
+    if data.teom_amount < 0:
+        raise HTTPException(status_code=400, detail="Montant négatif invalide")
+    lease = (await db.execute(select(Lease).where(Lease.id == data.lease_id))).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    pdf = await TaxesFoncieresPDFService.generate(db, lease, data.year, data.teom_amount)
+    return _pdf_response(pdf, f"taxes_foncieres_{data.year}.pdf")

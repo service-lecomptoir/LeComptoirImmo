@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt, Pencil, Trash2, X } from 'lucide-react'
+import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt, Pencil, Trash2, X, FileDown, Landmark } from 'lucide-react'
 import { actualisationApi, type IrlIndexItem, type RevisionRow } from '@/api/actualisation'
 import ChargesPanel from './ChargesPanel'
 
@@ -12,7 +12,9 @@ export default function Actualisation() {
   const [rows, setRows] = useState<RevisionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [showIrl, setShowIrl] = useState(false)
-  const [tab, setTab] = useState<'loyers' | 'charges'>('loyers')
+  const [tab, setTab] = useState<'loyers' | 'charges' | 'taxes'>('loyers')
+  // form taxes foncières par bail : { year, amount }
+  const [taxForm, setTaxForm] = useState<Record<string, { year: number; amount: string }>>({})
   const [msg, setMsg] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   // form IRL
@@ -104,6 +106,29 @@ export default function Actualisation() {
     } finally { setBusyId(null) }
   }
 
+  const downloadRevision = async (r: RevisionRow) => {
+    setBusyId(r.lease_id)
+    try {
+      await actualisationApi.downloadRevisionPdf(r.lease_id, `revision_loyer_${r.tenant_full_name}.pdf`)
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Téléchargement du PDF impossible')
+    } finally { setBusyId(null) }
+  }
+
+  const downloadTaxes = async (r: RevisionRow) => {
+    const f = taxForm[r.lease_id]
+    const amount = parseFloat((f?.amount ?? '').replace(',', '.'))
+    if (!f || isNaN(amount) || amount < 0) { alert('Saisissez un montant de taxe valide.'); return }
+    setBusyId(r.lease_id)
+    try {
+      await actualisationApi.downloadTaxesPdf(
+        { lease_id: r.lease_id, year: f.year, teom_amount: amount },
+        `taxes_foncieres_${f.year}_${r.tenant_full_name}.pdf`)
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Téléchargement du PDF impossible')
+    } finally { setBusyId(null) }
+  }
+
   // Regroupement par propriétaire
   const groups = rows.reduce<Record<string, RevisionRow[]>>((acc, r) => {
     (acc[r.owner_name] ||= []).push(r); return acc
@@ -126,6 +151,10 @@ export default function Actualisation() {
           className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'charges' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
           <Receipt size={15} /> Régularisation des charges
         </button>
+        <button onClick={() => setTab('taxes')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px ${tab === 'taxes' ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+          <Landmark size={15} /> Taxes foncières
+        </button>
       </div>
 
       {msg && (
@@ -135,6 +164,54 @@ export default function Actualisation() {
       )}
 
       {tab === 'charges' && <ChargesPanel flash={flash} />}
+
+      {tab === 'taxes' && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-5 py-3 border-b bg-gray-50">
+            <p className="text-sm text-gray-600">
+              Décompte de taxes foncières (TEOM) récupérable au prorata de l'occupation.
+              Saisissez l'année et le montant total de la taxe récupérable, puis téléchargez le décompte.
+            </p>
+          </div>
+          {loading ? (
+            <div className="p-6 text-sm text-gray-400">Chargement…</div>
+          ) : rows.length === 0 ? (
+            <div className="p-6 text-sm text-gray-400">Aucun bail actif.</div>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {rows.map(r => {
+                const f = taxForm[r.lease_id] ?? { year: now.getFullYear(), amount: '' }
+                return (
+                  <li key={r.lease_id} className="px-5 py-3 flex flex-wrap items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{r.tenant_full_name}</p>
+                      <p className="text-xs text-gray-500 truncate">{r.property_name}</p>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div>
+                        <label className="block text-[11px] text-gray-500 mb-0.5">Année</label>
+                        <input type="number" value={f.year}
+                          onChange={e => setTaxForm(p => ({ ...p, [r.lease_id]: { year: Number(e.target.value), amount: f.amount } }))}
+                          className="w-24 px-2 py-1 border border-gray-300 rounded-lg text-sm" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-gray-500 mb-0.5">Montant TEOM (€)</label>
+                        <input type="text" value={f.amount} placeholder="178,00"
+                          onChange={e => setTaxForm(p => ({ ...p, [r.lease_id]: { year: f.year, amount: e.target.value } }))}
+                          className="w-32 px-2 py-1 border border-gray-300 rounded-lg text-sm" />
+                      </div>
+                      <button onClick={() => downloadTaxes(r)} disabled={busyId === r.lease_id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-40">
+                        {busyId === r.lease_id ? <RefreshCw size={14} className="animate-spin" /> : <FileDown size={14} />} PDF
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
       {tab === 'loyers' && (<>
       {/* Indices IRL */}
@@ -237,6 +314,7 @@ export default function Actualisation() {
                     {/* Action */}
                     <div className="mt-2">
                       {r.irl_quarter && r.base_index != null ? (
+                        <>
                         <button
                           onClick={() => apply(r)}
                           disabled={r.proposed_rent == null || busyId === r.lease_id}
@@ -246,6 +324,14 @@ export default function Actualisation() {
                           {busyId === r.lease_id ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                           Appliquer la révision
                         </button>
+                        <button
+                          onClick={() => downloadRevision(r)}
+                          disabled={busyId === r.lease_id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 ml-2"
+                          title="Télécharger le document de révision (PDF)">
+                          <FileDown size={14} /> PDF
+                        </button>
+                        </>
                       ) : (
                         <div className="flex flex-wrap items-end gap-2">
                           <div>

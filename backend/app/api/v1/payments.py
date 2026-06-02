@@ -526,6 +526,52 @@ async def download_quittance(
     tenant_names = " & ".join(names)
     layout = get_layout()
 
+    # 0) Quittance par BLOCS (façon Foncia) si le template par défaut en possède.
+    _gid0 = getattr(payment.lease, "created_by", None) if getattr(payment, "lease", None) else None
+    if _gid0:
+        from sqlalchemy import select as _sel0
+        from app.models.document_template import DocumentTemplate as _DT0
+        _qt = (await db.execute(_sel0(_DT0).where(
+            _DT0.gestionnaire_id == _gid0, _DT0.template_type == "quittance",
+            _DT0.is_default.is_(True), _DT0.is_active.is_(True)))).scalar_one_or_none()
+        if _qt is not None and getattr(_qt, "blocks", None):
+            from app.services.document_blocks_pdf_service import (
+                render_blocks_document, _doc_common_vars, _eur_sym)
+            _pobj0 = (payment.lease.parent_property
+                      if getattr(payment.lease, "parent_property", None) else None)
+            _ten0 = getattr(payment, "tenant", None)
+            if getattr(payment, "period_start", None) and getattr(payment, "period_end", None):
+                _per0 = (f"du {payment.period_start.strftime('%d/%m/%Y')} "
+                         f"au {payment.period_end.strftime('%d/%m/%Y')}")
+            else:
+                _per0 = payment.period_label
+            _qv = _doc_common_vars(_ten0, _pobj0, today_fr)
+            _qv.update({
+                "period_range": _per0, "month": payment.period_label,
+                "total_due": _eur_sym(payment.amount_paid),
+                "rent_amount": _eur_sym(payment.amount_rent),
+                "charges_amount": _eur_sym(payment.amount_charges),
+                "apl_amount": _eur_sym(payment.amount_apl) if payment.amount_apl else "",
+            })
+            _li0 = [
+                {"label": "LOYER PRINCIPAL", "appele": _eur_sym(payment.amount_rent),
+                 "regle": _eur_sym(payment.amount_rent)},
+                {"label": "PROVISION CHARGES", "appele": _eur_sym(payment.amount_charges),
+                 "regle": _eur_sym(payment.amount_charges)},
+            ]
+            if payment.amount_apl:
+                _li0.append({"label": "AIDE AU LOGEMENT (APL)",
+                             "appele": "-" + _eur_sym(payment.amount_apl),
+                             "regle": "-" + _eur_sym(payment.amount_apl)})
+            _pdf0 = await render_blocks_document(db, _gid0, "quittance", _qv, line_items=_li0)
+            from app.utils.filename import doc_filename as _docfn0
+            _fn0 = _docfn0("quittance",
+                           tenant=payment.tenant.full_name if payment.tenant else None,
+                           property_name=_pobj0.name if _pobj0 else None,
+                           month=payment.period_month, year=payment.period_year)
+            return Response(content=_pdf0, media_type="application/pdf",
+                            headers={"Content-Disposition": f'attachment; filename="{_fn0}"'})
+
     # 1) Template ENREGISTRÉ par le gestionnaire (éditeur) si présent…
     from app.services.document_render_service import render_saved_document, eur
     _prop_obj = (payment.lease.parent_property
