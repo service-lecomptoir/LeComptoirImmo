@@ -343,8 +343,8 @@ def _theme(theme: Optional[dict]) -> dict:
 
 
 # ── Rendu de chaque type de bloc ─────────────────────────────────────────────
-def _logo_dims(logo_path, box: int = 64) -> tuple:
-    """Dimensions d'affichage du logo pour tenir dans une boîte `box`×`box`,
+def _logo_dims(logo_path, max_w: int = 100, max_h: int = 80) -> tuple:
+    """Dimensions d'affichage du logo pour tenir dans une boîte `max_w`×`max_h`,
     en conservant le ratio. xhtml2pdf ignore max-width/max-height : il FAUT des
     attributs width/height explicites, sinon l'image garde sa taille naturelle."""
     try:
@@ -352,11 +352,11 @@ def _logo_dims(logo_path, box: int = 64) -> tuple:
         with Image.open(logo_path) as im:
             w, h = im.size
         if w <= 0 or h <= 0:
-            return box, box
-        scale = min(box / w, box / h)
+            return max_w, max_h
+        scale = min(max_w / w, max_h / h)
         return max(1, round(w * scale)), max(1, round(h * scale))
-    except Exception:  # SVG ou format non lisible par PIL → repli carré
-        return box, box
+    except Exception:  # SVG ou format non lisible par PIL → repli boîte
+        return max_w, max_h
 
 
 def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
@@ -364,13 +364,13 @@ def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
     # Emplacement du logo TOUJOURS réservé (hauteur fixe) : s'il n'y a pas de logo,
     # la case reste vide mais la mise en page ne remonte pas.
     if logo_uri:
-        # Logo façon « photo d'identité » : dimensions EXPLICITES (≤64px) car
-        # xhtml2pdf n'applique pas max-width/max-height.
-        _lw, _lh = _logo_dims(logo_path, 64)
-        brand = (f'<div style="height:72px;">'
+        # Logo : dimensions EXPLICITES (boîte 100×80) car xhtml2pdf n'applique pas
+        # max-width/max-height.
+        _lw, _lh = _logo_dims(logo_path, 100, 80)
+        brand = (f'<div style="height:84px;">'
                  f'<img src="{logo_uri}" width="{_lw}" height="{_lh}" alt="logo"/></div>')
     else:
-        brand = '<div style="height:72px;">&nbsp;</div>'
+        brand = '<div style="height:84px;">&nbsp;</div>'
     title = _sub(props.get("title"), variables)
     sub1 = _sub(props.get("subtitle1"), variables)
     sub2 = _sub(props.get("subtitle2"), variables)
