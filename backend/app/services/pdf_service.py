@@ -272,20 +272,6 @@ class AvisEcheancePDFService:
                 if _lease is not None and getattr(_lease, "start_date", None) else ""
             ),
         }
-
-        # Échéance : on l'aligne sur le « Jour de paiement » ACTUEL du bail (et non
-        # sur la date figée au moment de la génération de l'avis). Ainsi, si le jour
-        # de paiement est modifié (ex. 1 → 6), tous les avis affichent la bonne
-        # échéance sans avoir à les régénérer.
-        _pay_day = getattr(_lease, "payment_day", None) or getattr(_lease_rel, "payment_day", None)
-        if _pay_day:
-            import calendar
-            from datetime import date as _date2
-            _last = calendar.monthrange(avis_full.period_year, avis_full.period_month)[1]
-            _due_disp = _date2(avis_full.period_year, avis_full.period_month,
-                               min(int(_pay_day), _last))
-            variables["due_date"] = _due_disp.strftime("%d/%m/%Y")
-
         _gid = getattr(_lease_rel, "created_by", None)
 
         # 1a) Éditeur par blocs « façon Foncia » : si le template par défaut de
