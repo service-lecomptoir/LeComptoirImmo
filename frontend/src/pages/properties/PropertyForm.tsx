@@ -16,6 +16,7 @@ const schema = z.object({
   name: z.string().min(1, 'Nom requis'),
   property_type: z.enum(['appartement', 'maison', 'local_commercial', 'autre']),
   address: z.string().min(1, 'Adresse requise'),
+  address2: z.string().optional(),
   zip_code: z.string().min(1, 'Code postal requis'),
   city: z.string().min(1, 'Ville requise'),
   country: z.string().default('France'),
@@ -124,6 +125,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       name: property.name,
       property_type: property.property_type,
       address: property.address,
+      address2: property.address2 ?? '',
       zip_code: property.zip_code,
       city: property.city,
       country: property.country ?? 'France',
@@ -195,6 +197,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       name: data.name,
       property_type: data.property_type,
       address: data.address,
+      address2: data.address2 || null,
       zip_code: data.zip_code,
       city: data.city,
       country: data.country,
@@ -293,6 +296,10 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
               <label className={lbl}>Adresse <span className="text-red-500">*</span></label>
               <input {...register('address')} className={inp} placeholder="10 rue de la Paix" />
               {errors.address && <p className={err}>{errors.address.message}</p>}
+            </div>
+            <div>
+              <label className={lbl}>Complément d'adresse</label>
+              <input {...register('address2')} className={inp} placeholder="Appartement 11, Bât. B, étage 3…" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
