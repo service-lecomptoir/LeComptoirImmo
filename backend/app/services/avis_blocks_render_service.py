@@ -421,18 +421,17 @@ def _render_recipient(props: dict, t: dict, variables: dict) -> str:
     if props.get("date_text"):
         date_html = (f'<div style="color:{t["navy"]}; font-size:8pt; margin-bottom:10px; text-align:right;">'
                      f'{_sub(props.get("date_text"), variables)}</div>')
-    # Adresse du destinataire : alignée à gauche, interligne serré (façon Foncia),
-    # décalée vers le centre-droite. `**texte**` → gras. Lignes vides ignorées.
-    line_html = []
+    # Adresse du destinataire : alignée à gauche, décalée vers le centre-droite,
+    # interligne SERRÉ façon Foncia → un seul bloc, lignes séparées par <br/>
+    # (évite l'espacement entre <div> successifs). `**texte**` → gras.
+    vals = []
     for l in props.get("lines", []):
         val = _sub(l, variables).strip()
         if val:
-            val = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', val)
-            line_html.append(
-                f'<div style="color:{t["navy"]}; font-size:8.5pt; line-height:1.2;">{val}</div>')
-    lines = "".join(line_html)
-    return (f'{date_html}<div style="text-align:left; padding-left:165px; margin-bottom:14px;">'
-            f'{lines}</div>')
+            vals.append(re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', val))
+    inner = "<br/>".join(vals)
+    return (f'{date_html}<div style="text-align:left; padding-left:165px; margin-bottom:14px; '
+            f'color:{t["navy"]}; font-size:8.5pt; line-height:1.15;">{inner}</div>')
 
 
 def _render_reference(props: dict, t: dict, variables: dict) -> str:
