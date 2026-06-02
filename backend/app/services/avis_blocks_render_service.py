@@ -138,7 +138,6 @@ def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
         <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; letter-spacing:.5px;">{sub2}</div>
       </td>
     </tr></table>
-    <hr class="rule"/>
     """
 
 
@@ -363,7 +362,7 @@ def render_avis_blocks_html(
 <html lang="fr"><head><meta charset="UTF-8"><style>
   @page {{ size: A4; margin: {page_margin}; }}
   body {{ font-family: {t['font_family']}; color: {t['navy']}; background: #fff; }}
-  .band {{ width:100%; border-collapse:collapse; }}
+  .band {{ width:100%; border-collapse:collapse; margin-bottom:16px; }}
   .band td {{ vertical-align: middle; }}
   .rule {{ border:0; border-top:2px solid {t['navy']}; margin:8px 0 14px 0; }}
   .twocol {{ width:100%; border-collapse:collapse; }}
