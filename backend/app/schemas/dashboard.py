@@ -1,6 +1,17 @@
 """Schémas pour le dashboard avancé."""
+from datetime import date
 from typing import Optional
 from pydantic import BaseModel
+
+
+class UpcomingEntretien(BaseModel):
+    id: str
+    title: str
+    type: str
+    status: str
+    scheduled_date: date
+    property_label: Optional[str] = None
+    overdue: bool = False
 
 
 class OccupancyStats(BaseModel):
@@ -51,6 +62,7 @@ class DashboardStats(BaseModel):
     total_tenants: int
     total_properties: int
     total_leases_active: int
+    upcoming_entretiens: list[UpcomingEntretien] = []
 
 
 class FiscalRevenueFoncier(BaseModel):

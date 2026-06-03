@@ -6,8 +6,9 @@ import {
 import {
   Building2, Users, TrendingUp, AlertTriangle, Home,
   CreditCard, CheckCircle, ArrowUpRight, ArrowDownRight,
-  Activity, Euro, RefreshCw
+  Activity, Euro, RefreshCw, Wrench
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/api/client'
 
 const MONTH_LABELS: Record<string, string> = {
@@ -33,6 +34,7 @@ interface Stats {
   total_tenants: number
   total_properties: number
   total_leases_active: number
+  upcoming_entretiens?: Array<{ id: string; title: string; type: string; status: string; scheduled_date: string; property_label?: string | null; overdue: boolean }>
 }
 
 function KPICard({ title, value, sub, icon: Icon, color, trend }: {
@@ -67,6 +69,7 @@ function KPICard({ title, value, sub, icon: Icon, color, trend }: {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -288,6 +291,42 @@ export default function Dashboard() {
                     )}
                   </div>
                 </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Maintenances importantes à venir */}
+      {stats.upcoming_entretiens && stats.upcoming_entretiens.length > 0 && (
+        <div className="bg-white rounded-xl border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Wrench size={16} className="text-blue-600" /> Maintenances à venir
+            </h2>
+            <button onClick={() => navigate('/entretiens')}
+              className="text-xs font-medium text-blue-600 hover:text-blue-800">
+              Tout voir →
+            </button>
+          </div>
+          <div className="space-y-2.5">
+            {stats.upcoming_entretiens.map(e => {
+              const d = new Date(e.scheduled_date)
+              const dateLabel = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+              return (
+                <button key={e.id} onClick={() => navigate('/entretiens')}
+                  className="w-full flex items-center gap-3 text-left rounded-lg px-2 py-2 hover:bg-gray-50">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${e.overdue ? 'bg-red-100' : 'bg-blue-100'}`}>
+                    <Wrench size={14} className={e.overdue ? 'text-red-600' : 'text-blue-600'} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{e.title}</p>
+                    {e.property_label && <p className="text-xs text-gray-400 truncate">{e.property_label}</p>}
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${e.overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
+                    {e.overdue ? `En retard · ${dateLabel}` : dateLabel}
+                  </span>
+                </button>
               )
             })}
           </div>

@@ -59,6 +59,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
   const [isSaving, setIsSaving] = useState(false)
   const [selected, setSelected] = useState<Entretien | null>(null)
   const [tab, setTab] = useState<'liste' | 'prestataires'>('liste')
+  const [autoplanMsg, setAutoplanMsg] = useState<string | null>(null)
 
   // Prestataires form
   const [showPrestForm, setShowPrestForm] = useState(false)
@@ -81,6 +82,22 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
   }
 
   useEffect(() => { load() }, [filter])
+
+  // Planification automatique d'après l'historique (au montage, hors lecture seule).
+  useEffect(() => {
+    if (readOnly) return
+    let cancelled = false
+    entretiensApi.autoplan()
+      .then(res => {
+        if (cancelled || !res.data.created) return
+        const n = res.data.created
+        setAutoplanMsg(`${n} maintenance${n > 1 ? 's' : ''} planifiée${n > 1 ? 's' : ''} automatiquement d'après l'historique.`)
+        load()
+      })
+      .catch(() => { /* silencieux */ })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -185,6 +202,19 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
           </button>
         ))}
       </div>
+
+      {tab === 'liste' && autoplanMsg && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm"
+          style={{ background: '#ECFDF5', borderColor: '#A7F3D0', color: '#0f766e' }}>
+          <Wrench size={16} className="mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <b>Planification automatique</b> — {autoplanMsg} Les entretiens créés portent le badge « Auto ».
+          </div>
+          <button onClick={() => setAutoplanMsg(null)} className="text-teal-700 hover:text-teal-900">
+            <X size={15} />
+          </button>
+        </div>
+      )}
 
       {tab === 'prestataires' ? (
         <div>
@@ -389,7 +419,15 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                     return (
                       <tr key={e.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelected(s => s?.id === e.id ? null : e)}>
                         <td className="px-4 py-3">
-                          <p className="text-sm font-medium text-gray-900">{e.title}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {e.title}
+                            {e.notes?.startsWith('[auto]') && (
+                              <span className="ml-2 align-middle text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                                style={{ color: '#0E9F8E', background: '#D1FAE5' }} title="Planifié automatiquement d'après l'historique">
+                                Auto
+                              </span>
+                            )}
+                          </p>
                           {e.property_label && <p className="text-xs text-gray-400">{e.property_label}</p>}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">{TYPE_LABELS[e.type]}</td>

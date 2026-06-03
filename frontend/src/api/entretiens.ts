@@ -54,4 +54,7 @@ export const entretiensApi = {
     apiClient.patch<Entretien>(`/entretiens/${id}`, data),
   delete: (id: string) =>
     apiClient.delete(`/entretiens/${id}`),
+  autoplan: () =>
+    apiClient.post<{ created: number; items: { title: string; property_label?: string; scheduled_date: string; cadence_months: number; overdue: boolean }[] }>(
+      '/entretiens/autoplan'),
 }

@@ -177,3 +177,63 @@ class TestEntretienCRUD:
             "cost": 350.0,
         })
         assert resp.status_code == 201
+
+
+@pytest.mark.asyncio
+class TestAutoplan:
+    async def _done(self, client, token, prop_id, title, completed, freq="annuel"):
+        r = await client.post("/api/v1/entretiens", headers=auth(token), json={
+            "title": title, "type": "preventif", "status": "termine", "frequency": freq,
+            "scheduled_date": completed, "completed_date": completed, "property_id": prop_id,
+        })
+        assert r.status_code == 201, r.text
+        return r.json()["id"]
+
+    async def test_autoplan_from_observed_history(self, client, gestionnaire_token):
+        from datetime import timedelta
+        prop_id = await _create_property(client, gestionnaire_token)
+        title = "Révision chaudière annuelle"
+        await self._done(client, gestionnaire_token, prop_id, title, str(date.today() - timedelta(days=730)))
+        await self._done(client, gestionnaire_token, prop_id, title, str(date.today() - timedelta(days=365)))
+
+        resp = await client.post("/api/v1/entretiens/autoplan", headers=auth(gestionnaire_token))
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["created"] >= 1
+
+        lst = await client.get("/api/v1/entretiens?status=planifie", headers=auth(gestionnaire_token))
+        planned = [e for e in lst.json()["items"] if e["title"] == title]
+        assert planned, "aucune occurrence planifiée créée"
+        assert any((e.get("notes") or "").startswith("[auto]") for e in planned)
+
+        # Idempotence : un second passage ne recrée rien
+        await client.post("/api/v1/entretiens/autoplan", headers=auth(gestionnaire_token))
+        lst2 = await client.get("/api/v1/entretiens?status=planifie", headers=auth(gestionnaire_token))
+        planned2 = [e for e in lst2.json()["items"] if e["title"] == title]
+        assert len(planned2) == len(planned), "doublon créé au second passage"
+
+    async def test_autoplan_fallback_declared_frequency(self, client, gestionnaire_token):
+        from datetime import timedelta
+        prop_id = await _create_property(client, gestionnaire_token)
+        title = "Entretien VMC (repli fréquence)"
+        await self._done(client, gestionnaire_token, prop_id, title, str(date.today() - timedelta(days=400)))
+        resp = await client.post("/api/v1/entretiens/autoplan", headers=auth(gestionnaire_token))
+        assert resp.status_code == 200, resp.text
+        lst = await client.get("/api/v1/entretiens?status=planifie", headers=auth(gestionnaire_token))
+        assert any(e["title"] == title for e in lst.json()["items"])
+
+    async def test_autoplan_skips_without_history(self, client, gestionnaire_token):
+        prop_id = await _create_property(client, gestionnaire_token)
+        await client.post("/api/v1/entretiens", headers=auth(gestionnaire_token), json={
+            "title": "Jamais réalisé", "type": "preventif", "status": "planifie",
+            "frequency": "annuel", "scheduled_date": str(date.today()), "property_id": prop_id,
+        })
+        lst = await client.get("/api/v1/entretiens?status=planifie", headers=auth(gestionnaire_token))
+        n_before = sum(1 for e in lst.json()["items"] if e["title"] == "Jamais réalisé")
+        await client.post("/api/v1/entretiens/autoplan", headers=auth(gestionnaire_token))
+        lst2 = await client.get("/api/v1/entretiens?status=planifie", headers=auth(gestionnaire_token))
+        n_after = sum(1 for e in lst2.json()["items"] if e["title"] == "Jamais réalisé")
+        assert n_after == n_before
+
+    async def test_locataire_cannot_autoplan(self, client, locataire_token):
+        resp = await client.post("/api/v1/entretiens/autoplan", headers=auth(locataire_token))
+        assert resp.status_code == 403

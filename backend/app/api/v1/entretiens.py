@@ -14,8 +14,23 @@ from app.schemas.entretien import (
     EntretienCreate, EntretienUpdate, EntretienResponse,
 )
 from app.services.entretien_service import PrestataireService, EntretienService
+from app.models.entretien import EntretienStatus
 
 router = APIRouter(tags=["Entretiens"])
+
+
+async def _autoplan_scope(db: AsyncSession, current_user: User):
+    """Retourne (allowed_props, excluded_props) pour borner la planification au périmètre du rôle."""
+    role = Role(current_user.role)
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        from app.models.property import Property
+        own = {p.id for p in (await db.execute(
+            select(Property).where(Property.owner_user_id == current_user.id)
+        )).scalars().all()}
+        return own, None
+    if role == Role.GESTIONNAIRE:
+        return None, await gp_property_ids(db)
+    return None, None  # admin
 
 
 def _enrich_entretien(e) -> dict:
@@ -155,6 +170,19 @@ async def create_entretien(
     return {"id": e.id}
 
 
+@entretiens_router.post("/autoplan", summary="Planifier automatiquement d'après l'historique")
+async def autoplan_entretiens(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Analyse l'historique des entretiens terminés et crée la prochaine
+    maintenance de chaque série récurrente (statut Planifié). Idempotent."""
+    allowed, excluded = await _autoplan_scope(db, current_user)
+    created = await EntretienService.autoplan(db, allowed_props=allowed, excluded_props=excluded)
+    await db.commit()
+    return {"created": len(created), "items": created}
+
+
 @entretiens_router.get("/{entretien_id}", summary="Détail entretien")
 async def get_entretien(
     entretien_id: uuid.UUID,
@@ -173,6 +201,10 @@ async def update_entretien(
     _: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     await EntretienService.update(db, entretien_id, data)
+    e = await EntretienService.get(db, entretien_id)
+    # Planification automatique : un entretien marqué « terminé » planifie la suivante.
+    if str(e.status) == EntretienStatus.TERMINE.value and e.property_id is not None:
+        await EntretienService.autoplan(db, allowed_props={e.property_id})
     await db.commit()
     e = await EntretienService.get(db, entretien_id)
     return _enrich_entretien(e)

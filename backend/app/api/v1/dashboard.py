@@ -334,6 +334,33 @@ async def get_dashboard_stats(
     )
     total_leases_active = active_leases_res.scalar_one() or 0
 
+    # ── Entretiens importants à venir (planifiés / en cours, dus sous 30 j ou en retard) ─
+    from app.models.entretien import Entretien, EntretienStatus
+    from app.schemas.dashboard import UpcomingEntretien
+    from sqlalchemy.orm import selectinload as _selectinload
+    ent_q = (
+        select(Entretien)
+        .options(_selectinload(Entretien.property))
+        .where(
+            Entretien.status.in_([EntretienStatus.PLANIFIE.value, EntretienStatus.EN_COURS.value]),
+            Entretien.scheduled_date <= today + timedelta(days=30),
+        )
+    )
+    if is_gp:
+        ent_q = ent_q.where(Entretien.property_id.in_(prop_ids_filter))
+    elif is_mandataire and excluded_prop_ids:
+        ent_q = ent_q.where(Entretien.property_id.notin_(excluded_prop_ids))
+    ent_q = ent_q.order_by(Entretien.scheduled_date.asc()).limit(6)
+    upcoming = [
+        UpcomingEntretien(
+            id=str(e.id), title=e.title, type=e.type, status=e.status,
+            scheduled_date=e.scheduled_date,
+            property_label=(e.property.address if e.property else None),
+            overdue=e.scheduled_date < today,
+        )
+        for e in (await db.execute(ent_q)).scalars().all()
+    ]
+
     return DashboardStats(
         occupancy=OccupancyStats(
             total_units=total_units,
