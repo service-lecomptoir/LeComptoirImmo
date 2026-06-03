@@ -263,6 +263,44 @@ class TestGetByIdIsolation:
         resp = await client.get(f"/api/v1/avis-echeances/{aid}/pdf", headers=auth(gestionnaire_token))
         assert resp.status_code == 403, resp.text
 
+    # ── Documents ──────────────────────────────────────────────────────────────
+
+    async def _gp_document(self, client, token):
+        """Crée la chaîne + téléverse un document sur le locataire du GP. Retourne (doc_id, tenant_id)."""
+        ids = await _create_full_chain(client, token)
+        resp = await client.post(
+            "/api/v1/documents/upload", headers=auth(token),
+            files={"file": ("test.pdf", b"%PDF-1.4\n%%EOF\n", "application/pdf")},
+            data={"entity_type": "tenant", "entity_id": ids["tenant_id"], "document_type": "autre"},
+        )
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"], ids["tenant_id"]
+
+    async def test_mandataire_cannot_get_gp_document_by_id(self, client, gp_token, gestionnaire_token):
+        doc_id, _ = await self._gp_document(client, gp_token)
+        assert (await client.get(f"/api/v1/documents/{doc_id}", headers=auth(gp_token))).status_code == 200
+        resp = await client.get(f"/api/v1/documents/{doc_id}", headers=auth(gestionnaire_token))
+        assert resp.status_code == 403, resp.text
+
+    async def test_gp_cannot_get_other_gp_document_by_id(self, client, gp_token, gp_token2):
+        doc_id, _ = await self._gp_document(client, gp_token)
+        resp = await client.get(f"/api/v1/documents/{doc_id}", headers=auth(gp_token2))
+        assert resp.status_code == 403, resp.text
+
+    async def test_mandataire_cannot_download_gp_document(self, client, gp_token, gestionnaire_token):
+        doc_id, _ = await self._gp_document(client, gp_token)
+        resp = await client.get(f"/api/v1/documents/{doc_id}/download", headers=auth(gestionnaire_token))
+        assert resp.status_code == 403, resp.text
+
+    async def test_mandataire_cannot_upload_to_gp_tenant(self, client, gp_token, gestionnaire_token):
+        _, gp_tenant_id = await self._gp_document(client, gp_token)
+        resp = await client.post(
+            "/api/v1/documents/upload", headers=auth(gestionnaire_token),
+            files={"file": ("x.pdf", b"%PDF-1.4\n%%EOF\n", "application/pdf")},
+            data={"entity_type": "tenant", "entity_id": gp_tenant_id, "document_type": "autre"},
+        )
+        assert resp.status_code == 403, resp.text
+
 
 # ── Tests isolation tickets ────────────────────────────────────────────────────
 

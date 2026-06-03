@@ -12,7 +12,9 @@ from app.models.user import User
 from app.models.document import EntityType, DocumentType
 from app.schemas.document import DocumentResponse, DocumentUpdate
 from app.services.document_service import DocumentService
+from app.api.v1._isolation import assert_document_access
 from app.utils.file_handler import get_file_path
+from types import SimpleNamespace
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -119,6 +121,12 @@ async def upload_document(
     current_user: User = Depends(get_current_gestionnaire),
 ):
     """Upload multipart d'un document lié à une entité (locataire, contrat, logement...)."""
+    # Isolation : on ne peut téléverser que vers une entité de son périmètre.
+    await assert_document_access(
+        db, current_user,
+        SimpleNamespace(entity_type=entity_type.value, entity_id=entity_id),
+        write=True,
+    )
     return await DocumentService.upload(
         db=db,
         file=file,
@@ -187,9 +195,11 @@ async def upload_document_locataire(
 async def get_document(
     doc_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return await DocumentService.get_by_id(db, doc_id)
+    doc = await DocumentService.get_by_id(db, doc_id)
+    await assert_document_access(db, current_user, doc)
+    return doc
 
 
 @router.patch("/{doc_id}", response_model=DocumentResponse, summary="Modifier les métadonnées")
@@ -197,8 +207,10 @@ async def update_document(
     doc_id: uuid.UUID,
     data: DocumentUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    doc = await DocumentService.get_by_id(db, doc_id)
+    await assert_document_access(db, current_user, doc, write=True)
     return await DocumentService.update(db, doc_id, data)
 
 
@@ -206,9 +218,10 @@ async def update_document(
 async def download_document(
     doc_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     doc = await DocumentService.get_by_id(db, doc_id)
+    await assert_document_access(db, current_user, doc)
     path = get_file_path(doc.file_path)
     if not path:
         raise HTTPException(status_code=404, detail="Fichier introuvable sur le serveur")
@@ -223,6 +236,8 @@ async def download_document(
 async def delete_document(
     doc_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    doc = await DocumentService.get_by_id(db, doc_id)
+    await assert_document_access(db, current_user, doc, write=True)
     await DocumentService.delete(db, doc_id)

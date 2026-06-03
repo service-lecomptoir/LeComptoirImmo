@@ -205,3 +205,65 @@ async def assert_avis_access(db: AsyncSession, user: User, avis, *, write: bool 
                 return
 
     raise ForbiddenException("Accès refusé à cet avis d'échéance.")
+
+
+async def assert_document_access(db: AsyncSession, user: User, document, *, write: bool = False) -> None:
+    """Isolation par rôle d'un document, selon son entité de rattachement
+    (`entity_type` ∈ tenant / lease / property / owner — autres types = gestion seule).
+
+    On résout les clés d'appartenance depuis l'entité liée, puis on applique la
+    même matrice que paiements/avis. Aligné sur l'isolation des LISTES de documents.
+    """
+    from app.core.exceptions import ForbiddenException
+    from app.models.document import EntityType
+
+    role = Role(user.role)
+    if role == Role.ADMIN:
+        return
+
+    _et = getattr(document, "entity_type", None)
+    et = _et.value if hasattr(_et, "value") else str(_et or "")
+    eid = getattr(document, "entity_id", None)
+    created_by = owner_user_id = tenant_user_id = None
+
+    if et == EntityType.TENANT.value and eid is not None:
+        t = await db.get(Tenant, eid)
+        if t is not None:
+            created_by, tenant_user_id = t.created_by, getattr(t, "user_id", None)
+    elif et == EntityType.PROPERTY.value and eid is not None:
+        p = await db.get(Property, eid)
+        if p is not None:
+            created_by, owner_user_id = p.created_by, getattr(p, "owner_user_id", None)
+    elif et == EntityType.OWNER.value and eid is not None:
+        o = await db.get(Owner, eid)
+        if o is not None:
+            created_by, owner_user_id = o.created_by, getattr(o, "user_id", None)
+    elif et == EntityType.LEASE.value and eid is not None:
+        le = await db.get(Lease, eid)
+        if le is not None:
+            created_by = le.created_by
+            if le.tenant_id:
+                t = await db.get(Tenant, le.tenant_id)
+                tenant_user_id = getattr(t, "user_id", None) if t else None
+            if le.property_id:
+                p = await db.get(Property, le.property_id)
+                owner_user_id = getattr(p, "owner_user_id", None) if p else None
+
+    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
+        gp_ids = await gp_user_ids(db)
+        if created_by not in gp_ids:
+            return
+        raise ForbiddenException("Accès refusé à ce document.")
+
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        if created_by is not None and str(created_by) == str(user.id):
+            return
+        raise ForbiddenException("Accès refusé à ce document.")
+
+    if not write:
+        if role == Role.PROPRIETAIRE and owner_user_id is not None and str(owner_user_id) == str(user.id):
+            return
+        if role == Role.LOCATAIRE and tenant_user_id is not None and str(tenant_user_id) == str(user.id):
+            return
+
+    raise ForbiddenException("Accès refusé à ce document.")
