@@ -157,7 +157,7 @@ async def preview_template(
     mock_property = SimpleNamespace(
         owner_name="Cabinet Durand Immobilier",
         name="Résidence Les Tilleuls",
-        full_address="12 avenue des Tilleuls, 75001 Paris",
+        full_address="12 avenue des Tilleuls\n75001 Paris",
         city="Paris",
         property_type="appartement",
         floor=2,

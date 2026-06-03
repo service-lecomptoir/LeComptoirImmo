@@ -88,3 +88,31 @@ async def gp_lease_ids(db: AsyncSession) -> set[uuid.UUID]:
         select(Lease.id).where(or_(*conditions))
     )
     return set(result.scalars().all())
+
+
+async def assert_manager_scope(db: AsyncSession, user: User, created_by, label: str = "cette ressource") -> None:
+    """Garde-fou d'isolation pour les endpoints de gestion identifiés par `created_by`.
+
+    - admin : accès total ;
+    - gestionnaire_proprio (GP) : uniquement SES ressources (created_by == lui) ;
+    - gestionnaire mandataire : tout SAUF les ressources appartenant à un GP ;
+    - autres rôles (propriétaire/locataire) : pas d'accès à ces ressources de gestion
+      (ils disposent d'endpoints dédiés et filtrés).
+
+    Lève ForbiddenException si l'accès n'est pas autorisé.
+    """
+    from app.core.exceptions import ForbiddenException
+
+    role = Role(user.role)
+    if role == Role.ADMIN:
+        return
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        if created_by is None or str(created_by) != str(user.id):
+            raise ForbiddenException(f"Accès refusé à {label}.")
+        return
+    if role == Role.GESTIONNAIRE:
+        gp_ids = await gp_user_ids(db)
+        if created_by in gp_ids:
+            raise ForbiddenException(f"Accès refusé à {label}.")
+        return
+    raise ForbiddenException(f"Accès refusé à {label}.")

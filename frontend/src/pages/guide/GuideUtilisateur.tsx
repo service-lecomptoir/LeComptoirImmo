@@ -1,65 +1,33 @@
 import { useAuthStore } from '@/store/authStore'
-import {
-  BookOpen, CheckCircle2, Lightbulb, HelpCircle, ListChecks,
-  Building2, Users, KeyRound, FileText, CreditCard, Calendar,
-  FileCheck, MessageSquare, Wrench, Calculator, Wallet, Receipt,
-  Settings, Zap, ShoppingBag, LayoutDashboard, TrendingUp, PenSquare,
-  BookUser, Landmark, BarChart3,
-} from 'lucide-react'
+import { BookOpen, CheckCircle2, Lightbulb, HelpCircle, ListChecks } from 'lucide-react'
 import type { ElementType } from 'react'
-import { FEATURE_LABELS, FEATURE_DESCRIPTIONS } from '@/lib/features'
+import { navForRole, descriptionForRoute } from '@/lib/navigation'
 
 // ─── Types du contenu de guide ────────────────────────────────────────────────
 interface Step { title: string; desc: string }
 interface Feature { icon: ElementType; title: string; desc: string }
 interface Faq { q: string; a: string }
 
-// ─── Rubriques gestionnaire générées depuis le catalogue de fonctionnalités ─────
-// (source de vérité unique : lib/features.ts). Tout ajout/renommage futur d'une
-// fonctionnalité met ainsi le guide à jour automatiquement.
-const FEATURE_ICONS: Record<string, ElementType> = {
-  dashboard: LayoutDashboard,
-  properties: Building2,
-  tenants: Users,
-  leases: FileText,
-  avis_echeances: Calendar,
-  payments: CreditCard,
-  quittances: FileCheck,
-  actualisation: TrendingUp,
-  automatisation: Zap,
-  templates: PenSquare,
-  incidents: MessageSquare,
-  entretiens: Wrench,
-  contacts: BookUser,
-  offres: ShoppingBag,
-  documents_caf: Landmark,
-  admin: Settings,
-  finances: Wallet,
-  performance_biens: BarChart3,
-  liasse_fiscale: Calculator,
+// ─── Rubriques générées depuis le MENU du rôle (source de vérité : lib/navigation.ts) ─
+// Le menu latéral et le guide partagent la même définition : tout ajout, renommage
+// ou retrait d'une fonctionnalité dans la navigation met le guide à jour
+// automatiquement (libellé + icône du menu, description via descriptionForRoute).
+function rubriquesForRole(role?: string): Feature[] {
+  return navForRole(role)
+    .filter(item => !item.isSeparator && item.to)
+    .map(item => ({
+      icon: item.icon ?? ListChecks,
+      title: item.label,
+      desc: descriptionForRoute(item.to),
+    }))
 }
 
-/** Liste des rubriques (= fonctionnalités du catalogue), dans l'ordre du catalogue. */
-function catalogFeatures(): Feature[] {
-  return Object.keys(FEATURE_LABELS).map(key => ({
-    icon: FEATURE_ICONS[key] ?? ListChecks,
-    title: FEATURE_LABELS[key],
-    desc: FEATURE_DESCRIPTIONS[key] ?? '',
-  }))
-}
-
-const OWNERS_FEATURE: Feature = {
-  icon: KeyRound,
-  title: 'Propriétaires',
-  desc: 'Les fiches des bailleurs (identité, RIB unique, biens rattachés).',
-}
 interface Guide {
   badge: string
   title: string
   intro: string
   prerequisites: string[]
   steps: Step[]
-  features: Feature[]
   tips: string[]
   faq: Faq[]
 }
@@ -87,7 +55,6 @@ const GUIDE_MANDATAIRE: Guide = {
     { title: '6. Éditez les Documents CAF', desc: "Onglet « Documents CAF » : générez l'attestation de loyer et le formulaire tiers payant pré-remplis pour chaque contrat (le bailleur n'a plus qu'à vérifier et signer)." },
     { title: '7. Donnez les accès', desc: "Dans « Gestion des utilisateurs », créez les comptes de connexion pour vos propriétaires et locataires en les rattachant à leur fiche, afin qu'ils accèdent à leur propre espace." },
   ],
-  features: [OWNERS_FEATURE, ...catalogFeatures()],
   tips: [
     "Respectez l'ordre Propriétaire → Bien → Locataire → Contrat : chaque étape s'appuie sur la précédente.",
     "Le RIB se saisit une seule fois, sur la fiche du propriétaire : il alimente automatiquement les quittances.",
@@ -128,7 +95,6 @@ const GUIDE_GP: Guide = {
     { title: '6. Éditez vos Documents CAF', desc: "Onglet « Documents CAF » : attestation de loyer et formulaire tiers payant pré-remplis, prêts à signer." },
     { title: '7. Pilotez vos finances', desc: "Section « Mes finances » : suivez « Mes revenus », la « Performance bien » et préparez votre « Liasse fiscale »." },
   ],
-  features: catalogFeatures(),
   tips: [
     "Suivez l'ordre Bien → Locataire → Contrat : tout en découle.",
     "Votre RIB est saisi une seule fois (Mes informations) et figure sur les quittances.",
@@ -152,7 +118,7 @@ const GUIDE_PROPRIETAIRE: Guide = {
   title: 'Suivre vos biens et vos revenus en toute transparence',
   intro:
     "Votre espace propriétaire vous donne une vue claire et en temps réel sur vos biens confiés en gestion : " +
-    "revenus perçus, locataires en place, incidents et documents fiscaux. La gestion quotidienne est assurée par votre " +
+    "revenus perçus, locataires en place, démarches en cours et documents fiscaux. La gestion quotidienne est assurée par votre " +
     "mandataire ; vous, vous suivez et consultez.",
   prerequisites: [
     "Votre compte est créé par votre gestionnaire : utilisez l'identifiant et le mot de passe reçus.",
@@ -166,23 +132,15 @@ const GUIDE_PROPRIETAIRE: Guide = {
     { title: '4. Suivez vos revenus', desc: "« Mes revenus » détaille les loyers encaissés, période par période et bien par bien." },
     { title: '5. Préparez votre fiscalité', desc: "« Liasse fiscale » récapitule loyers et charges ; téléchargez-la pour votre déclaration." },
   ],
-  features: [
-    { icon: Building2, title: 'Mes biens', desc: 'Le détail de chaque bien et son statut d\'occupation.' },
-    { icon: CreditCard, title: 'Mes revenus', desc: 'Les loyers perçus, par période et par bien.' },
-    { icon: Users, title: 'Mes locataires', desc: 'Les locataires en place dans vos biens.' },
-    { icon: MessageSquare, title: 'Incidents & messages', desc: 'Le suivi des signalements et les échanges avec votre gestionnaire.' },
-    { icon: Wrench, title: 'Entretiens', desc: 'Les interventions réalisées ou planifiées sur vos biens.' },
-    { icon: Calculator, title: 'Liasse fiscale', desc: 'Le récapitulatif annuel pour votre déclaration de revenus fonciers.' },
-  ],
   tips: [
     "Gardez votre RIB à jour : c'est la condition d'un reversement sans accroc.",
-    "Utilisez les messages pour toute question : votre gestionnaire y répond.",
+    "Suivez les démarches de vos locataires dans la rubrique « Démarche » et échangez avec votre gestionnaire pour toute question.",
     "Consultez la liasse fiscale en fin d'année pour préparer sereinement votre déclaration.",
     "Sur vos listes (biens, locataires, contrats), basculez entre vue liste et mosaïque via les icônes en haut à droite — le choix est mémorisé. Le bouton « Exporter » télécharge la liste en CSV.",
   ],
   faq: [
     { q: 'Puis-je créer un contrat ou ajouter un locataire ?', a: 'Non : ces actions sont réalisées par votre gestionnaire mandataire. Votre espace est dédié au suivi et à la consultation.' },
-    { q: 'Comment signaler un problème sur un bien ?', a: 'Via la rubrique « Incidents » ou « Messages » : votre gestionnaire est notifié.' },
+    { q: 'Comment signaler un problème sur un bien ?', a: 'La démarche est créée par votre locataire dans son espace ; vous en suivez l\'avancement (relance, clôture) dans la rubrique « Démarche » (lecture seule). Pour échanger, contactez votre gestionnaire.' },
     { q: 'Je ne vois pas un loyer reçu, que faire ?', a: 'Le règlement est peut-être en cours d\'enregistrement par votre gestionnaire. Contactez-le via Messages si le doute persiste.' },
   ],
 }
@@ -204,19 +162,12 @@ const GUIDE_LOCATAIRE: Guide = {
     { title: '3. Consultez vos avis d\'échéance', desc: "« Avis d'échéances » liste vos appels de loyer ; vous pouvez les télécharger en PDF." },
     { title: '4. Payez votre loyer', desc: "« Payer mon loyer » vous indique le montant dû et les coordonnées de paiement (virement, etc.)." },
     { title: '5. Récupérez vos quittances', desc: "Une fois le loyer réglé, votre quittance est disponible dans « Mes paiements » et « Mes documents »." },
-  ],
-  features: [
-    { icon: Calendar, title: "Avis d'échéances", desc: 'Vos appels de loyer mensuels (ou selon la fréquence du bail), en PDF.' },
-    { icon: Wallet, title: 'Payer mon loyer', desc: 'Le montant dû et les modalités de règlement.' },
-    { icon: CreditCard, title: 'Mes paiements', desc: 'L\'historique de vos règlements et le téléchargement des quittances.' },
-    { icon: MessageSquare, title: 'Mes messages', desc: 'Vos échanges avec votre gestionnaire et le signalement d\'incidents.' },
-    { icon: Receipt, title: 'Mes documents', desc: 'Votre bail, vos quittances et tous les documents liés à votre location.' },
-    { icon: ShoppingBag, title: 'Offres & Services', desc: 'Les services proposés (assurance, box internet, etc.).' },
+    { title: '6. Faites vos démarches', desc: "Dans « Mes démarches », créez une demande (incident, question…), échangez avec votre gestionnaire, relancez si besoin, et validez ou refusez la clôture qu'il propose." },
   ],
   tips: [
     "Réglez votre loyer avant le jour d'échéance indiqué sur l'avis pour éviter les relances.",
     "Téléchargez et conservez vos quittances : elles servent de justificatif de domicile.",
-    "Pour toute question ou problème dans le logement, utilisez « Mes messages ».",
+    "Pour toute demande (incident, question…), créez une démarche dans « Mes démarches » et suivez son évolution ; vous pouvez relancer, ou valider/refuser la clôture proposée par votre gestionnaire.",
     "Si vous bénéficiez d'une aide au logement, elle est déjà déduite du montant à payer sur votre avis.",
   ],
   faq: [
@@ -237,6 +188,8 @@ function guideForRole(role?: string): Guide {
 export default function GuideUtilisateur() {
   const { user } = useAuthStore()
   const g = guideForRole(user?.role)
+  // Rubriques générées automatiquement depuis le menu du rôle (lib/navigation.ts).
+  const rubriques = rubriquesForRole(user?.role)
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
@@ -289,7 +242,7 @@ export default function GuideUtilisateur() {
       <section className="mb-6">
         <h2 className="text-base font-semibold text-gray-900 mb-4">Vos rubriques en un coup d'œil</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {g.features.map((f, i) => {
+          {rubriques.map((f, i) => {
             const Icon = f.icon
             return (
               <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 flex gap-3">

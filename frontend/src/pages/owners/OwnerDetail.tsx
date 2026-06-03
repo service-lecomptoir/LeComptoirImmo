@@ -153,7 +153,7 @@ export default function OwnerDetail() {
                     <Building2 size={16} className="text-gray-400 mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="text-sm text-gray-900">{p.name}</p>
-                      <p className="text-xs text-gray-500">{p.full_address}</p>
+                      <p className="text-xs text-gray-500 whitespace-pre-line leading-tight">{p.full_address}</p>
                     </div>
                   </button>
                 </li>

@@ -167,7 +167,7 @@ export default function PropertyList() {
       properties.map(p => [
         p.name,
         PROPERTY_TYPE_LABELS[p.property_type] ?? p.property_type,
-        p.city, p.full_address, p.owner_name,
+        p.city, (p.full_address || '').replace(/\n/g, ', '), p.owner_name,
         p.is_occupied ? 'Oui' : 'Non',
         p.unit_count,
       ]))

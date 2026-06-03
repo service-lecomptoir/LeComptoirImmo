@@ -1,105 +1,14 @@
 import { NavLink } from 'react-router-dom'
-import {
-  LayoutDashboard, Users, Building2, FileText,
-  CreditCard, Settings, Calendar,
-  Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
-  Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  MapPin, Hash, User, ShoppingBag, Package, KeyRound, TrendingUp, Landmark,
-} from 'lucide-react'
+import { MapPin, Hash, User } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed } from '@/lib/features'
+import { navForRole, type NavItem } from '@/lib/navigation'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
 import type { Role } from '@/types/auth'
 import clsx from 'clsx'
 import { useState, useEffect } from 'react'
-
-interface NavItem {
-  to?: string
-  icon?: React.ElementType
-  label: string
-  roles?: Role[]
-  isSeparator?: boolean
-}
-
-// Navigation Gestionnaire mandataire / Admin
-const navGestionnaire: NavItem[] = [
-  { label: 'Gestion locative', isSeparator: true },
-  { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
-  { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
-  { to: '/properties', icon: Building2, label: 'Propriétés' },
-  { to: '/tenants', icon: Users, label: 'Locataires' },
-  { to: '/leases', icon: FileText, label: 'Contrats' },
-  { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
-  { to: '/payments', icon: CreditCard, label: 'Paiements' },
-  { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
-  { to: '/actualisation', icon: TrendingUp, label: 'Actualisation loyers et charges' },
-  { to: '/automatisation', icon: Zap, label: 'Automatisation' },
-  { to: '/templates', icon: PenSquare, label: 'Ma papeterie' },
-  { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
-  { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
-  { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
-  { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
-  { to: '/documents-caf', icon: Landmark, label: 'Documents CAF' },
-  { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
-  { label: 'Finances', isSeparator: true },
-  { to: '/finances/revenus', icon: Wallet, label: 'Revenus' },
-  { to: '/finances/biens', icon: BarChart3, label: 'Performance biens' },
-  { to: '/finances/fiscal', icon: Calculator, label: 'Liasse fiscale' },
-  { label: 'Mon compte', isSeparator: true },
-  { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
-]
-
-// Navigation Propriétaire
-const navProprietaire: NavItem[] = [
-  { to: '/proprietaire', icon: LayoutDashboard, label: 'Mon tableau de bord' },
-  { to: '/proprietaire/biens', icon: Building2, label: 'Mes biens' },
-  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
-  { to: '/proprietaire/locataires', icon: Users, label: 'Mes locataires' },
-  { to: '/proprietaire/incidents', icon: MessageSquare, label: 'Démarche' },
-  { to: '/proprietaire/entretiens', icon: Wrench, label: 'Entretiens' },
-  { to: '/proprietaire/messages', icon: MessageSquare, label: 'Messages' },
-  { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
-]
-
-// Navigation Gestionnaire-Propriétaire : identique au mandataire SANS « Vue propriétaire »
-const navGestionnairePropio: NavItem[] = [
-  { label: 'Gestion locative', isSeparator: true },
-  { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
-  { to: '/properties', icon: Building2, label: 'Propriétés' },
-  { to: '/tenants', icon: Users, label: 'Locataires' },
-  { to: '/leases', icon: FileText, label: 'Contrats' },
-  { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
-  { to: '/payments', icon: CreditCard, label: 'Paiements' },
-  { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
-  { to: '/actualisation', icon: TrendingUp, label: 'Actualisation loyers et charges' },
-  { to: '/automatisation', icon: Zap, label: 'Automatisation' },
-  { to: '/templates', icon: PenSquare, label: 'Ma papeterie' },
-  { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
-  { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
-  { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
-  { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
-  { to: '/documents-caf', icon: Landmark, label: 'Documents CAF' },
-  { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
-  { label: 'Mes finances', isSeparator: true },
-  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
-  { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
-  { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
-  { label: 'Mon compte', isSeparator: true },
-  { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
-]
-
-// Navigation Locataire
-const navLocataire: NavItem[] = [
-  { to: '/locataire', icon: Home, label: 'Mon espace' },
-  { to: '/locataire/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
-  { to: '/locataire/payer', icon: Wallet, label: 'Payer mon loyer' },
-  { to: '/locataire/paiements', icon: CreditCard, label: 'Mes paiements' },
-  { to: '/locataire/messages', icon: MessageSquare, label: 'Mes démarches' },
-  { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
-  { to: '/locataire/offres', icon: ShoppingBag, label: 'Offres & Services' },
-]
 
 // ── Skeleton commun ───────────────────────────────────────────────────────────
 
@@ -250,13 +159,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     if (isGestionnaire) loadFeatures()
   }, [isGestionnaire, loadFeatures])
 
-  const getNavItems = (): NavItem[] => {
-    if (!user) return []
-    if (user.role === 'locataire') return navLocataire
-    if (user.role === 'proprietaire') return navProprietaire
-    if (user.role === 'gestionnaire_proprio') return navGestionnairePropio
-    return navGestionnaire
-  }
+  const getNavItems = (): NavItem[] => (user ? navForRole(user.role) : [])
 
   const roleFiltered = getNavItems().filter(
     (item) => !item.roles || item.roles.includes(user?.role as Role)

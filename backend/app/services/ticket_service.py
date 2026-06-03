@@ -163,6 +163,8 @@ class TicketService:
     @staticmethod
     async def propose_closure(db: AsyncSession, ticket_id: uuid.UUID, author_id: uuid.UUID) -> Ticket:
         ticket = await TicketService.get(db, ticket_id)
+        if ticket.status in (TicketStatus.PENDING_CLOSURE, TicketStatus.CLOSED):
+            raise BadRequestException("La clôture de cette démarche a déjà été proposée ou validée.")
         ticket.status = TicketStatus.PENDING_CLOSURE
         await TicketService._system_comment(db, ticket_id, author_id,
             "Le gestionnaire propose la clôture de cette démarche.")
@@ -176,6 +178,8 @@ class TicketService:
     @staticmethod
     async def validate_closure(db: AsyncSession, ticket_id: uuid.UUID, author_id: uuid.UUID) -> Ticket:
         ticket = await TicketService.get(db, ticket_id)
+        if ticket.status != TicketStatus.PENDING_CLOSURE:
+            raise BadRequestException("Cette démarche n'est pas en attente de validation de clôture.")
         ticket.status = TicketStatus.CLOSED
         if not ticket.closed_at:
             ticket.closed_at = datetime.utcnow()
@@ -191,6 +195,8 @@ class TicketService:
     async def refuse_closure(db: AsyncSession, ticket_id: uuid.UUID, author_id: uuid.UUID,
                              comment: Optional[str] = None) -> Ticket:
         ticket = await TicketService.get(db, ticket_id)
+        if ticket.status != TicketStatus.PENDING_CLOSURE:
+            raise BadRequestException("Cette démarche n'est pas en attente de validation de clôture.")
         ticket.status = TicketStatus.IN_PROGRESS
         ticket.closed_at = None
         txt = "Le demandeur a refusé la clôture de la démarche."

@@ -8,7 +8,7 @@ from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
 from app.core.features import require_feature, require_any_feature
-from app.api.v1._isolation import gp_owner_ids as _gp_owner_ids
+from app.api.v1._isolation import gp_owner_ids as _gp_owner_ids, assert_manager_scope
 from app.models.user import User
 from app.models.owner import Owner
 from app.models.document import EntityType
@@ -107,9 +107,11 @@ async def update_my_owner(
 async def get_owner(
     owner_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
-    return await OwnerService.get_by_id(db, owner_id)
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "cette fiche propriétaire")
+    return owner
 
 
 @router.put("/{owner_id}", response_model=OwnerResponse, summary="Modifier un propriétaire")
@@ -117,8 +119,10 @@ async def update_owner(
     owner_id: uuid.UUID,
     data: OwnerUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "cette fiche propriétaire")
     return await OwnerService.update(db, owner_id, data)
 
 
@@ -126,8 +130,10 @@ async def update_owner(
 async def delete_owner(
     owner_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "cette fiche propriétaire")
     await OwnerService.delete(db, owner_id)
 
 

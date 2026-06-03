@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_property_ids
+from app.api.v1._isolation import gp_property_ids, assert_manager_scope
 from app.models.user import User
 from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertyUpdate, PropertyResponse, PropertyListItem
@@ -128,9 +128,10 @@ async def create_property(
 async def get_property(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
     prop = await PropertyService.get_by_id(db, property_id)
+    await assert_manager_scope(db, current_user, prop.created_by, "ce bien")
     resp = PropertyResponse.model_validate(prop)
     resp.unit_count = 1
     resp.occupied_count = 1 if prop.is_occupied else 0
@@ -142,8 +143,10 @@ async def update_property(
     property_id: uuid.UUID,
     data: PropertyUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    prop = await PropertyService.get_by_id(db, property_id)
+    await assert_manager_scope(db, current_user, prop.created_by, "ce bien")
     return await PropertyService.update(db, property_id, data)
 
 
@@ -151,8 +154,10 @@ async def update_property(
 async def delete_property(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    prop = await PropertyService.get_by_id(db, property_id)
+    await assert_manager_scope(db, current_user, prop.created_by, "ce bien")
     await PropertyService.delete(db, property_id)
 
 
@@ -160,6 +165,8 @@ async def delete_property(
 async def get_occupancy(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    prop = await PropertyService.get_by_id(db, property_id)
+    await assert_manager_scope(db, current_user, prop.created_by, "ce bien")
     return await PropertyService.get_occupancy(db, property_id)

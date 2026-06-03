@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_tenant_ids as _gp_tenant_ids
+from app.api.v1._isolation import gp_tenant_ids as _gp_tenant_ids, assert_manager_scope
 from app.models.user import User
 from app.models.document import EntityType, DocumentType
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, TenantListItem
@@ -93,9 +93,11 @@ async def create_tenant(
 async def get_tenant(
     tenant_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
-    return await TenantService.get_by_id(db, tenant_id)
+    tenant = await TenantService.get_by_id(db, tenant_id)
+    await assert_manager_scope(db, current_user, tenant.created_by, "ce locataire")
+    return tenant
 
 
 @router.put("/{tenant_id}", response_model=TenantResponse, summary="Modifier un locataire")
@@ -103,8 +105,10 @@ async def update_tenant(
     tenant_id: uuid.UUID,
     data: TenantUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    tenant = await TenantService.get_by_id(db, tenant_id)
+    await assert_manager_scope(db, current_user, tenant.created_by, "ce locataire")
     return await TenantService.update(db, tenant_id, data)
 
 
@@ -112,8 +116,10 @@ async def update_tenant(
 async def delete_tenant(
     tenant_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
+    tenant = await TenantService.get_by_id(db, tenant_id)
+    await assert_manager_scope(db, current_user, tenant.created_by, "ce locataire")
     await TenantService.delete(db, tenant_id)
 
 
