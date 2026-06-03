@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { KeyRound, RefreshCw, Calculator, CheckCircle2, Pencil, Trash2, X, FileDown } from 'lucide-react'
+import { KeyRound, RefreshCw, Calculator, CheckCircle2, Pencil, Trash2, X, FileDown, HeartHandshake } from 'lucide-react'
 import { actualisationApi, type ChargeRow, type ChargePreview } from '@/api/actualisation'
 
 const fmtEuro = (n: number | null | undefined) =>
@@ -147,6 +147,24 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
     } finally { setBusyId(null) }
   }
 
+  const amiableProvision = async (r: ChargeRow) => {
+    const input = window.prompt(
+      `Réévaluation amiable de la provision pour charges de ${r.tenant_full_name} (actuelle ${fmtEuro(r.current_monthly_provision)}).\nNouvelle provision mensuelle convenue (€) :`,
+      String(r.current_monthly_provision))
+    if (input == null) return
+    const val = parseFloat(input.replace(',', '.'))
+    if (isNaN(val) || val < 0) { alert('Montant invalide'); return }
+    const note = window.prompt("Référence / note de l'accord (facultatif) :") ?? ''
+    setBusyId(r.lease_id)
+    try {
+      await actualisationApi.amiableProvision(r.lease_id, { new_provision: val, note: note.trim() || undefined })
+      flash(`Provision réévaluée d'un commun accord pour ${r.tenant_full_name}.`)
+      load()
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors de la réévaluation')
+    } finally { setBusyId(null) }
+  }
+
   const groups = rows.reduce<Record<string, ChargeRow[]>>((acc, r) => {
     (acc[r.owner_name] ||= []).push(r); return acc
   }, {})
@@ -179,6 +197,13 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
                       <p className="text-xs text-gray-500">
                         {r.property_name} · Provision mensuelle actuelle {fmtEuro(r.current_monthly_provision)}
                       </p>
+                      <button
+                        onClick={() => amiableProvision(r)}
+                        disabled={busyId === r.lease_id}
+                        className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-40"
+                        title="Fixer une provision convenue d'un commun accord (hors régularisation)">
+                        <HeartHandshake size={13} /> Réévaluation amiable
+                      </button>
                     </div>
                     {r.last_regularization && (
                       <div className="text-xs text-gray-400 text-right flex items-center gap-1.5">

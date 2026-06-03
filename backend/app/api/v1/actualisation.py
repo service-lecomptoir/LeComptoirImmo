@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_gestionnaire
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_lease_ids
+from app.api.v1._isolation import gp_lease_ids, assert_manager_scope
 from app.models.user import User
 from app.models.lease import Lease
 from app.models.charge_regularization import ChargeRegularization
@@ -233,6 +233,63 @@ async def apply_revision(
     return await _row(db, lease)
 
 
+# ── Réévaluation amiable du loyer (accord avec le locataire) ─────────────────────
+class AmiableRentIn(BaseModel):
+    new_rent: float
+    effective_date: Optional[date] = None
+    note: Optional[str] = None
+
+
+@router.post("/loyers/{lease_id}/reevaluation-amiable")
+async def amiable_rent(
+    lease_id: uuid.UUID,
+    data: AmiableRentIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Réévalue le loyer d'un commun accord avec le locataire (hors formule IRL)."""
+    from app.models.notification import Notification, NotificationType, NotificationPriority
+    from app.models.tenant import Tenant
+
+    if data.new_rent < 0:
+        raise HTTPException(status_code=400, detail="Loyer négatif invalide")
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
+
+    old_rent = float(lease.rent_amount)
+    eff = data.effective_date or date.today()
+    lease.rent_amount = data.new_rent
+    # Le loyer convenu devient la nouvelle base ; on ancre la date de dernière révision.
+    lease.last_revision_date = eff
+
+    tenant = await db.get(Tenant, lease.tenant_id)
+    if tenant and tenant.user_id:
+        msg = (f"Suite à votre accord, votre loyer est réévalué : {old_rent:.2f} € → "
+               f"{float(data.new_rent):.2f} € à compter du {eff.strftime('%d/%m/%Y')}.")
+        if data.note:
+            msg += f" {data.note}"
+        db.add(Notification(
+            title="Réévaluation amiable de votre loyer",
+            message=msg,
+            notification_type=NotificationType.SYSTEME,
+            priority=NotificationPriority.NORMAL,
+            entity_type="lease", entity_id=lease.id, user_id=tenant.user_id,
+        ))
+
+    await db.flush()
+    await db.commit()
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one()
+    return await _row(db, lease)
+
+
 # ── Régularisation des charges (Étape 3) ─────────────────────────────────────────
 def _default_charge_period() -> tuple[date, date]:
     """Période par défaut : les 12 derniers mois civils complets (fin = dernier
@@ -346,6 +403,60 @@ async def apply_charge(
         db, lease, data.period_start, data.period_end, data.real_total,
         data.new_monthly_provision, created_by=current_user.id, notes=data.notes,
     )
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one()
+    return await _charge_row(db, lease)
+
+
+class AmiableProvisionIn(BaseModel):
+    new_provision: float
+    effective_date: Optional[date] = None
+    note: Optional[str] = None
+
+
+@router.post("/charges/{lease_id}/reevaluation-amiable")
+async def amiable_provision(
+    lease_id: uuid.UUID,
+    data: AmiableProvisionIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Réévalue la provision mensuelle pour charges d'un commun accord (hors régularisation)."""
+    from app.models.notification import Notification, NotificationType, NotificationPriority
+    from app.models.tenant import Tenant
+
+    if data.new_provision < 0:
+        raise HTTPException(status_code=400, detail="Provision négative invalide")
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
+
+    old = float(lease.charges_amount)
+    eff = data.effective_date or date.today()
+    lease.charges_amount = data.new_provision
+
+    tenant = await db.get(Tenant, lease.tenant_id)
+    if tenant and tenant.user_id:
+        msg = (f"Suite à votre accord, votre provision mensuelle pour charges est réévaluée : "
+               f"{old:.2f} € → {float(data.new_provision):.2f} € à compter du {eff.strftime('%d/%m/%Y')}.")
+        if data.note:
+            msg += f" {data.note}"
+        db.add(Notification(
+            title="Réévaluation amiable de vos provisions pour charges",
+            message=msg,
+            notification_type=NotificationType.SYSTEME,
+            priority=NotificationPriority.NORMAL,
+            entity_type="lease", entity_id=lease.id, user_id=tenant.user_id,
+        ))
+
+    await db.flush()
+    await db.commit()
     lease = (await db.execute(
         select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
         .where(Lease.id == lease_id)

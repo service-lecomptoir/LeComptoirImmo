@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt, Pencil, Trash2, X, FileDown, Landmark } from 'lucide-react'
+import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt, Pencil, Trash2, X, FileDown, Landmark, HeartHandshake } from 'lucide-react'
 import { actualisationApi, type IrlIndexItem, type RevisionRow } from '@/api/actualisation'
 import ChargesPanel from './ChargesPanel'
 
@@ -103,6 +103,24 @@ export default function Actualisation() {
       load()
     } catch (e: any) {
       alert(e?.response?.data?.detail || 'Erreur lors de la révision')
+    } finally { setBusyId(null) }
+  }
+
+  const amiableRent = async (r: RevisionRow) => {
+    const input = window.prompt(
+      `Réévaluation amiable du loyer de ${r.tenant_full_name} (actuel ${fmtEuro(r.current_rent)}).\nNouveau loyer convenu (€) :`,
+      String(r.current_rent))
+    if (input == null) return
+    const val = parseFloat(input.replace(',', '.'))
+    if (isNaN(val) || val < 0) { alert('Montant invalide'); return }
+    const note = window.prompt("Référence / note de l'accord (facultatif) :") ?? ''
+    setBusyId(r.lease_id)
+    try {
+      await actualisationApi.amiableRent(r.lease_id, { new_rent: val, note: note.trim() || undefined })
+      flash(`Loyer réévalué d'un commun accord pour ${r.tenant_full_name}.`)
+      load()
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors de la réévaluation')
     } finally { setBusyId(null) }
   }
 
@@ -356,6 +374,13 @@ export default function Actualisation() {
                           </button>
                         </div>
                       )}
+                      <button
+                        onClick={() => amiableRent(r)}
+                        disabled={busyId === r.lease_id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-40 mt-2"
+                        title="Fixer un loyer convenu d'un commun accord (hors formule IRL)">
+                        <HeartHandshake size={14} /> Réévaluation amiable
+                      </button>
                     </div>
                   </div>
                 ))}

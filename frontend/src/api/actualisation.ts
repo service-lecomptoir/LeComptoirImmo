@@ -74,12 +74,16 @@ export const actualisationApi = {
     apiClient.patch<RevisionRow>(`/actualisation/loyers/${leaseId}/reference`, data),
   applyRevision: (leaseId: string) =>
     apiClient.post<RevisionRow>(`/actualisation/loyers/${leaseId}/appliquer`),
+  amiableRent: (leaseId: string, data: { new_rent: number; effective_date?: string; note?: string }) =>
+    apiClient.post<RevisionRow>(`/actualisation/loyers/${leaseId}/reevaluation-amiable`, data),
 
   listCharges: () => apiClient.get<ChargeRow[]>('/actualisation/charges'),
   previewCharge: (leaseId: string, data: { period_start: string; period_end: string; real_total: number }) =>
     apiClient.post<ChargePreview>(`/actualisation/charges/${leaseId}/preview`, data),
   applyCharge: (leaseId: string, data: { period_start: string; period_end: string; real_total: number; new_monthly_provision: number; notes?: string }) =>
     apiClient.post<ChargeRow>(`/actualisation/charges/${leaseId}/appliquer`, data),
+  amiableProvision: (leaseId: string, data: { new_provision: number; effective_date?: string; note?: string }) =>
+    apiClient.post<ChargeRow>(`/actualisation/charges/${leaseId}/reevaluation-amiable`, data),
   updateCharge: (regId: string, data: { period_start: string; period_end: string; real_total: number; new_monthly_provision: number; notes?: string }) =>
     apiClient.put<ChargeRow>(`/actualisation/charges/regularizations/${regId}`, data),
   deleteCharge: (regId: string) => apiClient.delete(`/actualisation/charges/regularizations/${regId}`),
