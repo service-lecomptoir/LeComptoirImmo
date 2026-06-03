@@ -180,6 +180,31 @@ async def set_reference(
     return await _row(db, lease)
 
 
+@router.post("/loyers/{lease_id}/reference/clear")
+async def clear_reference(
+    lease_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Réinitialise l'indice IRL de référence d'un bail (trimestre + indice de base)."""
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
+    lease.irl_quarter = None
+    lease.irl_base_index = None
+    await db.flush()
+    await db.commit()
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
+        .where(Lease.id == lease_id)
+    )).scalar_one()
+    return await _row(db, lease)
+
+
 @router.post("/loyers/{lease_id}/appliquer")
 async def apply_revision(
     lease_id: uuid.UUID,

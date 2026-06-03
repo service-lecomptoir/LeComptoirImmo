@@ -72,6 +72,8 @@ export const actualisationApi = {
   listRevisions: () => apiClient.get<RevisionRow[]>('/actualisation/loyers'),
   setReference: (leaseId: string, data: { irl_quarter: number; irl_base_index: number }) =>
     apiClient.patch<RevisionRow>(`/actualisation/loyers/${leaseId}/reference`, data),
+  clearReference: (leaseId: string) =>
+    apiClient.post<RevisionRow>(`/actualisation/loyers/${leaseId}/reference/clear`),
   applyRevision: (leaseId: string) =>
     apiClient.post<RevisionRow>(`/actualisation/loyers/${leaseId}/appliquer`),
   amiableRent: (leaseId: string, data: { new_rent: number; effective_date?: string; note?: string }) =>

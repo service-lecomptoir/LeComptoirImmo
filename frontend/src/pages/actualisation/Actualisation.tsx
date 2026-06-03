@@ -24,6 +24,8 @@ export default function Actualisation() {
   const [editId, setEditId] = useState<string | null>(null)
   // form référence par bail
   const [refForm, setRefForm] = useState<Record<string, { q: number; base: string }>>({})
+  // bail dont on (ré)édite la référence IRL alors qu'elle est déjà renseignée
+  const [editRefId, setEditRefId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -76,11 +78,22 @@ export default function Actualisation() {
     }
   }
 
-  const refreshInsee = async () => {
-    const r = await actualisationApi.refreshIrl()
-    flash(r.data.message)
-    const a = await actualisationApi.listIrl(); setIrl(a.data)
-    load()
+  const startEditRef = (r: RevisionRow) => {
+    setEditRefId(r.lease_id)
+    setRefForm(p => ({ ...p, [r.lease_id]: { q: r.irl_quarter ?? 1, base: r.base_index != null ? String(r.base_index) : '' } }))
+  }
+
+  const clearRef = async (r: RevisionRow) => {
+    if (!confirm(`Réinitialiser l'indice de référence de ${r.tenant_full_name} ? La révision ne pourra plus être calculée tant qu'une nouvelle référence n'est pas saisie.`)) return
+    setBusyId(r.lease_id)
+    try {
+      await actualisationApi.clearReference(r.lease_id)
+      setEditRefId(id => id === r.lease_id ? null : id)
+      flash('Indice de référence réinitialisé.')
+      load()
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || 'Erreur lors de la réinitialisation')
+    } finally { setBusyId(null) }
   }
 
   const saveRef = async (r: RevisionRow) => {
@@ -89,6 +102,7 @@ export default function Actualisation() {
     setBusyId(r.lease_id)
     try {
       await actualisationApi.setReference(r.lease_id, { irl_quarter: f.q, irl_base_index: parseFloat(f.base) })
+      setEditRefId(id => id === r.lease_id ? null : id)
       flash('Référence IRL enregistrée.')
       load()
     } finally { setBusyId(null) }
@@ -266,12 +280,9 @@ export default function Actualisation() {
                   <X size={14} /> Annuler
                 </button>
               )}
-              <button onClick={refreshInsee} className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-                <RefreshCw size={14} /> Récupérer depuis l'INSEE
-              </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {irl.length === 0 ? <p className="text-sm text-gray-400">Aucun indice. Ajoutez-en ou récupérez depuis l'INSEE.</p>
+              {irl.length === 0 ? <p className="text-sm text-gray-400">Aucun indice IRL. Ajoutez les indices publiés par l'INSEE via le formulaire ci-dessus.</p>
                 : irl.map(i => (
                   <span key={i.id} className={`group inline-flex items-center gap-1.5 text-xs rounded-full pl-2.5 pr-1.5 py-1 ${editId === i.id ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>
                     T{i.quarter} {i.year} : <strong>{i.value}</strong>{i.source === 'insee' ? ' · INSEE' : ''}
@@ -331,7 +342,7 @@ export default function Actualisation() {
 
                     {/* Action */}
                     <div className="mt-2">
-                      {r.irl_quarter && r.base_index != null ? (
+                      {(r.irl_quarter && r.base_index != null && editRefId !== r.lease_id) ? (
                         <>
                         <button
                           onClick={() => apply(r)}
@@ -348,6 +359,20 @@ export default function Actualisation() {
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 ml-2"
                           title="Télécharger le document de révision (PDF)">
                           <FileDown size={14} /> PDF
+                        </button>
+                        <button
+                          onClick={() => startEditRef(r)}
+                          disabled={busyId === r.lease_id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 ml-2"
+                          title="Modifier l'indice de référence">
+                          <Pencil size={14} /> Modifier la référence
+                        </button>
+                        <button
+                          onClick={() => clearRef(r)}
+                          disabled={busyId === r.lease_id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40 ml-2"
+                          title="Réinitialiser l'indice de référence">
+                          <Trash2 size={14} /> Réinitialiser
                         </button>
                         </>
                       ) : (
@@ -372,6 +397,12 @@ export default function Actualisation() {
                             className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50">
                             Enregistrer la référence
                           </button>
+                          {editRefId === r.lease_id && (
+                            <button onClick={() => setEditRefId(null)}
+                              className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
+                              Annuler
+                            </button>
+                          )}
                         </div>
                       )}
                       <button
