@@ -200,6 +200,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS rent_call_rule VARCHAR(20) NOT NULL DEFAULT 'calendrier'",
         # Fréquence d'appel du loyer (mensuelle / bimestrielle / trimestrielle / semestrielle / annuelle)
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS payment_frequency VARCHAR(20) NOT NULL DEFAULT 'mensuelle'",
+        # Suivi de la relation locataire (scoring)
+        "ALTER TABLE leases ADD COLUMN IF NOT EXISTS relationship_events JSONB",
         # Révision du loyer (IRL)
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS irl_quarter INTEGER",
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS irl_base_index NUMERIC(8,2)",

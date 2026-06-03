@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Edit, FileDown, XCircle,
   Home, User, Calendar, CreditCard, ShieldCheck, StickyNote, ClipboardList, Plus,
+  HeartHandshake, Trash2,
 } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
+import { scoringApi, type RelationEvent, type EventKind } from '@/api/scoring'
 import { inspectionsApi } from '@/api/inspections'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -20,6 +22,88 @@ import type { Lease } from '@/types/lease'
 import type { Inspection } from '@/types/inspection'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+
+// ── Section « Relation locataire » (alimente le scoring) ─────────────────────
+const _POLARITY: Record<string, { color: string; bg: string }> = {
+  positif: { color: '#0E9F8E', bg: '#D1FAE5' },
+  negatif: { color: '#DC2626', bg: '#FEE2E2' },
+  neutre:  { color: '#6B7280', bg: '#F3F4F6' },
+}
+
+function RelationSection({ leaseId, canEdit }: { leaseId: string; canEdit: boolean }) {
+  const [events, setEvents] = useState<RelationEvent[]>([])
+  const [kinds, setKinds] = useState<EventKind[]>([])
+  const [form, setForm] = useState({ kind: '', note: '' })
+  const [saving, setSaving] = useState(false)
+
+  const load = () => { scoringApi.listEvents(leaseId).then(r => setEvents(r.data)).catch(() => {}) }
+  useEffect(() => { load(); scoringApi.eventKinds().then(r => setKinds(r.data)).catch(() => {}) }, [leaseId])
+
+  const add = async () => {
+    if (!form.kind) return
+    setSaving(true)
+    try {
+      const r = await scoringApi.addEvent(leaseId, { kind: form.kind, note: form.note || undefined })
+      setEvents(r.data); setForm({ kind: '', note: '' })
+    } finally { setSaving(false) }
+  }
+  const del = async (id: string) => { const r = await scoringApi.deleteEvent(leaseId, id); setEvents(r.data) }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-1">
+        <HeartHandshake size={15} className="text-blue-500" /> Relation locataire
+      </h2>
+      <p className="text-xs text-gray-400 mb-3">Événements de suivi pris en compte dans le score de qualité de payeur.</p>
+
+      {canEdit && (
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+          <select value={form.kind} onChange={e => setForm(f => ({ ...f, kind: e.target.value }))}
+            className="border border-gray-200 rounded-lg px-2 py-2 text-sm sm:w-56">
+            <option value="">Type d'événement…</option>
+            <optgroup label="Positif">
+              {kinds.filter(k => k.polarity === 'positif').map(k => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+            </optgroup>
+            <optgroup label="Négatif">
+              {kinds.filter(k => k.polarity === 'negatif').map(k => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+            </optgroup>
+            <optgroup label="Neutre">
+              {kinds.filter(k => k.polarity === 'neutre').map(k => <option key={k.kind} value={k.kind}>{k.label}</option>)}
+            </optgroup>
+          </select>
+          <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+            placeholder="Note (facultatif)" className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1" />
+          <button onClick={add} disabled={!form.kind || saving}
+            className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: '#0D2F5C' }}>
+            <Plus size={15} /> Ajouter
+          </button>
+        </div>
+      )}
+
+      {events.length === 0 ? (
+        <p className="text-sm text-gray-400">Aucun événement de relation enregistré.</p>
+      ) : (
+        <ul className="space-y-2">
+          {events.map(e => {
+            const ps = _POLARITY[e.polarity ?? 'neutre']
+            return (
+              <li key={e.id} className="flex items-start gap-2 text-sm">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0" style={{ color: ps.color, background: ps.bg }}>{e.kind_label}</span>
+                <div className="flex-1 min-w-0">
+                  {e.note && <p className="text-gray-800">{e.note}</p>}
+                  <p className="text-xs text-gray-400">{e.date}{e.author_name ? ` · ${e.author_name}` : ''}</p>
+                </div>
+                {canEdit && (
+                  <button onClick={() => del(e.id)} className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-500"><Trash2 size={13} /></button>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 // ── Formulaire ajout état des lieux ────────────────────────────────────────────
 interface InspectionFormData {
@@ -355,6 +439,9 @@ export default function LeaseDetail() {
             <p className="text-sm text-gray-700 whitespace-pre-wrap">{lease.notes}</p>
           </div>
         )}
+
+        {/* Relation locataire (scoring) */}
+        <RelationSection leaseId={lease.id} canEdit={lease.is_active} />
 
         {/* États des lieux */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">

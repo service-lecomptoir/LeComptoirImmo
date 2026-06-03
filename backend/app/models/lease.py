@@ -3,7 +3,7 @@ from datetime import date
 from typing import Optional, TYPE_CHECKING
 from sqlalchemy import String, Date, Numeric, Boolean, Integer, Enum as SAEnum, ForeignKey, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from enum import Enum
 
 from app.database import Base, TimestampMixin
@@ -128,6 +128,11 @@ class Lease(Base, TimestampMixin):
     # ── État ──────────────────────────────────────────────────────────────────
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     notes: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
+
+    # ── Suivi de la relation locataire (scoring) ────────────────────────────────
+    # Liste d'événements éditables : [{id, date, kind, note, author_name, created_at}].
+    # Le « kind » porte une polarité/poids qui alimente le score de qualité de payeur.
+    relationship_events: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
 
     # ── Audit ─────────────────────────────────────────────────────────────────
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(

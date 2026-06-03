@@ -45,6 +45,7 @@ import LocataireOffres from '@/pages/locataire/LocataireOffres'
 import MonAbonnement from '@/pages/subscription/MonAbonnement'
 import MonProfil from '@/pages/profil/MonProfil'
 import GuideUtilisateur from '@/pages/guide/GuideUtilisateur'
+import ScoringList from '@/pages/scoring/ScoringList'
 import FinancesParProprietaire from '@/pages/finances/FinancesParProprietaire'
 import Actualisation from '@/pages/actualisation/Actualisation'
 import DocumentsCaf from '@/pages/documents-caf/DocumentsCaf'
@@ -129,6 +130,7 @@ export const router = createBrowserRouter([
       { path: 'properties/:id', element: <PropertyDetail /> },
       { path: 'leases', element: <LeaseList /> },
       { path: 'leases/:id', element: <LeaseDetail /> },
+      { path: 'scoring', element: <ScoringList /> },
       { path: 'payments', element: <PaymentList /> },
       { path: 'quittances', element: <QuittanceList /> },
       { path: 'avis-echeances', element: <AvisEcheanceList /> },

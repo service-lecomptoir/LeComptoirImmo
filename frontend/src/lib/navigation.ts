@@ -16,7 +16,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  ShoppingBag, Package, KeyRound, TrendingUp, Landmark,
+  ShoppingBag, Package, KeyRound, TrendingUp, Landmark, ShieldCheck,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -37,6 +37,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
+  { to: '/scoring', icon: ShieldCheck, label: 'Scoring locataires' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
@@ -76,6 +77,7 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
+  { to: '/scoring', icon: ShieldCheck, label: 'Scoring locataires' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
@@ -123,6 +125,7 @@ export function navForRole(role?: string): NavItem[] {
 export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   // Gestionnaire / admin
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
+  '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
   '/abonnement': 'Vos factures (PDF), votre formule et la gestion de votre abonnement.',
   // Espace propriétaire
   '/proprietaire': "Vue d'ensemble : revenus, taux d'occupation et points d'attention sur vos biens.",

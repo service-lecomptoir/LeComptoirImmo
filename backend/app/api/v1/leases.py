@@ -8,10 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_lease_ids
+from app.api.v1._isolation import gp_lease_ids, assert_manager_scope
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.property import Property
+from app.models.lease import Lease
 from app.schemas.lease import (
     LeaseCreate,
     LeaseUpdate,
@@ -228,3 +229,81 @@ async def delete_lease(
 ):
     await LeaseService.delete(db, lease_id)
     await db.commit()
+
+
+# ── Suivi de la relation locataire (alimente le scoring) ─────────────────────
+from datetime import datetime as _dt, date as _date
+from pydantic import BaseModel as _BaseModel
+from app.services.scoring_service import KIND_META
+
+
+class _RelationEventIn(_BaseModel):
+    kind: str
+    note: Optional[str] = None
+    event_date: Optional[str] = None  # ISO ; défaut = aujourd'hui
+
+
+def _enrich_events(events) -> list:
+    out = []
+    for e in (events or []):
+        meta = KIND_META.get(e.get("kind", ""), {})
+        out.append({**e, "kind_label": meta.get("label", e.get("kind")),
+                    "polarity": meta.get("polarity", "neutre")})
+    out.sort(key=lambda x: x.get("date", ""), reverse=True)
+    return out
+
+
+async def _get_lease_scoped(db, lease_id, current_user) -> Lease:
+    lease = await db.get(Lease, lease_id)
+    if not lease:
+        raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
+    return lease
+
+
+@router.get("/{lease_id}/relationship-events", summary="Événements de relation du contrat")
+async def list_relationship_events(
+    lease_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    lease = await _get_lease_scoped(db, lease_id, current_user)
+    return _enrich_events(lease.relationship_events)
+
+
+@router.post("/{lease_id}/relationship-events", status_code=201, summary="Ajouter un événement de relation")
+async def add_relationship_event(
+    lease_id: uuid.UUID,
+    data: _RelationEventIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    if data.kind not in KIND_META:
+        raise HTTPException(status_code=400, detail="Type d'événement inconnu")
+    lease = await _get_lease_scoped(db, lease_id, current_user)
+    ev = {
+        "id": str(uuid.uuid4()),
+        "date": (data.event_date or _date.today().isoformat()),
+        "kind": data.kind,
+        "note": (data.note or "").strip() or None,
+        "author_name": getattr(current_user, "full_name", None),
+        "created_at": _dt.utcnow().isoformat(),
+    }
+    # Réassignation (et non mutation en place) pour que SQLAlchemy détecte le changement JSONB.
+    lease.relationship_events = list(lease.relationship_events or []) + [ev]
+    await db.commit()
+    return _enrich_events(lease.relationship_events)
+
+
+@router.delete("/{lease_id}/relationship-events/{event_id}", status_code=200,
+               summary="Supprimer un événement de relation")
+async def delete_relationship_event(
+    lease_id: uuid.UUID,
+    event_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    lease = await _get_lease_scoped(db, lease_id, current_user)
+    lease.relationship_events = [e for e in (lease.relationship_events or []) if e.get("id") != event_id]
+    await db.commit()
+    return _enrich_events(lease.relationship_events)

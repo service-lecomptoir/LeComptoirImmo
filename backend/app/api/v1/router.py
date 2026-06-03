@@ -4,7 +4,7 @@ from app.api.v1 import (
     leases, inspections, payments, letters, notifications,
     avis_echeances, contacts, automation, templates, dashboard,
     tickets, entretiens, messages, proprietaire_perf, offers, subscription,
-    webhook, audit, settings, public, actualisation,
+    webhook, audit, settings, public, actualisation, scoring,
 )
 from app.core.features import require_feature
 
@@ -38,6 +38,7 @@ api_router.include_router(dashboard.router)
 api_router.include_router(proprietaire_perf.router)
 api_router.include_router(tickets.router, dependencies=_feat("incidents"))
 api_router.include_router(entretiens.router, dependencies=_feat("entretiens"))
+api_router.include_router(scoring.router)
 api_router.include_router(messages.router)
 api_router.include_router(offers.router, dependencies=_feat("offres"))
 api_router.include_router(subscription.router)
