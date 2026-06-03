@@ -26,7 +26,7 @@ from app.schemas.payment import (
 from app.services.payment_service import PaymentService
 from app.services.pdf_service import render_template, html_to_pdf
 from app.api.deps import get_current_user as _get_current_user
-from app.api.v1._isolation import gp_lease_ids
+from app.api.v1._isolation import gp_lease_ids, assert_payment_access
 # Allow import from auth for backward compatibility
 get_current_user = _get_current_user
 
@@ -316,18 +316,22 @@ async def create_payment(
 async def get_payment(
     payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(get_current_user),
 ):
-    return await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment)
+    return payment
 
 
 @router.delete("/{payment_id}", status_code=204)
 async def delete_payment(
     payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     """Supprime définitivement un paiement."""
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment, write=True)
     await PaymentService.delete_payment(db, payment_id)
     await db.commit()
 
@@ -339,6 +343,8 @@ async def record_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(Role.COMPTABLE)),
 ):
+    _existing = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, _existing, write=True)
     payment = await PaymentService.record_payment(db, payment_id, data)
     await audit_service.log(
         db, action=audit_service.PAYMENT_RECORD,
@@ -364,6 +370,7 @@ async def validate_declaration(
     from app.core.exceptions import BadRequestException
 
     payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment, write=True)
     if not payment.declared_at:
         raise BadRequestException("Aucune déclaration de paiement à valider pour ce loyer")
 
@@ -422,6 +429,7 @@ async def refuse_declaration(
     from app.core.exceptions import BadRequestException
 
     payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment, write=True)
     if not payment.declared_at:
         raise BadRequestException("Aucune déclaration de paiement à refuser pour ce loyer")
 
@@ -455,8 +463,10 @@ async def refuse_declaration(
 async def cancel_payment(
     payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
+    _existing = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, _existing, write=True)
     payment = await PaymentService.cancel_payment(db, payment_id)
     await db.commit()
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
@@ -470,20 +480,10 @@ async def download_quittance(
     _feat: User = Depends(require_feature("quittances")),
 ):
     from datetime import datetime, timezone
-    from app.models.tenant import Tenant as TenantModel
     payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
 
-    # Locataire : vérifier que c'est son propre paiement
-    role = Role(current_user.role)
-    if role == Role.LOCATAIRE:
-        tenant_res = await db.execute(
-            select(TenantModel).where(TenantModel.user_id == current_user.id)
-        )
-        tenant = tenant_res.scalar_one_or_none()
-        if not tenant or payment.tenant_id != tenant.id:
-            raise HTTPException(status_code=403, detail="Accès non autorisé")
-    elif role not in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO, Role.PROPRIETAIRE, Role.LECTURE, Role.COMPTABLE):
-        raise HTTPException(status_code=403, detail="Accès non autorisé")
+    # Isolation par rôle : locataire→le sien, propriétaire→son bien, mandataire→hors GP.
+    await assert_payment_access(db, current_user, payment)
 
     if payment.status not in (PaymentStatus.PAID, PaymentStatus.PARTIAL):
         from app.core.exceptions import BadRequestException
@@ -650,12 +650,14 @@ async def download_quittance(
 async def send_quittance(
     payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
     _feat: User = Depends(require_feature("quittances")),
 ):
     """Marque la quittance comme envoyée au locataire."""
     from fastapi import HTTPException
     try:
+        _existing = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+        await assert_payment_access(db, current_user, _existing, write=True)
         payment = await PaymentService.send_quittance(db, payment_id)
         await db.commit()
         return {

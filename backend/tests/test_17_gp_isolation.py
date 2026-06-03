@@ -6,8 +6,9 @@ Vérifie que :
   - Un mandataire ne voit pas les données d'un GP et vice versa
   - Un admin voit tout
 
-Note : les endpoints /properties/{id}, /tenants/{id} etc. n'ont pas de contrôle
-d'accès par ID — l'isolation est assurée au niveau des listes uniquement.
+Note : l'isolation est assurée AU NIVEAU DES LISTES (filtrage par périmètre)
+ET au niveau des accès par ID (/properties/{id}, /tenants/{id}, /owners/{id},
+/payments/{id}…) via les garde-fous assert_manager_scope / assert_payment_access.
 """
 import pytest
 from datetime import date
@@ -191,6 +192,51 @@ class TestGPPaymentIsolation:
         assert resp.status_code == 200
         lease_ids_in_payments = {p.get("lease_id") for p in resp.json()["items"]}
         assert gp_ids["lease_id"] not in lease_ids_in_payments
+
+
+# ── Tests isolation par ID (GET/{id}) — garde-fous assert_* ─────────────────────
+
+@pytest.mark.asyncio
+class TestGetByIdIsolation:
+    async def _gp_payment_id(self, client, token):
+        """Génère et retourne l'ID d'un paiement appartenant au gestionnaire `token`."""
+        await _create_full_chain(client, token)
+        await client.post("/api/v1/payments/generate", headers=auth(token),
+                          json={"year": 2026, "month": 9})
+        resp = await client.get("/api/v1/payments", headers=auth(token))
+        assert resp.status_code == 200
+        items = resp.json()["items"]
+        assert items, "aucun paiement généré pour le GP"
+        return items[0]["id"]
+
+    async def test_mandataire_cannot_get_gp_payment_by_id(self, client, gp_token, gestionnaire_token):
+        pid = await self._gp_payment_id(client, gp_token)
+        # Le GP y accède…
+        assert (await client.get(f"/api/v1/payments/{pid}", headers=auth(gp_token))).status_code == 200
+        # …mais pas le mandataire (paiement d'un GP).
+        resp = await client.get(f"/api/v1/payments/{pid}", headers=auth(gestionnaire_token))
+        assert resp.status_code == 403, resp.text
+
+    async def test_gp_cannot_get_other_gp_payment_by_id(self, client, gp_token, gp_token2):
+        pid = await self._gp_payment_id(client, gp_token)
+        resp = await client.get(f"/api/v1/payments/{pid}", headers=auth(gp_token2))
+        assert resp.status_code == 403, resp.text
+
+    async def test_mandataire_cannot_get_gp_property_by_id(self, client, gp_token, gestionnaire_token):
+        ids = await _create_full_chain(client, gp_token)
+        assert (await client.get(f"/api/v1/properties/{ids['prop_id']}", headers=auth(gp_token))).status_code == 200
+        resp = await client.get(f"/api/v1/properties/{ids['prop_id']}", headers=auth(gestionnaire_token))
+        assert resp.status_code == 403, resp.text
+
+    async def test_gp_cannot_get_other_gp_tenant_by_id(self, client, gp_token, gp_token2):
+        ids = await _create_full_chain(client, gp_token)
+        resp = await client.get(f"/api/v1/tenants/{ids['tenant_id']}", headers=auth(gp_token2))
+        assert resp.status_code == 403, resp.text
+
+    async def test_admin_can_get_gp_payment_by_id(self, client, gp_token, admin_token):
+        pid = await self._gp_payment_id(client, gp_token)
+        resp = await client.get(f"/api/v1/payments/{pid}", headers=auth(admin_token))
+        assert resp.status_code == 200, resp.text
 
 
 # ── Tests isolation tickets ────────────────────────────────────────────────────

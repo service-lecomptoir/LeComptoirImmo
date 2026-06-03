@@ -116,3 +116,52 @@ async def assert_manager_scope(db: AsyncSession, user: User, created_by, label: 
             raise ForbiddenException(f"Accès refusé à {label}.")
         return
     raise ForbiddenException(f"Accès refusé à {label}.")
+
+
+async def assert_payment_access(db: AsyncSession, user: User, payment, *, write: bool = False) -> None:
+    """Isolation par rôle d'un paiement (chargé avec `load_relations=True`).
+
+    Périmètre :
+      - admin : tout ;
+      - gestionnaire mandataire / lecture / comptable : tout SAUF paiements d'un GP ;
+      - gestionnaire_proprio : uniquement les siens (created_by) ;
+      - propriétaire (lecture seule) : paiements des biens dont il est propriétaire ;
+      - locataire (lecture seule) : uniquement ses propres paiements.
+
+    `write=True` interdit propriétaire et locataire (actions réservées à la gestion).
+    Lève ForbiddenException sinon.
+    """
+    from app.core.exceptions import ForbiddenException
+
+    role = Role(user.role)
+    if role == Role.ADMIN:
+        return
+
+    created_by = getattr(payment, "created_by", None)
+    lease = getattr(payment, "lease", None)
+    if created_by is None and lease is not None:
+        created_by = getattr(lease, "created_by", None)
+
+    # Rôles de gestion (mandataire + legacy lecture/comptable) : hors GP
+    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
+        gp_ids = await gp_user_ids(db)
+        if created_by not in gp_ids:
+            return
+        raise ForbiddenException("Accès refusé à ce paiement.")
+
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        if created_by is not None and str(created_by) == str(user.id):
+            return
+        raise ForbiddenException("Accès refusé à ce paiement.")
+
+    if not write:
+        if role == Role.PROPRIETAIRE:
+            prop = getattr(lease, "parent_property", None) if lease is not None else None
+            if prop is not None and str(getattr(prop, "owner_user_id", None)) == str(user.id):
+                return
+        if role == Role.LOCATAIRE:
+            tenant = getattr(payment, "tenant", None)
+            if tenant is not None and str(getattr(tenant, "user_id", None)) == str(user.id):
+                return
+
+    raise ForbiddenException("Accès refusé à ce paiement.")
