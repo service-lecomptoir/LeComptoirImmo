@@ -17,7 +17,7 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: 'avis_echeances', label: "Avis d'échéances" },
   { key: 'payments', label: 'Paiements' },
   { key: 'quittances', label: 'Quittances de loyer' },
-  { key: 'actualisation', label: 'Actualisation loyers et charges' },
+  { key: 'actualisation', label: 'Actualisation des loyers et charges' },
   { key: 'automatisation', label: 'Automatisation' },
   { key: 'templates', label: 'Ma papeterie' },
   { key: 'incidents', label: 'Démarche' },
