@@ -18,6 +18,7 @@ class TicketStatus(str, Enum):
     OPEN = "open"
     IN_PROGRESS = "in_progress"
     RESOLVED = "resolved"
+    PENDING_CLOSURE = "pending_closure"   # clôture proposée par le gestionnaire, en attente de validation du demandeur
     CLOSED = "closed"
 
 

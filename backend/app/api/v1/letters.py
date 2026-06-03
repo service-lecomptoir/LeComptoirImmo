@@ -205,13 +205,16 @@ async def versement_direct_caf(
     if prop and prop.owner_id:
         owner = (await db.execute(select(Owner).where(Owner.id == prop.owner_id))).scalar_one_or_none()
 
-    # Bailleur : « Nom et prénom du propriétaire » du profil en priorité, sinon fiche
-    if getattr(current_user, "owner_full_name", None):
-        bailleur_nom, bailleur_prenom = current_user.owner_full_name, ""
-    elif owner and owner.company_name:
+    # Bailleur : formulaire CERFA → champs Nom / Prénom DISTINCTS.
+    # On privilégie la fiche propriétaire (structurée : raison sociale ou nom/prénom),
+    # qui permet de remplir correctement les deux cases. À défaut seulement, on retombe
+    # sur le « Nom et prénom du propriétaire » du profil (texte libre, non scindable).
+    if owner and owner.company_name:
         bailleur_nom, bailleur_prenom = owner.company_name, ""
-    elif owner:
+    elif owner and (owner.last_name or owner.first_name):
         bailleur_nom, bailleur_prenom = owner.last_name or "", owner.first_name or ""
+    elif getattr(current_user, "owner_full_name", None):
+        bailleur_nom, bailleur_prenom = current_user.owner_full_name, ""
     else:
         bailleur_nom, bailleur_prenom = current_user.full_name, ""
     b_rue, b_cp, b_commune = _split_address_parts(owner.address if owner else None)

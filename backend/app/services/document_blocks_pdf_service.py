@@ -9,7 +9,7 @@ from datetime import date as _date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.pdf_service import html_to_pdf, _civil_name
+from app.services.pdf_service import html_to_pdf, _civil_name, tenant_reference
 from app.services.document_render_service import eur
 
 _MOIS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
@@ -26,13 +26,13 @@ def _eur_sym(v) -> str:
 
 def _doc_common_vars(tenant, property_obj, today_fr: str) -> dict:
     """Variables communes (destinataire, bien) — alignées sur l'avis d'échéance."""
-    has_account = bool(getattr(tenant, "user_id", None)) if tenant else False
     return {
         "tenant_name": tenant.full_name if tenant else "",
         "tenant_civil_name": _civil_name(tenant),
         "tenant_email": (getattr(tenant, "email", "") or "") if tenant else "",
         "tenant_phone": (getattr(tenant, "phone", "") or "") if tenant else "",
-        "tenant_login": (getattr(tenant, "email", "") or "") if has_account else "",
+        "tenant_login": tenant_reference(tenant),
+        "tenant_reference": tenant_reference(tenant),
         "property_name": (getattr(property_obj, "name", "") or "") if property_obj else "",
         "property_reference": ((getattr(property_obj, "reference", "") or
                                 getattr(property_obj, "name", "")) if property_obj else ""),

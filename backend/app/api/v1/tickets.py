@@ -224,3 +224,96 @@ async def add_message(
         "is_internal": msg.is_internal,
         "created_at": msg.created_at,
     }
+
+
+# ── Workflow de démarche : clôture proposée / validée / refusée, relance ─────
+from pydantic import BaseModel
+from app.models.tenant import Tenant
+
+
+class _CommentIn(BaseModel):
+    comment: Optional[str] = None
+
+
+class _EditMsgIn(BaseModel):
+    content: str
+
+
+async def _assert_requester(db: AsyncSession, ticket, user: User) -> None:
+    """Le locataire demandeur (ou un admin) uniquement."""
+    if Role(user.role) == Role.ADMIN:
+        return
+    tenant = await db.get(Tenant, ticket.tenant_id)
+    if not tenant or str(getattr(tenant, "user_id", None)) != str(user.id):
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Cette démarche ne vous appartient pas.")
+
+
+@router.post("/{ticket_id}/propose-closure", summary="Proposer la clôture (gestionnaire)")
+async def propose_closure(
+    ticket_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    await TicketService.propose_closure(db, ticket_id, current_user.id)
+    await db.commit()
+    return _enrich_ticket(await TicketService.get(db, ticket_id), include_messages=True)
+
+
+@router.post("/{ticket_id}/validate-closure", summary="Valider la clôture (demandeur)")
+async def validate_closure(
+    ticket_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ticket = await TicketService.get(db, ticket_id)
+    await _assert_requester(db, ticket, current_user)
+    await TicketService.validate_closure(db, ticket_id, current_user.id)
+    await db.commit()
+    return _enrich_ticket(await TicketService.get(db, ticket_id), include_messages=True)
+
+
+@router.post("/{ticket_id}/refuse-closure", summary="Refuser la clôture (demandeur)")
+async def refuse_closure(
+    ticket_id: uuid.UUID,
+    data: _CommentIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ticket = await TicketService.get(db, ticket_id)
+    await _assert_requester(db, ticket, current_user)
+    await TicketService.refuse_closure(db, ticket_id, current_user.id, data.comment)
+    await db.commit()
+    return _enrich_ticket(await TicketService.get(db, ticket_id), include_messages=True)
+
+
+@router.post("/{ticket_id}/relancer", summary="Relancer une démarche (demandeur)")
+async def relancer(
+    ticket_id: uuid.UUID,
+    data: _CommentIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ticket = await TicketService.get(db, ticket_id)
+    await _assert_requester(db, ticket, current_user)
+    await TicketService.relancer(db, ticket_id, current_user.id, data.comment)
+    await db.commit()
+    return _enrich_ticket(await TicketService.get(db, ticket_id), include_messages=True)
+
+
+@router.patch("/{ticket_id}/messages/{message_id}", summary="Modifier son commentaire")
+async def edit_message(
+    ticket_id: uuid.UUID,
+    message_id: uuid.UUID,
+    data: _EditMsgIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    msg = await TicketService.edit_message(db, ticket_id, message_id, current_user.id, data.content)
+    await db.commit()
+    return {
+        "id": msg.id, "ticket_id": msg.ticket_id, "author_id": msg.author_id,
+        "author_name": msg.author.full_name if msg.author else None,
+        "author_role": msg.author.role if msg.author else None,
+        "content": msg.content, "is_internal": msg.is_internal, "created_at": msg.created_at,
+    }

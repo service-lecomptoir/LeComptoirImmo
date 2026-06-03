@@ -64,7 +64,7 @@
   <table class="kv">
     <tr>
       <td style="width:60%;"><span class="lbl">Nom ou raison sociale</span> &nbsp;<span class="val">{{ bailleur_nom }}</span></td>
-      <td><span class="lbl">Prénom</span> &nbsp;<span class="val">{{ bailleur_prenom or '&nbsp;' }}</span></td>
+      <td><span class="lbl">Prénom</span> &nbsp;<span class="val">{{ bailleur_prenom or '' }}</span></td>
     </tr>
     <tr><td colspan="2"><span class="lbl">Adresse</span> &nbsp;<span class="val">{{ bailleur_rue }}</span></td></tr>
     <tr>
@@ -72,10 +72,10 @@
       <td><span class="lbl">Commune</span> &nbsp;<span class="val">{{ bailleur_commune }}</span></td>
     </tr>
     <tr>
-      <td><span class="lbl">N° de téléphone</span> &nbsp;<span class="val">{{ bailleur_phone or '&nbsp;' }}</span></td>
-      <td><span class="lbl">Adresse mail</span> &nbsp;<span class="val">{{ bailleur_email or '&nbsp;' }}</span></td>
+      <td><span class="lbl">N° de téléphone</span> &nbsp;<span class="val">{{ bailleur_phone or '' }}</span></td>
+      <td><span class="lbl">Adresse mail</span> &nbsp;<span class="val">{{ bailleur_email or '' }}</span></td>
     </tr>
-    <tr><td colspan="2"><span class="lbl">N° SIRET</span> &nbsp;<span class="val">{{ bailleur_siret or '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' }}</span></td></tr>
+    <tr><td colspan="2"><span class="lbl">N° SIRET</span> &nbsp;<span class="val">{{ bailleur_siret or '' }}</span></td></tr>
   </table>
   <p style="margin:6px 0;">demande que tous les paiements d'allocation de logement dus à l'allocataire désigné
   ci-dessous me soient versés directement.
@@ -100,7 +100,7 @@
           <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
         </tr></table>
       </td>
-      <td><span class="lbl">N° de sécurité sociale</span> &nbsp;<span class="val">{{ alloc_secu or '&nbsp;' }}</span></td>
+      <td><span class="lbl">N° de sécurité sociale</span> &nbsp;<span class="val">{{ alloc_secu or '' }}</span></td>
     </tr>
   </table>
 
@@ -111,7 +111,7 @@
   <table class="sign">
     <tr>
       <td style="width:54%;">
-        Fait à <span class="val">{{ ville or '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' }}</span>,
+        Fait à <span class="val">{{ ville or '' }}</span>,
         le <span class="val">{{ today }}</span>.
       </td>
       <td style="width:46%;">

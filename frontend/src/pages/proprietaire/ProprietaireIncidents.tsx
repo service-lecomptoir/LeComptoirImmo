@@ -6,8 +6,8 @@ export default function ProprietaireIncidents() {
     <IncidentList
       readOnly
       fetchFn={(params) => ticketsApi.proprietaire(params)}
-      title="Incidents de mes locataires"
-      subtitle="Suivi en lecture seule des demandes et incidents soumis par vos locataires"
+      title="Démarches de mes locataires"
+      subtitle="Suivi en lecture seule des démarches soumises par vos locataires"
     />
   )
 }

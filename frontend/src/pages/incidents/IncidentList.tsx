@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { MessageSquare, Clock, AlertCircle, CheckCircle, XCircle, Send, User, Building2 } from 'lucide-react'
+import { MessageSquare, Clock, AlertCircle, CheckCircle, XCircle, Send, User, Building2, CheckCheck, Pencil } from 'lucide-react'
 import { ticketsApi, type Ticket } from '@/api/tickets'
 import { messagesApi, type ProprietaireMessage, type Conversation } from '@/api/messages'
 import { format } from 'date-fns'
@@ -7,11 +7,15 @@ import { fr } from 'date-fns/locale'
 import { useAuthStore } from '@/store/authStore'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  open:        { label: 'Ouvert',    color: '#D97706', bg: '#FEF3C7', icon: Clock },
-  in_progress: { label: 'En cours',  color: '#2563EB', bg: '#DBEAFE', icon: AlertCircle },
-  resolved:    { label: 'Résolu',    color: '#059669', bg: '#D1FAE5', icon: CheckCircle },
-  closed:      { label: 'Clôturé',   color: '#6B7280', bg: '#F3F4F6', icon: XCircle },
+  open:            { label: 'Ouvert',            color: '#D97706', bg: '#FEF3C7', icon: Clock },
+  in_progress:     { label: 'En cours',          color: '#2563EB', bg: '#DBEAFE', icon: AlertCircle },
+  resolved:        { label: 'Résolu',            color: '#059669', bg: '#D1FAE5', icon: CheckCircle },
+  pending_closure: { label: 'Clôture proposée',  color: '#7C3AED', bg: '#EDE9FE', icon: AlertCircle },
+  closed:          { label: 'Clôturé',           color: '#6B7280', bg: '#F3F4F6', icon: XCircle },
 }
+
+// Statuts modifiables manuellement par le gestionnaire (la clôture passe par le workflow)
+const MANUAL_STATUSES = ['open', 'in_progress', 'resolved'] as const
 
 const CATEGORY_LABELS: Record<string, string> = {
   incident: '🔴 Incident',
@@ -32,6 +36,7 @@ const FILTERS = [
   { value: 'open', label: 'Ouverts' },
   { value: 'in_progress', label: 'En cours' },
   { value: 'resolved', label: 'Résolus' },
+  { value: 'pending_closure', label: 'Clôture proposée' },
   { value: 'closed', label: 'Clôturés' },
 ]
 
@@ -55,6 +60,10 @@ function TicketsTab({
   const [isSending, setIsSending] = useState(false)
   const [newStatus, setNewStatus] = useState<string>('')
   const [statusError, setStatusError] = useState('')
+  const [isActing, setIsActing] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
+  const { user } = useAuthStore()
 
   const listFn: FetchFn = fetchFn ?? ((params) => ticketsApi.list({ ...params, limit: 100 }))
 
@@ -103,6 +112,35 @@ function TicketsTab({
     }
   }
 
+  const handleProposeClosure = async () => {
+    if (!selected) return
+    setIsActing(true)
+    try {
+      await ticketsApi.proposeClosure(selected.id)
+      await loadDetail(selected.id)
+      await load(filter)
+    } catch (e: any) {
+      setStatusError(e?.response?.data?.detail ?? 'Erreur lors de la proposition de clôture')
+      setTimeout(() => setStatusError(''), 4000)
+    } finally { setIsActing(false) }
+  }
+
+  const startEdit = (id: string, content: string) => {
+    setEditingId(id)
+    setEditContent(content)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selected || !editingId || !editContent.trim()) return
+    setIsActing(true)
+    try {
+      await ticketsApi.editMessage(selected.id, editingId, editContent.trim())
+      setEditingId(null)
+      setEditContent('')
+      await loadDetail(selected.id)
+    } finally { setIsActing(false) }
+  }
+
   const openCount = tickets.filter(t => t.status === 'open').length
 
   return (
@@ -129,7 +167,7 @@ function TicketsTab({
             {f.label}
           </button>
         ))}
-        <span className="ml-auto text-sm text-gray-400 self-center">{total} ticket{total > 1 ? 's' : ''}</span>
+        <span className="ml-auto text-sm text-gray-400 self-center">{total} démarche{total > 1 ? 's' : ''}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -141,7 +179,7 @@ function TicketsTab({
             ) : tickets.length === 0 ? (
               <div className="py-12 text-center">
                 <MessageSquare size={32} className="mx-auto mb-2 text-gray-300" />
-                <p className="text-sm text-gray-400">Aucun ticket</p>
+                <p className="text-sm text-gray-400">Aucune démarche</p>
               </div>
             ) : (
               <ul className="divide-y divide-gray-100">
@@ -188,7 +226,7 @@ function TicketsTab({
           {!selected ? (
             <div className="bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center h-64">
               <MessageSquare size={36} className="text-gray-200 mb-3" />
-              <p className="text-sm text-gray-400">Sélectionnez un ticket pour voir les détails</p>
+              <p className="text-sm text-gray-400">Sélectionnez une démarche pour voir les détails</p>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 flex flex-col" style={{ minHeight: '420px' }}>
@@ -211,8 +249,10 @@ function TicketsTab({
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    {readOnly ? (
-                      (() => {
+                    {(() => {
+                      // Statut piloté par le workflow → badge en lecture seule
+                      const isWorkflowStatus = newStatus === 'pending_closure' || newStatus === 'closed'
+                      if (readOnly || isWorkflowStatus) {
                         const sc = STATUS_CONFIG[newStatus] ?? STATUS_CONFIG.open
                         const Icon = sc.icon
                         return (
@@ -221,19 +261,20 @@ function TicketsTab({
                             <Icon size={11} />{sc.label}
                           </span>
                         )
-                      })()
-                    ) : (
-                      <select
-                        value={newStatus}
-                        onChange={e => handleStatusChange(e.target.value)}
-                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
-                        style={{ color: STATUS_CONFIG[newStatus]?.color }}
-                      >
-                        {Object.entries(STATUS_CONFIG).map(([value, cfg]) => (
-                          <option key={value} value={value}>{cfg.label}</option>
-                        ))}
-                      </select>
-                    )}
+                      }
+                      return (
+                        <select
+                          value={newStatus}
+                          onChange={e => handleStatusChange(e.target.value)}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
+                          style={{ color: STATUS_CONFIG[newStatus]?.color }}
+                        >
+                          {MANUAL_STATUSES.map(value => (
+                            <option key={value} value={value}>{STATUS_CONFIG[value].label}</option>
+                          ))}
+                        </select>
+                      )
+                    })()}
                     {statusError && (
                       <p className="text-xs text-red-600 max-w-[180px] text-right">{statusError}</p>
                     )}
@@ -255,6 +296,8 @@ function TicketsTab({
                       : msg.author_role === 'proprietaire'
                       ? 'bg-orange-100 text-orange-700'
                       : 'bg-blue-100 text-blue-700'
+                    const isMine = !!user && String(msg.author_id) === String(user.id)
+                    const isEditing = editingId === msg.id
                     return (
                       <div key={msg.id} className={`flex ${isStaff ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[80%] rounded-xl px-4 py-3 ${isStaff ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
@@ -266,15 +309,71 @@ function TicketsTab({
                               {roleLabel}
                             </span>
                           </div>
-                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                          <p className="text-xs mt-1.5 opacity-60">
-                            {format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm')}
-                          </p>
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <textarea
+                                value={editContent}
+                                onChange={e => setEditContent(e.target.value)}
+                                rows={3}
+                                className="w-full rounded-lg px-2 py-1.5 text-sm text-gray-900 border border-white/40 resize-none"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <button onClick={() => setEditingId(null)}
+                                  className="px-2.5 py-1 text-xs rounded-md bg-white/20 hover:bg-white/30">
+                                  Annuler
+                                </button>
+                                <button onClick={handleSaveEdit} disabled={isActing || !editContent.trim()}
+                                  className="px-2.5 py-1 text-xs rounded-md bg-white text-blue-700 font-semibold disabled:opacity-50">
+                                  Enregistrer
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1.5 opacity-60">
+                            <span className="text-xs">{format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm')}</span>
+                            {isMine && !isEditing && !readOnly && selected.status !== 'closed' && (
+                              <button
+                                onClick={() => startEdit(msg.id, msg.content)}
+                                className="flex items-center gap-1 text-xs hover:opacity-100"
+                                title="Modifier mon commentaire"
+                              >
+                                <Pencil size={11} /> Modifier
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )
                   })}
               </div>
+
+              {/* Barre d'action gestionnaire : proposer la clôture */}
+              {!readOnly && selected.status !== 'closed' && selected.status !== 'pending_closure' && (
+                <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-2">
+                  <span className="text-xs text-gray-500">
+                    La démarche vous semble traitée ? Proposez la clôture au locataire.
+                  </span>
+                  <button
+                    onClick={handleProposeClosure}
+                    disabled={isActing}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 flex-shrink-0"
+                    style={{ background: '#7C3AED' }}
+                  >
+                    <CheckCheck size={13} />
+                    Proposer la clôture
+                  </button>
+                </div>
+              )}
+              {!readOnly && selected.status === 'pending_closure' && (
+                <div className="px-5 py-3 border-t border-gray-100 bg-purple-50 flex items-center gap-2">
+                  <CheckCheck size={14} style={{ color: '#7C3AED' }} />
+                  <span className="text-xs text-purple-700">
+                    Clôture proposée — en attente de la validation du locataire.
+                  </span>
+                </div>
+              )}
 
               {/* Réponse */}
               {!readOnly && selected.status !== 'closed' && (
@@ -492,8 +591,8 @@ function ProprietaireMessagesTab() {
 export default function IncidentList({
   readOnly = false,
   fetchFn,
-  title = 'Incidents & messages',
-  subtitle = 'Messages et demandes des locataires',
+  title = 'Démarche',
+  subtitle = 'Démarches des locataires et messages des propriétaires',
   hideProprietaireTab = false,
 }: {
   readOnly?: boolean
@@ -527,7 +626,7 @@ export default function IncidentList({
             }`}
           >
             <MessageSquare size={15} />
-            Tickets locataires
+            Démarches des locataires
           </button>
           <button
             onClick={() => setActiveTab('messages')}

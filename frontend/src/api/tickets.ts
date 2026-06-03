@@ -5,7 +5,7 @@ export interface Ticket {
   title: string
   description: string
   category: 'incident' | 'question' | 'demande' | 'autre'
-  status: 'open' | 'in_progress' | 'resolved' | 'closed'
+  status: 'open' | 'in_progress' | 'resolved' | 'pending_closure' | 'closed'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   tenant_id: string
   tenant_name?: string
@@ -54,4 +54,16 @@ export const ticketsApi = {
 
   proprietaire: (params?: { status?: string }) =>
     apiClient.get<{ total: number; items: Ticket[] }>('/tickets/proprietaire', { params }),
+
+  // Workflow de démarche
+  proposeClosure: (id: string) =>
+    apiClient.post<Ticket>(`/tickets/${id}/propose-closure`),
+  validateClosure: (id: string) =>
+    apiClient.post<Ticket>(`/tickets/${id}/validate-closure`),
+  refuseClosure: (id: string, comment?: string) =>
+    apiClient.post<Ticket>(`/tickets/${id}/refuse-closure`, { comment }),
+  relancer: (id: string, comment?: string) =>
+    apiClient.post<Ticket>(`/tickets/${id}/relancer`, { comment }),
+  editMessage: (ticketId: string, messageId: string, content: string) =>
+    apiClient.patch<TicketMessage>(`/tickets/${ticketId}/messages/${messageId}`, { content }),
 }

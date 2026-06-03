@@ -42,6 +42,18 @@ async def lifespan(app: FastAPI):
     # ── Migrations légères (colonnes manquantes) ───────────────────────────────
     await _apply_column_migrations()
 
+    # ── Valeur d'enum « pending_closure » (clôture proposée) — en AUTOCOMMIT car
+    # ALTER TYPE ... ADD VALUE ne doit pas s'exécuter dans une transaction. ──────
+    try:
+        from sqlalchemy import text as _text
+        async with engine.connect() as conn:
+            conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
+            await conn.execute(_text(
+                "ALTER TYPE ticket_status_enum ADD VALUE IF NOT EXISTS 'pending_closure'"))
+        logger.info("Enum ticket_status_enum : valeur pending_closure ✓")
+    except Exception as _exc:
+        logger.warning(f"Migration enum pending_closure ignorée : {_exc!r}")
+
     # ── Modèles par défaut : seed des comptes existants + refonte de mise en page ─
     try:
         from app.services.document_template_service import (

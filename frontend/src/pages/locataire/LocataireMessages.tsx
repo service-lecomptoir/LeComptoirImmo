@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
-import { MessageSquare, Plus, Clock, CheckCircle, AlertCircle, XCircle, Send } from 'lucide-react'
+import { MessageSquare, Plus, Clock, CheckCircle, AlertCircle, XCircle, Send, Check, X, RotateCcw, Pencil } from 'lucide-react'
 import { ticketsApi, type Ticket } from '@/api/tickets'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  open:        { label: 'Ouvert',       color: '#D97706', bg: '#FEF3C7', icon: Clock },
-  in_progress: { label: 'En cours',     color: '#2563EB', bg: '#DBEAFE', icon: AlertCircle },
-  resolved:    { label: 'Résolu',       color: '#059669', bg: '#D1FAE5', icon: CheckCircle },
-  closed:      { label: 'Clôturé',      color: '#6B7280', bg: '#F3F4F6', icon: XCircle },
+  open:            { label: 'Ouvert',            color: '#D97706', bg: '#FEF3C7', icon: Clock },
+  in_progress:     { label: 'En cours',          color: '#2563EB', bg: '#DBEAFE', icon: AlertCircle },
+  resolved:        { label: 'Résolu',            color: '#059669', bg: '#D1FAE5', icon: CheckCircle },
+  pending_closure: { label: 'Clôture à valider', color: '#7C3AED', bg: '#EDE9FE', icon: AlertCircle },
+  closed:          { label: 'Clôturé',           color: '#6B7280', bg: '#F3F4F6', icon: XCircle },
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -32,6 +33,9 @@ export default function LocataireMessages() {
   const [showForm, setShowForm] = useState(false)
   const [reply, setReply] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [isActing, setIsActing] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
 
   // Nouveau ticket
   const [form, setForm] = useState({ title: '', description: '', category: 'incident', priority: 'medium' })
@@ -77,12 +81,62 @@ export default function LocataireMessages() {
     } finally { setIsSending(false) }
   }
 
+  const refreshAll = async (id: string) => {
+    await loadDetail(id)
+    await load()
+  }
+
+  const handleValidate = async () => {
+    if (!selected) return
+    setIsActing(true)
+    try {
+      await ticketsApi.validateClosure(selected.id)
+      await refreshAll(selected.id)
+    } finally { setIsActing(false) }
+  }
+
+  const handleRefuse = async () => {
+    if (!selected) return
+    const motif = window.prompt('Pourquoi refusez-vous la clôture de cette démarche ? (facultatif)') ?? ''
+    setIsActing(true)
+    try {
+      await ticketsApi.refuseClosure(selected.id, motif.trim() || undefined)
+      await refreshAll(selected.id)
+    } finally { setIsActing(false) }
+  }
+
+  const handleRelancer = async () => {
+    if (!selected) return
+    const motif = window.prompt('Ajoutez un message à votre relance (facultatif) :') ?? ''
+    setIsActing(true)
+    try {
+      await ticketsApi.relancer(selected.id, motif.trim() || undefined)
+      await refreshAll(selected.id)
+    } finally { setIsActing(false) }
+  }
+
+  const startEdit = (id: string, content: string) => {
+    setEditingId(id)
+    setEditContent(content)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selected || !editingId || !editContent.trim()) return
+    setIsActing(true)
+    try {
+      await ticketsApi.editMessage(selected.id, editingId, editContent.trim())
+      setEditingId(null)
+      setEditContent('')
+      await loadDetail(selected.id)
+    } finally { setIsActing(false) }
+  }
+
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mes messages</h1>
-          <p className="text-gray-500 text-sm mt-1">Communiquez avec votre gestionnaire</p>
+          <h1 className="text-2xl font-bold text-gray-900">Mes démarches</h1>
+          <p className="text-gray-500 text-sm mt-1">Faites une demande à votre gestionnaire et suivez son évolution</p>
         </div>
         <button
           onClick={() => { setShowForm(true); setSelected(null) }}
@@ -90,14 +144,14 @@ export default function LocataireMessages() {
           style={{ background: '#0D2F5C' }}
         >
           <Plus size={16} />
-          Nouveau message
+          Nouvelle démarche
         </button>
       </div>
 
       {/* Formulaire nouveau ticket */}
       {showForm && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-          <h2 className="font-semibold text-gray-900 mb-4">Nouveau message</h2>
+          <h2 className="font-semibold text-gray-900 mb-4">Nouvelle démarche</h2>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -172,8 +226,8 @@ export default function LocataireMessages() {
             ) : tickets.length === 0 ? (
               <div className="py-12 text-center">
                 <MessageSquare size={32} className="mx-auto mb-2 text-gray-300" />
-                <p className="text-sm text-gray-400">Aucun message</p>
-                <p className="text-xs text-gray-400 mt-1">Cliquez sur "Nouveau message" pour en créer un</p>
+                <p className="text-sm text-gray-400">Aucune démarche</p>
+                <p className="text-xs text-gray-400 mt-1">Cliquez sur "Nouvelle démarche" pour en créer une</p>
               </div>
             ) : (
               <ul className="divide-y divide-gray-100">
@@ -215,7 +269,7 @@ export default function LocataireMessages() {
           {!selected ? (
             <div className="bg-white rounded-xl border border-gray-200 flex flex-col items-center justify-center h-64">
               <MessageSquare size={36} className="text-gray-200 mb-3" />
-              <p className="text-sm text-gray-400">Sélectionnez un message pour lire la conversation</p>
+              <p className="text-sm text-gray-400">Sélectionnez une démarche pour suivre son évolution</p>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-gray-200 flex flex-col" style={{ minHeight: '400px' }}>
@@ -246,20 +300,93 @@ export default function LocataireMessages() {
                 </div>
               </div>
 
+              {/* Barre d'actions de la démarche */}
+              {selected.status !== 'closed' && (
+                <div className="px-5 py-3 border-b border-gray-100 bg-gray-50 flex flex-wrap items-center gap-2">
+                  {selected.status === 'pending_closure' ? (
+                    <>
+                      <span className="text-xs text-gray-600 mr-1">
+                        Votre gestionnaire propose de clôturer cette démarche :
+                      </span>
+                      <button
+                        onClick={handleValidate}
+                        disabled={isActing}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50"
+                        style={{ background: '#059669' }}
+                      >
+                        <Check size={13} />
+                        Valider la clôture
+                      </button>
+                      <button
+                        onClick={handleRefuse}
+                        disabled={isActing}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                        style={{ color: '#DC2626', background: '#FEE2E2' }}
+                      >
+                        <X size={13} />
+                        Refuser la clôture
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleRelancer}
+                      disabled={isActing}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                      style={{ color: '#0D2F5C', background: '#E0E7FF' }}
+                    >
+                      <RotateCcw size={13} />
+                      Relancer
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Messages */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                 {(selected.messages ?? []).map(msg => {
                   const isMe = msg.author_role === 'locataire'
+                  const isEditing = editingId === msg.id
                   return (
                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] rounded-xl px-4 py-3 ${isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
                         {!isMe && (
                           <p className="text-xs font-semibold mb-1 text-gray-500">{msg.author_name ?? 'Gestionnaire'}</p>
                         )}
-                        <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                        <p className={`text-xs mt-1.5 ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
-                          {format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm')}
-                        </p>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editContent}
+                              onChange={e => setEditContent(e.target.value)}
+                              rows={3}
+                              className="w-full rounded-lg px-2 py-1.5 text-sm text-gray-900 border border-white/40 resize-none"
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <button onClick={() => setEditingId(null)}
+                                className="px-2.5 py-1 text-xs rounded-md bg-white/20 hover:bg-white/30">
+                                Annuler
+                              </button>
+                              <button onClick={handleSaveEdit} disabled={isActing || !editContent.trim()}
+                                className="px-2.5 py-1 text-xs rounded-md bg-white text-blue-700 font-semibold disabled:opacity-50">
+                                Enregistrer
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                        )}
+                        <div className={`flex items-center gap-2 mt-1.5 ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
+                          <span className="text-xs">{format(new Date(msg.created_at), 'dd/MM/yyyy HH:mm')}</span>
+                          {isMe && !isEditing && selected.status !== 'closed' && (
+                            <button
+                              onClick={() => startEdit(msg.id, msg.content)}
+                              className="flex items-center gap-1 text-xs hover:text-white transition-colors"
+                              title="Modifier mon commentaire"
+                            >
+                              <Pencil size={11} />
+                              Modifier
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )

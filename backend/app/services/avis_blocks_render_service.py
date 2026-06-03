@@ -118,7 +118,7 @@ def default_avis_blocks() -> list[dict]:
                            "{{tenant_phone}}", "{{tenant_email}}"]},
                 {"title": "VOS RÉFÉRENCES CLIENT", "icon": "references",
                  "lines": ["Référence du bien : {{property_reference}}",
-                           "{{#if tenant_login}}Identifiant locataire : {{tenant_login}}{{/if}}"]},
+                           "Identifiant locataire : {{tenant_reference}}"]},
                 {"title": "VOTRE AGENCE", "icon": "agency",
                  "lines": ["{{company_name}}", "{{company_address}}"]},
                 {"title": "VOS LOTS", "icon": "lots",

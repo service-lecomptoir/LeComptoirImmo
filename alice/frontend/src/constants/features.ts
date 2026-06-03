@@ -20,7 +20,7 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: 'actualisation', label: 'Actualisation loyers et charges' },
   { key: 'automatisation', label: 'Automatisation' },
   { key: 'templates', label: 'Ma papeterie' },
-  { key: 'incidents', label: 'Messages et Incidents' },
+  { key: 'incidents', label: 'Démarche' },
   { key: 'entretiens', label: 'Entretiens' },
   { key: 'contacts', label: "Carnet d'adresses" },
   { key: 'offres', label: 'Offres & Services' },

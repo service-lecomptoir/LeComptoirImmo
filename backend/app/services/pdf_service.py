@@ -154,6 +154,20 @@ _CIVILITY_SHORT = {
 }
 
 
+def tenant_reference(tenant) -> str:
+    """Identifiant locataire stable et lisible (ex. « 2B12C23A »), dérivé de
+    l'identifiant unique du locataire en base (UUID). Vide si pas de locataire."""
+    if not tenant:
+        return ""
+    tid = getattr(tenant, "id", None)
+    if not tid:
+        return ""
+    try:
+        return tid.hex[:8].upper()
+    except AttributeError:
+        return str(tid).replace("-", "")[:8].upper()
+
+
 def _civil_name(tenant) -> str:
     """Nom du destinataire « façon Foncia » : civilité + prénom + NOM, en majuscules.
     Ex. « M JOHNNY MONERVILLE ». Vide si pas de locataire."""
@@ -249,12 +263,10 @@ class AvisEcheancePDFService:
             "period_range": avis_full.period_range_label,
             "tenant_email": getattr(avis_full.tenant, "email", "") if getattr(avis_full, "tenant", None) else "",
             "tenant_phone": getattr(avis_full.tenant, "phone", "") if getattr(avis_full, "tenant", None) else "",
-            # Identifiant locataire : l'email, uniquement si un compte locataire existe.
-            "tenant_login": (
-                getattr(avis_full.tenant, "email", "") or ""
-                if getattr(avis_full, "tenant", None) and getattr(avis_full.tenant, "user_id", None)
-                else ""
-            ),
+            # Identifiant locataire : code stable dérivé de l'UUID en base (ex. « 2B12C23A ».
+            # tenant_login conservé comme alias rétro-compatible des templates enregistrés.
+            "tenant_login": tenant_reference(getattr(avis_full, "tenant", None)),
+            "tenant_reference": tenant_reference(getattr(avis_full, "tenant", None)),
             "property_reference": (getattr(property_obj, "reference", "") or
                                    getattr(property_obj, "name", "")) if property_obj else "",
             # Nom du destinataire « façon Foncia » : civilité + prénom + NOM (majuscules).

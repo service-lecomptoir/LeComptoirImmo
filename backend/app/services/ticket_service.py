@@ -137,6 +137,104 @@ class TicketService:
         await db.refresh(msg, ["author"])
         return msg
 
+    # ── Workflow de démarche : proposition / validation / refus de clôture, relance ──
+    @staticmethod
+    async def _notify(db: AsyncSession, user_id, title: str, message: str, ticket_id) -> None:
+        if not user_id:
+            return
+        from app.models.notification import Notification, NotificationType, NotificationPriority
+        db.add(Notification(
+            title=title, message=message,
+            notification_type=NotificationType.SYSTEME, priority=NotificationPriority.NORMAL,
+            entity_type="ticket", entity_id=ticket_id, user_id=user_id,
+        ))
+
+    @staticmethod
+    async def _tenant_links(db: AsyncSession, ticket: Ticket):
+        """(user_id du locataire, gestionnaire créateur du locataire)."""
+        t = await db.get(Tenant, ticket.tenant_id)
+        return getattr(t, "user_id", None), getattr(t, "created_by", None)
+
+    @staticmethod
+    async def _system_comment(db, ticket_id, author_id, content):
+        await TicketService.add_message(
+            db, ticket_id, TicketMessageCreate(content=content, is_internal=False), author_id)
+
+    @staticmethod
+    async def propose_closure(db: AsyncSession, ticket_id: uuid.UUID, author_id: uuid.UUID) -> Ticket:
+        ticket = await TicketService.get(db, ticket_id)
+        ticket.status = TicketStatus.PENDING_CLOSURE
+        await TicketService._system_comment(db, ticket_id, author_id,
+            "Le gestionnaire propose la clôture de cette démarche.")
+        tu, _ = await TicketService._tenant_links(db, ticket)
+        await TicketService._notify(db, tu, "Clôture proposée",
+            f"Le gestionnaire propose de clôturer la démarche « {ticket.title} ». "
+            f"Vous pouvez la valider ou la refuser.", ticket.id)
+        await db.flush()
+        return ticket
+
+    @staticmethod
+    async def validate_closure(db: AsyncSession, ticket_id: uuid.UUID, author_id: uuid.UUID) -> Ticket:
+        ticket = await TicketService.get(db, ticket_id)
+        ticket.status = TicketStatus.CLOSED
+        if not ticket.closed_at:
+            ticket.closed_at = datetime.utcnow()
+        await TicketService._system_comment(db, ticket_id, author_id,
+            "Le demandeur a validé la clôture de la démarche.")
+        _, mgr = await TicketService._tenant_links(db, ticket)
+        await TicketService._notify(db, ticket.assigned_to_id or mgr, "Clôture validée",
+            f"La démarche « {ticket.title} » a été clôturée par le demandeur.", ticket.id)
+        await db.flush()
+        return ticket
+
+    @staticmethod
+    async def refuse_closure(db: AsyncSession, ticket_id: uuid.UUID, author_id: uuid.UUID,
+                             comment: Optional[str] = None) -> Ticket:
+        ticket = await TicketService.get(db, ticket_id)
+        ticket.status = TicketStatus.IN_PROGRESS
+        ticket.closed_at = None
+        txt = "Le demandeur a refusé la clôture de la démarche."
+        if comment:
+            txt += f" Motif : {comment}"
+        await TicketService._system_comment(db, ticket_id, author_id, txt)
+        _, mgr = await TicketService._tenant_links(db, ticket)
+        await TicketService._notify(db, ticket.assigned_to_id or mgr, "Clôture refusée",
+            f"Le demandeur a refusé la clôture de la démarche « {ticket.title} ».", ticket.id)
+        await db.flush()
+        return ticket
+
+    @staticmethod
+    async def relancer(db: AsyncSession, ticket_id: uuid.UUID, author_id: uuid.UUID,
+                       comment: Optional[str] = None) -> Ticket:
+        ticket = await TicketService.get(db, ticket_id)
+        if ticket.status in (TicketStatus.RESOLVED, TicketStatus.PENDING_CLOSURE):
+            ticket.status = TicketStatus.IN_PROGRESS
+            ticket.closed_at = None
+        txt = "Relance du demandeur."
+        if comment:
+            txt += f" {comment}"
+        await TicketService._system_comment(db, ticket_id, author_id, txt)
+        _, mgr = await TicketService._tenant_links(db, ticket)
+        await TicketService._notify(db, ticket.assigned_to_id or mgr, "Relance d'une démarche",
+            f"Le demandeur a relancé la démarche « {ticket.title} ».", ticket.id)
+        await db.flush()
+        return ticket
+
+    @staticmethod
+    async def edit_message(db: AsyncSession, ticket_id: uuid.UUID, message_id: uuid.UUID,
+                           author_id: uuid.UUID, content: str) -> TicketMessage:
+        result = await db.execute(select(TicketMessage).where(
+            TicketMessage.id == message_id, TicketMessage.ticket_id == ticket_id))
+        msg = result.scalar_one_or_none()
+        if not msg:
+            raise NotFoundException("Message", str(message_id))
+        if str(msg.author_id) != str(author_id):
+            raise BadRequestException("Vous ne pouvez modifier que vos propres commentaires.")
+        msg.content = content
+        await db.flush()
+        await db.refresh(msg, ["author"])
+        return msg
+
     @staticmethod
     async def count_open(db: AsyncSession) -> int:
         result = await db.execute(
