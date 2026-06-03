@@ -163,7 +163,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
           <h1 className="text-2xl font-bold text-gray-900">Entretiens & maintenance</h1>
           <p className="text-gray-500 text-sm mt-1">Planification, prestataires et suivi</p>
         </div>
-        {!readOnly && (
+        {!readOnly && tab === 'liste' && (
           <button
             onClick={() => { setShowForm(true); setEditId(null); setForm(DEFAULT_FORM) }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
