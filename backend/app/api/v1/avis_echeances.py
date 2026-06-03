@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
-from app.api.v1._isolation import gp_lease_ids
+from app.api.v1._isolation import gp_lease_ids, assert_avis_access
 from app.core.permissions import Role
 from app.models.user import User
 from app.models.lease import Lease
@@ -241,13 +241,8 @@ async def get_avis(
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    # Contrôle d'accès
-    if current_user.role == Role.LOCATAIRE:
-        tenant = (await db.execute(
-            select(Tenant).where(Tenant.user_id == current_user.id)
-        )).scalar_one_or_none()
-        if not tenant or avis.tenant_id != tenant.id:
-            raise HTTPException(status_code=403, detail="Accès non autorisé")
+    # Isolation par rôle : locataire→le sien, propriétaire→son bien, mandataire→hors GP.
+    await assert_avis_access(db, current_user, avis)
 
     return _avis_to_summary(avis)
 
@@ -261,6 +256,7 @@ async def mark_sent(
     """Marque un avis comme envoyé."""
     _require_manager(current_user)
     try:
+        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
         avis = await AvisEcheanceService.mark_sent(db, avis_id)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -278,6 +274,7 @@ async def mark_acquitte(
     """Marque un avis comme acquitté (loyer reçu)."""
     _require_manager(current_user)
     try:
+        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
         avis = await AvisEcheanceService.mark_acquitte(db, avis_id)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -296,6 +293,7 @@ async def delete_avis(
     _require_manager(current_user)
     try:
         avis = await AvisEcheanceService.get_by_id(db, avis_id)
+        await assert_avis_access(db, current_user, avis, write=True)
         if avis.status != "brouillon":
             raise HTTPException(
                 status_code=400,
@@ -317,6 +315,7 @@ async def patch_avis(
     """Modifie les montants, la date d'échéance ou les notes d'un avis."""
     _require_manager(current_user)
     try:
+        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
         avis = await AvisEcheanceService.patch(
             db, avis_id,
             amount_rent=body.amount_rent,
@@ -341,6 +340,7 @@ async def relancer_avis(
     """Remet un avis en brouillon pour le modifier et le renvoyer."""
     _require_manager(current_user)
     try:
+        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
         avis = await AvisEcheanceService.relancer(db, avis_id)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -359,6 +359,7 @@ async def patch_apl(
     """Modifie le montant APL d'un avis existant (recalcule total + paiement lié)."""
     _require_manager(current_user)
     try:
+        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
         avis = await AvisEcheanceService.update_apl(db, avis_id, body.apl_amount)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -379,13 +380,8 @@ async def download_pdf(
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    # Contrôle d'accès locataire
-    if current_user.role == Role.LOCATAIRE:
-        tenant = (await db.execute(
-            select(Tenant).where(Tenant.user_id == current_user.id)
-        )).scalar_one_or_none()
-        if not tenant or avis.tenant_id != tenant.id:
-            raise HTTPException(status_code=403, detail="Accès non autorisé")
+    # Isolation par rôle (locataire→le sien, propriétaire→son bien, mandataire→hors GP).
+    await assert_avis_access(db, current_user, avis)
 
     from app.services.pdf_service import AvisEcheancePDFService
     from fastapi.responses import Response

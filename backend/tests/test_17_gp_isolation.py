@@ -238,6 +238,31 @@ class TestGetByIdIsolation:
         resp = await client.get(f"/api/v1/payments/{pid}", headers=auth(admin_token))
         assert resp.status_code == 200, resp.text
 
+    async def _gp_avis_id(self, client, token):
+        """Génère et retourne l'ID d'un avis d'échéance appartenant au gestionnaire `token`."""
+        ids = await _create_full_chain(client, token)
+        gen = await client.post("/api/v1/avis-echeances/generate", headers=auth(token), json={
+            "lease_id": ids["lease_id"], "period_year": 2026, "period_month": 8,
+        })
+        assert gen.status_code in (200, 201), gen.text
+        return gen.json()["id"]
+
+    async def test_mandataire_cannot_get_gp_avis_by_id(self, client, gp_token, gestionnaire_token):
+        aid = await self._gp_avis_id(client, gp_token)
+        assert (await client.get(f"/api/v1/avis-echeances/{aid}", headers=auth(gp_token))).status_code == 200
+        resp = await client.get(f"/api/v1/avis-echeances/{aid}", headers=auth(gestionnaire_token))
+        assert resp.status_code == 403, resp.text
+
+    async def test_gp_cannot_get_other_gp_avis_by_id(self, client, gp_token, gp_token2):
+        aid = await self._gp_avis_id(client, gp_token)
+        resp = await client.get(f"/api/v1/avis-echeances/{aid}", headers=auth(gp_token2))
+        assert resp.status_code == 403, resp.text
+
+    async def test_mandataire_cannot_download_gp_avis_pdf(self, client, gp_token, gestionnaire_token):
+        aid = await self._gp_avis_id(client, gp_token)
+        resp = await client.get(f"/api/v1/avis-echeances/{aid}/pdf", headers=auth(gestionnaire_token))
+        assert resp.status_code == 403, resp.text
+
 
 # ── Tests isolation tickets ────────────────────────────────────────────────────
 

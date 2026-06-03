@@ -165,3 +165,43 @@ async def assert_payment_access(db: AsyncSession, user: User, payment, *, write:
                 return
 
     raise ForbiddenException("Accès refusé à ce paiement.")
+
+
+async def assert_avis_access(db: AsyncSession, user: User, avis, *, write: bool = False) -> None:
+    """Isolation par rôle d'un avis d'échéance (chargé avec ses relations
+    `tenant` et `lease.parent_property`).
+
+    Mêmes règles que les paiements (l'avis n'a pas de `created_by` propre :
+    on s'appuie sur `lease.created_by`).
+    """
+    from app.core.exceptions import ForbiddenException
+
+    role = Role(user.role)
+    if role == Role.ADMIN:
+        return
+
+    lease = getattr(avis, "lease", None)
+    created_by = getattr(lease, "created_by", None) if lease is not None else None
+
+    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
+        gp_ids = await gp_user_ids(db)
+        if created_by not in gp_ids:
+            return
+        raise ForbiddenException("Accès refusé à cet avis d'échéance.")
+
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        if created_by is not None and str(created_by) == str(user.id):
+            return
+        raise ForbiddenException("Accès refusé à cet avis d'échéance.")
+
+    if not write:
+        if role == Role.PROPRIETAIRE:
+            prop = getattr(lease, "parent_property", None) if lease is not None else None
+            if prop is not None and str(getattr(prop, "owner_user_id", None)) == str(user.id):
+                return
+        if role == Role.LOCATAIRE:
+            tenant = getattr(avis, "tenant", None)
+            if tenant is not None and str(getattr(tenant, "user_id", None)) == str(user.id):
+                return
+
+    raise ForbiddenException("Accès refusé à cet avis d'échéance.")
