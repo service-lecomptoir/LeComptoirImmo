@@ -205,16 +205,20 @@ async def versement_direct_caf(
     if prop and prop.owner_id:
         owner = (await db.execute(select(Owner).where(Owner.id == prop.owner_id))).scalar_one_or_none()
 
-    # Bailleur : formulaire CERFA → champs Nom / Prénom DISTINCTS.
-    # On privilégie la fiche propriétaire (structurée : raison sociale ou nom/prénom),
-    # qui permet de remplir correctement les deux cases. À défaut seulement, on retombe
-    # sur le « Nom et prénom du propriétaire » du profil (texte libre, non scindable).
-    if owner and owner.company_name:
+    # Bailleur : c'est le « Nom et prénom du propriétaire » du profil (owner_full_name),
+    # source de vérité commune au bail, à l'attestation de loyer et au tiers payant —
+    # PAS le nom de la résidence (current_user.full_name) ni la raison sociale de fiche.
+    # Le CERFA a deux cases distinctes : on scinde « Nom et prénom » → 1er mot = Nom,
+    # le reste = Prénom (le bailleur vérifie/corrige avant signature).
+    prof_name = (getattr(current_user, "owner_full_name", None) or "").strip()
+    if prof_name:
+        _toks = prof_name.split()
+        bailleur_nom = _toks[0]
+        bailleur_prenom = " ".join(_toks[1:])
+    elif owner and owner.company_name:
         bailleur_nom, bailleur_prenom = owner.company_name, ""
     elif owner and (owner.last_name or owner.first_name):
         bailleur_nom, bailleur_prenom = owner.last_name or "", owner.first_name or ""
-    elif getattr(current_user, "owner_full_name", None):
-        bailleur_nom, bailleur_prenom = current_user.owner_full_name, ""
     else:
         bailleur_nom, bailleur_prenom = current_user.full_name, ""
     b_rue, b_cp, b_commune = _split_address_parts(owner.address if owner else None)

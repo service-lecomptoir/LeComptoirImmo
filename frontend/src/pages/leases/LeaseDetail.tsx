@@ -206,7 +206,7 @@ export default function LeaseDetail() {
     value ? (
       <div className="flex justify-between items-start py-2 border-b border-gray-50 last:border-0">
         <span className="text-xs text-gray-500">{label}</span>
-        <span className="text-sm font-medium text-gray-900 text-right max-w-[60%]">{value}</span>
+        <span className="text-sm font-medium text-gray-900 text-right max-w-[60%] whitespace-pre-line leading-tight">{value}</span>
       </div>
     ) : null
 

@@ -69,7 +69,7 @@
     <span class="it">— je soussigné(e)</span></div>
   <table class="kv">
     <tr><td colspan="2"><span class="lbl">Nom et prénom ou raison sociale</span> &nbsp;<span class="val">{{ bailleur_name }}</span></td></tr>
-    <tr><td colspan="2"><span class="lbl">Adresse</span> &nbsp;<span class="val">{{ bailleur_addr1 }}{% if bailleur_addr2 %} &mdash; {{ bailleur_addr2 }}{% endif %}</span></td></tr>
+    <tr><td colspan="2"><span class="lbl">Adresse</span> &nbsp;<span class="val">{{ bailleur_addr1 }}{% if bailleur_addr2 %}<br>{{ bailleur_addr2 }}{% endif %}</span></td></tr>
     <tr>
       <td style="width:52%;"><span class="lbl">N° de téléphone</span> &nbsp;<span class="val">{{ bailleur_phone or '' }}</span></td>
       <td><span class="lbl">Adresse mail</span> &nbsp;<span class="val">{{ bailleur_email or '' }}</span></td>
@@ -80,7 +80,7 @@
   <p class="item">certifie sur l'honneur que M. ou Mme <span class="val">{{ tenant_name }}</span>{% if tenant2_name %}
     et M. ou Mme <span class="val">{{ tenant2_name }}</span>{% endif %}
     est (sont) locataire(s) en titre depuis le <span class="val">{{ start_date }}</span> du logement situé :
-    <span class="val">{{ logement_street }}{% if logement_cpville %} &mdash; {{ logement_cpville }}{% endif %}</span></p>
+    <span class="val">{{ logement_street }}{% if logement_cpville %}<br>{{ logement_cpville }}{% endif %}</span></p>
 
   <div class="sec">&#9632; Le logement</div>
 

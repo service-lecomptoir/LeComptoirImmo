@@ -340,7 +340,7 @@ export default function PropertyList() {
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-900 truncate">{prop.name}</p>
                   {(prop.full_address || prop.city) && (
-                    <p className="text-xs text-gray-500 truncate">{prop.full_address || prop.city}</p>
+                    <p className="text-xs text-gray-500 whitespace-pre-line leading-tight">{prop.full_address || prop.city}</p>
                   )}
                 </div>
               </div>

@@ -68,9 +68,9 @@ export default function PropertyDetail() {
               dot
             />
           </div>
-          <div className="flex items-center gap-1 text-sm text-gray-500 mt-0.5">
-            <MapPin size={13} />
-            <span>{property.full_address}</span>
+          <div className="flex items-start gap-1 text-sm text-gray-500 mt-0.5">
+            <MapPin size={13} className="mt-0.5 shrink-0" />
+            <span className="whitespace-pre-line leading-tight">{property.full_address}</span>
           </div>
         </div>
         <div className="flex gap-2">

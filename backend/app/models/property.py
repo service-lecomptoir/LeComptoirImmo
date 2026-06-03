@@ -110,8 +110,11 @@ class Property(Base, TimestampMixin):
 
     @property
     def full_address(self) -> str:
-        parts = [self.address, self.zip_code, self.city]
-        return ", ".join(p for p in parts if p)
+        """Adresse sur 2 lignes, SANS virgule : « rue » puis « CP Ville ».
+        Le saut de ligne `\\n` est rendu via `white-space: pre-line` (UI) ou `<br/>` (PDF)."""
+        line1 = (self.address or "").strip()
+        line2 = " ".join(p for p in (self.zip_code, self.city) if p and p.strip())
+        return "\n".join(p for p in (line1, line2) if p)
 
     @property
     def full_address_block(self) -> str:

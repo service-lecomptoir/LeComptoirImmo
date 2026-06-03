@@ -206,7 +206,7 @@ function SidebarInfoBlock({ line1, address, personName, refCode }: SidebarInfoBl
       {address && (
         <div className="flex items-start gap-1.5">
           <MapPin size={11} className="text-gray-400 mt-0.5 shrink-0" />
-          <p className="text-gray-400 text-xs leading-snug line-clamp-2">{address}</p>
+          <p className="text-gray-400 text-xs leading-snug line-clamp-2 whitespace-pre-line">{address}</p>
         </div>
       )}
 

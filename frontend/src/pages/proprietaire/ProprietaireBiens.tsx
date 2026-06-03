@@ -183,9 +183,9 @@ export default function ProprietaireBiens() {
                       <div>
                         <h3 className="font-semibold text-gray-900">{prop.name}</h3>
                         {prop.full_address && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                            <MapPin size={11} />
-                            <span>{prop.full_address}</span>
+                          <div className="flex items-start gap-1 text-xs text-gray-500 mt-0.5">
+                            <MapPin size={11} className="mt-0.5 shrink-0" />
+                            <span className="whitespace-pre-line leading-tight">{prop.full_address}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2 mt-1.5">
