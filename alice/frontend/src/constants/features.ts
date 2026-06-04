@@ -29,6 +29,7 @@ export const PLAN_FEATURES: PlanFeature[] = [
   { key: 'finances', label: 'Mes revenus' },
   { key: 'performance_biens', label: 'Performance bien' },
   { key: 'liasse_fiscale', label: 'Liasse fiscale' },
+  { key: 'agents_ia', label: 'Agents IA' },
 ]
 
 export const ALL_FEATURE_KEYS: string[] = PLAN_FEATURES.map(f => f.key)

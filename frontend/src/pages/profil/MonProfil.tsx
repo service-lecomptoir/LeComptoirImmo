@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Save, Landmark, KeyRound, Eye, EyeOff, AtSign, Plus, X, AlertTriangle, Image as ImageIcon, Trash2, UploadCloud } from 'lucide-react'
+import { Save, Landmark, KeyRound, Eye, EyeOff, AtSign, Plus, X, AlertTriangle, Image as ImageIcon, Trash2, UploadCloud, Bot, Send, Copy, Check, RefreshCw, Unlink } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -7,6 +7,9 @@ import { PhoneInput } from '@/components/common/PhoneInput'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
 import { usersApi, type EmailDomain } from '@/api/users'
+import { agentsApi, type TelegramStatus } from '@/api/agents'
+import { useFeaturesStore } from '@/store/featuresStore'
+import { isFeatureAllowed } from '@/lib/features'
 import { toast } from '@/store/toast'
 
 export default function MonProfil() {
@@ -47,6 +50,63 @@ export default function MonProfil() {
   // Logo du gestionnaire (en-tête des documents).
   const logoInputRef = useRef<HTMLInputElement>(null)
   const [logoBusy, setLogoBusy] = useState(false)
+
+  // ── Agents IA (Telegram) — option de plan « agents_ia » ──
+  const { features } = useFeaturesStore()
+  const showAgents = isManager && isFeatureAllowed(features, 'agents_ia')
+  const [tgStatus, setTgStatus] = useState<TelegramStatus | null>(null)
+  const [tgCode, setTgCode] = useState<string | null>(null)
+  const [tgDeepLink, setTgDeepLink] = useState<string | null>(null)
+  const [tgBusy, setTgBusy] = useState(false)
+  const [tgCopied, setTgCopied] = useState(false)
+
+  useEffect(() => {
+    if (!showAgents) return
+    agentsApi.telegramStatus().then(r => setTgStatus(r.data)).catch(() => {})
+  }, [showAgents])
+
+  const generateTgCode = async () => {
+    setTgBusy(true)
+    try {
+      const { data } = await agentsApi.generateLinkCode()
+      setTgCode(data.code)
+      setTgDeepLink(data.deep_link)
+      setTgStatus({
+        linked: data.linked,
+        bot_username: data.bot_username,
+        enabled: data.enabled,
+      })
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Génération du code impossible')
+    } finally {
+      setTgBusy(false)
+    }
+  }
+
+  const copyTgCommand = async () => {
+    if (!tgCode) return
+    try {
+      await navigator.clipboard.writeText(`/start ${tgCode}`)
+      setTgCopied(true)
+      setTimeout(() => setTgCopied(false), 2000)
+    } catch {
+      toast.error('Copie impossible')
+    }
+  }
+
+  const unlinkTg = async () => {
+    setTgBusy(true)
+    try {
+      await agentsApi.unlink()
+      setTgCode(null); setTgDeepLink(null)
+      setTgStatus(s => s ? { ...s, linked: false } : s)
+      toast.success('Telegram délié')
+    } catch {
+      toast.error('Suppression impossible')
+    } finally {
+      setTgBusy(false)
+    }
+  }
 
   const handleLogoFile = async (file: File) => {
     if (!file.type.startsWith('image/')) { toast.error('Choisissez une image (PNG, JPG, SVG, WebP).'); return }
@@ -344,6 +404,95 @@ export default function MonProfil() {
               <Plus size={15} /> Ajouter un domaine
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Agents IA (Telegram) ── */}
+      {showAgents && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 mt-5">
+          <div className="flex items-center gap-2">
+            <Bot size={16} className="text-blue-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Agents IA</h2>
+          </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            Votre équipe d'agents répond à vos questions et vous envoie des rappels, directement sur Telegram (gratuit).
+          </p>
+
+          {/* Présentation des 3 agents */}
+          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              { emoji: '📊', name: 'Agent Comptable', desc: 'Impayés, encaissements, quittances.' },
+              { emoji: '🛡️', name: 'Agent Sécurité', desc: 'Démarches, incidents, conflits de voisinage.' },
+              { emoji: '🗂️', name: 'Agent Administratif', desc: 'Biens, locataires, contrats, entretiens.' },
+            ].map(a => (
+              <li key={a.name} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <div className="text-lg">{a.emoji}</div>
+                <div className="text-sm font-semibold text-gray-800 mt-1">{a.name}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{a.desc}</div>
+              </li>
+            ))}
+          </ul>
+
+          {tgStatus?.linked ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+              <div className="flex items-center gap-2 text-sm text-emerald-800">
+                <Check size={15} className="text-emerald-600" />
+                Telegram est connecté{tgStatus.bot_username ? <> à <span className="font-medium">@{tgStatus.bot_username}</span></> : null}. Écrivez « aide » au bot pour commencer.
+              </div>
+              <button onClick={unlinkTg} disabled={tgBusy}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                <Unlink size={14} /> Délier
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {!tgStatus?.enabled && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-800">
+                    Le canal Telegram n'est pas encore activé sur la plateforme. Vous pouvez préparer votre code de liaison ;
+                    la connexion deviendra effective dès l'activation.
+                  </p>
+                </div>
+              )}
+              {!tgCode ? (
+                <button onClick={generateTgCode} disabled={tgBusy}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                  <Send size={15} /> {tgBusy ? 'Génération…' : 'Connecter Telegram'}
+                </button>
+              ) : (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
+                  <p className="text-sm text-gray-700">
+                    {tgDeepLink ? (
+                      <>1. Ouvrez le bot puis envoyez la commande ci-dessous.</>
+                    ) : (
+                      <>1. Ouvrez votre bot Telegram et envoyez-lui la commande ci-dessous.</>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-mono text-gray-800 select-all">
+                      /start {tgCode}
+                    </code>
+                    <button onClick={copyTgCommand} title="Copier"
+                      className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-white whitespace-nowrap">
+                      {tgCopied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
+                      {tgCopied ? 'Copié' : 'Copier'}
+                    </button>
+                  </div>
+                  {tgDeepLink && (
+                    <a href={tgDeepLink} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                      <Send size={15} /> Ouvrir Telegram et lier automatiquement
+                    </a>
+                  )}
+                  <button onClick={generateTgCode} disabled={tgBusy}
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700">
+                    <RefreshCw size={12} /> Générer un nouveau code
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

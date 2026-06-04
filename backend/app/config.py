@@ -57,6 +57,16 @@ class Settings(BaseSettings):
     # Clé API INSEE (BDM) pour la récupération auto de l'IRL (vide → saisie manuelle).
     INSEE_API_KEY: str = ""
 
+    # ── Agents IA via Telegram (canal gratuit) ───────────────────────────────
+    # Bot créé via @BotFather. Vide → envoi désactivé (no-op), l'app reste OK.
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = ""        # ex. "LeComptoirImmoBot" (pour les instructions)
+    TELEGRAM_WEBHOOK_SECRET: str = ""      # secret d'en-tête vérifié sur le webhook entrant
+
+    @property
+    def telegram_enabled(self) -> bool:
+        return bool(self.TELEGRAM_BOT_TOKEN)
+
     @property
     def smtp_enabled(self) -> bool:
         return bool(self.SMTP_HOST)

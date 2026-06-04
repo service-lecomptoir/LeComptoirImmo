@@ -71,6 +71,7 @@ export const FEATURE_LABELS: Record<string, string> = {
   finances: 'Mes revenus',
   performance_biens: 'Performance bien',
   liasse_fiscale: 'Liasse fiscale',
+  agents_ia: 'Agents IA',
 }
 
 /** Descriptions courtes des fonctionnalités (infobulles, page Tarification). */
@@ -94,6 +95,7 @@ export const FEATURE_DESCRIPTIONS: Record<string, string> = {
   finances: 'Suivi des revenus locatifs par propriétaire et par période.',
   performance_biens: 'Performance par bien : loyer théorique vs perçu, taux d’occupation.',
   liasse_fiscale: 'Génération de la liasse fiscale (revenus fonciers) pour vos déclarations.',
+  agents_ia: "Équipe d'agents IA (Comptable, Sécurité, Administratif) accessible par Telegram : rappels, questions et instructions.",
 }
 
 /** Première route autorisée (cible de repli quand l'actuelle est bloquée). */

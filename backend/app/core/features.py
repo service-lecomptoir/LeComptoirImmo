@@ -29,7 +29,7 @@ FEATURE_KEYS = {
     "dashboard", "properties", "tenants", "leases", "avis_echeances", "payments",
     "quittances", "actualisation", "automatisation", "templates", "incidents",
     "entretiens", "contacts", "offres", "documents_caf", "admin", "finances",
-    "performance_biens", "liasse_fiscale",
+    "performance_biens", "liasse_fiscale", "agents_ia",
 }
 
 _MANAGER_ROLES = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
