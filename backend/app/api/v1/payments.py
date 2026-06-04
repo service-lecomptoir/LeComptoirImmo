@@ -560,7 +560,7 @@ async def download_quittance(
                  "regle": _eur_sym(payment.amount_charges)},
             ]
             if payment.amount_apl:
-                _li0.append({"label": "AIDE AU LOGEMENT (APL)",
+                _li0.append({"label": "AIDE PERSONNELLE AU LOGEMENT",
                              "appele": "-" + _eur_sym(payment.amount_apl),
                              "regle": "-" + _eur_sym(payment.amount_apl)})
             _pdf0 = await render_blocks_document(db, _gid0, "quittance", _qv, line_items=_li0)

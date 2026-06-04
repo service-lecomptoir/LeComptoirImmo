@@ -330,7 +330,7 @@ class AvisEcheancePDFService:
                 {"label": "PROVISION CHARGES", "appele": _eur(avis_full.amount_charges)},
             ]
             if avis_full.amount_apl:
-                line_items.append({"label": "AIDE AU LOGEMENT (APL)",
+                line_items.append({"label": "AIDE PERSONNELLE AU LOGEMENT",
                                    "appele": "-" + _eur(avis_full.amount_apl)})
             # Logo : UNIQUEMENT celui du profil gestionnaire (« Mes informations »).
             # On n'utilise PAS le logo_path résiduel du modèle (ancien upload par
