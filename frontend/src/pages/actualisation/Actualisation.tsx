@@ -169,7 +169,7 @@ export default function Actualisation() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">Actualisation des loyers et charges</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Révision des loyers et charges</h1>
         <p className="text-sm text-gray-500 mt-0.5">Révision du loyer (IRL ou amiable), régularisation et réévaluation des provisions de charges, décompte de taxes foncières</p>
       </div>
 

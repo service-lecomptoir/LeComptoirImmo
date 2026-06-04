@@ -384,7 +384,7 @@ export default function Automatisation() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Automatisation</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Règles d'automatisation</h1>
           <p className="text-sm text-gray-500 mt-1">Avis d'échéance, quittances, rappels, communications</p>
         </div>
         <div className="flex gap-2">
