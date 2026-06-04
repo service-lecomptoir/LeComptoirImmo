@@ -72,7 +72,7 @@ class Settings(BaseSettings):
     # Par défaut : Google Gemini (offre gratuite, endpoint compatible OpenAI).
     AGENT_LLM_API_KEY: str = ""
     AGENT_LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai"
-    AGENT_LLM_MODEL: str = "gemini-2.0-flash"
+    AGENT_LLM_MODEL: str = "gemini-2.5-flash"
 
     @property
     def agent_llm_enabled(self) -> bool:
