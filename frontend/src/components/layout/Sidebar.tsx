@@ -135,6 +135,43 @@ function SidebarInfoBlock({ line1, address, personName, refCode }: SidebarInfoBl
   )
 }
 
+// ── Carte d'en-tête gestionnaire (dégradé + initiales) ───────────────────────
+function _initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function ManagerHeaderCard({ roleLabel, name, address }: { roleLabel: string; name: string; address?: string }) {
+  return (
+    <div className="px-4 py-4 border-b border-gray-700">
+      <div
+        className="rounded-xl p-3.5 flex items-center gap-3"
+        style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #0E9F8E 130%)' }}
+      >
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-white font-extrabold text-sm"
+          style={{ background: 'rgba(255,255,255,0.22)' }}>
+          {_initials(name || roleLabel)}
+        </div>
+        <div className="min-w-0">
+          {name && <p className="text-white font-bold text-sm leading-tight truncate">{name}</p>}
+          <span className="inline-block mt-1 text-white/90 text-[9px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5"
+            style={{ background: 'rgba(255,255,255,0.22)' }}>
+            {roleLabel}
+          </span>
+        </div>
+      </div>
+      {address && (
+        <div className="flex items-start gap-1.5 mt-2 px-0.5">
+          <MapPin size={11} className="text-gray-400 mt-0.5 shrink-0" />
+          <p className="text-gray-400 text-xs leading-snug line-clamp-2 whitespace-pre-line">{address}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Composant Sidebar ─────────────────────────────────────────────────────────
 
 interface SidebarProps {
@@ -211,32 +248,22 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     // Gestionnaire propriétaire
     if (user?.role === 'gestionnaire_proprio') {
       return (
-        <div className="px-6 py-5 border-b border-gray-700">
-          <p className="text-white font-semibold text-sm">Gestionnaire propriétaire</p>
-          {user.full_name && <p className="text-gray-400 text-xs mt-0.5">{user.full_name}</p>}
-          {agencyAddress && (
-            <div className="flex items-start gap-1.5 mt-1.5">
-              <MapPin size={11} className="text-gray-500 mt-0.5 shrink-0" />
-              <p className="text-gray-500 text-xs leading-snug line-clamp-2">{agencyAddress}</p>
-            </div>
-          )}
-        </div>
+        <ManagerHeaderCard
+          roleLabel="Gestionnaire propriétaire"
+          name={user.full_name ?? ''}
+          address={agencyAddress}
+        />
       )
     }
 
     // Gestionnaire mandataire
     if (user?.role === 'gestionnaire') {
       return (
-        <div className="px-6 py-5 border-b border-gray-700">
-          <p className="text-white font-semibold text-sm">Gestionnaire mandataire</p>
-          {user.full_name && <p className="text-gray-400 text-xs mt-0.5">{user.full_name}</p>}
-          {agencyAddress && (
-            <div className="flex items-start gap-1.5 mt-1.5">
-              <MapPin size={11} className="text-gray-500 mt-0.5 shrink-0" />
-              <p className="text-gray-500 text-xs leading-snug line-clamp-2">{agencyAddress}</p>
-            </div>
-          )}
-        </div>
+        <ManagerHeaderCard
+          roleLabel="Gestionnaire mandataire"
+          name={user.full_name ?? ''}
+          address={agencyAddress}
+        />
       )
     }
 
