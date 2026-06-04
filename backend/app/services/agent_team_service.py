@@ -184,6 +184,25 @@ def _strip_html(s: str) -> str:
     return re.sub(r"<[^>]+>", "", s or "")
 
 
+async def _echeances_du_mois(db, mode, ids) -> str:
+    """Synthèse des avis d'échéance / loyers appelés sur le mois en cours."""
+    today = date.today()
+    first = today.replace(day=1)
+    nxt = date(today.year + 1, 1, 1) if today.month == 12 else date(today.year, today.month + 1, 1)
+    q = _apply(
+        select(
+            func.count(Payment.id),
+            func.coalesce(func.sum(Payment.amount_due), 0),
+            func.coalesce(func.sum(Payment.amount_paid), 0),
+        )
+        .join(Lease, Payment.lease_id == Lease.id)
+        .join(Property, Lease.property_id == Property.id)
+        .where(Payment.due_date >= first, Payment.due_date < nxt), mode, ids)
+    cnt, due, paid = (await db.execute(q)).one()
+    return (f"Échéances du mois en cours : {int(cnt or 0)} avis émis, "
+            f"total appelé {float(due or 0):.2f} €, encaissé {float(paid or 0):.2f} €.")
+
+
 async def _snapshot(db, user, mode, ids) -> str:
     """Instantané chiffré des données scopées du gestionnaire (contexte LLM).
 
@@ -191,10 +210,11 @@ async def _snapshot(db, user, mode, ids) -> str:
     HTML sont retirées pour un contexte propre."""
     encaisse = await _comptable(db, user, "encaissé ce mois", mode, ids)
     impayes = await _comptable(db, user, "impayés", mode, ids)
+    echeances = await _echeances_du_mois(db, mode, ids)
     secu = await _securite(db, user, "démarches", mode, ids)
     admin = await _administratif(db, user, "synthèse", mode, ids)
     parts = [
-        "[COMPTABLE]\n" + _strip_html(encaisse) + "\n" + _strip_html(impayes),
+        "[COMPTABLE]\n" + _strip_html(encaisse) + "\n" + echeances + "\n" + _strip_html(impayes),
         "[SÉCURITÉ]\n" + _strip_html(secu),
         "[ADMINISTRATIF]\n" + _strip_html(admin),
     ]
@@ -206,30 +226,37 @@ _SYSTEM_PROMPT = (
     "locative. Tu réunis trois spécialités : Agent Comptable (impayés, encaissements, "
     "quittances), Agent Sécurité (démarches, incidents, conflits de voisinage) et Agent "
     "Administratif (biens, locataires, contrats, entretiens).\n\n"
-    "RÈGLES STRICTES :\n"
+    "RÈGLES :\n"
     "1. Réponds en français, de façon concise et professionnelle, adaptée à une messagerie "
     "(Telegram). Tu peux utiliser <b>gras</b> et des puces « • ».\n"
-    "2. Utilise EXCLUSIVEMENT les chiffres et faits fournis dans la section DONNÉES. "
-    "N'invente JAMAIS un montant, un nom ou un nombre absent des données.\n"
-    "3. Si l'information demandée n'est pas dans les données, dis-le clairement et propose "
-    "ce que tu peux fournir à la place.\n"
-    "4. Les montants sont en euros (€). Va à l'essentiel ; pas de formules d'introduction longues.\n"
-    "5. Tu n'effectues aucune action (lecture seule) : tu informes et synthétises."
+    "2. Pour tout CHIFFRE (montants, nombres, noms), utilise EXCLUSIVEMENT la section DONNÉES. "
+    "N'invente JAMAIS une valeur absente des données.\n"
+    "3. Tu peux répondre à des questions générales sur la gestion locative (ex. « qu'est-ce "
+    "qu'un avis d'échéance ? », « comment réviser un loyer ? ») avec tes connaissances, en "
+    "restant factuel et bref.\n"
+    "4. Tu es en LECTURE SEULE : tu ne génères pas de document et n'effectues pas d'action. "
+    "Si on te demande de produire/envoyer un document (avis d'échéance, quittance, etc.), "
+    "explique où le faire dans l'application Le Comptoir Immo (ex. menu « Ma papeterie » pour "
+    "les modèles, fiche du paiement pour la quittance, « Avis d'échéances » pour les avis) et "
+    "propose un résumé des données pertinentes que tu possèdes.\n"
+    "5. Si une donnée précise demandée n'est pas dans DONNÉES, dis-le et propose ce que tu peux fournir.\n"
+    "6. Les montants sont en euros (€). Va à l'essentiel ; pas de longue introduction."
 )
 
 
 async def answer(db: AsyncSession, user: User, text: str) -> str:
     """Point d'entrée : route le message et renvoie la réponse.
 
-    Phase 2 (si LLM configuré) : compréhension + rédaction par le modèle, ancrées
-    sur un instantané chiffré scopé. Repli automatique sur la Phase 1 sinon / en cas d'échec.
+    Phase 2 (si LLM configuré) : le modèle traite TOUTE question, ancré sur un
+    instantané chiffré scopé. Repli sur le routeur déterministe (Phase 1) si le LLM
+    est désactivé ou échoue. Message vide → menu d'aide.
     """
-    agent = classify(text)
-    if agent == "help":
+    t = (text or "").strip()
+    if not t:
         return _help()
     mode, ids = await _scope(db, user)
 
-    # ── Phase 2 : LLM ancré sur les données réelles ──
+    # ── Phase 2 : LLM ancré sur les données réelles (gère toutes les questions) ──
     if llm_service.enabled():
         try:
             snapshot = await _snapshot(db, user, mode, ids)
@@ -243,12 +270,15 @@ async def answer(db: AsyncSession, user: User, text: str) -> str:
         except Exception:  # noqa: BLE001 — ne jamais casser le canal
             pass
 
-    # ── Phase 1 : repli déterministe ──
+    # ── Phase 1 : repli déterministe (mots-clés) ──
+    agent = classify(text)
+    if agent == "help":
+        return _help()
     if agent == "reminders":
         return await reminders(db, user)
-    t = (text or "").lower()
+    tl = t.lower()
     if agent == "comptable":
-        return await _comptable(db, user, t, mode, ids)
+        return await _comptable(db, user, tl, mode, ids)
     if agent == "securite":
-        return await _securite(db, user, t, mode, ids)
-    return await _administratif(db, user, t, mode, ids)
+        return await _securite(db, user, tl, mode, ids)
+    return await _administratif(db, user, tl, mode, ids)
