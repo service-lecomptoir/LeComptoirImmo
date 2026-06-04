@@ -69,10 +69,10 @@ class Settings(BaseSettings):
 
     # ── Cerveau LLM des agents IA (Phase 2) — compatible API OpenAI ──────────
     # Vide → repli automatique sur le routeur déterministe gratuit (Phase 1).
-    # Par défaut : Groq (offre gratuite, endpoint compatible OpenAI).
+    # Par défaut : Google Gemini (offre gratuite, endpoint compatible OpenAI).
     AGENT_LLM_API_KEY: str = ""
-    AGENT_LLM_BASE_URL: str = "https://api.groq.com/openai/v1"
-    AGENT_LLM_MODEL: str = "llama-3.3-70b-versatile"
+    AGENT_LLM_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+    AGENT_LLM_MODEL: str = "gemini-2.0-flash"
 
     @property
     def agent_llm_enabled(self) -> bool:
