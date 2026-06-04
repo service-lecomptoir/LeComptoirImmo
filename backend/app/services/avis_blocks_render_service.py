@@ -157,8 +157,7 @@ def default_avis_blocks() -> list[dict]:
             "pay_label": "Montant à payer (exigible le {{due_date}})",
         }},
         {"id": "footer", "type": "legal_footer", "enabled": True, "props": {
-            "text": "{{company_name}} — {{company_address}}. "
-                    "Document généré électroniquement, ne nécessite pas de signature.",
+            "text": "Document généré électroniquement, ne nécessite pas de signature.",
         }},
     ]
 
@@ -200,8 +199,7 @@ def _common_reference() -> dict:
 
 def _common_footer() -> dict:
     return {"id": "footer", "type": "legal_footer", "enabled": True, "props": {
-        "text": "{{company_name}} — {{company_address}}. "
-                "Document généré électroniquement, ne nécessite pas de signature.",
+        "text": "Document généré électroniquement, ne nécessite pas de signature.",
     }}
 
 
