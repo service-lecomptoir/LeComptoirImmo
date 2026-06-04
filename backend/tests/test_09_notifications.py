@@ -78,3 +78,42 @@ class TestNotificationMarkRead:
             headers=auth(gestionnaire_token),
         )
         assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+class TestNotificationIsolation:
+    """Garde-fou : chaque compte ne voit QUE ses propres notifications (pas de broadcast)."""
+
+    def _notif(self, user_id, title):
+        from app.models.notification import (
+            Notification, NotificationType, NotificationPriority,
+        )
+        return Notification(
+            title=title, message="…",
+            notification_type=NotificationType.SYSTEME,
+            priority=NotificationPriority.NORMAL,
+            user_id=user_id,
+        )
+
+    async def test_only_own_no_broadcast(self, client, db, gestionnaire_user, gestionnaire_token, gp_user):
+        own = self._notif(gestionnaire_user.id, "Pour moi")
+        other = self._notif(gp_user.id, "Pour un autre")
+        broadcast = self._notif(None, "Ancien broadcast")
+        db.add_all([own, other, broadcast])
+        await db.flush()
+
+        resp = await client.get("/api/v1/notifications", headers=auth(gestionnaire_token))
+        assert resp.status_code == 200
+        titles = [i["title"] for i in resp.json()["items"]]
+        assert "Pour moi" in titles
+        assert "Pour un autre" not in titles      # isolation entre comptes
+        assert "Ancien broadcast" not in titles    # plus de diffusion globale
+
+    async def test_cannot_mark_foreign_notification(self, client, db, gp_user, gestionnaire_token):
+        foreign = self._notif(gp_user.id, "Notif d'autrui")
+        db.add(foreign)
+        await db.flush()
+        resp = await client.post(
+            f"/api/v1/notifications/{foreign.id}/read", headers=auth(gestionnaire_token)
+        )
+        assert resp.status_code == 404  # ne peut pas marquer lue une notif qui n'est pas la sienne

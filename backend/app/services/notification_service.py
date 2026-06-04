@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import Notification, NotificationType, NotificationPriority
@@ -24,7 +24,7 @@ class NotificationService:
         result = await db.execute(
             select(func.count(Notification.id)).where(
                 Notification.is_read == False,
-                or_(Notification.user_id == user_id, Notification.user_id == None),
+                Notification.user_id == user_id,
             )
         )
         return result.scalar_one()
@@ -37,10 +37,8 @@ class NotificationService:
         unread_only: bool = False,
         limit: int = 50,
     ) -> tuple[list[Notification], int, int]:
-        """Returns (items, total, unread_count)."""
-        query = select(Notification).where(
-            or_(Notification.user_id == user_id, Notification.user_id == None)
-        )
+        """Returns (items, total, unread_count). Strictement scopé au destinataire."""
+        query = select(Notification).where(Notification.user_id == user_id)
         if unread_only:
             query = query.where(Notification.is_read == False)
 
@@ -49,7 +47,7 @@ class NotificationService:
 
         unread_q = select(func.count(Notification.id)).where(
             Notification.is_read == False,
-            or_(Notification.user_id == user_id, Notification.user_id == None),
+            Notification.user_id == user_id,
         )
         unread_count = (await db.execute(unread_q)).scalar_one()
 
@@ -62,9 +60,12 @@ class NotificationService:
         return list(items), total, unread_count
 
     @staticmethod
-    async def mark_read(db: AsyncSession, notification_id: uuid.UUID) -> Notification:
+    async def mark_read(
+        db: AsyncSession, notification_id: uuid.UUID, user_id: uuid.UUID
+    ) -> Notification:
+        """Marque une notification lue — uniquement si elle appartient à l'utilisateur."""
         notif = await db.get(Notification, notification_id)
-        if not notif:
+        if not notif or notif.user_id != user_id:
             raise NotFoundException("Notification introuvable")
         notif.is_read = True
         notif.read_at = datetime.utcnow()
@@ -77,7 +78,7 @@ class NotificationService:
         result = await db.execute(
             select(Notification).where(
                 Notification.is_read == False,
-                or_(Notification.user_id == user_id, Notification.user_id == None),
+                Notification.user_id == user_id,
             )
         )
         notifs = result.scalars().all()
@@ -91,30 +92,57 @@ class NotificationService:
     # ── Génération d'alertes automatiques ─────────────────────────────────────
 
     @staticmethod
+    async def _recipients_for_lease(db: AsyncSession, lease) -> set:
+        """Destinataires d'une alerte liée à un bail : gestionnaire(s) + propriétaire.
+
+        Strictement les comptes concernés par le bien (jamais de diffusion globale)."""
+        from app.models.property import Property
+
+        recipients: set = set()
+        if getattr(lease, "created_by", None):
+            recipients.add(lease.created_by)
+        prop = await db.get(Property, lease.property_id) if lease.property_id else None
+        if prop:
+            if getattr(prop, "created_by", None):
+                recipients.add(prop.created_by)
+            if getattr(prop, "owner_user_id", None):
+                recipients.add(prop.owner_user_id)
+        recipients.discard(None)
+        return recipients
+
+    @staticmethod
+    async def _alert_exists(db, ntype, entity_type, entity_id, user_id) -> bool:
+        return (await db.execute(
+            select(Notification.id).where(
+                Notification.notification_type == ntype,
+                Notification.entity_type == entity_type,
+                Notification.entity_id == entity_id,
+                Notification.user_id == user_id,
+            )
+        )).first() is not None
+
+    @staticmethod
     async def generate_late_payment_alerts(db: AsyncSession) -> int:
-        """Crée des notifications pour les loyers en retard non encore notifiés."""
+        """Crée des notifications de loyer en retard, ciblées sur les comptes concernés."""
         from app.models.payment import Payment, PaymentStatus
+        from app.models.lease import Lease
 
         result = await db.execute(
-            select(Payment).where(Payment.status == PaymentStatus.LATE)
+            select(Payment, Lease)
+            .join(Lease, Payment.lease_id == Lease.id)
+            .where(Payment.status == PaymentStatus.LATE)
         )
-        late_payments = result.scalars().all()
+        rows = result.all()
 
         created = 0
-        for payment in late_payments:
-            # Vérifier qu'une notification n'existe pas déjà pour ce paiement
-            existing = (
-                await db.execute(
-                    select(Notification).where(
-                        Notification.notification_type == NotificationType.LOYER_RETARD,
-                        Notification.entity_type == "payment",
-                        Notification.entity_id == payment.id,
-                    )
-                )
-            ).scalar_one_or_none()
-
-            if not existing:
-                notif = Notification(
+        for payment, lease in rows:
+            recipients = await NotificationService._recipients_for_lease(db, lease)
+            for uid in recipients:
+                if await NotificationService._alert_exists(
+                    db, NotificationType.LOYER_RETARD, "payment", payment.id, uid
+                ):
+                    continue
+                db.add(Notification(
                     notification_type=NotificationType.LOYER_RETARD,
                     priority=NotificationPriority.HIGH,
                     title="Loyer en retard",
@@ -125,9 +153,8 @@ class NotificationService:
                     ),
                     entity_type="payment",
                     entity_id=payment.id,
-                    user_id=None,  # broadcast
-                )
-                db.add(notif)
+                    user_id=uid,
+                ))
                 created += 1
 
         if created:
@@ -157,19 +184,16 @@ class NotificationService:
 
         created = 0
         for lease in leases:
-            existing = (
-                await db.execute(
-                    select(Notification).where(
-                        Notification.notification_type == NotificationType.BAIL_EXPIRE_SOON,
-                        Notification.entity_type == "lease",
-                        Notification.entity_id == lease.id,
-                    )
-                )
-            ).scalar_one_or_none()
-
-            if not existing:
-                days_left = (lease.end_date - today).days
-                notif = Notification(
+            recipients = await NotificationService._recipients_for_lease(db, lease)
+            if not recipients:
+                continue
+            days_left = (lease.end_date - today).days
+            for uid in recipients:
+                if await NotificationService._alert_exists(
+                    db, NotificationType.BAIL_EXPIRE_SOON, "lease", lease.id, uid
+                ):
+                    continue
+                db.add(Notification(
                     notification_type=NotificationType.BAIL_EXPIRE_SOON,
                     priority=NotificationPriority.NORMAL if days_left > 30 else NotificationPriority.HIGH,
                     title=f"Bail expirant dans {days_left} jour(s)",
@@ -180,9 +204,8 @@ class NotificationService:
                     ),
                     entity_type="lease",
                     entity_id=lease.id,
-                    user_id=None,
-                )
-                db.add(notif)
+                    user_id=uid,
+                ))
                 created += 1
 
         if created:

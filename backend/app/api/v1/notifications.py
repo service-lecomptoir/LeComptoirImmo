@@ -139,9 +139,9 @@ async def list_notifications(
 async def mark_read(
     notification_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    notif = await NotificationService.mark_read(db, notification_id)
+    notif = await NotificationService.mark_read(db, notification_id, current_user.id)
     await db.commit()
     return notif
 

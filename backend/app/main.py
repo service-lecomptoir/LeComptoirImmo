@@ -344,6 +344,12 @@ async def _apply_column_migrations() -> None:
         # Logo du gestionnaire (profil « Mes informations »)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS logo_path VARCHAR(500)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
+        # ── Correctif isolation cloche : purge des notifications « broadcast » ───
+        # Les alertes (loyer en retard / bail expirant) étaient créées avec
+        # user_id = NULL et la requête les diffusait à TOUS les comptes. Le code
+        # cible désormais les bons destinataires ; on supprime les anciennes
+        # notifications non ciblées (elles seront régénérées proprement).
+        "DELETE FROM notifications WHERE user_id IS NULL",
     ]
     try:
         async with engine.begin() as conn:
