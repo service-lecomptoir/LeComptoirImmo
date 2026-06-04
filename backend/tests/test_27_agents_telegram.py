@@ -240,6 +240,19 @@ class TestActions:
         msg = await aa.execute(db, gestionnaire_user, prop["pending"])
         assert "démarche" in msg.lower()
 
+    async def test_action_without_tenant_offers_help_not_readonly(self, db, gestionnaire_user, monkeypatch):
+        """« peux-tu générer un avis ? » (sans locataire) → propose de le faire, jamais « lecture seule »."""
+        from app.services import agent_action_service as aa
+
+        async def fake_chat(messages, **kw):
+            return '{"action":"avis","tenant":null,"month":null,"year":null,"send_email":false}'
+        monkeypatch.setattr(aa.llm_service, "enabled", lambda: True)
+        monkeypatch.setattr(aa.llm_service, "chat", fake_chat)
+        prop = await aa.interpret(db, gestionnaire_user, "peux-tu générer un avis d'échéance ?")
+        assert prop is not None and "pending" not in prop
+        assert "je peux" in prop["reply"].lower()
+        assert "lecture seule" not in prop["reply"].lower()
+
     async def test_interpret_unknown_tenant(self, db, gestionnaire_user, monkeypatch):
         from app.services import agent_action_service as aa
 

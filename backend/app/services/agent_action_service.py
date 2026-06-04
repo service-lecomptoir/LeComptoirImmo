@@ -69,9 +69,12 @@ _ACTION_PROMPT = (
     '  "note": "<contenu/description si demarche, sinon null>"\n'
     "}\n\n"
     "Règles : 'action'='avis' pour générer/envoyer un avis d'échéance ; 'quittance' pour une quittance ; "
-    "'paiement' pour enregistrer un loyer encaissé ; 'demarche' pour ouvrir une démarche/note ; "
-    "'none' si le message est une simple question ou ne demande aucune action. "
-    "Ne devine pas un locataire : si aucun nom n'est cité, mets null."
+    "'paiement' pour enregistrer un loyer encaissé ; 'demarche' pour ouvrir une démarche/note. "
+    "Même si la demande est formulée comme une QUESTION (« peux-tu générer un avis ? », « tu sais "
+    "faire une quittance ? ») ou si le nom du locataire n'est pas précisé, renvoie quand même "
+    "l'action correspondante (NE mets PAS 'none'). Mets 'none' UNIQUEMENT pour une demande "
+    "d'information pure qui n'implique aucune de ces 4 opérations (ex. « combien d'impayés ? », "
+    "« qu'est-ce qu'un avis d'échéance ? »). Ne devine pas un locataire : si aucun nom n'est cité, mets null."
 )
 
 
@@ -161,9 +164,16 @@ async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
         year, month = today.year, today.month
 
     # Démarche : pas besoin d'un paiement, mais d'un locataire + titre
+    _LABELS = {"avis": "générer un avis d'échéance", "quittance": "générer une quittance",
+               "paiement": "enregistrer un paiement", "demarche": "ouvrir une démarche"}
     name = (intent.get("tenant") or "").strip()
     if not name and action in ("avis", "quittance", "paiement", "demarche"):
-        return {"reply": "Pour cette action, précisez le locataire concerné (nom)."}
+        ex = {"avis": "génère l'avis de juin pour Dupont",
+              "quittance": "envoie la quittance de mai à Dupont",
+              "paiement": "enregistre le paiement de Dupont pour ce mois",
+              "demarche": "ouvre une démarche pour Dupont : fuite d'eau"}.get(action, "")
+        return {"reply": (f"Oui, je peux <b>{_LABELS.get(action, 'le faire')}</b> 👍 "
+                          f"Indiquez le locataire en une phrase, ex. : « {ex} ».")}
 
     tenants = await _find_tenants(db, user, name)
     if not tenants:
