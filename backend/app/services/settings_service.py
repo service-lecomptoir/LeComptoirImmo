@@ -9,6 +9,10 @@ _DEFAULTS = {
     "avis_generation_day": "1",
     "avis_generation_hour": "7",
     "avis_generation_minute": "30",
+    # Rappels Telegram « point du jour » (équipe d'agents IA)
+    "telegram_reminder_enabled": "true",
+    "telegram_reminder_hour": "8",
+    "telegram_reminder_minute": "0",
 }
 
 
@@ -42,3 +46,11 @@ async def get_scheduler_config(db: AsyncSession) -> dict:
     hour = int(await get(db, "avis_generation_hour") or "7")
     minute = int(await get(db, "avis_generation_minute") or "30")
     return {"day": day, "hour": hour, "minute": minute}
+
+
+async def get_reminder_config(db: AsyncSession) -> dict:
+    """Config des rappels Telegram quotidiens (point du jour)."""
+    enabled = (await get(db, "telegram_reminder_enabled") or "true").lower() == "true"
+    hour = int(await get(db, "telegram_reminder_hour") or "8")
+    minute = int(await get(db, "telegram_reminder_minute") or "0")
+    return {"enabled": enabled, "hour": hour, "minute": minute}

@@ -97,6 +97,73 @@ async def update_scheduler(
     )
 
 
+# ── Rappels Telegram quotidiens (équipe d'agents IA) ─────────────────────────
+
+class ReminderConfig(BaseModel):
+    enabled: bool = True
+    hour: int = Field(8, ge=0, le=23)
+    minute: int = Field(0, ge=0, le=59)
+
+
+class ReminderConfigOut(ReminderConfig):
+    next_run: Optional[str] = None
+
+
+def _compute_next_daily(hour: int, minute: int) -> str:
+    """Prochaine occurrence quotidienne (Paris) en ISO 8601."""
+    from datetime import timedelta
+    now = datetime.now(TZ)
+    candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if candidate <= now:
+        candidate = candidate + timedelta(days=1)
+    return candidate.isoformat()
+
+
+@router.get("/telegram-reminders", response_model=ReminderConfigOut)
+async def get_reminders(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_gestionnaire),
+):
+    """Config des rappels Telegram quotidiens (point du jour)."""
+    cfg = await settings_service.get_reminder_config(db)
+    return ReminderConfigOut(
+        enabled=cfg["enabled"], hour=cfg["hour"], minute=cfg["minute"],
+        next_run=_compute_next_daily(cfg["hour"], cfg["minute"]) if cfg["enabled"] else None,
+    )
+
+
+@router.put("/telegram-reminders", response_model=ReminderConfigOut)
+async def update_reminders(
+    body: ReminderConfig,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_gestionnaire),
+):
+    """Active/désactive et planifie l'heure des rappels Telegram quotidiens."""
+    await settings_service.set_(db, "telegram_reminder_enabled", "true" if body.enabled else "false")
+    await settings_service.set_(db, "telegram_reminder_hour", str(body.hour))
+    await settings_service.set_(db, "telegram_reminder_minute", str(body.minute))
+    await db.commit()
+    try:
+        from app.core.scheduler import reschedule_reminder_job
+        reschedule_reminder_job(body.hour, body.minute)
+    except Exception as exc:
+        logger.warning("Reschedule rappels Telegram échoué (non bloquant): %s", exc)
+    return ReminderConfigOut(
+        enabled=body.enabled, hour=body.hour, minute=body.minute,
+        next_run=_compute_next_daily(body.hour, body.minute) if body.enabled else None,
+    )
+
+
+@router.post("/telegram-reminders/run")
+async def run_reminders_now(
+    _: User = Depends(get_current_gestionnaire),
+):
+    """Déclenche immédiatement l'envoi des rappels (test). Sécurisé : no-op si Telegram désactivé."""
+    from app.core.scheduler import run_telegram_reminders_now
+    await run_telegram_reminders_now()
+    return {"status": "ok"}
+
+
 # ── Mise en page des templates PDF ───────────────────────────────────────────
 
 class TemplateSpacing(BaseModel):

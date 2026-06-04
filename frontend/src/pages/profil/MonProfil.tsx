@@ -437,7 +437,7 @@ export default function MonProfil() {
             <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
               <div className="flex items-center gap-2 text-sm text-emerald-800">
                 <Check size={15} className="text-emerald-600" />
-                Telegram est connecté{tgStatus.bot_username ? <> à <span className="font-medium">@{tgStatus.bot_username}</span></> : null}. Écrivez « aide » au bot pour commencer.
+                Telegram est connecté{tgStatus.bot_username ? <> à <span className="font-medium">@{tgStatus.bot_username}</span></> : null}. Écrivez « aide » au bot pour commencer ; vous recevez aussi chaque matin un « point du jour ».
               </div>
               <button onClick={unlinkTg} disabled={tgBusy}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 whitespace-nowrap">

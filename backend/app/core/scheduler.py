@@ -132,7 +132,60 @@ async def _job_generate_monthly_avis() -> None:
             logger.error(f"[Scheduler] email_monthly_avis error: {exc}")
 
 
-def start_scheduler(avis_day: int = 1, avis_hour: int = 7, avis_minute: int = 30) -> None:
+async def _job_send_telegram_reminders() -> None:
+    """Rappel quotidien « point du jour » envoyé sur Telegram aux gestionnaires liés.
+
+    N'envoie qu'aux comptes liés + opt-in, dont le plan inclut l'option « agents_ia ».
+    Chaque synthèse est scopée au périmètre du gestionnaire (isolation par rôle).
+    No-op si le canal Telegram n'est pas configuré ou si le rappel est désactivé."""
+    from sqlalchemy import select
+    from app.config import get_settings
+    from app.database import AsyncSessionLocal
+    from app.services import settings_service, agent_team_service
+    from app.services.telegram_service import send_message
+    from app.core.features import get_plan_features
+    from app.models.telegram_link import TelegramLink
+    from app.models.user import User
+
+    if not get_settings().telegram_enabled:
+        return
+
+    async with AsyncSessionLocal() as db:
+        try:
+            cfg = await settings_service.get_reminder_config(db)
+            if not cfg["enabled"]:
+                return
+            links = (await db.execute(
+                select(TelegramLink).where(
+                    TelegramLink.opt_in.is_(True),
+                    TelegramLink.chat_id.isnot(None),
+                )
+            )).scalars().all()
+
+            sent = 0
+            for link in links:
+                user = await db.get(User, link.user_id)
+                if not user or not user.is_active:
+                    continue
+                feats = await get_plan_features(db, user.id)
+                if feats is not None and "agents_ia" not in feats:
+                    continue  # option non incluse dans le plan
+                try:
+                    text = await agent_team_service.reminders(db, user)
+                    if await send_message(link.chat_id, text):
+                        sent += 1
+                except Exception as exc:  # noqa: BLE001 — un compte ne bloque pas les autres
+                    logger.warning("[Scheduler] rappel Telegram échec user=%s: %r", user.id, exc)
+            if sent:
+                logger.info("[Scheduler] %d rappel(s) Telegram envoyé(s)", sent)
+        except Exception as exc:
+            logger.error(f"[Scheduler] telegram_reminders error: {exc}")
+
+
+def start_scheduler(
+    avis_day: int = 1, avis_hour: int = 7, avis_minute: int = 30,
+    reminder_hour: int = 8, reminder_minute: int = 0,
+) -> None:
     scheduler = get_scheduler()
 
     scheduler.add_job(
@@ -163,11 +216,19 @@ def start_scheduler(avis_day: int = 1, avis_hour: int = 7, avis_minute: int = 30
         replace_existing=True,
         misfire_grace_time=3600,
     )
+    scheduler.add_job(
+        _job_send_telegram_reminders,
+        CronTrigger(hour=reminder_hour, minute=reminder_minute),
+        id="telegram_reminders",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
 
     scheduler.start()
     logger.info(
-        "[Scheduler] Démarré — 4 tâches planifiées (avis: jour=%d %02d:%02d)",
-        avis_day, avis_hour, avis_minute,
+        "[Scheduler] Démarré — 5 tâches planifiées (avis: jour=%d %02d:%02d ; "
+        "rappels Telegram: %02d:%02d)",
+        avis_day, avis_hour, avis_minute, reminder_hour, reminder_minute,
     )
 
 
@@ -181,6 +242,23 @@ def reschedule_avis_job(day: int, hour: int, minute: int) -> None:
         trigger=CronTrigger(day=day, hour=hour, minute=minute, timezone="Europe/Paris"),
     )
     logger.info("[Scheduler] Job avis reschedulé → jour=%d %02d:%02d", day, hour, minute)
+
+
+def reschedule_reminder_job(hour: int, minute: int) -> None:
+    """Reschedule dynamiquement le job de rappels Telegram (API settings)."""
+    scheduler = get_scheduler()
+    if not scheduler.running:
+        return
+    scheduler.reschedule_job(
+        "telegram_reminders",
+        trigger=CronTrigger(hour=hour, minute=minute, timezone="Europe/Paris"),
+    )
+    logger.info("[Scheduler] Job rappels Telegram reschedulé → %02d:%02d", hour, minute)
+
+
+async def run_telegram_reminders_now() -> None:
+    """Déclenche immédiatement l'envoi des rappels (test manuel via API)."""
+    await _job_send_telegram_reminders()
 
 
 def stop_scheduler() -> None:

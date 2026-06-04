@@ -84,14 +84,20 @@ async def lifespan(app: FastAPI):
     # Démarre le scheduler de tâches automatiques (lit la config depuis la DB)
     logger.info("Démarrage du scheduler...")
     avis_day, avis_hour, avis_minute = 1, 7, 30
+    rem_hour, rem_minute = 8, 0
     try:
         async with AsyncSessionLocal() as _db:
-            from app.services.settings_service import get_scheduler_config
+            from app.services.settings_service import get_scheduler_config, get_reminder_config
             _cfg = await get_scheduler_config(_db)
             avis_day, avis_hour, avis_minute = _cfg["day"], _cfg["hour"], _cfg["minute"]
+            _rem = await get_reminder_config(_db)
+            rem_hour, rem_minute = _rem["hour"], _rem["minute"]
     except Exception as _exc:
         logger.warning(f"Lecture config scheduler ignorée : {_exc}")
-    start_scheduler(avis_day=avis_day, avis_hour=avis_hour, avis_minute=avis_minute)
+    start_scheduler(
+        avis_day=avis_day, avis_hour=avis_hour, avis_minute=avis_minute,
+        reminder_hour=rem_hour, reminder_minute=rem_minute,
+    )
 
     logger.info("Application prête ✓")
     yield

@@ -152,3 +152,32 @@ class TestLLMPhase2:
         monkeypatch.setattr(ats.llm_service, "chat", fake_chat)
         reply = await ats.answer(db, admin_user, "combien de biens")
         assert "administrative" in reply.lower()  # repli déterministe
+
+
+# ── Rappels Telegram quotidiens (scheduler) ──────────────────────────────────
+@pytest.mark.asyncio
+class TestReminders:
+    async def test_reminder_config_defaults(self, db):
+        from app.services import settings_service
+        cfg = await settings_service.get_reminder_config(db)
+        assert cfg["enabled"] is True
+        assert 0 <= cfg["hour"] <= 23 and 0 <= cfg["minute"] <= 59
+
+    async def test_get_reminder_endpoint(self, client, gestionnaire_token):
+        r = await client.get("/api/v1/settings/telegram-reminders", headers=auth(gestionnaire_token))
+        assert r.status_code == 200
+        assert set(r.json()) >= {"enabled", "hour", "minute"}
+
+    async def test_update_reminder_endpoint(self, client, gestionnaire_token):
+        r = await client.put(
+            "/api/v1/settings/telegram-reminders",
+            headers=auth(gestionnaire_token),
+            json={"enabled": True, "hour": 7, "minute": 15},
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["hour"] == 7 and r.json()["minute"] == 15
+
+    async def test_reminder_job_noop_without_token(self):
+        # Telegram non configuré (défaut tests) → le job ne lève pas et ne fait rien
+        from app.core.scheduler import run_telegram_reminders_now
+        await run_telegram_reminders_now()  # ne doit pas lever
