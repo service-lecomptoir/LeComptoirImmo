@@ -67,6 +67,17 @@ class Settings(BaseSettings):
     def telegram_enabled(self) -> bool:
         return bool(self.TELEGRAM_BOT_TOKEN)
 
+    # ── Cerveau LLM des agents IA (Phase 2) — compatible API OpenAI ──────────
+    # Vide → repli automatique sur le routeur déterministe gratuit (Phase 1).
+    # Par défaut : Groq (offre gratuite, endpoint compatible OpenAI).
+    AGENT_LLM_API_KEY: str = ""
+    AGENT_LLM_BASE_URL: str = "https://api.groq.com/openai/v1"
+    AGENT_LLM_MODEL: str = "llama-3.3-70b-versatile"
+
+    @property
+    def agent_llm_enabled(self) -> bool:
+        return bool(self.AGENT_LLM_API_KEY)
+
     @property
     def smtp_enabled(self) -> bool:
         return bool(self.SMTP_HOST)

@@ -110,3 +110,45 @@ class TestTelegramLink:
         # Sans jeton → 401/403
         r = await client.post("/api/v1/agents/telegram/link-code")
         assert r.status_code in (401, 403)
+
+
+# ── Phase 2 : LLM ancré + repli déterministe ─────────────────────────────────
+@pytest.mark.asyncio
+class TestLLMPhase2:
+    async def test_snapshot_contains_three_sections(self, db, admin_user):
+        mode, ids = await ats._scope(db, admin_user)
+        snap = await ats._snapshot(db, admin_user, mode, ids)
+        assert "[COMPTABLE]" in snap
+        assert "[SÉCURITÉ]" in snap
+        assert "[ADMINISTRATIF]" in snap
+        assert "<b>" not in snap  # HTML retiré du contexte
+
+    async def test_llm_disabled_falls_back_to_deterministic(self, db, admin_user, monkeypatch):
+        # LLM désactivé (défaut) → réponse déterministe
+        monkeypatch.setattr(ats.llm_service, "enabled", lambda: False)
+        reply = await ats.answer(db, admin_user, "combien de biens")
+        assert "administrative" in reply.lower()
+
+    async def test_llm_enabled_uses_model_reply(self, db, admin_user, monkeypatch):
+        captured = {}
+
+        async def fake_chat(messages, **kw):
+            captured["messages"] = messages
+            return "Réponse rédigée par le modèle."
+
+        monkeypatch.setattr(ats.llm_service, "enabled", lambda: True)
+        monkeypatch.setattr(ats.llm_service, "chat", fake_chat)
+        reply = await ats.answer(db, admin_user, "fais le point sur les impayés")
+        assert reply == "Réponse rédigée par le modèle."
+        # Le contexte transmis au modèle contient bien l'instantané de données
+        joined = " ".join(m["content"] for m in captured["messages"])
+        assert "DONNÉES" in joined and "[COMPTABLE]" in joined
+
+    async def test_llm_failure_falls_back(self, db, admin_user, monkeypatch):
+        async def fake_chat(messages, **kw):
+            return None  # échec / quota → repli
+
+        monkeypatch.setattr(ats.llm_service, "enabled", lambda: True)
+        monkeypatch.setattr(ats.llm_service, "chat", fake_chat)
+        reply = await ats.answer(db, admin_user, "combien de biens")
+        assert "administrative" in reply.lower()  # repli déterministe

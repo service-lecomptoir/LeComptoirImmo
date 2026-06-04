@@ -9,9 +9,15 @@ Trois agents spécialisés répondent aux gestionnaires (via Telegram ou autre) 
 Phase 1 : routage par mots-clés + réponses construites à partir des données
 existantes (lecture seule), strictement dans le périmètre du gestionnaire
 (isolation par rôle). Aucune dépendance à un modèle externe → gratuit.
-La logique est conçue pour être remplacée par un vrai LLM en Phase 2.
+
+Phase 2 : si un LLM est configuré (`AGENT_LLM_API_KEY`), `answer()` lui confie
+la COMPRÉHENSION du message et la RÉDACTION de la réponse, mais en l'ancrant sur
+un INSTANTANÉ chiffré des vraies données (scopé par rôle) — le modèle a interdiction
+d'inventer des chiffres. Sans clé (ou si l'appel échoue), repli automatique sur le
+routeur déterministe de la Phase 1. Le canal et le périmètre restent identiques.
 """
 from __future__ import annotations
+import re
 from datetime import date
 from typing import Optional
 
@@ -25,6 +31,7 @@ from app.models.property import Property
 from app.models.tenant import Tenant
 from app.models.payment import Payment
 from app.models.ticket import Ticket
+from app.services import llm_service
 
 AGENTS = {
     "comptable": {"name": "Agent Comptable", "emoji": "📊",
@@ -173,14 +180,72 @@ async def reminders(db: AsyncSession, user: User) -> str:
     return "🔔 <b>Votre point du jour</b>\n\n" + "\n\n".join(parts)
 
 
+def _strip_html(s: str) -> str:
+    return re.sub(r"<[^>]+>", "", s or "")
+
+
+async def _snapshot(db, user, mode, ids) -> str:
+    """Instantané chiffré des données scopées du gestionnaire (contexte LLM).
+
+    Réutilise les agents déterministes (chiffres réels uniquement) ; les balises
+    HTML sont retirées pour un contexte propre."""
+    encaisse = await _comptable(db, user, "encaissé ce mois", mode, ids)
+    impayes = await _comptable(db, user, "impayés", mode, ids)
+    secu = await _securite(db, user, "démarches", mode, ids)
+    admin = await _administratif(db, user, "synthèse", mode, ids)
+    parts = [
+        "[COMPTABLE]\n" + _strip_html(encaisse) + "\n" + _strip_html(impayes),
+        "[SÉCURITÉ]\n" + _strip_html(secu),
+        "[ADMINISTRATIF]\n" + _strip_html(admin),
+    ]
+    return "\n\n".join(parts)
+
+
+_SYSTEM_PROMPT = (
+    "Tu es l'équipe d'agents IA de « Le Comptoir Immo », une application de gestion "
+    "locative. Tu réunis trois spécialités : Agent Comptable (impayés, encaissements, "
+    "quittances), Agent Sécurité (démarches, incidents, conflits de voisinage) et Agent "
+    "Administratif (biens, locataires, contrats, entretiens).\n\n"
+    "RÈGLES STRICTES :\n"
+    "1. Réponds en français, de façon concise et professionnelle, adaptée à une messagerie "
+    "(Telegram). Tu peux utiliser <b>gras</b> et des puces « • ».\n"
+    "2. Utilise EXCLUSIVEMENT les chiffres et faits fournis dans la section DONNÉES. "
+    "N'invente JAMAIS un montant, un nom ou un nombre absent des données.\n"
+    "3. Si l'information demandée n'est pas dans les données, dis-le clairement et propose "
+    "ce que tu peux fournir à la place.\n"
+    "4. Les montants sont en euros (€). Va à l'essentiel ; pas de formules d'introduction longues.\n"
+    "5. Tu n'effectues aucune action (lecture seule) : tu informes et synthétises."
+)
+
+
 async def answer(db: AsyncSession, user: User, text: str) -> str:
-    """Point d'entrée : route le message vers le bon agent et renvoie la réponse."""
+    """Point d'entrée : route le message et renvoie la réponse.
+
+    Phase 2 (si LLM configuré) : compréhension + rédaction par le modèle, ancrées
+    sur un instantané chiffré scopé. Repli automatique sur la Phase 1 sinon / en cas d'échec.
+    """
     agent = classify(text)
     if agent == "help":
         return _help()
+    mode, ids = await _scope(db, user)
+
+    # ── Phase 2 : LLM ancré sur les données réelles ──
+    if llm_service.enabled():
+        try:
+            snapshot = await _snapshot(db, user, mode, ids)
+            reply = await llm_service.chat([
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": f"DONNÉES (périmètre de l'utilisateur) :\n{snapshot}\n\n"
+                                            f"QUESTION : {text}"},
+            ])
+            if reply:
+                return reply
+        except Exception:  # noqa: BLE001 — ne jamais casser le canal
+            pass
+
+    # ── Phase 1 : repli déterministe ──
     if agent == "reminders":
         return await reminders(db, user)
-    mode, ids = await _scope(db, user)
     t = (text or "").lower()
     if agent == "comptable":
         return await _comptable(db, user, t, mode, ids)
