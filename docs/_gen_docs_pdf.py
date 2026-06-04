@@ -420,6 +420,143 @@ dc up -d --build backend frontend alice-backend alice-frontend   # si besoin''')
 """
 
 
+# ══ DC — AGENT IA WHATSAPP ════════════════════════════════════════════════════
+WA_DIAGRAM = f"""
+<table width="100%" cellspacing="0" cellpadding="0" style="margin:8px 0;">
+  <tr><td align="center">
+    <table cellspacing="4" cellpadding="0"><tr>
+      {node('#25D366','WhatsApp — gestionnaire','messages &amp; rappels')}
+    </tr></table>
+  </td></tr>
+  {arrow()}
+  <tr><td align="center" bgcolor="#f3f6fb" style="border:1px solid #cbd5e1; padding:8px;">
+    <div style="font-size:7.4pt; color:{GRAY}; letter-spacing:1px;">LE COMPTOIR IMMO — BACKEND</div>
+    <table cellspacing="4" cellpadding="0"><tr>
+      {node(NAVY,'Webhook entrant','/webhooks/whatsapp')}
+      {node(TEAL,'Agent IA (Claude)','outils = endpoints')}
+      {node(ORANGE,'Scheduler','rappels proactifs')}
+    </tr></table>
+    <div style="color:{GRAY}; font-size:12pt;">&#8595;</div>
+    <table cellspacing="4" cellpadding="0"><tr>
+      {node(BLUE,'Endpoints metier','paiements · quittances · demarches · entretiens · scoring · baux')}
+    </tr></table>
+  </td></tr>
+  {arrow()}
+  <tr><td align="center"><table cellspacing="4" cellpadding="0"><tr>
+    {node('#334155','Fournisseur WhatsApp','Meta Cloud API')}
+  </tr></table></td></tr>
+</table>
+<p class="small">Liaison numéro ↔ gestionnaire (opt-in, vérification, préférences) + journal d'audit.
+L'agent applique le même périmètre que l'app (isolation par rôle).</p>
+"""
+
+DC_BODY = f"""
+<h2><span class="num">1</span> Objectifs</h2>
+<p class="lead">Un <b>agent conversationnel</b> qui contacte les gestionnaires sur <b>WhatsApp</b>
+pour leur envoyer des <b>rappels</b>, répondre à leurs <b>questions</b> et <b>exécuter des instructions</b>
+via l'API Le Comptoir Immo.</p>
+<ul>
+  <li><b>Gagner du temps</b> : être notifié et agir sans ouvrir l'app.</li>
+  <li><b>Proactivité</b> : échéances, impayés, maintenances dues, démarches en attente, baux à renouveler.</li>
+  <li><b>Conversation naturelle</b> : poser une question ou donner une instruction.</li>
+  <li><b>Réutiliser l'existant</b> : l'app porte déjà tout le métier ; l'agent ne fait qu'<b>orchestrer</b>.</li>
+</ul>
+{co("info", "Hors périmètre v1",
+   "Pas de WhatsApp avec locataires/propriétaires (gestionnaires seulement). "
+   "Pas de pièces sensibles sur WhatsApp — lien vers l'app pour le détail.")}
+
+<h2><span class="num">2</span> Architecture cible</h2>
+{WA_DIAGRAM}
+
+<h2><span class="num">3</span> Le canal WhatsApp (contraintes)</h2>
+{table(["Contrainte", "Conséquence de conception"],
+ [["Numéro WhatsApp Business + vérification Meta", "À provisionner avant tout développement"],
+  ["Templates pré-approuvés (HSM) pour l'envoi proactif", "Les rappels passent par un catalogue de templates validés"],
+  ["Fenêtre de service 24 h", "Hors fenêtre → relance via template"],
+  ["Opt-in explicite", "Étape d'activation + consentement enregistré"],
+  ["Facturation par conversation", "Budgéter ; limiter aux rappels pertinents"]])}
+{co("tip", "Alternative / démarrage rapide",
+   "Le même agent peut démarrer par <b>e-mail</b> ou <b>chat intégré à l'app</b> (sans dépendance Meta), "
+   "puis WhatsApp en surcouche.")}
+
+<h2><span class="num">4</span> Modèle de données</h2>
+<p><b>manager_whatsapp_link</b> : <code>user_id</code>, <code>phone_e164</code>, <code>opt_in_at</code>,
+<code>opt_out_at</code>, <code>verify_code/verified_at</code>, <code>prefs</code> (JSONB), <code>last_inbound_at</code>.</p>
+<p><b>whatsapp_message_log</b> (audit + idempotence) : <code>direction</code>, <code>template_name</code>,
+<code>body_excerpt</code>, <code>status</code>, <code>provider_id</code>, <code>created_at</code>.</p>
+{co("warn", "Minimisation", "On stocke des extraits non sensibles et des identifiants techniques, pas de PII détaillée.")}
+
+<h2><span class="num">5</span> L'agent IA (orchestration)</h2>
+<p>Modèle Claude + <b>jeu d'outils</b> = sous-ensemble contrôlé des endpoints. L'agent reçoit l'identité
+du gestionnaire → <b>isolation respectée</b>. Actions modifiantes → <b>récapitulatif + confirmation</b> + journalisation.</p>
+{table(["Intention", "Outil (endpoint)"],
+ [["« quels loyers manquent ce mois ? »", "Paiements en retard (lecture)"],
+  ["« score de M. X ? »", "/scoring/{tenant} (lecture)"],
+  ["« envoie la quittance de mai à M. X »", "/payments/{id}/quittance/send (action + confirmation)"],
+  ["« marque le loyer d'avril payé »", "/payments/{id}/record (action + confirmation)"],
+  ["« planifie une révision chaudière chez Y »", "Création d'entretien (action + confirmation)"]])}
+
+<h2><span class="num">6</span> Catalogue de rappels proactifs</h2>
+{table(["Rappel", "Source existante", "Fréquence"],
+ [["Loyers en retard", "Paiements en retard", "Quotidien"],
+  ["Échéances à venir", "Avis d'échéance", "Hebdomadaire"],
+  ["Mauvais payeurs / risque", "Scoring (note D/E)", "Hebdomadaire"],
+  ["Maintenances dues", "Entretiens / autoplan", "Hebdomadaire"],
+  ["Démarches en attente", "Module Démarche", "Quotidien si en retard"],
+  ["Baux à renouveler", "Dates de fin de bail", "Mensuel"]])}
+<p class="small">Chaque rappel = un template approuvé (texte sobre + variables) renvoyant vers l'app pour le détail.</p>
+
+<h2><span class="num">7</span> Sécurité, RGPD &amp; gouvernance</h2>
+<ul>
+  <li><b>Consentement</b> : opt-in explicite, opt-out (« STOP ») à tout moment.</li>
+  <li><b>Minimisation</b> : pas de RIB / n° sécu / détail financier complet sur WhatsApp ; lien vers l'app.</li>
+  <li><b>Authentification</b> : numéro rattaché à un compte vérifié (code unique), jeton de liaison.</li>
+  <li><b>Confirmation</b> des actions modifiantes + <b>journal d'audit</b>.</li>
+  <li><b>Technique</b> : vérification de signature du webhook, secrets en .env.prod, rate-limiting.</li>
+  <li><b>Isolation rôle</b> : même périmètre que l'app (mandataire hors GP, GP = son périmètre).</li>
+</ul>
+
+<h2><span class="num">8</span> Configuration (.env.prod)</h2>
+{code('''WHATSAPP_PROVIDER=meta            # meta | twilio | 360dialog
+WHATSAPP_PHONE_NUMBER_ID=<À_RENSEIGNER>
+WHATSAPP_BUSINESS_ACCOUNT_ID=<À_RENSEIGNER>
+WHATSAPP_TOKEN=<À_RENSEIGNER>          # jeton d'acces (long-lived)
+WHATSAPP_VERIFY_TOKEN=<À_RENSEIGNER>   # verification du webhook
+WHATSAPP_APP_SECRET=<À_RENSEIGNER>     # signature des requetes entrantes
+AGENT_LLM_API_KEY=<À_RENSEIGNER>       # cle du modele IA''')}
+
+<h2><span class="num">9</span> Plan de livraison par phases</h2>
+<h3>Phase 1 — Rappels sortants (faible risque)</h3>
+<p>Numéro + compte Meta, 3-4 templates approuvés, table de liaison + opt-in, scheduler → 2-3 rappels
+(loyers en retard, maintenances dues, démarches en attente). <b>Recette</b> : opt-in reçoit le rappel, opt-out OK.</p>
+<h3>Phase 2 — Agent en lecture</h3>
+<p>Webhook entrant + identification + agent <b>lecture seule</b> (paiements, scoring, démarches).
+<b>Recette</b> : réponses correctes, périmètre respecté, hors-droits refusé.</p>
+<h3>Phase 3 — Prise d'instructions</h3>
+<p>Outils modifiants avec <b>confirmation</b> + journalisation. <b>Recette</b> : action seulement après
+confirmation, trace d'audit, isolation vérifiée.</p>
+
+<h2><span class="num">10</span> Estimation &amp; risques</h2>
+{co("danger", "Risque principal",
+   "Fuite de données sensibles via un canal grand public → mitigé par la minimisation (§7). "
+   "Dépendance externe : validation Meta (numéro, templates) = délai non maîtrisé en interne.")}
+<ul>
+  <li><b>Effort</b> : Phase 1 modérée ; Phases 2-3 plus lourdes (agent + sécurité).</li>
+  <li><b>Coût récurrent</b> : facturation Meta par conversation + coût du modèle IA.</li>
+  <li><b>Alternative</b> : agent e-mail / chat in-app pour valider l'usage avant WhatsApp.</li>
+</ul>
+
+<h2><span class="num">11</span> Décisions à prendre</h2>
+<ol>
+  <li><b>Fournisseur</b> : Meta Cloud API direct, ou Twilio / 360dialog ?</li>
+  <li><b>Canal de démarrage</b> : WhatsApp d'emblée, ou e-mail / in-app d'abord ?</li>
+  <li><b>Périmètre Phase 1</b> : quels 3 rappels prioritaires ?</li>
+  <li><b>Modèle IA</b> : quel fournisseur / budget ?</li>
+  <li><b>Politique d'actions</b> : jusqu'où autoriser les actions modifiantes par message ?</li>
+</ol>
+"""
+
+
 def build(title_header, cover_html, body_html):
     return (f"<!DOCTYPE html><html><head><meta charset='utf-8'><style>{CSS}</style></head><body>"
             f"{footer()}{cover_html}{body_html}</body></html>")
@@ -440,6 +577,10 @@ def main():
     render(build("DE", cover("Dossier d'Exploitation",
                              "Surveillance · mises à jour · sauvegardes · dépannage", "DE · Support / Exploitation"),
                  DE_BODY), os.path.join(HERE, "DE_Dossier_Exploitation.pdf"))
+    render(build("DC", cover("Agent IA WhatsApp",
+                             "Rappels · questions · prise d'instructions pour les gestionnaires",
+                             "DC · Dossier de conception"),
+                 DC_BODY), os.path.join(HERE, "DC_Agent_WhatsApp.pdf"))
 
 
 if __name__ == "__main__":
