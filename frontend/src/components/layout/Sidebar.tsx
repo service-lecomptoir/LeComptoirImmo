@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { MapPin, Hash, User } from 'lucide-react'
+import { MapPin, Hash, User, Building2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed } from '@/lib/features'
@@ -135,14 +135,7 @@ function SidebarInfoBlock({ line1, address, personName, refCode }: SidebarInfoBl
   )
 }
 
-// ── Carte d'en-tête gestionnaire (dégradé + initiales) ───────────────────────
-function _initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
-
+// ── Carte d'en-tête gestionnaire (dégradé + icône immo) ──────────────────────
 function ManagerHeaderCard({ roleLabel, name, address }: { roleLabel: string; name: string; address?: string }) {
   return (
     <div className="px-4 py-4 border-b border-gray-700">
@@ -150,9 +143,9 @@ function ManagerHeaderCard({ roleLabel, name, address }: { roleLabel: string; na
         className="rounded-xl p-3.5 flex items-center gap-3"
         style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #0E9F8E 130%)' }}
       >
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-white font-extrabold text-sm"
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
           style={{ background: 'rgba(255,255,255,0.22)' }}>
-          {_initials(name || roleLabel)}
+          <Building2 size={20} className="text-white" />
         </div>
         <div className="min-w-0">
           {name && <p className="text-white font-bold text-sm leading-tight truncate">{name}</p>}
