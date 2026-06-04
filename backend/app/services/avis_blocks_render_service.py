@@ -377,8 +377,8 @@ def _render_header(props: dict, t: dict, variables: dict, logo_path) -> str:
       <td style="width:50%; vertical-align:middle;">{brand}</td>
       <td style="width:50%; text-align:right; vertical-align:middle;">
         <div style="font-size:23pt; font-weight:bold; color:{t['navy']}; line-height:1.05; margin:0;">{title}</div>
-        <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; letter-spacing:.5px; line-height:1.15; margin:3px 0 0 0;">{sub1}</div>
-        <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; letter-spacing:.5px; line-height:1.15; margin:0;">{sub2}</div>
+        <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; line-height:1.2; margin:4px 0 0 0;">{sub1}</div>
+        <div style="font-size:9pt; font-weight:bold; color:{t['navy']}; line-height:1.2; margin:0;">{sub2}</div>
       </td>
     </tr></table>
     """
