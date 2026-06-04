@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 from sqlalchemy import String, DateTime, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.database import Base, TimestampMixin
 
@@ -29,6 +29,9 @@ class TelegramLink(Base, TimestampMixin):
     verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_inbound_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Action proposée en attente de confirmation (Phase 3 — actions des agents).
+    pending_action: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    pending_action_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
         return f"<TelegramLink user={self.user_id} chat={self.chat_id}>"

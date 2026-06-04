@@ -94,11 +94,46 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
     link.last_inbound_at = _now()
     await db.commit()
     try:
-        reply = await agent_team_service.answer(db, user, text)
+        reply = await _handle_message(db, link, user, text)
     except Exception:
         reply = "Désolé, une erreur est survenue. Réessayez plus tard."
     await send_message(chat_id, reply)
     return {"ok": True}
+
+
+async def _handle_message(db, link, user, text: str) -> str:
+    """Oriente le message : confirmation d'action, proposition d'action, ou Q&R."""
+    from app.services import agent_action_service as actions
+
+    # 1) Une action est en attente de confirmation ?
+    if link.pending_action:
+        if actions.is_confirmation(text):
+            pending = link.pending_action
+            link.pending_action = None
+            link.pending_action_at = None
+            await db.commit()
+            return await actions.execute(db, user, pending)
+        if actions.is_cancellation(text):
+            link.pending_action = None
+            link.pending_action_at = None
+            await db.commit()
+            return "Action annulée. 👍"
+        # Ni oui ni non : on abandonne l'action en cours et on traite le nouveau message.
+        link.pending_action = None
+        link.pending_action_at = None
+        await db.commit()
+
+    # 2) Le message demande-t-il une action ? (propose + confirmation)
+    proposal = await actions.interpret(db, user, text)
+    if proposal is not None:
+        if proposal.get("pending"):
+            link.pending_action = proposal["pending"]
+            link.pending_action_at = _now()
+            await db.commit()
+        return proposal["reply"]
+
+    # 3) Sinon : question → réponse informative (Phase 2 / Phase 1)
+    return await agent_team_service.answer(db, user, text)
 
 
 # ── Liaison côté gestionnaire (gated par l'option « Agents IA ») ─────────────

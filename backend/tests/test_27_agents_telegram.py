@@ -181,3 +181,72 @@ class TestReminders:
         # Telegram non configuré (défaut tests) → le job ne lève pas et ne fait rien
         from app.core.scheduler import run_telegram_reminders_now
         await run_telegram_reminders_now()  # ne doit pas lever
+
+
+# ── Phase 3 : actions des agents (avec confirmation) ─────────────────────────
+@pytest.mark.asyncio
+class TestActions:
+    def _mk_tenant(self, db, owner_id, name="Zorgon"):
+        from app.models.tenant import Tenant
+        t = Tenant(first_name=name, last_name="Testeur", email=f"{name.lower()}@t.fr",
+                   created_by=owner_id)
+        db.add(t)
+        return t
+
+    async def test_confirmation_helpers(self):
+        from app.services import agent_action_service as aa
+        assert aa.is_confirmation("OUI")
+        assert aa.is_confirmation("oui !")
+        assert aa.is_cancellation("non")
+        assert aa.is_cancellation("annuler")
+        assert not aa.is_confirmation("peut-être")
+
+    async def test_interpret_none_is_question(self, db, gestionnaire_user, monkeypatch):
+        from app.services import agent_action_service as aa
+
+        async def fake_chat(messages, **kw):
+            return '{"action":"none"}'
+        monkeypatch.setattr(aa.llm_service, "enabled", lambda: True)
+        monkeypatch.setattr(aa.llm_service, "chat", fake_chat)
+        assert await aa.interpret(db, gestionnaire_user, "combien de biens ?") is None
+
+    async def test_actions_blocked_for_non_manager(self, db, locataire_user, monkeypatch):
+        from app.services import agent_action_service as aa
+
+        async def fake_chat(messages, **kw):
+            return '{"action":"demarche","tenant":"X","title":"t","note":"n"}'
+        monkeypatch.setattr(aa.llm_service, "enabled", lambda: True)
+        monkeypatch.setattr(aa.llm_service, "chat", fake_chat)
+        # un locataire ne déclenche jamais d'action (None → bascule Q&R)
+        assert await aa.interpret(db, locataire_user, "ouvre une démarche") is None
+
+    async def test_interpret_demarche_then_execute(self, db, gestionnaire_user, monkeypatch):
+        from app.services import agent_action_service as aa
+        t = self._mk_tenant(db, gestionnaire_user.id, name="Zorgon")
+        await db.flush()
+
+        async def fake_chat(messages, **kw):
+            return ('{"action":"demarche","tenant":"Zorgon","title":"Fuite d eau",'
+                    '"note":"Signalee par le voisin","month":null,"year":null,'
+                    '"amount":null,"method":null,"send_email":false}')
+        monkeypatch.setattr(aa.llm_service, "enabled", lambda: True)
+        monkeypatch.setattr(aa.llm_service, "chat", fake_chat)
+
+        prop = await aa.interpret(db, gestionnaire_user, "ouvre une démarche pour Zorgon")
+        assert prop is not None and prop.get("pending")
+        assert prop["pending"]["action"] == "demarche"
+        assert "OUI" in prop["reply"]
+
+        msg = await aa.execute(db, gestionnaire_user, prop["pending"])
+        assert "démarche" in msg.lower()
+
+    async def test_interpret_unknown_tenant(self, db, gestionnaire_user, monkeypatch):
+        from app.services import agent_action_service as aa
+
+        async def fake_chat(messages, **kw):
+            return '{"action":"demarche","tenant":"Inexistant XYZ","title":"t","note":"n"}'
+        monkeypatch.setattr(aa.llm_service, "enabled", lambda: True)
+        monkeypatch.setattr(aa.llm_service, "chat", fake_chat)
+        prop = await aa.interpret(db, gestionnaire_user, "démarche pour Inexistant XYZ")
+        assert prop is not None and "pending" not in prop
+        assert "Aucun locataire" in prop["reply"]

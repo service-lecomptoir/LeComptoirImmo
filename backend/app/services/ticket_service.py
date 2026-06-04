@@ -49,6 +49,46 @@ class TicketService:
         return ticket
 
     @staticmethod
+    async def create_for_tenant(
+        db: AsyncSession,
+        *,
+        tenant_id: uuid.UUID,
+        title: str,
+        description: str,
+        author_user_id: uuid.UUID,
+        category: Optional[str] = None,
+        priority: Optional[str] = None,
+    ) -> Ticket:
+        """Crée une démarche POUR un locataire (auteur = gestionnaire).
+
+        Variante de `create` où le locataire est désigné par son id (et non déduit
+        du compte auteur) — utilisée par les agents IA côté gestionnaire."""
+        from app.models.ticket import TicketCategory, TicketPriority
+        cat = category or TicketCategory.AUTRE.value
+        prio = priority or TicketPriority.MEDIUM.value
+        ticket = Ticket(
+            title=title,
+            description=description,
+            category=cat,
+            priority=prio,
+            tenant_id=tenant_id,
+            status=TicketStatus.OPEN,
+            assigned_to_id=author_user_id,
+        )
+        db.add(ticket)
+        await db.flush()
+        await db.refresh(ticket)
+        msg = TicketMessage(
+            ticket_id=ticket.id,
+            author_id=author_user_id,
+            content=description,
+            is_internal=False,
+        )
+        db.add(msg)
+        await db.flush()
+        return ticket
+
+    @staticmethod
     async def get(db: AsyncSession, ticket_id: uuid.UUID) -> Ticket:
         result = await db.execute(
             select(Ticket)

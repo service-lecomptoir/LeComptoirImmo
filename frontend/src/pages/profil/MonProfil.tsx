@@ -415,7 +415,9 @@ export default function MonProfil() {
             <h2 className="text-sm font-semibold text-gray-900">Agents IA</h2>
           </div>
           <p className="text-xs text-gray-500 -mt-2">
-            Votre équipe d'agents répond à vos questions et vous envoie des rappels, directement sur Telegram (gratuit).
+            Votre équipe d'agents répond à vos questions, vous envoie un point du jour, et peut
+            <b> exécuter des actions</b> (générer un avis ou une quittance, enregistrer un paiement,
+            ouvrir une démarche) — avec confirmation — directement sur Telegram (gratuit).
           </p>
 
           {/* Présentation des 3 agents */}

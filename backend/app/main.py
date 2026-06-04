@@ -350,6 +350,9 @@ async def _apply_column_migrations() -> None:
         # Logo du gestionnaire (profil « Mes informations »)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS logo_path VARCHAR(500)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
+        # ── Actions des agents IA : action en attente de confirmation ───────────
+        "ALTER TABLE telegram_links ADD COLUMN IF NOT EXISTS pending_action JSONB",
+        "ALTER TABLE telegram_links ADD COLUMN IF NOT EXISTS pending_action_at TIMESTAMPTZ",
         # ── Correctif isolation cloche : purge des notifications « broadcast » ───
         # Les alertes (loyer en retard / bail expirant) étaient créées avec
         # user_id = NULL et la requête les diffusait à TOUS les comptes. Le code

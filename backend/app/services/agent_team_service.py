@@ -165,7 +165,12 @@ def _help() -> str:
     for a in AGENTS.values():
         lines.append(f"{a['emoji']} <b>{a['name']}</b> — {a['desc']}")
     lines.append("")
-    lines.append("Exemples : « impayés », « démarches en cours », « combien de biens », « résumé ».")
+    lines.append("💬 <b>Questions</b> : « impayés », « démarches en cours », « combien de biens », « résumé ».")
+    lines.append("⚡ <b>Actions</b> (je demande confirmation avant) :")
+    lines.append("• « génère l'avis de juin pour Dupont »")
+    lines.append("• « envoie la quittance de mai à Martin »")
+    lines.append("• « enregistre le paiement de Dupont pour ce mois »")
+    lines.append("• « ouvre une démarche pour Martin : fuite d'eau »")
     return "\n".join(lines)
 
 
