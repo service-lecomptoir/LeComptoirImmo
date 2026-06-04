@@ -117,3 +117,27 @@ class TestNotificationIsolation:
             f"/api/v1/notifications/{foreign.id}/read", headers=auth(gestionnaire_token)
         )
         assert resp.status_code == 404  # ne peut pas marquer lue une notif qui n'est pas la sienne
+
+    async def test_locataire_only_sees_own(self, client, db, locataire_user, locataire_token, gestionnaire_user):
+        """Le locataire ne voit QUE ses notifications (ni celles du gestionnaire, ni broadcast)."""
+        mine = self._notif(locataire_user.id, "Votre loyer a été validé")
+        manager = self._notif(gestionnaire_user.id, "Notif du gestionnaire")
+        broadcast = self._notif(None, "Ancien broadcast")
+        db.add_all([mine, manager, broadcast])
+        await db.flush()
+
+        resp = await client.get("/api/v1/notifications", headers=auth(locataire_token))
+        assert resp.status_code == 200
+        titles = [i["title"] for i in resp.json()["items"]]
+        assert "Votre loyer a été validé" in titles
+        assert "Notif du gestionnaire" not in titles   # pas les notifs d'un autre rôle
+        assert "Ancien broadcast" not in titles          # plus de diffusion globale
+
+    async def test_locataire_cannot_mark_manager_notification(self, client, db, gestionnaire_user, locataire_token):
+        foreign = self._notif(gestionnaire_user.id, "Notif gestionnaire")
+        db.add(foreign)
+        await db.flush()
+        resp = await client.post(
+            f"/api/v1/notifications/{foreign.id}/read", headers=auth(locataire_token)
+        )
+        assert resp.status_code == 404
