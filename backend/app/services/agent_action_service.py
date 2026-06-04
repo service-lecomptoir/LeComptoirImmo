@@ -272,13 +272,32 @@ async def execute(db: AsyncSession, user: User, pending: dict) -> str:
 
 async def _exec_avis(db, user, p) -> str:
     from app.services.avis_echeance_service import AvisEcheanceService
+    from app.models.avis_echeance import AvisEcheance
+    from app.core.exceptions import ConflictException
     lease = await db.get(Lease, uuid.UUID(p["lease_id"]))
     tenant = await db.get(Tenant, uuid.UUID(p["tenant_id"]))
-    avis = await AvisEcheanceService.generate_for_lease(
-        db, lease, int(p["year"]), int(p["month"]), generated_by=user.id
-    )
-    await db.commit()
-    mois = f"{int(p['month']):02d}/{int(p['year'])}"
+    year, month = int(p["year"]), int(p["month"])
+    mois = f"{month:02d}/{year}"
+    already = False
+    try:
+        avis = await AvisEcheanceService.generate_for_lease(
+            db, lease, year, month, generated_by=user.id
+        )
+        await db.commit()
+    except ConflictException:
+        # Un avis existe déjà pour cette période → on le récupère au lieu d'échouer.
+        await db.rollback()
+        avis = (await db.execute(
+            select(AvisEcheance).where(
+                AvisEcheance.lease_id == lease.id,
+                AvisEcheance.period_year == year,
+                AvisEcheance.period_month == month,
+            )
+        )).scalar_one_or_none()
+        if avis is None:
+            return (f"ℹ️ Un avis d'échéance {mois} existe déjà pour {tenant.full_name} "
+                    f"(consultable dans « Avis d'échéances »).")
+        already = True
     extra = ""
     if p.get("send_email") and tenant and tenant.email:
         try:
@@ -293,7 +312,8 @@ async def _exec_avis(db, user, p) -> str:
             extra = " et envoyé par e-mail" if ok else " (e-mail non envoyé : SMTP désactivé)"
         except Exception:  # noqa: BLE001
             extra = " (e-mail non envoyé)"
-    return f"✅ Avis d'échéance {mois} généré pour {tenant.full_name} — {_eur(avis.amount_total)}{extra}."
+    verbe = "existait déjà" if already else "généré"
+    return f"✅ Avis d'échéance {mois} {verbe} pour {tenant.full_name} — {_eur(avis.amount_total)}{extra}."
 
 
 async def _exec_quittance(db, user, p) -> str:
