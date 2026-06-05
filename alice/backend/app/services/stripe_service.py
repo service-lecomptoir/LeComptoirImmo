@@ -38,11 +38,26 @@ async def ensure_plan_price(db, plan, *, force: bool = False) -> str:
     Idempotent : ne recrée pas si `plan.stripe_price_id` existe déjà — SAUF si
     `force=True` (resynchro après changement de tarif : un Price Stripe est
     immuable, on en crée donc un nouveau pour les futurs abonnements)."""
-    if plan.stripe_price_id and not force:
-        return plan.stripe_price_id
     stripe = _stripe()
     s = get_settings()
+    # Auto-cicatrisation : un price enregistré mais invalide dans le mode courant
+    # (bascule test→live, ou supprimé) est ignoré et recréé.
+    if plan.stripe_price_id and not force:
+        try:
+            pr = stripe.Price.retrieve(plan.stripe_price_id)
+            if getattr(pr, "active", True):
+                return plan.stripe_price_id
+        except Exception:  # noqa: BLE001 — price invalide → on recrée
+            pass
+    # Product : valider l'existant, sinon (re)créer.
     product_id = plan.stripe_product_id
+    if product_id:
+        try:
+            pr = stripe.Product.retrieve(product_id)
+            if getattr(pr, "deleted", False):
+                product_id = None
+        except Exception:  # noqa: BLE001
+            product_id = None
     if not product_id:
         product = stripe.Product.create(
             name=f"Abonnement {plan.name}",
@@ -66,10 +81,18 @@ async def ensure_plan_price(db, plan, *, force: bool = False) -> str:
 # ── Client (customer) par gestionnaire ───────────────────────────────────────
 async def ensure_customer(db, license, *, email: Optional[str] = None,
                           name: Optional[str] = None) -> str:
-    """Crée (si besoin) le Customer Stripe du gestionnaire ; renvoie customer_id."""
-    if license.stripe_customer_id:
-        return license.stripe_customer_id
+    """Crée (si besoin) le Customer Stripe du gestionnaire ; renvoie customer_id.
+
+    Auto-cicatrisation : un customer enregistré mais invalide dans le mode courant
+    (bascule test→live, ou supprimé) est recréé."""
     stripe = _stripe()
+    if license.stripe_customer_id:
+        try:
+            c = stripe.Customer.retrieve(license.stripe_customer_id)
+            if not getattr(c, "deleted", False):
+                return license.stripe_customer_id
+        except Exception:  # noqa: BLE001 — customer invalide → on recrée
+            pass
     customer = stripe.Customer.create(
         email=email or None,
         name=name or None,
