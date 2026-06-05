@@ -156,6 +156,135 @@ class TestCrossAgencyIsolation:
         assert (await client.get(f"/api/v1/leases/{a['lease_id']}", headers=auth(tokenS))).status_code == 200
 
 
+async def _owned_chain(db, *, gest_id, owner_user_id, tenant_user_id, tag):
+    """Chaîne complète (bien→locataire→bail→paiement→avis→démarche) créée par une
+    agence (gest_id), rattachée à un propriétaire (owner_user_id) et un locataire
+    (tenant_user_id). Insertion directe en base."""
+    from datetime import date
+    from app.models.property import Property
+    from app.models.tenant import Tenant
+    from app.models.lease import Lease
+    from app.models.payment import Payment
+    from app.models.avis_echeance import AvisEcheance
+    from app.models.ticket import Ticket, TicketStatus, TicketCategory, TicketPriority
+
+    prop = Property(name=f"Bien {tag}", address="1 Rue", zip_code="75000", city="Paris",
+                    country="France", property_type="appartement",
+                    created_by=gest_id, owner_user_id=owner_user_id)
+    db.add(prop)
+    await db.flush()
+    tenant = Tenant(first_name=tag, last_name="Iso", email=f"{tag.lower()}_{uuid.uuid4().hex[:6]}@t.fr",
+                    created_by=gest_id, user_id=tenant_user_id)
+    db.add(tenant)
+    await db.flush()
+    lease = Lease(tenant_id=tenant.id, property_id=prop.id, start_date=date.today(),
+                  rent_amount=800.0, charges_amount=50.0, lease_type="vide", payment_day=1,
+                  is_active=True, created_by=gest_id)
+    db.add(lease)
+    await db.flush()
+    pay = Payment(lease_id=lease.id, tenant_id=tenant.id, period_year=2026, period_month=1,
+                  due_date=date(2026, 1, 1), amount_rent=800.0, amount_charges=50.0,
+                  amount_due=850.0, amount_paid=0.0, status="pending", created_by=gest_id)
+    db.add(pay)
+    avis = AvisEcheance(lease_id=lease.id, tenant_id=tenant.id, period_year=2026, period_month=1,
+                        due_date=date(2026, 1, 1), amount_rent=800.0, amount_charges=50.0,
+                        amount_total=850.0, status="envoye")
+    db.add(avis)
+    ticket = Ticket(title=f"Démarche {tag}", description="d", tenant_id=tenant.id,
+                    category=TicketCategory.AUTRE.value, priority=TicketPriority.MEDIUM.value,
+                    status=TicketStatus.OPEN)
+    db.add(ticket)
+    await db.flush()
+    return {"prop": str(prop.id), "tenant": str(tenant.id), "lease": str(lease.id),
+            "payment": str(pay.id), "avis": str(avis.id), "ticket": str(ticket.id)}
+
+
+def _ids(resp, key="items"):
+    data = resp.json()
+    items = data.get(key, data) if isinstance(data, dict) else data
+    return [str(i.get("id")) for i in items]
+
+
+@pytest.mark.asyncio
+class TestProprietaireIsolation:
+    """Un propriétaire (lecture seule) ne voit QUE les données de SES biens."""
+
+    async def test_proprietaire_sees_only_own(self, client, db, gestionnaire_user,
+                                              proprietaire_user, proprietaire_token, locataire_user):
+        from tests.conftest import _create_user
+        # Bien du propriétaire A (= proprietaire_user)
+        a = await _owned_chain(db, gest_id=gestionnaire_user.id,
+                               owner_user_id=proprietaire_user.id,
+                               tenant_user_id=locataire_user.id, tag="ProA")
+        # Bien d'un AUTRE propriétaire B
+        ownerB = await _create_user(db, f"propB_{uuid.uuid4().hex[:8]}@t.fr", "PropPass1!", "proprietaire")
+        b = await _owned_chain(db, gest_id=gestionnaire_user.id,
+                               owner_user_id=ownerB.id, tenant_user_id=None, tag="ProB")
+        await db.flush()
+        h = auth(proprietaire_token)
+
+        # Listes : A ne voit que ses biens/baux/paiements
+        props = await client.get("/api/v1/properties", headers=h)
+        assert props.status_code == 200
+        assert a["prop"] in _ids(props) and b["prop"] not in _ids(props)
+
+        leases = await client.get("/api/v1/leases", headers=h)
+        assert a["lease"] in _ids(leases) and b["lease"] not in _ids(leases)
+
+        pays = await client.get("/api/v1/payments", headers=h)
+        assert a["payment"] in _ids(pays) and b["payment"] not in _ids(pays)
+
+        # Accès par ID au bien d'un autre propriétaire → refusé
+        assert _denied(await client.get(f"/api/v1/leases/{b['lease']}", headers=h))
+        assert _denied(await client.get(f"/api/v1/payments/{b['payment']}", headers=h))
+
+        # Écriture interdite (rôle non gestionnaire)
+        assert _denied(await client.put(f"/api/v1/leases/{a['lease']}", headers=h, json={"rent_amount": 1.0}))
+
+
+@pytest.mark.asyncio
+class TestLocataireIsolation:
+    """Un locataire ne voit QUE son bail / ses paiements / ses avis / ses démarches."""
+
+    async def test_locataire_sees_only_own(self, client, db, gestionnaire_user,
+                                           proprietaire_user, locataire_user, locataire_token):
+        from tests.conftest import _create_user, _get_token
+        a = await _owned_chain(db, gest_id=gestionnaire_user.id,
+                               owner_user_id=proprietaire_user.id,
+                               tenant_user_id=locataire_user.id, tag="LocA")
+        # Bail d'un AUTRE locataire B
+        locB = await _create_user(db, f"locB_{uuid.uuid4().hex[:8]}@t.fr", "LocPass1!", "locataire")
+        b = await _owned_chain(db, gest_id=gestionnaire_user.id,
+                               owner_user_id=proprietaire_user.id, tenant_user_id=locB.id, tag="LocB")
+        await db.flush()
+        h = auth(locataire_token)
+
+        # Listes : uniquement SES données
+        leases = await client.get("/api/v1/leases", headers=h)
+        assert leases.status_code == 200
+        assert a["lease"] in _ids(leases) and b["lease"] not in _ids(leases)
+
+        pays = await client.get("/api/v1/payments", headers=h)
+        assert a["payment"] in _ids(pays) and b["payment"] not in _ids(pays)
+
+        avis = await client.get("/api/v1/avis-echeances", headers=h)
+        avis_ids = [str(i.get("id")) for i in avis.json()]
+        assert a["avis"] in avis_ids and b["avis"] not in avis_ids
+
+        mine = await client.get("/api/v1/tickets/mine", headers=h)
+        assert a["ticket"] in _ids(mine, key=None) and b["ticket"] not in _ids(mine, key=None)
+
+        # Accès par ID aux ressources d'un autre locataire → refusé
+        assert _denied(await client.get(f"/api/v1/leases/{b['lease']}", headers=h))
+        assert _denied(await client.get(f"/api/v1/payments/{b['payment']}", headers=h))
+        assert _denied(await client.get(f"/api/v1/tickets/{b['ticket']}", headers=h))
+
+        # Endpoints de gestion interdits au locataire
+        assert _denied(await client.get("/api/v1/tenants", headers=h))
+        assert _denied(await client.get("/api/v1/properties", headers=h))
+        assert _denied(await client.get("/api/v1/tickets", headers=h))
+
+
 @pytest.mark.asyncio
 class TestTicketIsolation:
     async def test_locataire_cannot_read_others_ticket(self, client, db, gp_token, gp_user, locataire_user):
