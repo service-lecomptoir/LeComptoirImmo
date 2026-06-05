@@ -77,8 +77,9 @@ async def _scope(db: AsyncSession, user: User):
             select(Property.id).where(Property.created_by == user.id)
         )).scalars().all())
         return "include", ids
-    from app.api.v1._isolation import gp_property_ids
-    return "exclude", await gp_property_ids(db)
+    # Mandataire : uniquement les biens de SON agence
+    from app.api.v1._isolation import agency_property_ids
+    return "include", await agency_property_ids(db, user)
 
 
 def _apply(q, mode, ids):

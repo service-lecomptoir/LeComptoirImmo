@@ -101,23 +101,19 @@ async def _llm_intent(text: str) -> Optional[dict]:
 
 
 # ── Résolution d'entités dans le périmètre ───────────────────────────────────
-async def _gp_tenant_ids(db) -> set:
-    from app.api.v1._isolation import gp_tenant_ids
-    return await gp_tenant_ids(db)
-
-
 async def _find_tenants(db: AsyncSession, user: User, name: str) -> list[Tenant]:
     """Locataires correspondant au nom, restreints au périmètre du gestionnaire."""
     from app.services.tenant_service import TenantService
+    from app.api.v1._isolation import agency_member_ids
     tenants, _ = await TenantService.list_all(db, search=name, limit=25)
     role = Role(user.role)
     if role == Role.ADMIN:
         return list(tenants)
     if role == Role.GESTIONNAIRE_PROPRIO:
         return [t for t in tenants if t.created_by == user.id]
-    # mandataire : tous les locataires non-GP
-    gp = await _gp_tenant_ids(db)
-    return [t for t in tenants if t.id not in gp]
+    # Mandataire : uniquement les locataires de SON agence
+    members = await agency_member_ids(db, user)
+    return [t for t in tenants if t.created_by in members]
 
 
 async def _active_lease(db: AsyncSession, tenant_id: uuid.UUID) -> Optional[Lease]:
