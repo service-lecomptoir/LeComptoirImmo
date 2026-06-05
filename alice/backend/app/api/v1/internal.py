@@ -84,6 +84,97 @@ async def get_license_info(
     )
 
 
+# ── Stripe : abonnement (carte / SEPA) ───────────────────────────────────────
+class BillingStatusResponse(BaseModel):
+    stripe_enabled: bool
+    has_subscription: bool
+    status: Optional[str] = None
+    current_period_end: Optional[datetime] = None
+    payment_method_type: Optional[str] = None
+    plan_name: Optional[str] = None
+    monthly_price: Optional[float] = None
+
+
+class BillingUrlResponse(BaseModel):
+    url: str
+
+
+@router.get("/billing/status/{user_id}", response_model=BillingStatusResponse,
+            dependencies=[Depends(_require_internal_key)])
+async def billing_status(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """État d'abonnement Stripe d'un gestionnaire (pour la page Mon abonnement)."""
+    from app.services import stripe_service
+    lic = (await db.execute(
+        select(AliceLicense).where(AliceLicense.gestionnaire_user_id == user_id)
+    )).scalar_one_or_none()
+    plan_name = None
+    monthly_price = None
+    if lic and lic.plan_id:
+        plan = (await db.execute(select(AlicePlan).where(AlicePlan.id == lic.plan_id))).scalar_one_or_none()
+        if plan:
+            plan_name = plan.name
+            monthly_price = float(plan.monthly_price or 0)
+    return BillingStatusResponse(
+        stripe_enabled=stripe_service.enabled(),
+        has_subscription=bool(lic and lic.stripe_subscription_id),
+        status=getattr(lic, "stripe_status", None) if lic else None,
+        current_period_end=getattr(lic, "stripe_current_period_end", None) if lic else None,
+        payment_method_type=getattr(lic, "stripe_payment_method_type", None) if lic else None,
+        plan_name=plan_name, monthly_price=monthly_price,
+    )
+
+
+@router.post("/billing/checkout/{user_id}", response_model=BillingUrlResponse,
+             dependencies=[Depends(_require_internal_key)])
+async def billing_checkout(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Crée une session Stripe Checkout (abonnement) et renvoie l'URL de paiement."""
+    from app.services import stripe_service
+    if not stripe_service.enabled():
+        raise HTTPException(status_code=503, detail="Paiement en ligne non activé.")
+    lic = (await db.execute(
+        select(AliceLicense).where(AliceLicense.gestionnaire_user_id == user_id)
+    )).scalar_one_or_none()
+    if not lic:
+        raise HTTPException(status_code=404, detail="Licence introuvable.")
+    if not lic.plan_id:
+        raise HTTPException(status_code=400, detail="Aucun plan tarifaire assigné à ce compte.")
+    plan = (await db.execute(select(AlicePlan).where(AlicePlan.id == lic.plan_id))).scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=400, detail="Plan tarifaire introuvable.")
+    urow = (await db.execute(
+        select(LeciUser.full_name, LeciUser.email).where(LeciUser.id == user_id)
+    )).fetchone()
+    price_id = await stripe_service.ensure_plan_price(db, plan)
+    customer_id = await stripe_service.ensure_customer(
+        db, lic, email=(urow.email if urow else None), name=(urow.full_name if urow else None),
+    )
+    await db.commit()
+    url = stripe_service.create_checkout_session(
+        customer_id=customer_id, price_id=price_id,
+        success_url=settings.STRIPE_SUCCESS_URL, cancel_url=settings.STRIPE_CANCEL_URL,
+        metadata={"gestionnaire_user_id": str(user_id), "alice_plan_id": str(plan.id)},
+    )
+    return BillingUrlResponse(url=url)
+
+
+@router.post("/billing/portal/{user_id}", response_model=BillingUrlResponse,
+             dependencies=[Depends(_require_internal_key)])
+async def billing_portal(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Crée une session du portail de facturation Stripe (gérer carte/abonnement)."""
+    from app.services import stripe_service
+    if not stripe_service.enabled():
+        raise HTTPException(status_code=503, detail="Paiement en ligne non activé.")
+    lic = (await db.execute(
+        select(AliceLicense).where(AliceLicense.gestionnaire_user_id == user_id)
+    )).scalar_one_or_none()
+    if not lic or not lic.stripe_customer_id:
+        raise HTTPException(status_code=400, detail="Aucun abonnement Stripe pour ce compte.")
+    url = stripe_service.create_billing_portal_session(
+        customer_id=lic.stripe_customer_id, return_url=settings.STRIPE_SUCCESS_URL,
+    )
+    return BillingUrlResponse(url=url)
+
+
 @router.get("/invoices/{user_id}", response_model=List[InvoiceOut], dependencies=[Depends(_require_internal_key)])
 async def get_user_invoices(
     user_id: uuid.UUID,

@@ -217,3 +217,55 @@ async def get_my_invoice_pdf(
             )
         },
     )
+
+
+# ── Paiement Stripe (proxy vers Alice) ───────────────────────────────────────
+def _require_manager(current_user: User) -> None:
+    if Role(current_user.role) not in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
+        raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
+
+
+async def _alice_billing(method: str, path: str, user_id) -> dict:
+    import httpx
+    from app.config import get_settings
+    cfg = get_settings()
+    async with httpx.AsyncClient(timeout=15.0) as hc:
+        resp = await hc.request(
+            method, f"{cfg.ALICE_URL}/api/v1/internal/billing/{path}/{user_id}",
+            headers={"X-Internal-Key": cfg.ALICE_INTERNAL_KEY},
+        )
+    if resp.status_code >= 400:
+        detail = "Service de facturation indisponible"
+        try:
+            detail = resp.json().get("detail", detail)
+        except Exception:  # noqa: BLE001
+            pass
+        raise HTTPException(status_code=resp.status_code if resp.status_code < 500 else 502,
+                            detail=detail)
+    return resp.json()
+
+
+@router.get("/billing", summary="État de l'abonnement Stripe")
+async def billing_status(current_user: User = Depends(get_current_user)):
+    """Statut d'abonnement Stripe du gestionnaire (proxy Alice). Fail-soft."""
+    _require_manager(current_user)
+    try:
+        return await _alice_billing("GET", "status", current_user.id)
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001
+        return {"stripe_enabled": False, "has_subscription": False}
+
+
+@router.post("/checkout", summary="Démarrer le paiement de l'abonnement (Stripe Checkout)")
+async def billing_checkout(current_user: User = Depends(get_current_user)):
+    """Crée une session Stripe Checkout et renvoie l'URL de paiement (carte/SEPA)."""
+    _require_manager(current_user)
+    return await _alice_billing("POST", "checkout", current_user.id)
+
+
+@router.post("/portal", summary="Ouvrir le portail de gestion de l'abonnement Stripe")
+async def billing_portal(current_user: User = Depends(get_current_user)):
+    """Crée une session du portail de facturation Stripe (gérer carte/abonnement)."""
+    _require_manager(current_user)
+    return await _alice_billing("POST", "portal", current_user.id)

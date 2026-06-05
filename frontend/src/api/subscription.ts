@@ -23,6 +23,16 @@ export interface SubscriptionInvoice {
   created_at: string
 }
 
+export interface BillingStatus {
+  stripe_enabled: boolean
+  has_subscription: boolean
+  status: string | null
+  current_period_end: string | null
+  payment_method_type: string | null
+  plan_name: string | null
+  monthly_price: number | null
+}
+
 export const subscriptionApi = {
   get: () => apiClient.get<SubscriptionInfo>('/subscription'),
   requestResiliation: (reason: string) =>
@@ -30,4 +40,8 @@ export const subscriptionApi = {
   invoices: () => apiClient.get<SubscriptionInvoice[]>('/subscription/invoices'),
   downloadInvoice: (id: string) =>
     apiClient.get(`/subscription/invoices/${id}/pdf`, { responseType: 'blob' }),
+  // ── Stripe (carte / prélèvement SEPA) ──
+  billing: () => apiClient.get<BillingStatus>('/subscription/billing'),
+  checkout: () => apiClient.post<{ url: string }>('/subscription/checkout'),
+  portal: () => apiClient.post<{ url: string }>('/subscription/portal'),
 }

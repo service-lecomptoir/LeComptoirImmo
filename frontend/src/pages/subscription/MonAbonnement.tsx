@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt, ListChecks, Check } from 'lucide-react'
-import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice } from '@/api/subscription'
+import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice, type BillingStatus } from '@/api/subscription'
 import { FEATURE_LABELS } from '@/lib/features'
 import { toast } from '@/store/toast'
 
@@ -33,6 +33,30 @@ export default function MonAbonnement() {
   const [resiliationSent, setResiliationSent] = useState(false)
   const [resiliationError, setResiliationError] = useState<string | null>(null)
   const [invoices, setInvoices] = useState<SubscriptionInvoice[]>([])
+  const [billing, setBilling] = useState<BillingStatus | null>(null)
+  const [billingBusy, setBillingBusy] = useState(false)
+
+  const startCheckout = async () => {
+    setBillingBusy(true)
+    try {
+      const { data } = await subscriptionApi.checkout()
+      window.location.href = data.url
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Impossible de démarrer le paiement')
+      setBillingBusy(false)
+    }
+  }
+
+  const openPortal = async () => {
+    setBillingBusy(true)
+    try {
+      const { data } = await subscriptionApi.portal()
+      window.location.href = data.url
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Impossible d'ouvrir le portail")
+      setBillingBusy(false)
+    }
+  }
 
   const downloadInvoice = async (inv: SubscriptionInvoice) => {
     try {
@@ -76,6 +100,15 @@ export default function MonAbonnement() {
 
   useEffect(() => {
     subscriptionApi.invoices().then(r => setInvoices(r.data)).catch(() => {})
+    subscriptionApi.billing().then(r => setBilling(r.data)).catch(() => {})
+  }, [])
+
+  // Retour de Stripe Checkout (?paiement=succes|annule)
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get('paiement')
+    if (p === 'succes') toast.success('Paiement enregistré. Merci ! Votre abonnement est actif.')
+    else if (p === 'annule') toast.info?.('Paiement annulé.')
+    if (p) window.history.replaceState({}, '', window.location.pathname)
   }, [])
 
   if (loading) {
@@ -126,6 +159,56 @@ export default function MonAbonnement() {
         <div className="rounded-xl border border-green-200 bg-green-50 p-4 flex items-center gap-3">
           <CheckCircle className="text-green-500" size={22} />
           <p className="font-semibold text-sm text-green-800">Compte actif</p>
+        </div>
+      )}
+
+      {/* Paiement de l'abonnement (Stripe — carte / prélèvement SEPA) */}
+      {billing?.stripe_enabled && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <CreditCard size={18} className="text-blue-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Paiement de l'abonnement</h2>
+          </div>
+          {billing.has_subscription ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  billing.status === 'active' || billing.status === 'trialing'
+                    ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                  {billing.status === 'active' ? 'Abonnement actif'
+                    : billing.status === 'trialing' ? 'Période d\'essai'
+                    : billing.status === 'past_due' ? 'Paiement en retard'
+                    : billing.status === 'unpaid' ? 'Impayé'
+                    : billing.status === 'canceled' ? 'Annulé' : (billing.status || '—')}
+                </span>
+                {billing.payment_method_type && (
+                  <span className="text-gray-500 text-xs">
+                    {billing.payment_method_type === 'sepa_debit' ? 'Prélèvement SEPA' : 'Carte bancaire'}
+                  </span>
+                )}
+              </div>
+              {billing.current_period_end && (
+                <p className="text-xs text-gray-500">
+                  Prochaine échéance : {new Date(billing.current_period_end).toLocaleDateString('fr-FR')}
+                </p>
+              )}
+              <button onClick={openPortal} disabled={billingBusy}
+                className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60">
+                {billingBusy ? 'Ouverture…' : 'Gérer mon abonnement'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">
+                Réglez votre abonnement en ligne par <b>carte bancaire</b> ou <b>prélèvement SEPA</b>.
+                Le paiement est ensuite automatique chaque mois (résiliable à tout moment).
+              </p>
+              <button onClick={startCheckout} disabled={billingBusy}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                <CreditCard size={15} /> {billingBusy ? 'Redirection…' : "Payer / activer le prélèvement"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

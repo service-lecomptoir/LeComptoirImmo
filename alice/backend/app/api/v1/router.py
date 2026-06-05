@@ -1,5 +1,8 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, dashboard, gestionnaires, plans, internal, subscriptions, invoices
+from app.api.v1 import (
+    auth, dashboard, gestionnaires, plans, internal, subscriptions, invoices,
+    stripe_webhook,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -10,3 +13,4 @@ api_router.include_router(plans.router)
 api_router.include_router(internal.router)
 api_router.include_router(subscriptions.router)
 api_router.include_router(invoices.router)
+api_router.include_router(stripe_webhook.router)
