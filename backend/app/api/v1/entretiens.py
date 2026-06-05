@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import require_role, get_current_user
-from app.api.v1._isolation import gp_property_ids
+from app.api.v1._isolation import gp_property_ids, assert_manager_scope
 from app.models.user import User
 from app.core.permissions import Role
 from app.schemas.entretien import (
@@ -17,6 +17,16 @@ from app.services.entretien_service import PrestataireService, EntretienService
 from app.models.entretien import EntretienStatus
 
 router = APIRouter(tags=["Entretiens"])
+
+
+async def _assert_entretien_scope(db: AsyncSession, user: User, e) -> None:
+    """Isolation d'un entretien via le bien rattaché (created_by de la propriété)."""
+    from app.models.property import Property
+    created_by = None
+    if getattr(e, "property_id", None):
+        p = await db.get(Property, e.property_id)
+        created_by = getattr(p, "created_by", None) if p else None
+    await assert_manager_scope(db, user, created_by, "cet entretien")
 
 
 async def _autoplan_scope(db: AsyncSession, current_user: User):
@@ -187,9 +197,10 @@ async def autoplan_entretiens(
 async def get_entretien(
     entretien_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(require_role(Role.LECTURE)),
 ):
     e = await EntretienService.get(db, entretien_id)
+    await _assert_entretien_scope(db, current_user, e)
     return _enrich_entretien(e)
 
 
@@ -198,8 +209,10 @@ async def update_entretien(
     entretien_id: uuid.UUID,
     data: EntretienUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
+    _existing = await EntretienService.get(db, entretien_id)
+    await _assert_entretien_scope(db, current_user, _existing)
     await EntretienService.update(db, entretien_id, data)
     e = await EntretienService.get(db, entretien_id)
     # Planification automatique : un entretien marqué « terminé » planifie la suivante.
@@ -214,8 +227,10 @@ async def update_entretien(
 async def delete_entretien(
     entretien_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
+    _existing = await EntretienService.get(db, entretien_id)
+    await _assert_entretien_scope(db, current_user, _existing)
     await EntretienService.delete(db, entretien_id)
     await db.commit()
 

@@ -35,11 +35,21 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 # ── Routes statiques (doivent être enregistrées AVANT les routes paramétrées) ──
 
+def _stats_agency_only(current_user: User) -> None:
+    """Stats globales (agence) : réservées admin + mandataire. Les GP/propriétaires
+    disposent de tableaux de bord scopés (dashboard.py) — ces totaux globaux leur
+    sont interdits pour ne pas révéler de chiffres hors périmètre."""
+    if Role(current_user.role) not in (Role.ADMIN, Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
+        from app.core.exceptions import ForbiddenException
+        raise ForbiddenException("Statistiques globales non autorisées pour ce rôle.")
+
+
 @router.get("/stats/dashboard", response_model=DashboardStats)
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(require_role(Role.LECTURE)),
 ):
+    _stats_agency_only(current_user)
     return await PaymentService.get_dashboard_stats(db)
 
 
@@ -48,8 +58,9 @@ async def get_monthly_stats(
     year: int = Query(...),
     month: int = Query(..., ge=1, le=12),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.LECTURE)),
+    current_user: User = Depends(require_role(Role.LECTURE)),
 ):
+    _stats_agency_only(current_user)
     return await PaymentService.get_monthly_stats(db, year, month)
 
 

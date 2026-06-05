@@ -480,6 +480,11 @@ async def get_fiscal_revenues(
         q_props = q_props.where(Property.owner_user_id == proprietaire_id)
     props_res = await db.execute(q_props)
     properties = list(props_res.scalars().all())
+    # Mandataire (et legacy lecture/comptable) : ne jamais inclure les biens d'un GP.
+    if role in (R.GESTIONNAIRE, R.LECTURE, R.COMPTABLE):
+        from app.api.v1._isolation import gp_property_ids
+        _excl = await gp_property_ids(db)
+        properties = [p for p in properties if p.id not in _excl]
     prop_ids = [p.id for p in properties]
 
     if not prop_ids:

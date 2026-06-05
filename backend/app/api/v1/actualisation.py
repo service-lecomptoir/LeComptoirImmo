@@ -167,6 +167,7 @@ async def set_reference(
     )).scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
     if data.irl_quarter < 1 or data.irl_quarter > 4:
         raise HTTPException(status_code=400, detail="Trimestre invalide (1 à 4)")
     lease.irl_quarter = data.irl_quarter
@@ -220,6 +221,7 @@ async def apply_revision(
     )).scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
     if not lease.irl_quarter or lease.irl_base_index is None:
         raise HTTPException(status_code=400, detail="Indice IRL de référence non renseigné sur ce bail")
     base = float(lease.irl_base_index)
@@ -392,6 +394,7 @@ async def preview_charge(
     )).scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
     if data.period_end < data.period_start:
         raise HTTPException(status_code=400, detail="Période invalide (fin avant début)")
     return await ChargeRegularizationService.compute(
@@ -420,6 +423,7 @@ async def apply_charge(
     )).scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
     if data.period_end < data.period_start:
         raise HTTPException(status_code=400, detail="Période invalide (fin avant début)")
     if data.real_total < 0 or data.new_monthly_provision < 0:
@@ -489,7 +493,7 @@ async def amiable_provision(
     return await _charge_row(db, lease)
 
 
-async def _get_regul_and_lease(db: AsyncSession, reg_id: uuid.UUID):
+async def _get_regul_and_lease(db: AsyncSession, reg_id: uuid.UUID, current_user: User):
     reg = (await db.execute(
         select(ChargeRegularization).where(ChargeRegularization.id == reg_id)
     )).scalar_one_or_none()
@@ -501,6 +505,7 @@ async def _get_regul_and_lease(db: AsyncSession, reg_id: uuid.UUID):
     )).scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "cette régularisation")
     return reg, lease
 
 
@@ -515,7 +520,7 @@ async def update_charge_regularization(
         raise HTTPException(status_code=400, detail="Période invalide (fin avant début)")
     if data.real_total < 0 or data.new_monthly_provision < 0:
         raise HTTPException(status_code=400, detail="Montants négatifs invalides")
-    reg, lease = await _get_regul_and_lease(db, reg_id)
+    reg, lease = await _get_regul_and_lease(db, reg_id, current_user)
     await ChargeRegularizationService.update(
         db, reg, lease, data.period_start, data.period_end, data.real_total,
         data.new_monthly_provision, notes=data.notes,
@@ -533,7 +538,7 @@ async def delete_charge_regularization(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    reg, lease = await _get_regul_and_lease(db, reg_id)
+    reg, lease = await _get_regul_and_lease(db, reg_id, current_user)
     await ChargeRegularizationService.delete(db, reg, lease)
 
 
@@ -551,7 +556,7 @@ async def regularization_pdf(
 ):
     """PDF de la régularisation de charges (façon Foncia)."""
     from app.services.document_blocks_pdf_service import ChargeRegularizationPDFService
-    reg, _lease = await _get_regul_and_lease(db, reg_id)
+    reg, _lease = await _get_regul_and_lease(db, reg_id, current_user)
     pdf = await ChargeRegularizationPDFService.generate(db, reg)
     return _pdf_response(pdf, f"regularisation_charges_{reg_id}.pdf")
 
@@ -567,6 +572,7 @@ async def revision_pdf(
     lease = (await db.execute(select(Lease).where(Lease.id == lease_id))).scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
     if not lease.irl_quarter or lease.irl_base_index is None:
         raise HTTPException(status_code=400, detail="Indice IRL de référence non renseigné sur ce bail")
     pdf = await RevisionLoyerPDFService.generate(db, lease)
@@ -592,5 +598,6 @@ async def taxes_pdf(
     lease = (await db.execute(select(Lease).where(Lease.id == data.lease_id))).scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=404, detail="Contrat introuvable")
+    await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
     pdf = await TaxesFoncieresPDFService.generate(db, lease, data.year, data.teom_amount)
     return _pdf_response(pdf, f"taxes_foncieres_{data.year}.pdf")

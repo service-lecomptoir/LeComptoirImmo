@@ -128,7 +128,10 @@ async def delete_tenant(
 async def list_tenant_documents(
     tenant_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    await TenantService.get_by_id(db, tenant_id)  # vérif existence
+    tenant = await TenantService.get_by_id(db, tenant_id)
+    # Le locataire lui-même OU un gestionnaire dans son périmètre.
+    if str(getattr(tenant, "user_id", None)) != str(current_user.id):
+        await assert_manager_scope(db, current_user, tenant.created_by, "ce locataire")
     return await DocumentService.list_by_entity(db, EntityType.TENANT, tenant_id)

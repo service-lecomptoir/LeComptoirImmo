@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.core.permissions import Role
 from app.api.deps import require_role
+from app.api.v1._isolation import assert_payment_access, assert_lease_access
 from app.models.user import User
 from app.models.owner import Owner
 from app.models.lease import LeaseType
@@ -70,10 +71,11 @@ def _split_address_parts(raw):
 async def lettre_relance(
     payment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     """Génère une lettre de relance pour un loyer impayé."""
     payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment, write=True)
     if payment.status not in ("pending", "partial", "late"):
         raise BadRequestException("Ce loyer ne nécessite pas de relance")
 
@@ -120,6 +122,7 @@ async def attestation_caf(
 ):
     """Génère une attestation de loyer pour la CAF."""
     lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
+    await assert_lease_access(db, current_user, lease, write=True)
 
     tenant = lease.tenant
     prop = lease.parent_property
@@ -197,6 +200,7 @@ async def versement_direct_caf(
 ):
     """Génère la demande de versement direct de l'aide au logement (CERFA 11362*04)."""
     lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
+    await assert_lease_access(db, current_user, lease, write=True)
     tenant = lease.tenant
     prop = lease.parent_property
     today = date.today()

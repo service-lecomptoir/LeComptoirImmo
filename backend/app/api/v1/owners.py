@@ -143,9 +143,11 @@ async def owner_finances(
     owner_id: uuid.UUID,
     year: int = Query(..., ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
     _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
 ):
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
     return await OwnerService.get_finances(db, owner_id, year)
 
 
@@ -154,7 +156,7 @@ async def owner_fiscal_pdf(
     owner_id: uuid.UUID,
     year: int = Query(..., ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
     _feat: User = Depends(require_feature("liasse_fiscale")),
 ):
     from fastapi.responses import Response
@@ -162,6 +164,8 @@ async def owner_fiscal_pdf(
     from app.services.template_layout_service import get_layout
     from app.utils.filename import doc_filename
 
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
     data = await OwnerService.get_finances(db, owner_id, year)
     html = render_template("liasse_fiscale.html.j2", {"data": data, "layout": get_layout()})
     pdf = html_to_pdf(html)
@@ -178,7 +182,10 @@ async def owner_fiscal_pdf(
 async def list_owner_documents(
     owner_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    await OwnerService.get_by_id(db, owner_id)  # vérif existence
+    owner = await OwnerService.get_by_id(db, owner_id)
+    # Le propriétaire lui-même OU un gestionnaire dans son périmètre.
+    if str(getattr(owner, "user_id", None)) != str(current_user.id):
+        await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
     return await DocumentService.list_by_entity(db, EntityType.OWNER, owner_id)

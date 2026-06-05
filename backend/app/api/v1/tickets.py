@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
-from app.api.v1._isolation import gp_tenant_ids
+from app.api.v1._isolation import gp_tenant_ids, assert_ticket_access
 from app.models.user import User
 from app.models.ticket import Ticket
 from app.models.lease import Lease
@@ -129,10 +129,26 @@ async def list_tickets(
 @router.get("/stats", summary="Statistiques tickets")
 async def ticket_stats(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
-    open_count = await TicketService.count_open(db)
-    return {"open": open_count}
+    from sqlalchemy import func
+    from app.models.tenant import Tenant
+    role = Role(current_user.role)
+    if role == Role.ADMIN:
+        return {"open": await TicketService.count_open(db)}
+    q = select(func.count(Ticket.id)).where(Ticket.status == "open")
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        tenant_ids = list((await db.execute(
+            select(Tenant.id).where(Tenant.created_by == current_user.id)
+        )).scalars().all())
+        if not tenant_ids:
+            return {"open": 0}
+        q = q.where(Ticket.tenant_id.in_(tenant_ids))
+    else:  # mandataire : exclure les locataires d'un GP
+        gp_ids = await gp_tenant_ids(db)
+        if gp_ids:
+            q = q.where(Ticket.tenant_id.notin_(gp_ids))
+    return {"open": (await db.execute(q)).scalar_one()}
 
 
 @router.get("/proprietaire", summary="Tickets des biens du propriétaire")
@@ -189,6 +205,7 @@ async def get_ticket(
     current_user: User = Depends(get_current_user),
 ):
     ticket = await TicketService.get(db, ticket_id)
+    await assert_ticket_access(db, current_user, ticket)
     return _enrich_ticket(ticket, include_messages=True)
 
 
@@ -197,8 +214,10 @@ async def update_ticket(
     ticket_id: uuid.UUID,
     data: TicketUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
+    existing = await TicketService.get(db, ticket_id)
+    await assert_ticket_access(db, current_user, existing, manager_only=True)
     ticket = await TicketService.update(db, ticket_id, data)
     await db.commit()
     ticket = await TicketService.get(db, ticket_id)
@@ -212,6 +231,8 @@ async def add_message(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _t = await TicketService.get(db, ticket_id)
+    await assert_ticket_access(db, current_user, _t)
     msg = await TicketService.add_message(db, ticket_id, data, current_user.id)
     await db.commit()
     return {
@@ -255,6 +276,8 @@ async def propose_closure(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
+    _t = await TicketService.get(db, ticket_id)
+    await assert_ticket_access(db, current_user, _t, manager_only=True)
     await TicketService.propose_closure(db, ticket_id, current_user.id)
     await db.commit()
     return _enrich_ticket(await TicketService.get(db, ticket_id), include_messages=True)

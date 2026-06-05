@@ -118,6 +118,91 @@ async def assert_manager_scope(db: AsyncSession, user: User, created_by, label: 
     raise ForbiddenException(f"Accès refusé à {label}.")
 
 
+async def assert_lease_access(db: AsyncSession, user: User, lease, *, write: bool = False) -> None:
+    """Isolation par rôle d'un bail (chargé avec `parent_property` et `tenant`).
+
+    - admin : tout ;
+    - gestionnaire mandataire / lecture / comptable : tout SAUF baux d'un GP ;
+    - gestionnaire_proprio : uniquement les siens (created_by) ;
+    - propriétaire (lecture) : baux sur ses biens (parent_property.owner_user_id) ;
+    - locataire (lecture) : uniquement son bail (tenant.user_id).
+    `write=True` interdit propriétaire et locataire.
+    """
+    from app.core.exceptions import ForbiddenException
+
+    role = Role(user.role)
+    if role == Role.ADMIN:
+        return
+    created_by = getattr(lease, "created_by", None)
+
+    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
+        gp_ids = await gp_user_ids(db)
+        if created_by not in gp_ids:
+            return
+        raise ForbiddenException("Accès refusé à ce contrat.")
+
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        if created_by is not None and str(created_by) == str(user.id):
+            return
+        raise ForbiddenException("Accès refusé à ce contrat.")
+
+    if not write:
+        if role == Role.PROPRIETAIRE:
+            prop = getattr(lease, "parent_property", None)
+            if prop is not None and str(getattr(prop, "owner_user_id", None)) == str(user.id):
+                return
+        if role == Role.LOCATAIRE:
+            tenant = getattr(lease, "tenant", None)
+            if tenant is not None and str(getattr(tenant, "user_id", None)) == str(user.id):
+                return
+
+    raise ForbiddenException("Accès refusé à ce contrat.")
+
+
+async def assert_ticket_access(db: AsyncSession, user: User, ticket, *, manager_only: bool = False) -> None:
+    """Isolation par rôle d'une démarche (ticket), via le locataire rattaché.
+
+    - admin : tout ;
+    - gestionnaire_proprio : tickets de SES locataires (tenant.created_by==lui) ;
+    - mandataire / lecture / comptable : tout SAUF locataires d'un GP ;
+    - locataire : uniquement SES tickets (tenant.user_id==lui) ;
+    - propriétaire (lecture) : tickets des locataires de SES biens.
+    `manager_only=True` (actions de gestion) interdit locataire et propriétaire.
+    """
+    from app.core.exceptions import ForbiddenException
+
+    role = Role(user.role)
+    if role == Role.ADMIN:
+        return
+    tenant = await db.get(Tenant, ticket.tenant_id)
+    created_by = getattr(tenant, "created_by", None) if tenant else None
+
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        if created_by is not None and str(created_by) == str(user.id):
+            return
+        raise ForbiddenException("Accès refusé à cette démarche.")
+    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
+        gp_ids = await gp_user_ids(db)
+        if created_by not in gp_ids:
+            return
+        raise ForbiddenException("Accès refusé à cette démarche.")
+
+    if not manager_only:
+        if role == Role.LOCATAIRE:
+            if tenant is not None and str(getattr(tenant, "user_id", None)) == str(user.id):
+                return
+        if role == Role.PROPRIETAIRE:
+            owners = (await db.execute(
+                select(Property.owner_user_id)
+                .join(Lease, Lease.property_id == Property.id)
+                .where(Lease.tenant_id == ticket.tenant_id)
+            )).scalars().all()
+            if any(str(o) == str(user.id) for o in owners):
+                return
+
+    raise ForbiddenException("Accès refusé à cette démarche.")
+
+
 async def assert_payment_access(db: AsyncSession, user: User, payment, *, write: bool = False) -> None:
     """Isolation par rôle d'un paiement (chargé avec `load_relations=True`).
 

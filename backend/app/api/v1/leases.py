@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_lease_ids, assert_manager_scope
+from app.api.v1._isolation import gp_lease_ids, assert_manager_scope, assert_lease_access
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.property import Property
@@ -140,15 +140,7 @@ async def get_lease(
     current_user: User = Depends(get_current_user),
 ):
     lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
-
-    # Contrôle d'accès locataire
-    if Role(current_user.role) == Role.LOCATAIRE:
-        tenant = (await db.execute(
-            select(Tenant).where(Tenant.user_id == current_user.id)
-        )).scalar_one_or_none()
-        if not tenant or lease.tenant_id != tenant.id:
-            raise HTTPException(status_code=403, detail="Accès non autorisé")
-
+    await assert_lease_access(db, current_user, lease)
     return lease
 
 
@@ -157,8 +149,10 @@ async def update_lease(
     lease_id: uuid.UUID,
     data: LeaseUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
+    existing = await LeaseService.get_by_id(db, lease_id, load_relations=True)
+    await assert_lease_access(db, current_user, existing, write=True)
     lease = await LeaseService.update(db, lease_id, data)
     await db.commit()
     return await LeaseService.get_by_id(db, lease.id, load_relations=True)
@@ -172,6 +166,8 @@ async def terminate_lease(
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     from app.services import audit_service
+    existing = await LeaseService.get_by_id(db, lease_id, load_relations=True)
+    await assert_lease_access(db, current_user, existing, write=True)
     lease = await LeaseService.terminate(db, lease_id, data)
     await audit_service.log(
         db, action=audit_service.LEASE_TERMINATE,
@@ -189,14 +185,7 @@ async def download_lease_pdf(
     current_user: User = Depends(get_current_user),
 ):
     lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
-
-    # Contrôle d'accès locataire
-    if Role(current_user.role) == Role.LOCATAIRE:
-        tenant = (await db.execute(
-            select(Tenant).where(Tenant.user_id == current_user.id)
-        )).scalar_one_or_none()
-        if not tenant or lease.tenant_id != tenant.id:
-            raise HTTPException(status_code=403, detail="Accès non autorisé")
+    await assert_lease_access(db, current_user, lease)
 
     # Bailleur = fiche propriétaire du bien ; mandataire = gestionnaire (rôle mandataire)
     owner = None
@@ -225,8 +214,10 @@ async def download_lease_pdf(
 async def delete_lease(
     lease_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
+    existing = await LeaseService.get_by_id(db, lease_id, load_relations=True)
+    await assert_lease_access(db, current_user, existing, write=True)
     await LeaseService.delete(db, lease_id)
     await db.commit()
 
