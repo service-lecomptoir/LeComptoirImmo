@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt, ListChecks, Check } from 'lucide-react'
-import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice, type BillingStatus } from '@/api/subscription'
+import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice, type BillingStatus, type AvailablePlan, type StripePayment } from '@/api/subscription'
 import { FEATURE_LABELS } from '@/lib/features'
 import { toast } from '@/store/toast'
 
@@ -35,6 +35,28 @@ export default function MonAbonnement() {
   const [invoices, setInvoices] = useState<SubscriptionInvoice[]>([])
   const [billing, setBilling] = useState<BillingStatus | null>(null)
   const [billingBusy, setBillingBusy] = useState(false)
+  const [plans, setPlans] = useState<AvailablePlan[]>([])
+  const [payments, setPayments] = useState<StripePayment[]>([])
+  const [newPlanId, setNewPlanId] = useState('')
+  const [changingPlan, setChangingPlan] = useState(false)
+
+  const changePlan = async () => {
+    if (!newPlanId) return
+    const target = plans.find(p => p.id === newPlanId)
+    if (!confirm(`Changer pour le plan « ${target?.name} » (${target?.monthly_price} €/mois) ?\n\nLe montant sera ajusté au prorata sur votre prochaine facture.`)) return
+    setChangingPlan(true)
+    try {
+      const { data } = await subscriptionApi.changePlan(newPlanId)
+      toast.success(`Plan changé pour « ${data.plan_name} ». L'ajustement au prorata apparaîtra sur votre prochaine facture.`)
+      setNewPlanId('')
+      const [b] = await Promise.all([subscriptionApi.billing()])
+      setBilling(b.data)
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Changement de plan impossible')
+    } finally {
+      setChangingPlan(false)
+    }
+  }
 
   const startCheckout = async () => {
     setBillingBusy(true)
@@ -101,6 +123,8 @@ export default function MonAbonnement() {
   useEffect(() => {
     subscriptionApi.invoices().then(r => setInvoices(r.data)).catch(() => {})
     subscriptionApi.billing().then(r => setBilling(r.data)).catch(() => {})
+    subscriptionApi.availablePlans().then(r => setPlans(r.data)).catch(() => {})
+    subscriptionApi.payments().then(r => setPayments(r.data)).catch(() => {})
   }, [])
 
   // Retour de Stripe Checkout (?paiement=succes|annule)
@@ -196,6 +220,25 @@ export default function MonAbonnement() {
                 className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-60">
                 {billingBusy ? 'Ouverture…' : 'Gérer mon abonnement'}
               </button>
+
+              {plans.filter(p => p.name !== billing.plan_name).length > 0 && (
+                <div className="pt-3 mt-1 border-t border-gray-100">
+                  <p className="text-xs font-medium text-gray-600 mb-2">Changer de plan (ajusté au prorata)</p>
+                  <div className="flex flex-wrap gap-2">
+                    <select value={newPlanId} onChange={e => setNewPlanId(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Choisir un plan…</option>
+                      {plans.filter(p => p.name !== billing.plan_name).map(p => (
+                        <option key={p.id} value={p.id}>{p.name} — {p.monthly_price} €/mois</option>
+                      ))}
+                    </select>
+                    <button onClick={changePlan} disabled={!newPlanId || changingPlan}
+                      className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                      {changingPlan ? 'Changement…' : 'Changer'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -209,6 +252,45 @@ export default function MonAbonnement() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Historique des paiements (Stripe) */}
+      {payments.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Receipt size={18} className="text-blue-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Historique des paiements</h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {payments.map(p => (
+              <div key={p.id} className="flex items-center justify-between py-2.5 text-sm">
+                <div>
+                  <span className="text-gray-800">
+                    {new Date(p.created * 1000).toLocaleDateString('fr-FR')}
+                  </span>
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
+                    p.status === 'paid' ? 'bg-green-100 text-green-700'
+                      : p.status === 'open' ? 'bg-amber-100 text-amber-700'
+                      : 'bg-gray-100 text-gray-600'}`}>
+                    {p.status === 'paid' ? 'Payé' : p.status === 'open' ? 'À payer'
+                      : p.status === 'void' ? 'Annulé' : p.status}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-medium text-gray-900">
+                    {p.amount.toFixed(2)} {(p.currency || 'eur').toUpperCase()}
+                  </span>
+                  {p.hosted_invoice_url && (
+                    <a href={p.hosted_invoice_url} target="_blank" rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 text-xs font-medium inline-flex items-center gap-1">
+                      <FileDown size={13} /> Reçu
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

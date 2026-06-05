@@ -225,7 +225,7 @@ def _require_manager(current_user: User) -> None:
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
 
 
-async def _alice_billing(method: str, path: str, user_id) -> dict:
+async def _alice_billing(method: str, path: str, user_id, json: dict | None = None):
     import httpx
     from app.config import get_settings
     cfg = get_settings()
@@ -233,6 +233,7 @@ async def _alice_billing(method: str, path: str, user_id) -> dict:
         resp = await hc.request(
             method, f"{cfg.ALICE_URL}/api/v1/internal/billing/{path}/{user_id}",
             headers={"X-Internal-Key": cfg.ALICE_INTERNAL_KEY},
+            json=json,
         )
     if resp.status_code >= 400:
         detail = "Service de facturation indisponible"
@@ -269,3 +270,36 @@ async def billing_portal(current_user: User = Depends(get_current_user)):
     """Crée une session du portail de facturation Stripe (gérer carte/abonnement)."""
     _require_manager(current_user)
     return await _alice_billing("POST", "portal", current_user.id)
+
+
+@router.get("/plans", summary="Plans proposables pour un changement d'abonnement")
+async def billing_available_plans(current_user: User = Depends(get_current_user)):
+    _require_manager(current_user)
+    try:
+        return await _alice_billing("GET", "available-plans", current_user.id)
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001
+        return []
+
+
+class _ChangePlanIn(BaseModel):
+    plan_id: str
+
+
+@router.post("/change-plan", summary="Changer de plan (proration Stripe)")
+async def billing_change_plan(body: _ChangePlanIn, current_user: User = Depends(get_current_user)):
+    """Change le plan de l'abonnement avec proration automatique (via Alice/Stripe)."""
+    _require_manager(current_user)
+    return await _alice_billing("POST", "change-plan", current_user.id, json={"plan_id": body.plan_id})
+
+
+@router.get("/payments", summary="Historique des paiements Stripe")
+async def billing_payments(current_user: User = Depends(get_current_user)):
+    _require_manager(current_user)
+    try:
+        return await _alice_billing("GET", "payments", current_user.id)
+    except HTTPException:
+        raise
+    except Exception:  # noqa: BLE001
+        return []

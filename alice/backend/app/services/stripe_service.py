@@ -123,6 +123,40 @@ def create_checkout_session(*, customer_id: str, price_id: str,
     return session.url
 
 
+def change_subscription_plan(*, subscription_id: str, new_price_id: str) -> None:
+    """Bascule l'abonnement sur un nouveau prix avec PRORATION automatique."""
+    stripe = _stripe()
+    sub = stripe.Subscription.retrieve(subscription_id)
+    items = (sub.get("items") or {}).get("data") or []
+    if not items:
+        raise RuntimeError("Abonnement sans ligne de facturation.")
+    stripe.Subscription.modify(
+        subscription_id,
+        items=[{"id": items[0]["id"], "price": new_price_id}],
+        proration_behavior="create_prorations",
+    )
+
+
+def list_payments(*, customer_id: str, limit: int = 12) -> list[dict]:
+    """Historique des factures/paiements Stripe d'un client (récent → ancien)."""
+    stripe = _stripe()
+    invs = stripe.Invoice.list(customer=customer_id, limit=limit)
+    out = []
+    for inv in (invs.get("data") or []):
+        cents = inv.get("amount_paid") or inv.get("amount_due") or 0
+        out.append({
+            "id": inv.get("id"),
+            "number": inv.get("number"),
+            "created": inv.get("created"),  # unix
+            "amount": float(cents) / 100.0,
+            "currency": inv.get("currency"),
+            "status": inv.get("status"),  # paid / open / void / uncollectible
+            "hosted_invoice_url": inv.get("hosted_invoice_url"),
+            "invoice_pdf": inv.get("invoice_pdf"),
+        })
+    return out
+
+
 def create_billing_portal_session(*, customer_id: str, return_url: str) -> str:
     """Crée une session du portail de facturation Stripe (gérer carte/abonnement)."""
     stripe = _stripe()
@@ -216,6 +250,9 @@ async def handle_event(db, event) -> None:
             return
         lic.stripe_subscription_id = obj.get("id") or lic.stripe_subscription_id
         lic.stripe_current_period_end = _dt(obj.get("current_period_end"))
+        # Synchro du plan : si l'abonnement pointe vers un autre prix (changement de
+        # plan via l'app OU le portail), on aligne license.plan_id.
+        await _sync_plan_from_price(db, lic, obj)
         status = "canceled" if etype.endswith("deleted") else obj.get("status", "")
         await _apply_subscription_status(db, lic, status)
         await db.flush()
@@ -227,6 +264,24 @@ async def handle_event(db, event) -> None:
 
     # invoice.payment_failed : la suspension est pilotée par le statut de
     # l'abonnement (past_due → unpaid), géré ci-dessus. Rien à faire ici.
+
+
+async def _sync_plan_from_price(db, lic, sub_obj) -> None:
+    """Aligne license.plan_id sur le prix courant de l'abonnement Stripe."""
+    from sqlalchemy import select
+    from app.models.plan import AlicePlan
+    items = (sub_obj.get("items") or {}).get("data") or []
+    if not items:
+        return
+    price = items[0].get("price") or {}
+    price_id = price.get("id")
+    if not price_id:
+        return
+    plan = (await db.execute(
+        select(AlicePlan).where(AlicePlan.stripe_price_id == price_id)
+    )).scalar_one_or_none()
+    if plan and lic.plan_id != plan.id:
+        lic.plan_id = plan.id
 
 
 async def _upsert_invoice_paid(db, inv_obj) -> None:

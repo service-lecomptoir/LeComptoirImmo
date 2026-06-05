@@ -33,6 +33,24 @@ export interface BillingStatus {
   monthly_price: number | null
 }
 
+export interface AvailablePlan {
+  id: string
+  name: string
+  monthly_price: number
+  property_limit: number | null
+}
+
+export interface StripePayment {
+  id: string
+  number: string | null
+  created: number
+  amount: number
+  currency: string
+  status: string
+  hosted_invoice_url: string | null
+  invoice_pdf: string | null
+}
+
 export const subscriptionApi = {
   get: () => apiClient.get<SubscriptionInfo>('/subscription'),
   requestResiliation: (reason: string) =>
@@ -44,4 +62,8 @@ export const subscriptionApi = {
   billing: () => apiClient.get<BillingStatus>('/subscription/billing'),
   checkout: () => apiClient.post<{ url: string }>('/subscription/checkout'),
   portal: () => apiClient.post<{ url: string }>('/subscription/portal'),
+  availablePlans: () => apiClient.get<AvailablePlan[]>('/subscription/plans'),
+  changePlan: (planId: string) =>
+    apiClient.post<{ status: string; plan_name: string }>('/subscription/change-plan', { plan_id: planId }),
+  payments: () => apiClient.get<StripePayment[]>('/subscription/payments'),
 }

@@ -175,6 +175,72 @@ async def billing_portal(user_id: uuid.UUID, db: AsyncSession = Depends(get_db))
     return BillingUrlResponse(url=url)
 
 
+class AvailablePlan(BaseModel):
+    id: uuid.UUID
+    name: str
+    monthly_price: float
+    property_limit: Optional[int] = None
+
+
+class ChangePlanIn(BaseModel):
+    plan_id: uuid.UUID
+
+
+@router.get("/billing/available-plans/{user_id}", response_model=List[AvailablePlan],
+            dependencies=[Depends(_require_internal_key)])
+async def billing_available_plans(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Plans actifs proposables pour un changement (self-service)."""
+    rows = list((await db.execute(
+        select(AlicePlan).where(AlicePlan.is_active.is_(True)).order_by(AlicePlan.monthly_price)
+    )).scalars().all())
+    return [AvailablePlan(id=p.id, name=p.name, monthly_price=float(p.monthly_price or 0),
+                          property_limit=p.property_limit) for p in rows]
+
+
+@router.post("/billing/change-plan/{user_id}", dependencies=[Depends(_require_internal_key)])
+async def billing_change_plan(user_id: uuid.UUID, data: ChangePlanIn, db: AsyncSession = Depends(get_db)):
+    """Change le plan de l'abonnement Stripe avec proration automatique."""
+    from app.services import stripe_service
+    if not stripe_service.enabled():
+        raise HTTPException(status_code=503, detail="Paiement en ligne non activé.")
+    lic = (await db.execute(
+        select(AliceLicense).where(AliceLicense.gestionnaire_user_id == user_id)
+    )).scalar_one_or_none()
+    if not lic or not lic.stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="Aucun abonnement actif à modifier.")
+    if lic.plan_id == data.plan_id:
+        raise HTTPException(status_code=400, detail="C'est déjà votre plan actuel.")
+    plan = (await db.execute(select(AlicePlan).where(AlicePlan.id == data.plan_id))).scalar_one_or_none()
+    if not plan or not plan.is_active:
+        raise HTTPException(status_code=404, detail="Plan introuvable.")
+    price_id = await stripe_service.ensure_plan_price(db, plan)
+    await db.commit()
+    stripe_service.change_subscription_plan(
+        subscription_id=lic.stripe_subscription_id, new_price_id=price_id,
+    )
+    # plan_id sera resynchronisé par le webhook subscription.updated ; on l'aligne aussi tout de suite.
+    lic.plan_id = plan.id
+    await db.commit()
+    return {"status": "ok", "plan_name": plan.name}
+
+
+@router.get("/billing/payments/{user_id}", dependencies=[Depends(_require_internal_key)])
+async def billing_payments(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Historique des paiements Stripe du gestionnaire (factures Stripe)."""
+    from app.services import stripe_service
+    if not stripe_service.enabled():
+        return []
+    lic = (await db.execute(
+        select(AliceLicense).where(AliceLicense.gestionnaire_user_id == user_id)
+    )).scalar_one_or_none()
+    if not lic or not lic.stripe_customer_id:
+        return []
+    try:
+        return stripe_service.list_payments(customer_id=lic.stripe_customer_id, limit=12)
+    except Exception:  # noqa: BLE001
+        return []
+
+
 @router.get("/invoices/{user_id}", response_model=List[InvoiceOut], dependencies=[Depends(_require_internal_key)])
 async def get_user_invoices(
     user_id: uuid.UUID,
