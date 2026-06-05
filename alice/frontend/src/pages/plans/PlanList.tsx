@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Infinity } from 'lucide-react'
+import { Plus, Pencil, Trash2, Infinity, RefreshCw } from 'lucide-react'
 import { plansApi, type PlanCreateData, type PlanUpdateData } from '@/api/plans'
 import { PLAN_FEATURES, ALL_FEATURE_KEYS } from '@/constants/features'
 import type { Plan } from '@/types'
@@ -236,6 +236,22 @@ export default function PlanList() {
     }
   }
 
+  const [syncing, setSyncing] = useState<string | null>(null)
+  const handleSyncStripe = async (plan: Plan) => {
+    if (!confirm(`(Re)créer le prix Stripe pour "${plan.name}" (${plan.monthly_price} €/mois) ?\n\nLes futurs abonnements utiliseront ce nouveau tarif.`)) return
+    setSyncing(plan.id)
+    try {
+      const res = await plansApi.syncStripePrice(plan.id)
+      setPlans(prev => prev.map(p => (p.id === plan.id ? res.data : p)))
+      alert('Prix Stripe synchronisé ✓')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      alert(e?.response?.data?.detail || 'Erreur de synchronisation Stripe')
+    } finally {
+      setSyncing(null)
+    }
+  }
+
   // Classement par nombre de biens (croissant) ; illimité (null) en dernier
   const sortedPlans = [...plans].sort(
     (a, b) => (a.property_limit ?? Infinity) - (b.property_limit ?? Infinity)
@@ -317,6 +333,17 @@ export default function PlanList() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleSyncStripe(plan)}
+                          disabled={syncing === plan.id}
+                          className={`p-2 rounded-lg transition-colors disabled:opacity-40 ${
+                            plan.stripe_price_id
+                              ? 'text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50'
+                              : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}
+                          title={plan.stripe_price_id ? 'Prix Stripe synchronisé — resynchroniser après changement de tarif' : 'Créer le prix Stripe'}
+                        >
+                          <RefreshCw size={15} className={syncing === plan.id ? 'animate-spin' : ''} />
+                        </button>
                         <button
                           onClick={() => setModal({ open: true, plan })}
                           className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"

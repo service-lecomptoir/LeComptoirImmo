@@ -486,6 +486,45 @@ export default function GestionnaireDetail() {
               <p className="text-sm text-amber-800">{gestionnaire.license.notes}</p>
             </div>
           )}
+
+          {gestionnaire.license?.stripe_subscription_id && (() => {
+            const st = gestionnaire.license.stripe_status || ''
+            const active = st === 'active' || st === 'trialing'
+            const label = st === 'active' ? 'Actif' : st === 'trialing' ? 'Essai'
+              : st === 'past_due' ? 'Paiement en retard' : st === 'unpaid' ? 'Impayé'
+              : st === 'canceled' ? 'Annulé' : (st || '—')
+            const pm = gestionnaire.license.stripe_payment_method_type
+            return (
+              <div className="bg-white border border-gray-200 rounded-2xl p-4">
+                <p className="text-xs font-semibold text-gray-500 mb-3">Abonnement Stripe</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Statut</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      active ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {label}
+                    </span>
+                  </div>
+                  {pm && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Moyen de paiement</span>
+                      <span className="font-medium text-gray-800">
+                        {pm === 'sepa_debit' ? 'Prélèvement SEPA' : 'Carte bancaire'}
+                      </span>
+                    </div>
+                  )}
+                  {gestionnaire.license.stripe_current_period_end && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Prochaine échéance</span>
+                      <span className="font-medium text-gray-800">
+                        {format(new Date(gestionnaire.license.stripe_current_period_end), 'dd/MM/yyyy', { locale: fr })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
 

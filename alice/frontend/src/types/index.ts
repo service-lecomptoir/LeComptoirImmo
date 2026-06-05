@@ -16,6 +16,8 @@ export interface Plan {
   features: string[] | null
   created_at: string
   gestionnaire_count: number
+  stripe_product_id?: string | null
+  stripe_price_id?: string | null
 }
 
 export interface License {
@@ -31,6 +33,11 @@ export interface License {
   address: string | null
   created_at: string
   updated_at: string
+  stripe_customer_id?: string | null
+  stripe_subscription_id?: string | null
+  stripe_status?: string | null
+  stripe_payment_method_type?: string | null
+  stripe_current_period_end?: string | null
 }
 
 export interface Gestionnaire {

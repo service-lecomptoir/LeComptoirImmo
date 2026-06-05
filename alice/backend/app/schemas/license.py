@@ -24,5 +24,11 @@ class LicenseOut(LicenseBase):
     access_until: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
+    # ── Stripe (abonnement) ──
+    stripe_customer_id: Optional[str] = None
+    stripe_subscription_id: Optional[str] = None
+    stripe_status: Optional[str] = None
+    stripe_payment_method_type: Optional[str] = None
+    stripe_current_period_end: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

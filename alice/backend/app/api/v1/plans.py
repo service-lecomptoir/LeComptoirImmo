@@ -92,3 +92,26 @@ async def deactivate_plan(
         raise HTTPException(status_code=404, detail="Plan introuvable")
 
     plan.is_active = False
+
+
+@router.post("/{plan_id}/sync-stripe-price", response_model=PlanOut)
+async def sync_plan_stripe_price(
+    plan_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: AliceAdmin = Depends(get_current_alice_admin),
+):
+    """(Re)crée le Product + Price Stripe du plan d'après son tarif actuel.
+
+    À utiliser après modification du `monthly_price` : un Price Stripe étant
+    immuable, on en génère un nouveau pour les FUTURS abonnements (les abonnés
+    existants conservent leur tarif jusqu'à migration)."""
+    from app.services import stripe_service
+    if not stripe_service.enabled():
+        raise HTTPException(status_code=503, detail="Stripe non activé")
+    result = await db.execute(select(AlicePlan).where(AlicePlan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan introuvable")
+    await stripe_service.ensure_plan_price(db, plan, force=True)
+    await db.commit()
+    return await _plan_to_out(db, plan)

@@ -31,5 +31,7 @@ class PlanOut(PlanBase):
     is_active: bool
     created_at: datetime
     gestionnaire_count: int = 0
+    stripe_product_id: Optional[str] = None
+    stripe_price_id: Optional[str] = None
 
     model_config = {"from_attributes": True}

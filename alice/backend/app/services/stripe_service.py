@@ -32,11 +32,13 @@ def _stripe():
 
 
 # ── Produits / prix par plan ─────────────────────────────────────────────────
-async def ensure_plan_price(db, plan) -> str:
+async def ensure_plan_price(db, plan, *, force: bool = False) -> str:
     """Crée (si besoin) le Product + Price mensuel Stripe du plan ; renvoie price_id.
 
-    Idempotent : ne recrée pas si `plan.stripe_price_id` existe déjà."""
-    if plan.stripe_price_id:
+    Idempotent : ne recrée pas si `plan.stripe_price_id` existe déjà — SAUF si
+    `force=True` (resynchro après changement de tarif : un Price Stripe est
+    immuable, on en crée donc un nouveau pour les futurs abonnements)."""
+    if plan.stripe_price_id and not force:
         return plan.stripe_price_id
     stripe = _stripe()
     s = get_settings()

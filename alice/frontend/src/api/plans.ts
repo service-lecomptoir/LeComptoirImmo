@@ -30,4 +30,7 @@ export const plansApi = {
 
   deactivate: (id: string) =>
     apiClient.delete(`/plans/${id}`),
+
+  syncStripePrice: (id: string) =>
+    apiClient.post<Plan>(`/plans/${id}/sync-stripe-price`),
 }
