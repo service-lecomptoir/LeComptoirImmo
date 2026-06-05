@@ -15,7 +15,7 @@ la création (voir PropertyService.create, TenantService.create).
   - Paiements, tickets, avis, entretiens qui en dépendent
 """
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -90,6 +90,89 @@ async def gp_lease_ids(db: AsyncSession) -> set[uuid.UUID]:
     return set(result.scalars().all())
 
 
+# ── Isolation par AGENCE (multi-tenant) ──────────────────────────────────────
+# Une agence = un compte principal (created_by NULL) + tous ses sous-comptes.
+# Périmètre effectif d'un utilisateur : COALESCE(agency_id, id). Un manager ne voit
+# QUE les ressources dont `created_by` appartient à sa propre agence.
+
+def agency_root(user: User) -> uuid.UUID:
+    return getattr(user, "agency_id", None) or user.id
+
+
+async def agency_member_ids(db: AsyncSession, user: User) -> set[uuid.UUID]:
+    """IDs des utilisateurs de la même agence que `user` (principal + sous-comptes)."""
+    root = agency_root(user)
+    rows = await db.execute(
+        select(User.id).where(func.coalesce(User.agency_id, User.id) == root)
+    )
+    return set(rows.scalars().all())
+
+
+async def agency_property_ids(db: AsyncSession, user: User) -> set[uuid.UUID]:
+    members = await agency_member_ids(db, user)
+    if not members:
+        return set()
+    rows = await db.execute(select(Property.id).where(Property.created_by.in_(members)))
+    return set(rows.scalars().all())
+
+
+async def agency_tenant_ids(db: AsyncSession, user: User) -> set[uuid.UUID]:
+    members = await agency_member_ids(db, user)
+    if not members:
+        return set()
+    rows = await db.execute(select(Tenant.id).where(Tenant.created_by.in_(members)))
+    return set(rows.scalars().all())
+
+
+async def agency_owner_ids(db: AsyncSession, user: User) -> set[uuid.UUID]:
+    members = await agency_member_ids(db, user)
+    if not members:
+        return set()
+    rows = await db.execute(select(Owner.id).where(Owner.created_by.in_(members)))
+    return set(rows.scalars().all())
+
+
+async def agency_lease_ids(db: AsyncSession, user: User) -> set[uuid.UUID]:
+    """Baux de l'agence : créés par un membre, OU liés à un bien/locataire de l'agence."""
+    members = await agency_member_ids(db, user)
+    prop_ids = await agency_property_ids(db, user)
+    tenant_ids = await agency_tenant_ids(db, user)
+    from sqlalchemy import or_
+    conds = [Lease.created_by.in_(members)] if members else []
+    if prop_ids:
+        conds.append(Lease.property_id.in_(prop_ids))
+    if tenant_ids:
+        conds.append(Lease.tenant_id.in_(tenant_ids))
+    if not conds:
+        return set()
+    rows = await db.execute(select(Lease.id).where(or_(*conds)))
+    return set(rows.scalars().all())
+
+
+_MANAGER_ROLES_ISO = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO, Role.LECTURE, Role.COMPTABLE)
+
+
+async def _manager_in_agency(db: AsyncSession, user: User, created_by) -> bool:
+    """Vrai si `created_by` appartient à l'agence du manager `user`."""
+    if created_by is None:
+        return False
+    members = await agency_member_ids(db, user)
+    return created_by in members
+
+
+async def _manager_in_agency_any(db: AsyncSession, user: User, *created_bys) -> bool:
+    """Vrai si AU MOINS UN des `created_by` candidats appartient à l'agence.
+
+    Utilisé pour les ressources « dérivées » (bail/paiement/avis) dont le created_by
+    propre peut être NULL (ex. créateur supprimé) mais qui restent rattachées à un
+    bien/locataire de l'agence."""
+    cands = {c for c in created_bys if c is not None}
+    if not cands:
+        return False
+    members = await agency_member_ids(db, user)
+    return bool(cands & members)
+
+
 async def assert_manager_scope(db: AsyncSession, user: User, created_by, label: str = "cette ressource") -> None:
     """Garde-fou d'isolation pour les endpoints de gestion identifiés par `created_by`.
 
@@ -106,15 +189,10 @@ async def assert_manager_scope(db: AsyncSession, user: User, created_by, label: 
     role = Role(user.role)
     if role == Role.ADMIN:
         return
-    if role == Role.GESTIONNAIRE_PROPRIO:
-        if created_by is None or str(created_by) != str(user.id):
-            raise ForbiddenException(f"Accès refusé à {label}.")
-        return
-    if role == Role.GESTIONNAIRE:
-        gp_ids = await gp_user_ids(db)
-        if created_by in gp_ids:
-            raise ForbiddenException(f"Accès refusé à {label}.")
-        return
+    if role in _MANAGER_ROLES_ISO:
+        if await _manager_in_agency(db, user, created_by):
+            return
+        raise ForbiddenException(f"Accès refusé à {label}.")
     raise ForbiddenException(f"Accès refusé à {label}.")
 
 
@@ -134,15 +212,14 @@ async def assert_lease_access(db: AsyncSession, user: User, lease, *, write: boo
     if role == Role.ADMIN:
         return
     created_by = getattr(lease, "created_by", None)
+    _prop = getattr(lease, "parent_property", None)
+    _tenant = getattr(lease, "tenant", None)
 
-    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
-        gp_ids = await gp_user_ids(db)
-        if created_by not in gp_ids:
-            return
-        raise ForbiddenException("Accès refusé à ce contrat.")
-
-    if role == Role.GESTIONNAIRE_PROPRIO:
-        if created_by is not None and str(created_by) == str(user.id):
+    if role in _MANAGER_ROLES_ISO:
+        if await _manager_in_agency_any(
+            db, user, created_by,
+            getattr(_prop, "created_by", None), getattr(_tenant, "created_by", None),
+        ):
             return
         raise ForbiddenException("Accès refusé à ce contrat.")
 
@@ -177,13 +254,8 @@ async def assert_ticket_access(db: AsyncSession, user: User, ticket, *, manager_
     tenant = await db.get(Tenant, ticket.tenant_id)
     created_by = getattr(tenant, "created_by", None) if tenant else None
 
-    if role == Role.GESTIONNAIRE_PROPRIO:
-        if created_by is not None and str(created_by) == str(user.id):
-            return
-        raise ForbiddenException("Accès refusé à cette démarche.")
-    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
-        gp_ids = await gp_user_ids(db)
-        if created_by not in gp_ids:
+    if role in _MANAGER_ROLES_ISO:
+        if await _manager_in_agency(db, user, created_by):
             return
         raise ForbiddenException("Accès refusé à cette démarche.")
 
@@ -224,18 +296,15 @@ async def assert_payment_access(db: AsyncSession, user: User, payment, *, write:
 
     created_by = getattr(payment, "created_by", None)
     lease = getattr(payment, "lease", None)
-    if created_by is None and lease is not None:
-        created_by = getattr(lease, "created_by", None)
+    _prop = getattr(lease, "parent_property", None) if lease is not None else None
+    _tenant = getattr(payment, "tenant", None)
 
-    # Rôles de gestion (mandataire + legacy lecture/comptable) : hors GP
-    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
-        gp_ids = await gp_user_ids(db)
-        if created_by not in gp_ids:
-            return
-        raise ForbiddenException("Accès refusé à ce paiement.")
-
-    if role == Role.GESTIONNAIRE_PROPRIO:
-        if created_by is not None and str(created_by) == str(user.id):
+    # Rôles de gestion : uniquement les paiements de leur agence
+    if role in _MANAGER_ROLES_ISO:
+        if await _manager_in_agency_any(
+            db, user, created_by, getattr(lease, "created_by", None),
+            getattr(_prop, "created_by", None), getattr(_tenant, "created_by", None),
+        ):
             return
         raise ForbiddenException("Accès refusé à ce paiement.")
 
@@ -267,15 +336,14 @@ async def assert_avis_access(db: AsyncSession, user: User, avis, *, write: bool 
 
     lease = getattr(avis, "lease", None)
     created_by = getattr(lease, "created_by", None) if lease is not None else None
+    _prop = getattr(lease, "parent_property", None) if lease is not None else None
+    _tenant = getattr(avis, "tenant", None)
 
-    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
-        gp_ids = await gp_user_ids(db)
-        if created_by not in gp_ids:
-            return
-        raise ForbiddenException("Accès refusé à cet avis d'échéance.")
-
-    if role == Role.GESTIONNAIRE_PROPRIO:
-        if created_by is not None and str(created_by) == str(user.id):
+    if role in _MANAGER_ROLES_ISO:
+        if await _manager_in_agency_any(
+            db, user, created_by,
+            getattr(_prop, "created_by", None), getattr(_tenant, "created_by", None),
+        ):
             return
         raise ForbiddenException("Accès refusé à cet avis d'échéance.")
 
@@ -334,14 +402,8 @@ async def assert_document_access(db: AsyncSession, user: User, document, *, writ
                 p = await db.get(Property, le.property_id)
                 owner_user_id = getattr(p, "owner_user_id", None) if p else None
 
-    if role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
-        gp_ids = await gp_user_ids(db)
-        if created_by not in gp_ids:
-            return
-        raise ForbiddenException("Accès refusé à ce document.")
-
-    if role == Role.GESTIONNAIRE_PROPRIO:
-        if created_by is not None and str(created_by) == str(user.id):
+    if role in _MANAGER_ROLES_ISO:
+        if await _manager_in_agency(db, user, created_by):
             return
         raise ForbiddenException("Accès refusé à ce document.")
 

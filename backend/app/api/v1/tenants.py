@@ -7,7 +7,7 @@ from sqlalchemy import select
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_tenant_ids as _gp_tenant_ids, assert_manager_scope
+from app.api.v1._isolation import agency_tenant_ids as _agency_tenant_ids, assert_manager_scope
 from app.models.user import User
 from app.models.document import EntityType, DocumentType
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, TenantListItem
@@ -59,10 +59,10 @@ async def list_tenants(
 
     tenants, total = await TenantService.list_all(db, search=search, skip=0, limit=2000)
 
-    # Gestionnaire mandataire : exclure les locataires des gestionnaire_proprio
+    # Gestionnaire mandataire : uniquement les locataires de SON agence
     if Role(current_user.role) == Role.GESTIONNAIRE:
-        excluded = await _gp_tenant_ids(db)
-        tenants = [t for t in tenants if t.id not in excluded]
+        allowed = await _agency_tenant_ids(db, current_user)
+        tenants = [t for t in tenants if t.id in allowed]
 
     if available_only:
         active_ids = {l.tenant_id for l in (await db.execute(

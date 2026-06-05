@@ -5,13 +5,14 @@ import pytest
 from tests.conftest import auth
 
 
-async def _create_tenant_for_locataire(db, locataire_user):
+async def _create_tenant_for_locataire(db, locataire_user, created_by=None):
     from app.models.tenant import Tenant
     tenant = Tenant(
         first_name="Jean",
         last_name="Locataire",
         email=f"jean.ticket@test.fr",
         user_id=locataire_user.id,
+        created_by=created_by,
     )
     db.add(tenant)
     await db.flush()
@@ -49,8 +50,8 @@ class TestTicketCreate:
 
 @pytest.mark.asyncio
 class TestTicketList:
-    async def test_gestionnaire_lists_all_tickets(self, client, gestionnaire_token, locataire_user, db):
-        tenant = await _create_tenant_for_locataire(db, locataire_user)
+    async def test_gestionnaire_lists_all_tickets(self, client, gestionnaire_token, gestionnaire_user, locataire_user, db):
+        tenant = await _create_tenant_for_locataire(db, locataire_user, created_by=gestionnaire_user.id)
         from app.models.ticket import Ticket, TicketStatus
         db.add(Ticket(
             title="Problème chauffage", description="Chauffage en panne.",
@@ -105,8 +106,8 @@ class TestTicketStats:
 
 @pytest.mark.asyncio
 class TestTicketDetail:
-    async def test_get_ticket_detail(self, client, gestionnaire_token, locataire_user, db):
-        tenant = await _create_tenant_for_locataire(db, locataire_user)
+    async def test_get_ticket_detail(self, client, gestionnaire_token, gestionnaire_user, locataire_user, db):
+        tenant = await _create_tenant_for_locataire(db, locataire_user, created_by=gestionnaire_user.id)
         from app.models.ticket import Ticket, TicketStatus
         ticket = Ticket(title="Détail", description="Contenu", tenant_id=tenant.id, status=TicketStatus.OPEN)
         db.add(ticket)
@@ -121,8 +122,8 @@ class TestTicketDetail:
 
 @pytest.mark.asyncio
 class TestTicketUpdate:
-    async def test_gestionnaire_updates_status(self, client, gestionnaire_token, locataire_user, db):
-        tenant = await _create_tenant_for_locataire(db, locataire_user)
+    async def test_gestionnaire_updates_status(self, client, gestionnaire_token, gestionnaire_user, locataire_user, db):
+        tenant = await _create_tenant_for_locataire(db, locataire_user, created_by=gestionnaire_user.id)
         from app.models.ticket import Ticket, TicketStatus
         ticket = Ticket(title="Status", description="D", tenant_id=tenant.id, status=TicketStatus.OPEN)
         db.add(ticket)
@@ -153,8 +154,8 @@ class TestTicketUpdate:
 
 @pytest.mark.asyncio
 class TestTicketMessages:
-    async def test_gestionnaire_adds_reply(self, client, gestionnaire_token, locataire_user, db):
-        tenant = await _create_tenant_for_locataire(db, locataire_user)
+    async def test_gestionnaire_adds_reply(self, client, gestionnaire_token, gestionnaire_user, locataire_user, db):
+        tenant = await _create_tenant_for_locataire(db, locataire_user, created_by=gestionnaire_user.id)
         from app.models.ticket import Ticket, TicketStatus
         ticket = Ticket(title="Msg", description="D", tenant_id=tenant.id, status=TicketStatus.OPEN)
         db.add(ticket)

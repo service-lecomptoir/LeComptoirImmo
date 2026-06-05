@@ -24,10 +24,10 @@ async def _check_contact_access(contact: Contact, current_user: User, db: AsyncS
         if contact.created_by != current_user.id:
             raise HTTPException(status_code=403, detail="Accès refusé")
     elif role == Role.GESTIONNAIRE:
-        # Un mandataire ne peut pas accéder aux contacts d'un GP
-        from app.api.v1._isolation import gp_user_ids
-        gp_ids = await gp_user_ids(db)
-        if contact.created_by in gp_ids:
+        # Un mandataire n'accède qu'aux contacts de SON agence
+        from app.api.v1._isolation import agency_member_ids
+        members = await agency_member_ids(db, current_user)
+        if contact.created_by not in members:
             raise HTTPException(status_code=403, detail="Accès refusé")
 
 
@@ -49,13 +49,10 @@ async def list_contacts(
         # GP voit uniquement ses propres contacts
         q = q.where(Contact.created_by == current_user.id)
     elif role == Role.GESTIONNAIRE:
-        # Mandataire : exclure les contacts des GP
-        from app.api.v1._isolation import gp_user_ids
-        gp_ids = await gp_user_ids(db)
-        if gp_ids:
-            q = q.where(
-                or_(Contact.created_by.not_in(gp_ids), Contact.created_by.is_(None))
-            )
+        # Mandataire : uniquement les contacts de SON agence
+        from app.api.v1._isolation import agency_member_ids
+        members = await agency_member_ids(db, current_user)
+        q = q.where(Contact.created_by.in_(members)) if members else q.where(False)
     # Admin : pas de filtre
 
     # ── Filtres utilisateur ───────────────────────────────────────────────────

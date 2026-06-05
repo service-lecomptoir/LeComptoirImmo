@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.api.deps import require_role
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_user_ids, assert_manager_scope
+from app.api.v1._isolation import agency_member_ids, assert_manager_scope
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.lease import Lease
@@ -25,11 +25,11 @@ async def _tenant_scope_ids(db: AsyncSession, current_user: User):
         rows = await db.execute(select(Tenant.id).where(Tenant.created_by == current_user.id))
         return list(rows.scalars().all())
     if role == Role.GESTIONNAIRE:
-        gp_ids = await gp_user_ids(db)
-        q = select(Tenant.id)
-        if gp_ids:
-            q = q.where(Tenant.created_by.notin_(gp_ids) | Tenant.created_by.is_(None))
-        return list((await db.execute(q)).scalars().all())
+        members = await agency_member_ids(db, current_user)
+        if not members:
+            return []
+        rows = await db.execute(select(Tenant.id).where(Tenant.created_by.in_(members)))
+        return list(rows.scalars().all())
     return None  # admin
 
 

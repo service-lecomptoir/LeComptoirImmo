@@ -50,7 +50,7 @@ async def get_badge_count(
             )
         )
         msg_count = res.scalar_one()
-    elif role in (Role.GESTIONNAIRE, Role.ADMIN):
+    elif role == Role.ADMIN:
         res = await db.execute(
             select(func.count(ProprietaireMessage.id)).where(
                 ProprietaireMessage.is_from_gestionnaire.is_(False),
@@ -58,14 +58,42 @@ async def get_badge_count(
             )
         )
         msg_count = res.scalar_one()
+    elif role == Role.GESTIONNAIRE:
+        # Mandataire : messages des propriétaires de SON agence uniquement.
+        from app.api.v1._isolation import agency_member_ids
+        from app.models.owner import Owner
+        members = await agency_member_ids(db, current_user)
+        prop_ids = [u for u in (await db.execute(
+            select(Owner.user_id).where(Owner.created_by.in_(members), Owner.user_id.isnot(None))
+        )).scalars().all()]
+        if prop_ids:
+            res = await db.execute(
+                select(func.count(ProprietaireMessage.id)).where(
+                    ProprietaireMessage.proprietaire_id.in_(prop_ids),
+                    ProprietaireMessage.is_from_gestionnaire.is_(False),
+                    ProprietaireMessage.is_read.is_(False),
+                )
+            )
+            msg_count = res.scalar_one()
 
     # ── Tickets / Incidents ───────────────────────────────────────────────────
     inc_count = 0
-    if role in (Role.GESTIONNAIRE, Role.ADMIN):
+    if role == Role.ADMIN:
         res = await db.execute(
             select(func.count(Ticket.id)).where(Ticket.status == "open")
         )
         inc_count = res.scalar_one()
+    elif role == Role.GESTIONNAIRE:
+        # Mandataire : incidents ouverts des locataires de SON agence.
+        from app.api.v1._isolation import agency_tenant_ids
+        allowed = await agency_tenant_ids(db, current_user)
+        if allowed:
+            res = await db.execute(
+                select(func.count(Ticket.id)).where(
+                    Ticket.tenant_id.in_(allowed), Ticket.status == "open"
+                )
+            )
+            inc_count = res.scalar_one()
     elif role == Role.GESTIONNAIRE_PROPRIO:
         prop_ids = [row[0] for row in (await db.execute(
             select(Property.id).where(Property.owner_user_id == current_user.id)

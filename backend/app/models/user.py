@@ -48,6 +48,12 @@ class User(Base, TimestampMixin):
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    # Isolation multi-agences : racine de la chaîne created_by (= compte principal).
+    # NULL pour un compte principal (alors COALESCE(agency_id, id) = id le désigne lui-même) ;
+    # = l'id du principal pour un sous-compte. Détermine le périmètre « agence ».
+    agency_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email} [{self.role}]>"

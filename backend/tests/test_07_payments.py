@@ -14,6 +14,7 @@ async def _setup_lease(db, gestionnaire_user):
     prop = Property(
         name="Prop Payments", address="2 Rue", zip_code="75001",
         city="Paris", country="France", property_type="appartement",
+        created_by=gestionnaire_user.id,
     )
     db.add(prop)
     await db.flush()
@@ -21,6 +22,7 @@ async def _setup_lease(db, gestionnaire_user):
     tenant = Tenant(
         first_name="Paul", last_name="Payment",
         email=f"paul.pay@test.fr",
+        created_by=gestionnaire_user.id,
     )
     db.add(tenant)
     await db.flush()
@@ -29,6 +31,7 @@ async def _setup_lease(db, gestionnaire_user):
         tenant_id=tenant.id, property_id=prop.id,
         start_date=date.today(), rent_amount=800.00, charges_amount=100.00,
         lease_type="vide", payment_day=1, is_active=True,
+        created_by=gestionnaire_user.id,
     )
     db.add(lease)
     await db.flush()

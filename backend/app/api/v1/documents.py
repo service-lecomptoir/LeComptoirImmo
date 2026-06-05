@@ -91,14 +91,18 @@ async def list_documents(
             return []
         return await DocumentService.list_for_entities(db, entity_ids, entity_type, limit, skip)
 
-    # ── Gestionnaire mandataire : exclure les entités GP ──────────────────────
+    # ── Gestionnaire mandataire : uniquement les entités de SON agence ────────
     if role == Role.GESTIONNAIRE:
-        from app.api.v1._isolation import gp_property_ids, gp_tenant_ids, gp_lease_ids
-        excl_props = await gp_property_ids(db)
-        excl_tenants = await gp_tenant_ids(db)
-        excl_leases = await gp_lease_ids(db)
-        excluded = excl_props | excl_tenants | excl_leases
-        return await DocumentService.list_excluding_entities(db, excluded, entity_type, limit, skip)
+        from app.api.v1._isolation import (
+            agency_property_ids, agency_tenant_ids, agency_lease_ids,
+        )
+        prop_ids = await agency_property_ids(db, current_user)
+        tenant_ids = await agency_tenant_ids(db, current_user)
+        lease_ids = await agency_lease_ids(db, current_user)
+        entity_ids = list(prop_ids) + list(lease_ids) + list(tenant_ids)
+        if not entity_ids:
+            return []
+        return await DocumentService.list_for_entities(db, entity_ids, entity_type, limit, skip)
 
     # ── Admin ──────────────────────────────────────────────────────────────────
     return await DocumentService.list_all(db, entity_type, limit, skip)

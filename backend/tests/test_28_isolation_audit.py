@@ -105,6 +105,58 @@ class TestCrossGPIsolation:
 
 
 @pytest.mark.asyncio
+class TestCrossAgencyIsolation:
+    """Deux agences mandataires indépendantes ne se voient pas (multi-tenant)."""
+
+    async def test_two_mandataire_agencies_isolated(self, client, db, gestionnaire_token):
+        from tests.conftest import _create_user, _get_token
+        a = await _chain(client, gestionnaire_token)  # agence A
+
+        emailB = f"gestB_{uuid.uuid4().hex[:8]}@test.fr"
+        await _create_user(db, emailB, "GestPass1!", "gestionnaire")  # principal agence B
+        tokenB = await _get_token(client, emailB, "GestPass1!")
+        hb = auth(tokenB)
+
+        # Accès par ID : B ne voit RIEN de A
+        assert _denied(await client.get(f"/api/v1/leases/{a['lease_id']}", headers=hb))
+        assert _denied(await client.get(f"/api/v1/tenants/{a['tenant_id']}", headers=hb))
+        assert _denied(await client.get(f"/api/v1/properties/{a['prop_id']}", headers=hb))
+        assert _denied(await client.get(f"/api/v1/payments/{a['payment_id']}", headers=hb))
+        assert _denied(await client.get(f"/api/v1/inspections/{a['inspection_id']}", headers=hb))
+
+        # Listes : aucune ressource de A visible pour B
+        leases_b = await client.get("/api/v1/leases", headers=hb)
+        assert leases_b.status_code == 200
+        assert a["lease_id"] not in [i["id"] for i in leases_b.json()["items"]]
+        props_b = await client.get("/api/v1/properties", headers=hb)
+        assert a["prop_id"] not in [i["id"] for i in props_b.json()["items"]]
+        tenants_b = await client.get("/api/v1/tenants", headers=hb)
+        assert a["tenant_id"] not in [i["id"] for i in tenants_b.json()["items"]]
+
+        # Contrôle positif : A voit bien SES ressources en liste
+        leases_a = await client.get("/api/v1/leases", headers=auth(gestionnaire_token))
+        assert a["lease_id"] in [i["id"] for i in leases_a.json()["items"]]
+
+    async def test_subaccount_sees_agency_resources(self, client, db, gestionnaire_user, gestionnaire_token):
+        from tests.conftest import _create_user, _get_token
+        a = await _chain(client, gestionnaire_token)  # créé par le principal A
+
+        # Sous-compte de l'agence A (created_by = principal, agency = principal)
+        emailS = f"staffA_{uuid.uuid4().hex[:8]}@test.fr"
+        sub = await _create_user(db, emailS, "GestPass1!", "gestionnaire")
+        sub.created_by = gestionnaire_user.id
+        sub.agency_id = gestionnaire_user.id
+        await db.flush()
+        tokenS = await _get_token(client, emailS, "GestPass1!")
+
+        # Le sous-compte voit les ressources de SON agence
+        leases_s = await client.get("/api/v1/leases", headers=auth(tokenS))
+        assert leases_s.status_code == 200
+        assert a["lease_id"] in [i["id"] for i in leases_s.json()["items"]]
+        assert (await client.get(f"/api/v1/leases/{a['lease_id']}", headers=auth(tokenS))).status_code == 200
+
+
+@pytest.mark.asyncio
 class TestTicketIsolation:
     async def test_locataire_cannot_read_others_ticket(self, client, db, gp_token, gp_user, locataire_user):
         # Démarche rattachée à un locataire du GP

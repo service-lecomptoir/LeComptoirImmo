@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import require_role, get_current_user
-from app.api.v1._isolation import gp_property_ids, assert_manager_scope
+from app.api.v1._isolation import agency_property_ids, assert_manager_scope
 from app.models.user import User
 from app.core.permissions import Role
 from app.schemas.entretien import (
@@ -39,7 +39,8 @@ async def _autoplan_scope(db: AsyncSession, current_user: User):
         )).scalars().all()}
         return own, None
     if role == Role.GESTIONNAIRE:
-        return None, await gp_property_ids(db)
+        # Mandataire : borné aux biens de SON agence
+        return await agency_property_ids(db, current_user), None
     return None, None  # admin
 
 
@@ -153,13 +154,13 @@ async def list_entretiens(
             all_items.extend(chunk)
         return {"total": len(all_items), "items": [_enrich_entretien(e) for e in all_items]}
 
-    # Gestionnaire mandataire : exclure les entretiens des biens GP
+    # Gestionnaire mandataire : uniquement les entretiens des biens de SON agence
     if Role(current_user.role) == Role.GESTIONNAIRE:
-        excluded = await gp_property_ids(db)
-        if property_id and property_id in excluded:
+        allowed = await agency_property_ids(db, current_user)
+        if property_id and property_id not in allowed:
             return {"total": 0, "items": []}
         all_items, _ = await EntretienService.list_all(db, status=status, property_id=property_id, limit=5000, offset=0)
-        filtered = [e for e in all_items if e.property_id not in excluded]
+        filtered = [e for e in all_items if e.property_id in allowed]
         page = filtered[offset: offset + limit]
         return {"total": len(filtered), "items": [_enrich_entretien(e) for e in page]}
 

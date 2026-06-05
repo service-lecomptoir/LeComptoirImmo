@@ -61,6 +61,18 @@ async def list_messages(
         )
         await db.commit()
     elif role in (Role.GESTIONNAIRE, Role.ADMIN):
+        # Mandataire : limiter aux propriétaires de SON agence (owner.created_by ∈ agence).
+        allowed_prop_ids = None  # None = admin (tous)
+        if role == Role.GESTIONNAIRE:
+            from app.api.v1._isolation import agency_member_ids
+            from app.models.owner import Owner
+            members = await agency_member_ids(db, current_user)
+            rows = await db.execute(
+                select(Owner.user_id).where(
+                    Owner.created_by.in_(members), Owner.user_id.isnot(None)
+                )
+            )
+            allowed_prop_ids = {str(u) for u in rows.scalars().all()}
         if not proprietaire_id:
             # Retourner la liste des conversations (un résumé par propriétaire)
             res = await db.execute(
@@ -69,6 +81,8 @@ async def list_messages(
                 .order_by(ProprietaireMessage.proprietaire_id)
             )
             ids = [row[0] for row in res.all()]
+            if allowed_prop_ids is not None:
+                ids = [pid for pid in ids if str(pid) in allowed_prop_ids]
             conversations = []
             for pid in ids:
                 # Dernier message
@@ -99,6 +113,8 @@ async def list_messages(
                         "unread_count": unread,
                     })
             return {"conversations": conversations}
+        if allowed_prop_ids is not None and str(proprietaire_id) not in allowed_prop_ids:
+            raise HTTPException(status_code=403, detail="Accès refusé")
         target_id = proprietaire_id
     else:
         raise HTTPException(status_code=403, detail="Accès refusé")

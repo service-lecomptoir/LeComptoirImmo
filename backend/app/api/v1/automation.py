@@ -30,9 +30,9 @@ async def _check_rule_access(rule: AutomationRule, current_user: User, db: Async
         if rule.created_by != current_user.id:
             raise HTTPException(status_code=403, detail="Accès refusé")
     elif role == Role.GESTIONNAIRE:
-        from app.api.v1._isolation import gp_user_ids
-        gp_ids = await gp_user_ids(db)
-        if rule.created_by in gp_ids:
+        from app.api.v1._isolation import agency_member_ids
+        members = await agency_member_ids(db, current_user)
+        if rule.created_by not in members:
             raise HTTPException(status_code=403, detail="Accès refusé")
 
 
@@ -51,12 +51,9 @@ async def list_rules(
     if role == Role.GESTIONNAIRE_PROPRIO:
         q = q.where(AutomationRule.created_by == current_user.id)
     elif role == Role.GESTIONNAIRE:
-        from app.api.v1._isolation import gp_user_ids
-        gp_ids = await gp_user_ids(db)
-        if gp_ids:
-            q = q.where(
-                or_(AutomationRule.created_by.not_in(gp_ids), AutomationRule.created_by.is_(None))
-            )
+        from app.api.v1._isolation import agency_member_ids
+        members = await agency_member_ids(db, current_user)
+        q = q.where(AutomationRule.created_by.in_(members)) if members else q.where(False)
     # Admin : pas de filtre
 
     if rule_type:
@@ -166,15 +163,9 @@ async def list_logs(
         else:
             return []
     elif role == Role.GESTIONNAIRE:
-        from app.api.v1._isolation import gp_tenant_ids
-        excl_tenants = await gp_tenant_ids(db)
-        if excl_tenants:
-            q = q.where(
-                or_(
-                    CommunicationLog.tenant_id.not_in(excl_tenants),
-                    CommunicationLog.tenant_id.is_(None),
-                )
-            )
+        from app.api.v1._isolation import agency_tenant_ids
+        allowed = await agency_tenant_ids(db, current_user)
+        q = q.where(CommunicationLog.tenant_id.in_(allowed)) if allowed else q.where(False)
 
     if tenant_id:
         q = q.where(CommunicationLog.tenant_id == tenant_id)
@@ -201,11 +192,10 @@ async def send_group_communication(
         # Seulement les locataires créés par ce GP
         q = q.where(Tenant.created_by == current_user.id)
     elif role == Role.GESTIONNAIRE:
-        # Exclure les locataires GP
-        from app.api.v1._isolation import gp_tenant_ids
-        excl = await gp_tenant_ids(db)
-        if excl:
-            q = q.where(Tenant.id.not_in(excl))
+        # Uniquement les locataires de SON agence
+        from app.api.v1._isolation import agency_tenant_ids
+        allowed = await agency_tenant_ids(db, current_user)
+        q = q.where(Tenant.id.in_(allowed)) if allowed else q.where(False)
 
     # ── Filtres utilisateur ───────────────────────────────────────────────────
     if data.tenant_ids:

@@ -89,20 +89,13 @@ async def list_users(
     current_role = Role(current_user.role)
 
     if current_role == Role.GESTIONNAIRE:
-        # Gestionnaire mandataire : proprio/locataires, hors ceux créés par un gestionnaire_proprio
-        # Approche directe : User.created_by → GP user ids
-        from app.api.v1._isolation import _gp_user_ids
-        gp_ids = await _gp_user_ids(db)
-        gp_created_user_ids: set[str] = set()
-        if gp_ids:
-            rows = (await db.execute(
-                select(User.id).where(User.created_by.in_(gp_ids))
-            )).scalars().all()
-            gp_created_user_ids = {str(uid) for uid in rows}
+        # Gestionnaire mandataire : proprio/locataires créés par SON agence uniquement.
+        from app.api.v1._isolation import agency_member_ids
+        members = await agency_member_ids(db, current_user)
         users = [
             u for u in users
             if Role(u.role) in _GESTIONNAIRE_ALLOWED_ROLES
-            and str(u.id) not in gp_created_user_ids
+            and u.created_by in members
         ]
     elif current_role == Role.GESTIONNAIRE_PROPRIO:
         # GP voit lui-même + tous les users qu'il a directement créés (created_by)

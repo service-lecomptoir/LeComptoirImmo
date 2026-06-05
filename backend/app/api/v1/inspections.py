@@ -15,7 +15,7 @@ from app.schemas.inspection import (
 )
 from app.services.inspection_service import InspectionService
 from app.api.v1.auth import get_current_user
-from app.api.v1._isolation import gp_user_ids, assert_manager_scope
+from app.api.v1._isolation import agency_member_ids, assert_manager_scope
 
 router = APIRouter(prefix="/inspections", tags=["Inspections"])
 
@@ -37,8 +37,8 @@ async def list_inspections(
     if role == Role.GESTIONNAIRE_PROPRIO:
         items = [i for i in items if str(getattr(i, "created_by", None)) == str(current_user.id)]
     elif role != Role.ADMIN:
-        gp_ids = await gp_user_ids(db)
-        items = [i for i in items if getattr(i, "created_by", None) not in gp_ids]
+        members = await agency_member_ids(db, current_user)
+        items = [i for i in items if getattr(i, "created_by", None) in members]
     total = len(items)
     page = items[skip: skip + limit]
     return InspectionListResponse(items=page, total=total, skip=skip, limit=limit)

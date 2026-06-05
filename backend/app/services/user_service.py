@@ -25,16 +25,29 @@ class UserService:
         if result.scalar_one_or_none():
             raise ConflictException(f"L'email '{data.email}' est déjà utilisé")
 
+        # Agence : un sous-compte hérite de l'agence de son créateur ; un compte
+        # principal (sans créateur) est sa propre agence.
+        agency_id = None
+        if created_by is not None:
+            creator = (await db.execute(select(User).where(User.id == created_by))).scalar_one_or_none()
+            if creator is not None:
+                agency_id = creator.agency_id or creator.id
+
         user = User(
             email=data.email,
             hashed_password=hash_password(data.password),
             full_name=data.full_name,
             role=data.role,
             created_by=created_by,
+            agency_id=agency_id,
         )
         db.add(user)
         await db.flush()
         await db.refresh(user)
+        # Compte principal : son agence est lui-même.
+        if user.agency_id is None:
+            user.agency_id = user.id
+            await db.flush()
 
         # Templates de documents par défaut pour les comptes qui génèrent des documents
         # (gestionnaire / GP / admin). N'échoue jamais la création de compte.

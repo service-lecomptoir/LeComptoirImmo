@@ -8,7 +8,7 @@ from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
 from app.core.features import require_feature, require_any_feature
-from app.api.v1._isolation import gp_owner_ids as _gp_owner_ids, assert_manager_scope
+from app.api.v1._isolation import agency_owner_ids as _agency_owner_ids, assert_manager_scope
 from app.models.user import User
 from app.models.owner import Owner
 from app.models.document import EntityType
@@ -37,9 +37,9 @@ async def list_owners(
     owners, _ = await OwnerService.list_all(db, search=search, skip=0, limit=2000)
 
     if role == Role.GESTIONNAIRE:
-        # Gestionnaire mandataire : exclure les propriétaires des gestionnaire_proprio
-        excluded = await _gp_owner_ids(db)
-        owners = [o for o in owners if o.id not in excluded]
+        # Gestionnaire mandataire : uniquement les propriétaires de SON agence
+        allowed = await _agency_owner_ids(db, current_user)
+        owners = [o for o in owners if o.id in allowed]
     elif role == Role.GESTIONNAIRE_PROPRIO:
         owners = [o for o in owners if o.created_by == current_user.id]
 

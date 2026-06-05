@@ -6,7 +6,7 @@ from datetime import date
 from tests.conftest import auth
 
 
-async def _setup_active_lease(db):
+async def _setup_active_lease(db, created_by=None):
     from app.models.property import Property
     from app.models.tenant import Tenant
     from app.models.lease import Lease
@@ -14,6 +14,7 @@ async def _setup_active_lease(db):
     prop = Property(
         name="Prop Avis", address="9 Rue", zip_code="13001",
         city="Marseille", country="France", property_type="appartement",
+        created_by=created_by,
     )
     db.add(prop)
     await db.flush()
@@ -21,6 +22,7 @@ async def _setup_active_lease(db):
     tenant = Tenant(
         first_name="Luc", last_name="Avis",
         email="luc.avis@test.fr",
+        created_by=created_by,
     )
     db.add(tenant)
     await db.flush()
@@ -29,6 +31,7 @@ async def _setup_active_lease(db):
         tenant_id=tenant.id, property_id=prop.id,
         start_date=date.today(), rent_amount=700.00, charges_amount=90.00,
         lease_type="vide", payment_day=1, is_active=True,
+        created_by=created_by,
     )
     db.add(lease)
     await db.flush()
@@ -83,8 +86,8 @@ class TestAvisGeneration:
 
 @pytest.mark.asyncio
 class TestAvisWorkflow:
-    async def test_mark_sent_then_acquitte(self, client, gestionnaire_token, db):
-        lease = await _setup_active_lease(db)
+    async def test_mark_sent_then_acquitte(self, client, gestionnaire_token, gestionnaire_user, db):
+        lease = await _setup_active_lease(db, created_by=gestionnaire_user.id)
 
         create_resp = await client.post("/api/v1/avis-echeances/generate", headers=auth(gestionnaire_token), json={
             "lease_id": str(lease.id), "period_year": 2026, "period_month": 11,
@@ -102,10 +105,10 @@ class TestAvisWorkflow:
         assert acq_resp.status_code == 200
         assert acq_resp.json()["status"] == "acquitte"
 
-    async def test_delete_draft_only(self, client, gestionnaire_token, db):
+    async def test_delete_draft_only(self, client, gestionnaire_token, gestionnaire_user, db):
         from app.models.avis_echeance import AvisEcheance
         from datetime import date
-        lease = await _setup_active_lease(db)
+        lease = await _setup_active_lease(db, created_by=gestionnaire_user.id)
 
         # Un avis en brouillon (état manuel) reste supprimable.
         avis = AvisEcheance(
@@ -120,8 +123,8 @@ class TestAvisWorkflow:
         del_resp = await client.delete(f"/api/v1/avis-echeances/{avis.id}", headers=auth(gestionnaire_token))
         assert del_resp.status_code == 204
 
-    async def test_cannot_delete_sent_avis(self, client, gestionnaire_token, db):
-        lease = await _setup_active_lease(db)
+    async def test_cannot_delete_sent_avis(self, client, gestionnaire_token, gestionnaire_user, db):
+        lease = await _setup_active_lease(db, created_by=gestionnaire_user.id)
 
         create_resp = await client.post("/api/v1/avis-echeances/generate", headers=auth(gestionnaire_token), json={
             "lease_id": str(lease.id), "period_year": 2027, "period_month": 1,

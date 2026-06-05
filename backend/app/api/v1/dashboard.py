@@ -62,40 +62,29 @@ async def get_dashboard_stats(
             )
 
     if is_mandataire:
-        from app.api.v1._isolation import _gp_user_ids
-        gp_ids = await _gp_user_ids(db)
-        if gp_ids:
-            res = await db.execute(
-                select(Property.id).where(Property.created_by.in_(gp_ids))
-            )
-            excluded_prop_ids = list(res.scalars().all())
+        # Mandataire : liste blanche = biens de SON agence (multi-tenant).
+        from app.api.v1._isolation import agency_property_ids
+        prop_ids_filter = list(await agency_property_ids(db, current_user))
+
+    # Liste blanche de biens (GP + mandataire) ; None = tout (admin).
+    whitelist = prop_ids_filter if (is_gp or is_mandataire) else None
 
     def _lease_scope(q):
-        if is_gp:
-            return q.where(Lease.property_id.in_(prop_ids_filter))
-        if is_mandataire and excluded_prop_ids:
-            return q.where(Lease.property_id.notin_(excluded_prop_ids))
+        if whitelist is not None:
+            return q.where(Lease.property_id.in_(whitelist))
         return q
 
     def _payment_scope(q):
-        if is_gp:
+        if whitelist is not None:
             return q.join(Lease, Payment.lease_id == Lease.id).where(
-                Lease.property_id.in_(prop_ids_filter)
-            )
-        if is_mandataire and excluded_prop_ids:
-            return q.join(Lease, Payment.lease_id == Lease.id).where(
-                Lease.property_id.notin_(excluded_prop_ids)
+                Lease.property_id.in_(whitelist)
             )
         return q
 
     # ── Biens (un bien = un logement) ──────────────────────────────────────────
-    if is_gp:
+    if whitelist is not None:
         total_units_res = await db.execute(
-            select(func.count(Property.id)).where(Property.id.in_(prop_ids_filter))
-        )
-    elif is_mandataire and excluded_prop_ids:
-        total_units_res = await db.execute(
-            select(func.count(Property.id)).where(Property.id.notin_(excluded_prop_ids))
+            select(func.count(Property.id)).where(Property.id.in_(whitelist))
         )
     else:
         total_units_res = await db.execute(select(func.count(Property.id)))
@@ -197,13 +186,9 @@ async def get_dashboard_stats(
         ))
 
     # ── Performance par bien (TOUS les biens du périmètre) ──────────────────────
-    if is_gp:
+    if whitelist is not None:
         props_res = await db.execute(
-            select(Property).where(Property.id.in_(prop_ids_filter))
-        )
-    elif is_mandataire and excluded_prop_ids:
-        props_res = await db.execute(
-            select(Property).where(Property.id.notin_(excluded_prop_ids))
+            select(Property).where(Property.id.in_(whitelist))
         )
     else:
         props_res = await db.execute(select(Property))
@@ -300,17 +285,10 @@ async def get_dashboard_stats(
     overdue_amount = float(overdue_amount_res.scalar_one() or 0)
 
     # ── Totaux généraux ───────────────────────────────────────────────────────
-    if is_gp:
+    if whitelist is not None:
         total_tenants_res = await db.execute(
             select(func.count(func.distinct(Lease.tenant_id))).where(
-                Lease.property_id.in_(prop_ids_filter),
-                Lease.is_active.is_(True),
-            )
-        )
-    elif is_mandataire and excluded_prop_ids:
-        total_tenants_res = await db.execute(
-            select(func.count(func.distinct(Lease.tenant_id))).where(
-                Lease.property_id.notin_(excluded_prop_ids),
+                Lease.property_id.in_(whitelist),
                 Lease.is_active.is_(True),
             )
         )
@@ -318,12 +296,8 @@ async def get_dashboard_stats(
         total_tenants_res = await db.execute(select(func.count(Tenant.id)))
     total_tenants = total_tenants_res.scalar_one() or 0
 
-    if is_gp:
-        total_props = len(prop_ids_filter)
-    elif is_mandataire and excluded_prop_ids:
-        total_props = (await db.execute(
-            select(func.count(Property.id)).where(Property.id.notin_(excluded_prop_ids))
-        )).scalar_one() or 0
+    if whitelist is not None:
+        total_props = len(whitelist)
     else:
         total_props = (await db.execute(select(func.count(Property.id)))).scalar_one() or 0
 
@@ -346,10 +320,8 @@ async def get_dashboard_stats(
             Entretien.scheduled_date <= today + timedelta(days=30),
         )
     )
-    if is_gp:
-        ent_q = ent_q.where(Entretien.property_id.in_(prop_ids_filter))
-    elif is_mandataire and excluded_prop_ids:
-        ent_q = ent_q.where(Entretien.property_id.notin_(excluded_prop_ids))
+    if whitelist is not None:
+        ent_q = ent_q.where(Entretien.property_id.in_(whitelist))
     ent_q = ent_q.order_by(Entretien.scheduled_date.asc()).limit(6)
     upcoming = [
         UpcomingEntretien(
@@ -480,11 +452,11 @@ async def get_fiscal_revenues(
         q_props = q_props.where(Property.owner_user_id == proprietaire_id)
     props_res = await db.execute(q_props)
     properties = list(props_res.scalars().all())
-    # Mandataire (et legacy lecture/comptable) : ne jamais inclure les biens d'un GP.
+    # Mandataire (et legacy lecture/comptable) : uniquement les biens de SON agence.
     if role in (R.GESTIONNAIRE, R.LECTURE, R.COMPTABLE):
-        from app.api.v1._isolation import gp_property_ids
-        _excl = await gp_property_ids(db)
-        properties = [p for p in properties if p.id not in _excl]
+        from app.api.v1._isolation import agency_property_ids
+        _allowed = await agency_property_ids(db, current_user)
+        properties = [p for p in properties if p.id in _allowed]
     prop_ids = [p.id for p in properties]
 
     if not prop_ids:

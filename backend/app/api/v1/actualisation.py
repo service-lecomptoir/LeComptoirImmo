@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_gestionnaire
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_lease_ids, assert_manager_scope
+from app.api.v1._isolation import agency_lease_ids, assert_manager_scope
 from app.models.user import User
 from app.models.lease import Lease
 from app.models.charge_regularization import ChargeRegularization
@@ -104,8 +104,8 @@ async def _scoped_active_leases(db: AsyncSession, current_user: User) -> list[Le
     )
     leases = (await db.execute(q)).scalars().all()
     if role == Role.GESTIONNAIRE:
-        excluded = await gp_lease_ids(db)
-        leases = [l for l in leases if l.id not in excluded]
+        allowed = await agency_lease_ids(db, current_user)
+        leases = [l for l in leases if l.id in allowed]
     elif role == Role.GESTIONNAIRE_PROPRIO:
         leases = [l for l in leases if l.created_by == current_user.id]
     return list(leases)

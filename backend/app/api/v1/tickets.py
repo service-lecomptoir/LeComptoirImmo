@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import get_current_user, require_role
-from app.api.v1._isolation import gp_tenant_ids, assert_ticket_access
+from app.api.v1._isolation import agency_tenant_ids, assert_ticket_access
 from app.models.user import User
 from app.models.ticket import Ticket
 from app.models.lease import Lease
@@ -111,11 +111,11 @@ async def list_tickets(
         tickets = list((await db.execute(q)).scalars().all())
         return {"total": len(tickets), "items": [_enrich_ticket(t) for t in tickets]}
 
-    # Gestionnaire mandataire : exclure les tickets des locataires GP
+    # Gestionnaire mandataire : uniquement les tickets des locataires de SON agence
     if Role(current_user.role) == Role.GESTIONNAIRE:
-        excluded = await gp_tenant_ids(db)
+        allowed = await agency_tenant_ids(db, current_user)
         all_items, _ = await TicketService.list_all(db, status=status, limit=5000, offset=0)
-        filtered = [t for t in all_items if t.tenant_id not in excluded]
+        filtered = [t for t in all_items if t.tenant_id in allowed]
         page = filtered[offset: offset + limit]
         return {"total": len(filtered), "items": [_enrich_ticket(t) for t in page]}
 
@@ -144,10 +144,11 @@ async def ticket_stats(
         if not tenant_ids:
             return {"open": 0}
         q = q.where(Ticket.tenant_id.in_(tenant_ids))
-    else:  # mandataire : exclure les locataires d'un GP
-        gp_ids = await gp_tenant_ids(db)
-        if gp_ids:
-            q = q.where(Ticket.tenant_id.notin_(gp_ids))
+    else:  # mandataire : uniquement les locataires de SON agence
+        allowed = await agency_tenant_ids(db, current_user)
+        if not allowed:
+            return {"open": 0}
+        q = q.where(Ticket.tenant_id.in_(allowed))
     return {"open": (await db.execute(q)).scalar_one()}
 
 

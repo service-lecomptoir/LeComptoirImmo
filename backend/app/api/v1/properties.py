@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
-from app.api.v1._isolation import gp_property_ids, assert_manager_scope
+from app.api.v1._isolation import agency_property_ids, assert_manager_scope
 from app.models.user import User
 from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertyUpdate, PropertyResponse, PropertyListItem
@@ -51,11 +51,11 @@ async def list_properties(
     if role == Role.LOCATAIRE:
         raise HTTPException(status_code=403, detail="Accès non autorisé")
 
-    # Gestionnaire mandataire : exclure les biens des gestionnaire_proprio
+    # Gestionnaire mandataire : uniquement les biens de SON agence
     if role == Role.GESTIONNAIRE:
-        excluded = await gp_property_ids(db)
+        allowed = await agency_property_ids(db, current_user)
         all_props, _ = await PropertyService.list_all(db, search=search, skip=0, limit=2000)
-        filtered = [p for p in all_props if p.id not in excluded]
+        filtered = [p for p in all_props if p.id in allowed]
         items = await _enrich_properties(db, filtered)
         return {"items": items, "total": len(items), "skip": 0, "limit": limit}
 

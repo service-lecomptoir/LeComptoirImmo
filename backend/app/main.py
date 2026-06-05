@@ -359,6 +359,22 @@ async def _apply_column_migrations() -> None:
         # cible désormais les bons destinataires ; on supprime les anciennes
         # notifications non ciblées (elles seront régénérées proprement).
         "DELETE FROM notifications WHERE user_id IS NULL",
+        # ── Isolation multi-agences : users.agency_id = racine de la chaîne created_by ──
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS agency_id UUID",
+        "CREATE INDEX IF NOT EXISTS ix_users_agency_id ON users (agency_id)",
+        # Backfill : remonte chaque utilisateur jusqu'à son compte principal (created_by IS NULL).
+        # Idempotent (recalcule à chaque démarrage). Les sous-comptes héritent de l'id du principal.
+        """
+        WITH RECURSIVE chain AS (
+            SELECT id, created_by, id AS root FROM users WHERE created_by IS NULL
+            UNION ALL
+            SELECT u.id, u.created_by, c.root
+            FROM users u JOIN chain c ON u.created_by = c.id
+        )
+        UPDATE users SET agency_id = chain.root FROM chain WHERE users.id = chain.id
+        """,
+        # Orphelins (created_by cassé/cyclique) → leur propre agence.
+        "UPDATE users SET agency_id = id WHERE agency_id IS NULL",
     ]
     try:
         async with engine.begin() as conn:
