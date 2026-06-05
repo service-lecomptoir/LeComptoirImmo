@@ -44,6 +44,16 @@ async def lifespan(app: FastAPI):
             await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS address TEXT"))
             await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS access_until TIMESTAMP"))
             await conn.execute(text("ALTER TABLE alice_plans ADD COLUMN IF NOT EXISTS features JSONB"))
+            # ── Stripe : abonnements gestionnaires (carte / SEPA) ──────────────
+            await conn.execute(text("ALTER TABLE alice_plans ADD COLUMN IF NOT EXISTS stripe_product_id VARCHAR(64)"))
+            await conn.execute(text("ALTER TABLE alice_plans ADD COLUMN IF NOT EXISTS stripe_price_id VARCHAR(64)"))
+            await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(64)"))
+            await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(64)"))
+            await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS stripe_status VARCHAR(32)"))
+            await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS stripe_payment_method_type VARCHAR(20)"))
+            await conn.execute(text("ALTER TABLE alice_licenses ADD COLUMN IF NOT EXISTS stripe_current_period_end TIMESTAMP"))
+            await conn.execute(text("ALTER TABLE alice_invoices ADD COLUMN IF NOT EXISTS stripe_invoice_id VARCHAR(64)"))
+            await conn.execute(text("ALTER TABLE alice_invoices ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20)"))
         logger.info("Migrations colonnes Alice appliquees")
     except Exception as exc:
         logger.warning("Migration colonnes Alice ignoree : %s", exc)

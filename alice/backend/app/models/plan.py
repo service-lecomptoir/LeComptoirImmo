@@ -24,6 +24,9 @@ class AlicePlan(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # Fonctionnalités incluses dans le plan (liste de clés ; null = toutes autorisées).
     features: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # ── Stripe : produit + prix mensuel récurrent associés à ce plan ─────────
+    stripe_product_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    stripe_price_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     def __repr__(self) -> str:

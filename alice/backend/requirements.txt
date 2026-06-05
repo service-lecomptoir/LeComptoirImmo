@@ -26,3 +26,6 @@ reportlab==4.5.1
 
 # ── Email (envoi des factures) ───────────────────────────────────────────────
 aiosmtplib==5.1.0
+
+# ── Paiement (abonnements gestionnaires : carte / SEPA) ──────────────────────
+stripe==10.5.0

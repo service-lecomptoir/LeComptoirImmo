@@ -34,6 +34,10 @@ class AliceInvoice(Base):
     # paid | unpaid
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="unpaid")
     paid_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    # ── Stripe : lien vers la facture/paiement Stripe (si payé en ligne) ─────
+    stripe_invoice_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    # 'card' | 'sepa_debit' | 'manual' (toggle admin).
+    payment_method: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(nullable=False)
 
     def __repr__(self) -> str:

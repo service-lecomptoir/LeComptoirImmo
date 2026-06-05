@@ -55,6 +55,20 @@ class Settings(BaseSettings):
     def smtp_enabled(self) -> bool:
         return bool(self.SMTP_HOST)
 
+    # ── Stripe (paiement des abonnements gestionnaires) ──────────────────────
+    # Vide → intégration désactivée (no-op). Mode test : clés sk_test_… / whsec_…
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_CURRENCY: str = "eur"
+    # URLs de retour après Checkout (page « Mon abonnement » côté LeCI).
+    STRIPE_SUCCESS_URL: str = "http://localhost:5173/abonnement?paiement=succes"
+    STRIPE_CANCEL_URL: str = "http://localhost:5173/abonnement?paiement=annule"
+
+    @property
+    def stripe_enabled(self) -> bool:
+        return bool(self.STRIPE_SECRET_KEY)
+
     @property
     def is_production(self) -> bool:
         return self.APP_ENV == "production"

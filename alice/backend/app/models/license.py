@@ -40,5 +40,15 @@ class AliceLicense(Base, TimestampMixin):
     # IDs des users bloqués en cascade (pour pouvoir unblock proprement)
     blocked_user_ids: Mapped[list] = mapped_column(JSONB, default=list, nullable=False, server_default="[]")
 
+    # ── Stripe (abonnement récurrent : carte / prélèvement SEPA) ─────────────
+    stripe_customer_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    # active / trialing / past_due / canceled / unpaid / incomplete… (statut Stripe).
+    stripe_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    # 'card' ou 'sepa_debit'.
+    stripe_payment_method_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # Fin de la période payée en cours (= prochaine échéance de prélèvement).
+    stripe_current_period_end: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=False), nullable=True)
+
     def __repr__(self) -> str:
         return f"<AliceLicense gestionnaire={self.gestionnaire_user_id} blocked={self.is_blocked}>"
