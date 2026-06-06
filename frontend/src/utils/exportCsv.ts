@@ -6,6 +6,8 @@
  * ignore parfois à l'ouverture par double-clic, ce qui cassait les accents.
  * Séparateur `;` (séparateur de liste par défaut d'Excel FR).
  */
+import { downloadBlob } from './download'
+
 export function exportCsv(
   filename: string,
   headers: string[],
@@ -30,13 +32,8 @@ export function exportCsv(
     buf[3 + i * 2] = (code >> 8) & 0xFF
   }
   const blob = new Blob([buf], { type: 'text/csv;charset=utf-16le;' })
-
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  const name = filename.endsWith('.csv') ? filename : `${filename}.csv`
+  // Passe par l'utilitaire commun : révocation différée + fenêtre anti-faux-positif
+  // (mêmes protections iOS Safari que les téléchargements PDF).
+  downloadBlob(blob, name, 'text/csv;charset=utf-16le;')
 }
