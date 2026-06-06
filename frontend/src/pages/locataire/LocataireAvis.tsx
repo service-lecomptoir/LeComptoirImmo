@@ -5,6 +5,7 @@ import { Calendar, Download, CheckCircle, Clock, AlertCircle } from 'lucide-reac
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { docFilename } from '@/utils/filename'
+import { downloadBlob } from '@/utils/download'
 
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -34,10 +35,7 @@ export default function LocataireAvis() {
     fetch(avisEcheancesApi.pdfUrl(a.id), { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.blob())
       .then(blob => {
-        const el = document.createElement('a')
-        el.href = URL.createObjectURL(blob)
-        el.download = docFilename('avis_echeance', { tenant: a.tenant_full_name, property: a.property_name, month: a.period_month, year: a.period_year })
-        el.click()
+        downloadBlob(blob, docFilename('avis_echeance', { tenant: a.tenant_full_name, property: a.property_name, month: a.period_month, year: a.period_year }))
       })
   }
 

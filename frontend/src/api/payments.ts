@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { downloadBlob } from '@/utils/download'
 import type { Payment, PaymentListResponse, PaymentStatus, DashboardStats, MonthlyStats } from '@/types/payment'
 
 interface ListParams {
@@ -60,14 +61,7 @@ export const paymentsApi = {
     const response = await apiClient.get(`/payments/${id}/quittance`, {
       responseType: 'blob',
     })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    downloadBlob(response.data, filename)
   },
 
   sendQuittance: (id: string) =>
@@ -81,41 +75,20 @@ export const lettersApi = {
     const response = await apiClient.get(`/letters/relance/${paymentId}`, {
       responseType: 'blob',
     })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    downloadBlob(response.data, filename)
   },
 
   downloadAttestationCaf: async (leaseId: string, filename: string) => {
     const response = await apiClient.get(`/letters/attestation-caf/${leaseId}`, {
       responseType: 'blob',
     })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    downloadBlob(response.data, filename)
   },
 
   downloadVersementDirect: async (leaseId: string, filename: string) => {
     const response = await apiClient.get(`/letters/versement-direct/${leaseId}`, {
       responseType: 'blob',
     })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    downloadBlob(response.data, filename)
   },
 }

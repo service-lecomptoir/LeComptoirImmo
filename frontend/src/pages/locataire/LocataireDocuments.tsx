@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { downloadBlob } from '@/utils/download'
 
 const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -195,10 +196,7 @@ export default function LocataireDocuments() {
         headers: authHeaders(),
       })
       const blob = await r.blob()
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = doc.file_name ?? 'document'
-      a.click()
+      downloadBlob(blob, doc.file_name ?? 'document')
     } catch {
       // silently ignore
     }

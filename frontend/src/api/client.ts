@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { toast } from '../store/toast'
 import { getErrorMessage } from '../utils/errors'
+import { isDownloadSuppressing } from '../utils/download'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -118,6 +119,14 @@ apiClient.interceptors.response.use(
         window.location.href = '/login'
         return Promise.reject(error)
       }
+    }
+
+    // Avortement de requête (annulation, ou requête concurrente coupée par
+    // l'ouverture d'un téléchargement sur iOS Safari) : ne PAS afficher d'erreur.
+    const isAbort = axios.isCancel?.(error) || error?.code === 'ERR_CANCELED'
+    const isNetwork = error?.code === 'ERR_NETWORK' || error?.message === 'Network Error'
+    if (isAbort || (isNetwork && isDownloadSuppressing())) {
+      return Promise.reject(error)
     }
 
     // ── Filet de sécurité : aucune erreur ne doit être silencieuse ─────────────

@@ -8,6 +8,7 @@ import {
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { leasesApi } from '@/api/leases'
 import { docFilename } from '@/utils/filename'
+import { downloadBlob } from '@/utils/download'
 import { isMultiMonth } from '@/utils/period'
 import { useAuthStore } from '@/store/authStore'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -518,18 +519,12 @@ export default function AvisEcheanceList() {
         throw new Error(detail)
       }
       const blob = await response.blob()
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = docFilename('avis_echeance', {
+      downloadBlob(blob, docFilename('avis_echeance', {
         tenant: avis.tenant_full_name,
         property: avis.property_name,
         month: avis.period_month,
         year: avis.period_year,
-      })
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(a.href)
+      }))
     } catch (e: any) {
       setErrorMsg(`Impossible de télécharger le PDF : ${e.message}`)
       setTimeout(() => setErrorMsg(''), 5000)

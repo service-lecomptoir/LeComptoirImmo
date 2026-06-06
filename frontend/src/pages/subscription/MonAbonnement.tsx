@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt, ListChecks, Check } from 'lucide-react'
 import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice, type BillingStatus, type AvailablePlan, type StripePayment } from '@/api/subscription'
 import { FEATURE_LABELS } from '@/lib/features'
+import { downloadBlob } from '@/utils/download'
 import { toast } from '@/store/toast'
 
 const FEATURE_ORDER = Object.keys(FEATURE_LABELS)
@@ -83,14 +84,7 @@ export default function MonAbonnement() {
   const downloadInvoice = async (inv: SubscriptionInvoice) => {
     try {
       const res = await subscriptionApi.downloadInvoice(inv.id)
-      const url = URL.createObjectURL(res.data as Blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `facture-${inv.period_year}-${String(inv.period_month).padStart(2, '0')}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      downloadBlob(res.data as Blob, `facture-${inv.period_year}-${String(inv.period_month).padStart(2, '0')}.pdf`)
     } catch {
       toast.error('Téléchargement de la facture impossible')
     }

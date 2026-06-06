@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { downloadBlob } from '@/utils/download'
 import type { Owner, OwnerCreate, OwnerListItem, PaginatedResponse } from '@/types/owner'
 
 export const ownersApi = {
@@ -35,14 +36,7 @@ export const ownersApi = {
   /** Télécharge la liasse fiscale PDF d'un propriétaire. */
   fiscalPdf: async (id: string, year: number, filename: string) => {
     const r = await apiClient.get(`/owners/${id}/fiscal/pdf`, { params: { year }, responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([r.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', filename)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
+    downloadBlob(r.data, filename)
   },
 }
 
