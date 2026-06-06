@@ -12,10 +12,21 @@ import { useFeaturesStore } from '@/store/featuresStore'
 import { isFeatureAllowed } from '@/lib/features'
 import { toast } from '@/store/toast'
 
+function splitName(s?: string | null): { first: string; last: string } {
+  const parts = (s ?? '').trim().split(/\s+/).filter(Boolean)
+  const first = parts.shift() ?? ''
+  return { first, last: parts.join(' ') }
+}
+const joinName = (first: string, last: string) => `${first.trim()} ${last.trim()}`.trim()
+
 export default function MonProfil() {
   const { user, fetchMe } = useAuthStore()
   const [fullName, setFullName] = useState(user?.full_name ?? '')
-  const [ownerFullName, setOwnerFullName] = useState(user?.owner_full_name ?? '')
+  // Prénom/Nom (recombinés dans full_name pour les non-gestionnaires, owner_full_name pour les gestionnaires)
+  const [firstName, setFirstName] = useState(splitName(user?.full_name).first)
+  const [lastName, setLastName] = useState(splitName(user?.full_name).last)
+  const [ownerFirstName, setOwnerFirstName] = useState(splitName(user?.owner_full_name).first)
+  const [ownerLastName, setOwnerLastName] = useState(splitName(user?.owner_full_name).last)
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [address, setAddress] = useState(user?.address ?? '')
@@ -195,12 +206,15 @@ export default function MonProfil() {
       // sur la fiche propriétaire) pour que les documents générés et le bloc
       // « Émetteur » de l'éditeur de templates restent à jour, quel que soit le
       // rôle. Le locataire est exclu de l'adresse (son adresse = le bien loué).
+      // Gestionnaire : full_name = nom de COMPTE (champ unique) ; le nom du propriétaire
+      // est saisi en Prénom/Nom → recombiné dans owner_full_name.
+      // Autres rôles : le nom de la personne est saisi en Prénom/Nom → recombiné dans full_name.
       await apiClient.patch('/users/me', {
-        full_name: fullName,
+        full_name: isManager ? fullName : joinName(firstName, lastName),
         email: email.trim() || undefined,
         phone: phone || null,
         ...(isLocataire ? {} : { address: address || null }),
-        ...(isManager ? { owner_full_name: ownerFullName || null } : {}),
+        ...(isManager ? { owner_full_name: joinName(ownerFirstName, ownerLastName) || null } : {}),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
       if (showRib && ownerId) {
@@ -255,17 +269,31 @@ export default function MonProfil() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         {msg && <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{msg}</div>}
         {err && <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{err}</div>}
-        <div>
-          <label className={lbl}>{isManager ? 'Nom de la résidence' : 'Nom complet'}</label>
-          <input className={inp} value={fullName} onChange={e => setFullName(e.target.value)} />
-          {isManager && (
+        {isManager ? (
+          <div>
+            <label className={lbl}>Nom de compte</label>
+            <input className={inp} value={fullName} onChange={e => setFullName(e.target.value)} />
             <p className="text-xs text-gray-400 mt-1">Affiché dans l'application et sur la plupart des documents.</p>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Prénom</label>
+              <input className={inp} value={firstName} onChange={e => setFirstName(e.target.value)} />
+            </div>
+            <div>
+              <label className={lbl}>Nom</label>
+              <input className={inp} value={lastName} onChange={e => setLastName(e.target.value)} />
+            </div>
+          </div>
+        )}
         {isManager && (
           <div>
             <label className={lbl}>Nom et prénom du propriétaire</label>
-            <input className={inp} value={ownerFullName} onChange={e => setOwnerFullName(e.target.value)} placeholder="Ex : Jean Dupont" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input className={inp} value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)} placeholder="Prénom" />
+              <input className={inp} value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)} placeholder="Nom" />
+            </div>
             <p className="text-xs text-gray-400 mt-1">Utilisé comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
           </div>
         )}

@@ -60,6 +60,8 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
     phone: null,
     address: null,
   })
+  const [ownerFirst, setOwnerFirst] = useState('')
+  const [ownerLast, setOwnerLast] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -73,7 +75,8 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
     setSaving(true)
     setError(null)
     try {
-      const { data } = await gestionnairesApi.create(form)
+      const owner_full_name = `${ownerFirst.trim()} ${ownerLast.trim()}`.trim() || null
+      const { data } = await gestionnairesApi.create({ ...form, owner_full_name })
       onCreated(data)
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { detail?: string } } }
@@ -133,7 +136,7 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
               )}
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">Nom de la résidence *</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Nom de compte *</label>
               <input
                 type="text"
                 value={form.full_name}
@@ -145,13 +148,22 @@ function CreateModal({ plans, onClose, onCreated, initial }: CreateModalProps) {
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-600 mb-1">Nom et prénom du propriétaire</label>
-              <input
-                type="text"
-                value={form.owner_full_name ?? ''}
-                onChange={e => setForm(f => ({ ...f, owner_full_name: e.target.value || null }))}
-                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Ex : Jean Dupont"
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={ownerFirst}
+                  onChange={e => setOwnerFirst(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Prénom"
+                />
+                <input
+                  type="text"
+                  value={ownerLast}
+                  onChange={e => setOwnerLast(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Nom"
+                />
+              </div>
               <p className="mt-1 text-[11px] text-gray-400">Bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
             </div>
             <div className="col-span-2">

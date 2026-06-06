@@ -73,7 +73,8 @@ export default function GestionnaireDetail() {
 
   // Form state
   const [editFullName, setEditFullName] = useState('')
-  const [editOwnerFullName, setEditOwnerFullName] = useState('')
+  const [editOwnerFirst, setEditOwnerFirst] = useState('')
+  const [editOwnerLast, setEditOwnerLast] = useState('')
   const [editEmail, setEditEmail] = useState('')
   const [editRole, setEditRole] = useState<'gestionnaire' | 'gestionnaire_proprio'>('gestionnaire')
   const [editPhone, setEditPhone] = useState<string | null>(null)
@@ -95,7 +96,11 @@ export default function GestionnaireDetail() {
       setPlans(plRes.data)
       // Init form
       setEditFullName(g.full_name)
-      setEditOwnerFullName(g.owner_full_name ?? '')
+      {
+        const _p = (g.owner_full_name ?? '').trim().split(/\s+/).filter(Boolean)
+        setEditOwnerFirst(_p.shift() ?? '')
+        setEditOwnerLast(_p.join(' '))
+      }
       setEditEmail(g.email)
       setEditRole(g.role === 'gestionnaire_proprio' ? 'gestionnaire_proprio' : 'gestionnaire')
       setEditPhone(g.license?.phone ?? null)
@@ -114,7 +119,7 @@ export default function GestionnaireDetail() {
     try {
       const { data } = await gestionnairesApi.update(id, {
         full_name: editFullName,
-        owner_full_name: editOwnerFullName || null,
+        owner_full_name: `${editOwnerFirst.trim()} ${editOwnerLast.trim()}`.trim() || null,
         email: editEmail,
         role: editRole,
         phone: editPhone,
@@ -290,7 +295,7 @@ export default function GestionnaireDetail() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Nom de la résidence</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Nom de compte</label>
                 <input
                   type="text"
                   value={editFullName}
@@ -300,13 +305,22 @@ export default function GestionnaireDetail() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Nom et prénom du propriétaire</label>
-                <input
-                  type="text"
-                  value={editOwnerFullName}
-                  onChange={e => setEditOwnerFullName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Ex : Jean Dupont"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={editOwnerFirst}
+                    onChange={e => setEditOwnerFirst(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Prénom"
+                  />
+                  <input
+                    type="text"
+                    value={editOwnerLast}
+                    onChange={e => setEditOwnerLast(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Nom"
+                  />
+                </div>
                 <p className="mt-1 text-[11px] text-gray-400">Bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
               </div>
               <div>

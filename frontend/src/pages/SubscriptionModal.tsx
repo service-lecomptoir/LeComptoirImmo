@@ -9,7 +9,7 @@ interface Props {
 
 /** Demande de souscription / démo — page d'accueil. Alimente Alice (lead à traiter). */
 export default function SubscriptionModal({ open, onClose }: Props) {
-  const [form, setForm] = useState({ full_name: '', email: '', phone: '', company: '', message: '' })
+  const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company: '', message: '' })
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -19,16 +19,21 @@ export default function SubscriptionModal({ open, onClose }: Props) {
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const submit = async () => {
-    if (form.full_name.trim().length < 2 || !form.email.includes('@')) {
-      setError('Nom et email valides requis.')
+    const fullName = `${form.first_name.trim()} ${form.last_name.trim()}`.trim()
+    if (!form.first_name.trim() || !form.last_name.trim() || !form.email.includes('@')) {
+      setError('Prénom, nom et email valides requis.')
+      return
+    }
+    if (form.phone.trim().length < 6) {
+      setError('Un numéro de téléphone est requis.')
       return
     }
     setSending(true); setError(null)
     try {
       await apiClient.post('/public/subscription-requests', {
-        full_name: form.full_name.trim(),
+        full_name: fullName,
         email: form.email.trim(),
-        phone: form.phone || null,
+        phone: form.phone.trim(),
         company: form.company || null,
         message: form.message || null,
       })
@@ -78,12 +83,16 @@ export default function SubscriptionModal({ open, onClose }: Props) {
               <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
             )}
             <div className="grid grid-cols-1 gap-3">
-              <input className={inp} placeholder="Nom complet *" value={form.full_name}
-                onChange={e => set('full_name', e.target.value)} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input className={inp} placeholder="Prénom *" value={form.first_name}
+                  onChange={e => set('first_name', e.target.value)} />
+                <input className={inp} placeholder="Nom *" value={form.last_name}
+                  onChange={e => set('last_name', e.target.value)} />
+              </div>
               <input className={inp} placeholder="Email professionnel *" type="email" value={form.email}
                 onChange={e => set('email', e.target.value)} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input className={inp} placeholder="Téléphone" value={form.phone}
+                <input className={inp} placeholder="Téléphone *" value={form.phone}
                   onChange={e => set('phone', e.target.value)} />
                 <input className={inp} placeholder="Société / agence" value={form.company}
                   onChange={e => set('company', e.target.value)} />

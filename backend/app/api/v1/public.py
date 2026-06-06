@@ -75,7 +75,7 @@ async def _notify_team(data: "SubscriptionRequestIn") -> None:
 class SubscriptionRequestIn(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=150)
     email: EmailStr
-    phone: Optional[str] = Field(None, max_length=30)
+    phone: str = Field(..., min_length=6, max_length=30)
     company: Optional[str] = Field(None, max_length=200)
     message: Optional[str] = Field(None, max_length=2000)
 
