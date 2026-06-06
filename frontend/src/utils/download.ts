@@ -17,7 +17,7 @@ export function isDownloadSuppressing(): boolean {
 
 /** Déclenche le téléchargement d'un blob et gère proprement le cycle de vie de l'URL. */
 export function downloadBlob(data: BlobPart, filename: string, type = 'application/pdf'): void {
-  _suppressUntil = Date.now() + 8000
+  _suppressUntil = Date.now() + 15000
   const blob = data instanceof Blob ? data : new Blob([data], { type })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

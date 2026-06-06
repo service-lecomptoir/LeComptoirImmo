@@ -123,9 +123,14 @@ apiClient.interceptors.response.use(
 
     // Avortement de requête (annulation, ou requête concurrente coupée par
     // l'ouverture d'un téléchargement sur iOS Safari) : ne PAS afficher d'erreur.
+    // Pendant la fenêtre d'un téléchargement, iOS suspend la SPA et avorte les
+    // requêtes en cours ; selon le navigateur l'erreur remonte sous des codes
+    // variés (ERR_NETWORK, ECONNABORTED, timeout…) mais TOUJOURS sans réponse HTTP.
+    // On ignore donc toute erreur « sans réponse » survenue dans cette fenêtre ;
+    // les vraies erreurs serveur (4xx/5xx, qui ont une réponse) restent affichées.
     const isAbort = axios.isCancel?.(error) || error?.code === 'ERR_CANCELED'
-    const isNetwork = error?.code === 'ERR_NETWORK' || error?.message === 'Network Error'
-    if (isAbort || (isNetwork && isDownloadSuppressing())) {
+    const noServerResponse = !error?.response
+    if (isAbort || (noServerResponse && isDownloadSuppressing())) {
       return Promise.reject(error)
     }
 
