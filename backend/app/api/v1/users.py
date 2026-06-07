@@ -24,6 +24,12 @@ router = APIRouter(prefix="/users", tags=["Utilisateurs"])
 # Rôles que le gestionnaire mandataire peut créer / voir
 _GESTIONNAIRE_ALLOWED_ROLES = {Role.PROPRIETAIRE, Role.LOCATAIRE}
 
+# PRINCIPE : tout compte de niveau « gestion » (gestionnaire mandataire,
+# gestionnaire-propriétaire, admin) est créé EXCLUSIVEMENT depuis Alice (console
+# SaaS). L'application LeComptoir Immo ne peut donc jamais créer NI promouvoir
+# vers ces rôles — uniquement propriétaire / locataire / lecture / comptable.
+_MANAGER_LEVEL_ROLES = {Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO}
+
 
 async def _gp_tenant_ids(db: AsyncSession, owner_id: uuid.UUID) -> set[str]:
     """Retourne les user_ids des locataires liés aux biens du gestionnaire-propriétaire."""
@@ -132,6 +138,13 @@ async def create_user(
     - Admin : peut créer n'importe quel rôle
     - Gestionnaire : peut créer uniquement propriétaire ou locataire
     """
+    # Les comptes gestionnaire (et admin) ne se créent QUE depuis Alice.
+    if Role(data.role) in _MANAGER_LEVEL_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Les comptes gestionnaire sont créés depuis Alice, pas depuis l'application.",
+        )
+
     current_role = Role(current_user.role)
     if current_role == Role.GESTIONNAIRE:
         if Role(data.role) not in _GESTIONNAIRE_ALLOWED_ROLES:
@@ -218,9 +231,16 @@ async def update_role(
     current_user: User = Depends(get_current_active_admin),
     _feat: User = Depends(require_feature("admin")),
 ):
-    """Modifie le rôle d'un utilisateur (admin et gestionnaire mandataire uniquement)."""
+    """Modifie le rôle d'un utilisateur. Le passage à un rôle de gestion
+    (gestionnaire / gestionnaire-propriétaire / admin) est interdit : ces comptes
+    sont gérés exclusivement depuis Alice."""
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Modification de rôle réservée aux administrateurs")
+    if Role(data.role) in _MANAGER_LEVEL_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Le rôle gestionnaire est géré depuis Alice, pas depuis l'application.",
+        )
     return await UserService.update_role(db, user_id, data)
 
 

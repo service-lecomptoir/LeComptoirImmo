@@ -80,7 +80,10 @@ async function fetchUsers(): Promise<User[]> {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-// Rôles disponibles selon le rôle de l'utilisateur connecté
+// Rôles créables depuis l'application. Les comptes de gestion (gestionnaire,
+// gestionnaire-propriétaire, admin) sont créés UNIQUEMENT depuis Alice : ils ne
+// sont jamais proposés ici.
+const _MANAGER_LEVEL_ROLES: Role[] = ['admin', 'gestionnaire', 'gestionnaire_proprio']
 function getCreatableRoles(myRole: Role | undefined): [Role, string][] {
   if (myRole === 'gestionnaire_proprio') {
     return [['locataire', 'Locataire']]
@@ -88,7 +91,9 @@ function getCreatableRoles(myRole: Role | undefined): [Role, string][] {
   if (myRole === 'gestionnaire') {
     return [['locataire', 'Locataire'], ['proprietaire', 'Propriétaire']]
   }
-  return Object.entries(ROLE_LABELS) as [Role, string][]
+  return (Object.entries(ROLE_LABELS) as [Role, string][]).filter(
+    ([r]) => !_MANAGER_LEVEL_ROLES.includes(r),
+  )
 }
 
 export default function AdminUsers() {
@@ -127,7 +132,7 @@ export default function AdminUsers() {
   // ── Create form ──
   const createForm = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
-    defaultValues: { role: 'gestionnaire' },
+    defaultValues: { role: 'proprietaire' },
   })
 
   const watchedRole = createForm.watch('role')
@@ -270,7 +275,7 @@ export default function AdminUsers() {
         </div>
         <button
           onClick={() => {
-            const defaultRole = me?.role === 'gestionnaire_proprio' ? 'locataire' : 'gestionnaire'
+            const defaultRole = me?.role === 'gestionnaire_proprio' ? 'locataire' : 'proprietaire'
             setShowCreate(true); setFormError(null); setLinkFicheId(''); createForm.reset({ role: defaultRole as Role })
           }}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
