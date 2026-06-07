@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Le Comptoir Séjour (produit autonome, base séparée) — piloté via son API interne.
     SEJOUR_URL: str = "http://sejour_backend:8000"
     SEJOUR_INTERNAL_KEY: str = ""
+    # Convergence : si vrai, Alice lit le domaine LeCI (gestionnaires/biens) via l'API
+    # /internal au lieu de la base directe. Réversible (repli sur la lecture directe).
+    LECI_VIA_API: bool = False
 
     # ── First Admin ──────────────────────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@alice.fr"

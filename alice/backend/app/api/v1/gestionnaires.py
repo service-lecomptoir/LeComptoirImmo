@@ -15,6 +15,10 @@ from app.models.license import AliceLicense
 from app.models.plan import AlicePlan
 from app.models.leci import LeciUser, LeciProperty
 from app.schemas.gestionnaire import GestionnaireCreate, GestionnaireUpdate, GestionnaireOut, GestionnairePropertyOut
+from app.schemas.license import LicenseOut
+from app.schemas.plan import PlanOut
+from app.config import get_settings
+from app.services.product_client import ProductClient
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +89,44 @@ router = APIRouter(prefix="/gestionnaires", tags=["Gestionnaires"])
 _executor = ThreadPoolExecutor(max_workers=2)
 
 
+async def _local_license_plan(db: AsyncSession, user_id: uuid.UUID):
+    """Licence + plan Alice (données Alice, base partagée) pour un gestionnaire."""
+    license = (
+        await db.execute(select(AliceLicense).where(AliceLicense.gestionnaire_user_id == user_id))
+    ).scalar_one_or_none()
+    plan = None
+    if license and license.plan_id:
+        plan = (
+            await db.execute(select(AlicePlan).where(AlicePlan.id == license.plan_id))
+        ).scalar_one_or_none()
+    return license, plan
+
+
+async def _build_out_from_api(db: AsyncSession, m: dict) -> GestionnaireOut:
+    """Construit GestionnaireOut à partir d'un gestionnaire renvoyé par /internal,
+    en joignant la licence/plan Alice localement (convergence — domaine LeCI via API)."""
+    uid = uuid.UUID(str(m["id"]))
+    license, plan = await _local_license_plan(db, uid)
+    effective_limit: Optional[int] = None
+    if license and license.property_limit_override is not None:
+        effective_limit = license.property_limit_override
+    elif plan and plan.property_limit is not None:
+        effective_limit = plan.property_limit
+    return GestionnaireOut(
+        id=uid,
+        email=m["email"],
+        full_name=m["full_name"],
+        owner_full_name=m.get("owner_full_name"),
+        role=m["role"],
+        is_active=m["is_active"],
+        created_at=m["created_at"],
+        license=LicenseOut.model_validate(license) if license else None,
+        plan=PlanOut.model_validate(plan) if plan else None,
+        effective_property_limit=effective_limit,
+        property_count=m.get("property_count", 0),
+    )
+
+
 async def _build_gestionnaire_out(
     db: AsyncSession,
     user: LeciUser,
@@ -131,6 +173,12 @@ async def list_gestionnaires(
     _: AliceAdmin = Depends(get_current_alice_admin),
 ):
     """Liste tous les gestionnaires avec leur licence et plan."""
+    # Convergence : domaine LeCI lu via l'API interne (repli sur la base directe).
+    if get_settings().LECI_VIA_API:
+        managers = await ProductClient("leci").list_managers()
+        managers = managers[skip: skip + limit]
+        return [await _build_out_from_api(db, m) for m in managers]
+
     users_result = await db.execute(
         select(LeciUser)
         .where(_manager_roles())
@@ -223,6 +271,10 @@ async def get_gestionnaire(
     _: AliceAdmin = Depends(get_current_alice_admin),
 ):
     """Détail d'un gestionnaire."""
+    if get_settings().LECI_VIA_API:
+        m = await ProductClient("leci").get_manager(str(gestionnaire_id))
+        return await _build_out_from_api(db, m)
+
     user_result = await db.execute(
         select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
     )
@@ -465,6 +517,10 @@ async def get_gestionnaire_properties(
     _: AliceAdmin = Depends(get_current_alice_admin),
 ):
     """Liste des biens créés par ce gestionnaire."""
+    if get_settings().LECI_VIA_API:
+        props = await ProductClient("leci").manager_properties(str(gestionnaire_id))
+        return [GestionnairePropertyOut(**p) for p in props]
+
     user_result = await db.execute(
         select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
     )

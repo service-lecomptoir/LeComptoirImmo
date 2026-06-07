@@ -62,6 +62,12 @@ class ProductClient:
     async def list_managers(self) -> list[dict]:
         return await self._request("GET", "/internal/managers") or []
 
+    async def get_manager(self, manager_id: str) -> dict:
+        return await self._request("GET", f"/internal/managers/{manager_id}")
+
+    async def manager_properties(self, manager_id: str) -> list[dict]:
+        return await self._request("GET", f"/internal/managers/{manager_id}/properties") or []
+
     async def create_manager(self, data: dict) -> dict:
         return await self._request("POST", "/internal/managers", json=data)
 
