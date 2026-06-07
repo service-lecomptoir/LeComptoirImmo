@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, CreditCard, FileText, Inbox, X } from 'lucide-react'
+import { LayoutDashboard, Users, CreditCard, FileText, Inbox, Hotel, X } from 'lucide-react'
 import clsx from 'clsx'
 import { subscriptionsApi } from '@/api/subscriptions'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/gestionnaires', icon: Users, label: 'Gestionnaires' },
+  { to: '/sejour', icon: Hotel, label: 'Séjour' },
   { to: '/plans', icon: CreditCard, label: 'Plans tarifaires' },
   { to: '/factures', icon: FileText, label: 'Factures' },
   { to: '/demandes', icon: Inbox, label: 'Demandes' },

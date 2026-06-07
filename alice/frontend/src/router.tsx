@@ -10,6 +10,7 @@ import GestionnaireDetail from '@/pages/gestionnaires/GestionnaireDetail'
 import PlanList from '@/pages/plans/PlanList'
 import SubscriptionList from '@/pages/subscriptions/SubscriptionList'
 import InvoiceList from '@/pages/invoices/InvoiceList'
+import SejourList from '@/pages/sejour/SejourList'
 
 function AppLayout() {
   const { isAuthenticated } = useAuthStore()
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'gestionnaires', element: <GestionnaireList /> },
       { path: 'gestionnaires/:id', element: <GestionnaireDetail /> },
+      { path: 'sejour', element: <SejourList /> },
       { path: 'plans', element: <PlanList /> },
       { path: 'factures', element: <InvoiceList /> },
       { path: 'demandes', element: <SubscriptionList /> },

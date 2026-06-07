@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # ── Internal API (service-to-service) ────────────────────────────────────
     INTERNAL_API_KEY: str = "lecomptoir-internal-dev-key-change-in-production"
     LECI_URL: str = "http://localhost:8000"
+    # Le Comptoir Séjour (produit autonome, base séparée) — piloté via son API interne.
+    SEJOUR_URL: str = "http://sejour_backend:8000"
+    SEJOUR_INTERNAL_KEY: str = ""
 
     # ── First Admin ──────────────────────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@alice.fr"
