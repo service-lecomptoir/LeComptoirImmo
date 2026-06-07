@@ -538,11 +538,16 @@ async def reactivate_gestionnaire_endpoint(
 ):
     """Réactive un contrat en cours de désactivation : annule la désactivation
     programmée (access_until) et, si le compte était déjà bloqué, le débloque."""
-    user = (await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
-    )).scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
+    via_api = get_settings().LECI_VIA_API
+    user = None
+    if via_api:
+        await ProductClient("leci").get_manager(str(gestionnaire_id))  # 404 si absent
+    else:
+        user = (await db.execute(
+            select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
+        )).scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
 
     license = (await db.execute(
         select(AliceLicense).where(AliceLicense.gestionnaire_user_id == gestionnaire_id)
@@ -553,7 +558,12 @@ async def reactivate_gestionnaire_endpoint(
     was_blocked = license.is_blocked
     license.access_until = None
     if was_blocked:
-        await unblock_gestionnaire(db, license, gestionnaire_id)
+        if via_api:
+            await ProductClient("leci").unblock(str(gestionnaire_id), list(license.blocked_user_ids or []))
+            license.is_blocked = False
+            license.blocked_user_ids = []
+        else:
+            await unblock_gestionnaire(db, license, gestionnaire_id)
     await db.flush()
 
     plan = None
@@ -566,6 +576,10 @@ async def reactivate_gestionnaire_endpoint(
         background_tasks.add_task(
             _notify_leci_webhook, gestionnaire_id, "unblocked", False, plan.name if plan else None, None
         )
+
+    if via_api:
+        m = await ProductClient("leci").get_manager(str(gestionnaire_id))
+        return await _build_out_from_api(db, m)
 
     user = (await db.execute(
         select(LeciUser).where(LeciUser.id == gestionnaire_id)
