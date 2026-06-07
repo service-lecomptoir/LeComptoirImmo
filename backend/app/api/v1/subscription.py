@@ -4,7 +4,7 @@ import uuid
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func
 from pydantic import BaseModel, Field
 
 from app.database import get_db
@@ -72,17 +72,7 @@ async def get_subscription(
             is_blocked = True
     except Exception as exc:
         logger.warning(f"Alice subscription check failed for {current_user.id}: {exc}")
-        # Alice indisponible — on retourne ce qu'on sait de la DB locale
-        from sqlalchemy import text as sa_text
-        try:
-            row = (await db.execute(
-                sa_text("SELECT is_blocked FROM alice_licenses WHERE gestionnaire_user_id = :uid")
-                .bindparams(uid=current_user.id)
-            )).fetchone()
-            if row:
-                is_blocked = row[0]
-        except Exception:
-            pass
+        # Alice indisponible — fail-soft (on n'a plus de copie locale des licences).
 
     can_create = not is_blocked and (property_limit is None or property_count < property_limit)
 
@@ -143,23 +133,15 @@ async def request_resiliation(
     if role not in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
 
-    await db.execute(
-        text(
-            "INSERT INTO alice_subscription_requests "
-            "(id, full_name, email, phone, company, message, source, status, created_at) "
-            "VALUES (:id, :full_name, :email, :phone, :company, :message, "
-            "'resiliation', 'nouveau', now())"
-        ),
-        {
-            "id": uuid.uuid4(),
-            "full_name": current_user.full_name,
-            "email": current_user.email,
-            "phone": getattr(current_user, "phone", None),
-            "company": None,
-            "message": data.reason.strip(),
-        },
+    from app.services import alice_client
+    await alice_client.create_lead(
+        full_name=current_user.full_name,
+        email=current_user.email,
+        phone=getattr(current_user, "phone", None),
+        company=None,
+        message=data.reason.strip(),
+        source="resiliation",
     )
-    await db.commit()
     background.add_task(_notify_resiliation, current_user.full_name, current_user.email, data.reason.strip())
     return {"status": "received"}
 

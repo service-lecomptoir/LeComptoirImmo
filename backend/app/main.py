@@ -255,24 +255,9 @@ async def _apply_column_migrations() -> None:
         # Isolation contacts/automatisation (013)
         "ALTER TABLE contacts ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL",
         "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL",
-        # Demandes de souscription (page d'accueil → Alice). Table partagée :
-        # créée ici par sécurité (le endpoint public écrit dedans) ; Alice la
-        # gère aussi via create_all (idempotent).
-        """
-        CREATE TABLE IF NOT EXISTS alice_subscription_requests (
-            id UUID PRIMARY KEY,
-            full_name VARCHAR(150) NOT NULL,
-            email VARCHAR(255) NOT NULL,
-            phone VARCHAR(30),
-            company VARCHAR(200),
-            message TEXT,
-            source VARCHAR(50) NOT NULL DEFAULT 'site_lecomptoir',
-            status VARCHAR(20) NOT NULL DEFAULT 'nouveau',
-            notes TEXT,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-            processed_at TIMESTAMPTZ
-        )
-        """,
+        # NB : les demandes de souscription/démo sont désormais gérées par Alice
+        # (base dédiée) via son API /internal ; LeCI ne possède plus de table
+        # alice_subscription_requests locale (découplage total).
         # App settings seed (015)
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_day', '1') ON CONFLICT DO NOTHING",
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_hour', '7') ON CONFLICT DO NOTHING",

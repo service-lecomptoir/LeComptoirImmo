@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text as sa_text
+from sqlalchemy import select
 import logging
 
 from app.models.user import User
@@ -22,18 +22,17 @@ class AuthService:
 
     @staticmethod
     async def _check_alice_license(db: AsyncSession, user: User) -> None:
-        """Vérifie que la licence Alice n'est pas bloquée pour les gestionnaires."""
+        """Vérifie que la licence Alice n'est pas bloquée pour les gestionnaires
+        (via l'API Alice — plus de lecture directe des tables alice_*)."""
         if user.role not in _MANAGED_ROLES:
             return
         try:
-            row = (await db.execute(
-                sa_text("SELECT is_blocked FROM alice_licenses WHERE gestionnaire_user_id = :uid")
-                .bindparams(uid=user.id)
-            )).fetchone()
-            if row is None:
+            from app.services import alice_client
+            lic = await alice_client.get_license(user.id)
+            if lic is None:
                 logger.warning(f"Aucune licence Alice pour user {user.id} ({user.email})")
-                return  # pas de licence → on laisse passer (voir task #8 pour la limite biens)
-            if row[0]:  # is_blocked = True
+                return  # pas de licence → on laisse passer
+            if lic.get("is_blocked"):
                 raise UnauthorizedException("Votre compte a été suspendu. Contactez l'administrateur.")
         except UnauthorizedException:
             raise

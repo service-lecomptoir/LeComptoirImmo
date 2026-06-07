@@ -1,18 +1,16 @@
 """
 Endpoints publics (sans authentification) — page d'accueil Le Comptoir Immo.
 
-La demande de souscription/démo est enregistrée dans la table partagée
-`alice_subscription_requests` ; elle est ensuite traitée côté Alice.
+Les plans et les demandes de souscription/démo proviennent d'Alice (source de
+vérité, base dédiée) via son API /internal (app.services.alice_client) — plus
+aucune lecture/écriture directe des tables alice_*.
 """
-import uuid
 import logging
 from typing import Optional, List
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.services import alice_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/public", tags=["Public"])
@@ -28,28 +26,20 @@ class PublicPlanOut(BaseModel):
 
 
 @router.get("/plans", response_model=List[PublicPlanOut], summary="Plans tarifaires publics")
-async def list_public_plans(db: AsyncSession = Depends(get_db)):
-    """Plans actifs pour la page Tarification publique (lecture directe des tables
-    Alice partagées). `features = null` ⇒ toutes les fonctionnalités."""
-    try:
-        rows = (await db.execute(text(
-            "SELECT id, name, description, property_limit, monthly_price, features "
-            "FROM alice_plans WHERE is_active = true "
-            "ORDER BY (property_limit IS NULL), property_limit, monthly_price"
-        ))).fetchall()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Lecture des plans publics échouée : %s", exc)
-        return []
+async def list_public_plans():
+    """Plans actifs pour la page Tarification publique (via l'API Alice).
+    `features = null` ⇒ toutes les fonctionnalités. Fail-soft → [] si Alice KO."""
+    plans = await alice_client.list_plans()
     return [
         PublicPlanOut(
-            id=str(r[0]),
-            name=r[1],
-            description=r[2],
-            property_limit=r[3],
-            monthly_price=float(r[4]),
-            features=r[5] if isinstance(r[5], list) else None,
+            id=str(p.get("id")),
+            name=p.get("name"),
+            description=p.get("description"),
+            property_limit=p.get("property_limit"),
+            monthly_price=float(p.get("monthly_price") or 0),
+            features=p.get("features") if isinstance(p.get("features"), list) else None,
         )
-        for r in rows
+        for p in plans
     ]
 
 
@@ -84,25 +74,15 @@ class SubscriptionRequestIn(BaseModel):
 async def create_subscription_request(
     data: SubscriptionRequestIn,
     background: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
 ):
-    """Enregistre une demande publique (à traiter par l'équipe Alice)."""
-    await db.execute(
-        text(
-            "INSERT INTO alice_subscription_requests "
-            "(id, full_name, email, phone, company, message, source, status, created_at) "
-            "VALUES (:id, :full_name, :email, :phone, :company, :message, "
-            "'site_lecomptoir', 'nouveau', now())"
-        ),
-        {
-            "id": uuid.uuid4(),
-            "full_name": data.full_name.strip(),
-            "email": str(data.email).lower(),
-            "phone": data.phone,
-            "company": data.company,
-            "message": data.message,
-        },
+    """Enregistre une demande publique côté Alice (à traiter dans « Demandes »)."""
+    await alice_client.create_lead(
+        full_name=data.full_name.strip(),
+        email=str(data.email).lower(),
+        phone=data.phone,
+        company=data.company,
+        message=data.message,
+        source="site_lecomptoir",
     )
-    await db.commit()
     background.add_task(_notify_team, data)
     return {"status": "received"}

@@ -1,8 +1,8 @@
 """Entitlements par plan tarifaire.
 
-Le plan Alice porte une liste de fonctionnalités autorisées (`alice_plans.features`).
-Comme Alice partage la MÊME base Postgres, LeComptoir Immo lit ces données
-directement (pas d'appel HTTP) pour appliquer le blocage côté serveur.
+Le plan Alice porte une liste de fonctionnalités autorisées (`features`).
+Alice ayant sa propre base, LeComptoir Immo interroge son API /internal
+(via app.services.alice_client) — plus aucune lecture directe des tables alice_*.
 
 Convention : `features = NULL` (ou plan/licence absent) ⇒ AUCUNE restriction
 (toutes les fonctionnalités). Une liste explicite restreint aux clés présentes.
@@ -14,13 +14,13 @@ from typing import Optional, List
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.api.deps import get_current_user
 from app.core.permissions import Role
 from app.models.user import User
+from app.services import alice_client
 
 logger = logging.getLogger(__name__)
 
@@ -36,42 +36,22 @@ _MANAGER_ROLES = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
 
 
 async def get_plan_features(db: AsyncSession, user_id: UUID) -> Optional[List[str]]:
-    """Fonctionnalités du plan du gestionnaire (lecture directe des tables Alice).
+    """Fonctionnalités du plan du gestionnaire (via l'API Alice).
 
-    Retourne None s'il n'y a pas de plan, pas de licence, ou si `features` n'est
-    pas défini → interprété comme « toutes les fonctionnalités ». Fail-open en cas
-    d'erreur (on ne casse pas l'app si les tables Alice sont indisponibles)."""
-    try:
-        row = (await db.execute(
-            text(
-                "SELECT p.features FROM alice_licenses l "
-                "JOIN alice_plans p ON p.id = l.plan_id "
-                "WHERE l.gestionnaire_user_id = :uid"
-            ).bindparams(uid=user_id)
-        )).fetchone()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Lecture des features du plan échouée pour %s : %s", user_id, exc)
+    Retourne None s'il n'y a pas de plan/licence ou si `features` n'est pas défini
+    → interprété comme « toutes les fonctionnalités ». Fail-open si Alice est
+    indisponible (le client renvoie None). `db` conservé pour compat. de signature."""
+    lic = await alice_client.get_license(user_id)
+    if not lic:
         return None
-    if not row or row[0] is None:
-        return None
-    feats = row[0]
+    feats = lic.get("features")
     return feats if isinstance(feats, list) else None
 
 
 async def get_plan_name(db: AsyncSession, user_id: UUID) -> Optional[str]:
-    """Nom du plan tarifaire du gestionnaire (lecture directe des tables Alice)."""
-    try:
-        row = (await db.execute(
-            text(
-                "SELECT p.name FROM alice_licenses l "
-                "JOIN alice_plans p ON p.id = l.plan_id "
-                "WHERE l.gestionnaire_user_id = :uid"
-            ).bindparams(uid=user_id)
-        )).fetchone()
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Lecture du nom de plan échouée pour %s : %s", user_id, exc)
-        return None
-    return row[0] if row else None
+    """Nom du plan tarifaire du gestionnaire (via l'API Alice)."""
+    lic = await alice_client.get_license(user_id)
+    return lic.get("plan_name") if lic else None
 
 
 def require_feature(feature: str):
