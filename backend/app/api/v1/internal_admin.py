@@ -21,8 +21,10 @@ from app.core.permissions import Role
 from app.database import get_db
 from app.models.property import Property
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserCreate, UserRoleUpdate, UserUpdate
 from app.services.user_service import UserService
+
+_ALLOWED_ROLES = {"gestionnaire", "gestionnaire_proprio"}
 
 router = APIRouter(prefix="/internal", tags=["internal-admin"])
 
@@ -63,13 +65,20 @@ class PropertyOut(BaseModel):
 class ManagerCreate(BaseModel):
     email: EmailStr
     full_name: str = Field("", max_length=255)
+    owner_full_name: Optional[str] = None
     phone: Optional[str] = None
+    address: Optional[str] = None
+    role: str = "gestionnaire"
     password: str = Field(..., min_length=8, max_length=128)
 
 
 class ManagerUpdate(BaseModel):
+    email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    owner_full_name: Optional[str] = None
     phone: Optional[str] = None
+    address: Optional[str] = None
+    role: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -152,14 +161,20 @@ async def create_manager(
     _: None = Depends(require_internal_key),
     db: AsyncSession = Depends(get_db),
 ):
+    if data.role not in _ALLOWED_ROLES:
+        raise HTTPException(status_code=422, detail="Rôle de gestionnaire invalide.")
     user = await UserService.create(
         db,
-        UserCreate(email=data.email, password=data.password, full_name=data.full_name, role=Role.GESTIONNAIRE),
+        UserCreate(email=data.email, password=data.password, full_name=data.full_name, role=Role(data.role)),
         created_by=None,  # compte principal (agence), créé par la plateforme
     )
-    if data.phone:
+    if data.owner_full_name is not None:
+        user.owner_full_name = data.owner_full_name
+    if data.phone is not None:
         user.phone = data.phone
-        await db.flush()
+    if data.address is not None:
+        user.address = data.address
+    await db.flush()
     await db.commit()
     await db.refresh(user)
     return user
@@ -175,10 +190,21 @@ async def update_manager(
     target = await db.get(User, manager_id)
     if target is None or target.role not in _MANAGER_ROLES:
         raise HTTPException(status_code=404, detail="Gestionnaire introuvable.")
+    if data.role is not None:
+        if data.role not in _ALLOWED_ROLES:
+            raise HTTPException(status_code=422, detail="Rôle de gestionnaire invalide.")
+        await UserService.update_role(db, manager_id, UserRoleUpdate(role=Role(data.role)))
     await UserService.update(
         db,
         manager_id,
-        UserUpdate(full_name=data.full_name, is_active=data.is_active, phone=data.phone),
+        UserUpdate(
+            email=data.email,
+            full_name=data.full_name,
+            owner_full_name=data.owner_full_name,
+            phone=data.phone,
+            address=data.address,
+            is_active=data.is_active,
+        ),
     )
     await db.commit()
     refreshed = await db.get(User, manager_id)

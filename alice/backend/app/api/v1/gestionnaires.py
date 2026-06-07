@@ -212,37 +212,51 @@ async def create_gestionnaire(
     _: AliceAdmin = Depends(get_current_alice_admin),
 ):
     """Crée un compte gestionnaire dans LeCI + sa licence Alice."""
-    # Vérifie unicité email
-    existing = await db.execute(select(LeciUser).where(LeciUser.email == data.email))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail=f"L'email '{data.email}' est déjà utilisé")
-
     # Règle : plan Free → uniquement pour un Gestionnaire-Propriétaire
     _check_free_plan_role(await _is_free_plan(db, data.plan_id), data.role)
 
-    # Hash du mot de passe dans un thread (bcrypt est synchrone)
-    loop = asyncio.get_event_loop()
-    hashed = await loop.run_in_executor(_executor, hash_password, data.password)
+    via_api = get_settings().LECI_VIA_API
+    new_user = None
+    manager_dict = None
 
-    # Créer le user dans LeCI
-    new_user = LeciUser(
-        id=uuid.uuid4(),
-        email=data.email,
-        full_name=data.full_name,
-        hashed_password=hashed,
-        role=data.role,
-        is_active=True,
-        phone=data.phone,
-        address=data.address,
-        owner_full_name=data.owner_full_name,
-    )
-    db.add(new_user)
-    await db.flush()
+    if via_api:
+        # Convergence : création du compte LeCI via l'API interne
+        # (gère agency_id + templates côté LeCI ; 409 si email déjà pris).
+        manager_dict = await ProductClient("leci").create_manager({
+            "email": data.email,
+            "full_name": data.full_name,
+            "owner_full_name": data.owner_full_name,
+            "phone": data.phone,
+            "address": data.address,
+            "role": data.role,
+            "password": data.password,
+        })
+        new_user_id = uuid.UUID(str(manager_dict["id"]))
+    else:
+        existing = await db.execute(select(LeciUser).where(LeciUser.email == data.email))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail=f"L'email '{data.email}' est déjà utilisé")
+        loop = asyncio.get_event_loop()
+        hashed = await loop.run_in_executor(_executor, hash_password, data.password)
+        new_user = LeciUser(
+            id=uuid.uuid4(),
+            email=data.email,
+            full_name=data.full_name,
+            hashed_password=hashed,
+            role=data.role,
+            is_active=True,
+            phone=data.phone,
+            address=data.address,
+            owner_full_name=data.owner_full_name,
+        )
+        db.add(new_user)
+        await db.flush()
+        new_user_id = new_user.id
 
-    # Créer la licence Alice
+    # Créer la licence Alice (donnée Alice — toujours locale)
     license = AliceLicense(
         id=uuid.uuid4(),
-        gestionnaire_user_id=new_user.id,
+        gestionnaire_user_id=new_user_id,
         plan_id=data.plan_id,
         property_limit_override=data.property_limit_override,
         monthly_price_override=data.monthly_price_override,
@@ -261,6 +275,8 @@ async def create_gestionnaire(
         plan_result = await db.execute(select(AlicePlan).where(AlicePlan.id == data.plan_id))
         plan = plan_result.scalar_one_or_none()
 
+    if via_api:
+        return await _build_out_from_api(db, manager_dict)
     return await _build_gestionnaire_out(db, new_user, license, plan)
 
 
@@ -304,34 +320,50 @@ async def update_gestionnaire(
     _: AliceAdmin = Depends(get_current_alice_admin),
 ):
     """Modifie les informations d'un gestionnaire et/ou sa licence."""
-    user_result = await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
-    )
-    user = user_result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
+    via_api = get_settings().LECI_VIA_API
+    user = None
+    if via_api:
+        current = await ProductClient("leci").get_manager(str(gestionnaire_id))  # 404 si absent
+        current_role = current["role"]
+    else:
+        user_result = await db.execute(
+            select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
+        )
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
+        current_role = str(user.role)
 
     # Règle : plan Free → uniquement Gestionnaire-Propriétaire (vérif sur l'état final)
     _existing_lic = (await db.execute(
         select(AliceLicense).where(AliceLicense.gestionnaire_user_id == gestionnaire_id)
     )).scalar_one_or_none()
-    final_role = data.role if data.role is not None else str(user.role)
+    final_role = data.role if data.role is not None else current_role
     final_plan_id = data.plan_id if data.plan_id is not None else (_existing_lic.plan_id if _existing_lic else None)
     _check_free_plan_role(await _is_free_plan(db, final_plan_id), final_role)
 
-    # Mise à jour user (+ coordonnées profil LeCI)
-    if data.email is not None:
-        user.email = data.email
-    if data.full_name is not None:
-        user.full_name = data.full_name
-    if data.owner_full_name is not None:
-        user.owner_full_name = data.owner_full_name
-    if data.role is not None:
-        user.role = data.role
-    if data.phone is not None:
-        user.phone = data.phone
-    if data.address is not None:
-        user.address = data.address
+    # Mise à jour user (domaine LeCI : via API si convergence, sinon en direct)
+    if via_api:
+        upd = {
+            f: getattr(data, f)
+            for f in ("email", "full_name", "owner_full_name", "role", "phone", "address")
+            if getattr(data, f, None) is not None
+        }
+        if upd:
+            await ProductClient("leci").update_manager(str(gestionnaire_id), upd)
+    else:
+        if data.email is not None:
+            user.email = data.email
+        if data.full_name is not None:
+            user.full_name = data.full_name
+        if data.owner_full_name is not None:
+            user.owner_full_name = data.owner_full_name
+        if data.role is not None:
+            user.role = data.role
+        if data.phone is not None:
+            user.phone = data.phone
+        if data.address is not None:
+            user.address = data.address
 
     # Mise à jour licence
     lic_result = await db.execute(
@@ -370,6 +402,9 @@ async def update_gestionnaire(
             _notify_leci_webhook, gestionnaire_id, "plan_changed", license.is_blocked, plan_name, eff_limit
         )
 
+    if via_api:
+        refreshed = await ProductClient("leci").get_manager(str(gestionnaire_id))
+        return await _build_out_from_api(db, refreshed)
     return await _build_gestionnaire_out(db, user, license, plan)
 
 
