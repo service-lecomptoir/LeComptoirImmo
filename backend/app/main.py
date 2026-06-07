@@ -118,13 +118,15 @@ async def _seed_default_users() -> None:
     from app.core.security import hash_password, verify_password
     from app.core.permissions import Role
 
-    # Admin réel (toujours créé) depuis la config FIRST_ADMIN_*
+    # Compte initial (toujours créé) depuis la config FIRST_ADMIN_*.
+    # Il n'y a PLUS de compte « admin » dans LeComptoirImmo : l'administration est
+    # assurée par Alice (console SaaS). Ce compte est un Gestionnaire Mandataire.
     default_users = [
         UserCreate(
             email=settings.FIRST_ADMIN_EMAIL,
             password=settings.FIRST_ADMIN_PASSWORD,
             full_name=settings.FIRST_ADMIN_NAME,
-            role=Role.ADMIN,
+            role=Role.GESTIONNAIRE,
         ),
     ]
 
@@ -258,6 +260,10 @@ async def _apply_column_migrations() -> None:
         # NB : les demandes de souscription/démo sont désormais gérées par Alice
         # (base dédiée) via son API /internal ; LeCI ne possède plus de table
         # alice_subscription_requests locale (découplage total).
+        # ── Plus de compte « admin » : conversion en Gestionnaire Mandataire ─────
+        # L'administration est assurée par Alice. Tout compte encore en rôle 'admin'
+        # est converti en 'gestionnaire' (mandataire). Idempotent.
+        "UPDATE users SET role = 'gestionnaire' WHERE role = 'admin'",
         # App settings seed (015)
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_day', '1') ON CONFLICT DO NOTHING",
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_hour', '7') ON CONFLICT DO NOTHING",
