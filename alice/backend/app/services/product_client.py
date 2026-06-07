@@ -80,5 +80,13 @@ class ProductClient:
             json={"new_password": new_password},
         )
 
+    async def block(self, manager_id: str) -> dict:
+        return await self._request("POST", f"/internal/managers/{manager_id}/block") or {}
+
+    async def unblock(self, manager_id: str, user_ids: list[str]) -> None:
+        await self._request(
+            "POST", f"/internal/managers/{manager_id}/unblock", json={"user_ids": user_ids}
+        )
+
     async def stats(self) -> dict:
         return await self._request("GET", "/internal/stats") or {}

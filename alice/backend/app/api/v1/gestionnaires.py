@@ -416,12 +416,17 @@ async def block_gestionnaire_endpoint(
     _: AliceAdmin = Depends(get_current_alice_admin),
 ):
     """Bloque un gestionnaire et tous ses propriétaires/locataires en cascade."""
-    user_result = await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
-    )
-    user = user_result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
+    via_api = get_settings().LECI_VIA_API
+    user = None
+    if via_api:
+        await ProductClient("leci").get_manager(str(gestionnaire_id))  # 404 si absent
+    else:
+        user_result = await db.execute(
+            select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
+        )
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
 
     lic_result = await db.execute(
         select(AliceLicense).where(AliceLicense.gestionnaire_user_id == gestionnaire_id)
@@ -440,7 +445,12 @@ async def block_gestionnaire_endpoint(
     if license.is_blocked:
         raise HTTPException(status_code=400, detail="Ce gestionnaire est déjà bloqué")
 
-    await block_gestionnaire(db, license, gestionnaire_id)
+    if via_api:
+        res = await ProductClient("leci").block(str(gestionnaire_id))
+        license.is_blocked = True
+        license.blocked_user_ids = res.get("blocked_user_ids", [])
+    else:
+        await block_gestionnaire(db, license, gestionnaire_id)
     await db.flush()
 
     plan = None
@@ -452,6 +462,10 @@ async def block_gestionnaire_endpoint(
     background_tasks.add_task(
         _notify_leci_webhook, gestionnaire_id, "blocked", True, plan_name, None
     )
+
+    if via_api:
+        m = await ProductClient("leci").get_manager(str(gestionnaire_id))
+        return await _build_out_from_api(db, m)
 
     # Re-fetch user après mise à jour is_active
     user_result2 = await db.execute(select(LeciUser).where(LeciUser.id == gestionnaire_id))
@@ -468,12 +482,17 @@ async def unblock_gestionnaire_endpoint(
     _: AliceAdmin = Depends(get_current_alice_admin),
 ):
     """Débloque un gestionnaire et ses propriétaires/locataires."""
-    user_result = await db.execute(
-        select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
-    )
-    user = user_result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
+    via_api = get_settings().LECI_VIA_API
+    user = None
+    if via_api:
+        await ProductClient("leci").get_manager(str(gestionnaire_id))
+    else:
+        user_result = await db.execute(
+            select(LeciUser).where(LeciUser.id == gestionnaire_id, _manager_roles())
+        )
+        user = user_result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="Gestionnaire introuvable")
 
     lic_result = await db.execute(
         select(AliceLicense).where(AliceLicense.gestionnaire_user_id == gestionnaire_id)
@@ -482,7 +501,12 @@ async def unblock_gestionnaire_endpoint(
     if not license or not license.is_blocked:
         raise HTTPException(status_code=400, detail="Ce gestionnaire n'est pas bloqué")
 
-    await unblock_gestionnaire(db, license, gestionnaire_id)
+    if via_api:
+        await ProductClient("leci").unblock(str(gestionnaire_id), list(license.blocked_user_ids or []))
+        license.is_blocked = False
+        license.blocked_user_ids = []
+    else:
+        await unblock_gestionnaire(db, license, gestionnaire_id)
     await db.flush()
 
     plan = None
@@ -494,6 +518,10 @@ async def unblock_gestionnaire_endpoint(
     background_tasks.add_task(
         _notify_leci_webhook, gestionnaire_id, "unblocked", False, plan_name, None
     )
+
+    if via_api:
+        m = await ProductClient("leci").get_manager(str(gestionnaire_id))
+        return await _build_out_from_api(db, m)
 
     user_result2 = await db.execute(select(LeciUser).where(LeciUser.id == gestionnaire_id))
     user = user_result2.scalar_one_or_none()

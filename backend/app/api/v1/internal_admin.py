@@ -13,7 +13,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -90,6 +90,14 @@ class Stats(BaseModel):
     managers: int
     active_managers: int
     users: int
+
+
+class BlockResult(BaseModel):
+    blocked_user_ids: list[str]
+
+
+class UnblockRequest(BaseModel):
+    user_ids: list[str] = []
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -209,6 +217,103 @@ async def update_manager(
     await db.commit()
     refreshed = await db.get(User, manager_id)
     return refreshed
+
+
+@router.post("/managers/{manager_id}/block", response_model=BlockResult)
+async def block_manager(
+    manager_id: uuid.UUID,
+    _: None = Depends(require_internal_key),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bloque le gestionnaire et désactive en cascade ses propriétaires et locataires.
+
+    Logique portée verbatim de l'ancien block_service d'Alice (mêmes tables/colonnes),
+    mais exécutée ici, dans LeCI (qui possède le graphe d'utilisateurs).
+    Renvoie les IDs bloqués en cascade (Alice les stocke pour le déblocage).
+    """
+    target = await db.get(User, manager_id)
+    if target is None or target.role not in _MANAGER_ROLES:
+        raise HTTPException(status_code=404, detail="Gestionnaire introuvable.")
+
+    prop_ids = [
+        r[0] for r in (await db.execute(
+            text("SELECT id FROM properties WHERE created_by = :g"), {"g": manager_id}
+        )).all()
+    ]
+    owners: list[uuid.UUID] = []
+    tenant_db_ids: set[uuid.UUID] = set()
+    if prop_ids:
+        owners = [
+            r[0] for r in (await db.execute(
+                text("SELECT owner_user_id FROM properties WHERE id = ANY(:ids) AND owner_user_id IS NOT NULL"),
+                {"ids": prop_ids},
+            )).all()
+        ]
+        for r in (await db.execute(
+            text("SELECT tenant_id FROM leases WHERE property_id = ANY(:ids) AND is_active = true AND tenant_id IS NOT NULL"),
+            {"ids": prop_ids},
+        )).all():
+            tenant_db_ids.add(r[0])
+        # Chemin via units (défensif : la table peut ne pas exister selon le schéma).
+        try:
+            unit_ids = [
+                r[0] for r in (await db.execute(
+                    text("SELECT id FROM units WHERE property_id = ANY(:ids)"), {"ids": prop_ids}
+                )).all()
+            ]
+            if unit_ids:
+                for r in (await db.execute(
+                    text("SELECT tenant_id FROM leases WHERE unit_id = ANY(:ids) AND is_active = true AND tenant_id IS NOT NULL"),
+                    {"ids": unit_ids},
+                )).all():
+                    tenant_db_ids.add(r[0])
+        except Exception:  # noqa: BLE001
+            pass
+
+    tenant_user_ids: list[uuid.UUID] = []
+    if tenant_db_ids:
+        tenant_user_ids = [
+            r[0] for r in (await db.execute(
+                text("SELECT user_id FROM tenants WHERE id = ANY(:ids) AND user_id IS NOT NULL"),
+                {"ids": list(tenant_db_ids)},
+            )).all()
+        ]
+    direct_tenant_user_ids = [
+        r[0] for r in (await db.execute(
+            text("SELECT user_id FROM tenants WHERE created_by = :g AND user_id IS NOT NULL"),
+            {"g": manager_id},
+        )).all()
+    ]
+
+    cascade = list(set(owners + tenant_user_ids + direct_tenant_user_ids) - {manager_id})
+
+    await db.execute(text("UPDATE users SET is_active = false WHERE id = :g"), {"g": manager_id})
+    if cascade:
+        await db.execute(
+            text("UPDATE users SET is_active = false WHERE id = ANY(:ids)"), {"ids": cascade}
+        )
+    await db.commit()
+    return BlockResult(blocked_user_ids=[str(u) for u in cascade])
+
+
+@router.post("/managers/{manager_id}/unblock", status_code=204)
+async def unblock_manager(
+    manager_id: uuid.UUID,
+    data: UnblockRequest,
+    _: None = Depends(require_internal_key),
+    db: AsyncSession = Depends(get_db),
+):
+    """Réactive le gestionnaire et uniquement les users listés (cascade d'origine)."""
+    target = await db.get(User, manager_id)
+    if target is None or target.role not in _MANAGER_ROLES:
+        raise HTTPException(status_code=404, detail="Gestionnaire introuvable.")
+    await db.execute(text("UPDATE users SET is_active = true WHERE id = :g"), {"g": manager_id})
+    uids = [uuid.UUID(u) for u in data.user_ids if u]
+    if uids:
+        await db.execute(
+            text("UPDATE users SET is_active = true WHERE id = ANY(:ids)"), {"ids": uids}
+        )
+    await db.commit()
 
 
 @router.post("/managers/{manager_id}/reset-password", status_code=204)
