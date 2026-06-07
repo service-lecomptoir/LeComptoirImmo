@@ -46,7 +46,7 @@ async def list_plans() -> List[dict]:
     base, headers = _base_headers()
     try:
         async with httpx.AsyncClient(timeout=6.0) as hc:
-            resp = await hc.get(f"{base}/api/v1/internal/plans", headers=headers)
+            resp = await hc.get(f"{base}/api/v1/internal/plans", headers=headers, params={"product": "immo"})
         if resp.status_code == 200:
             return resp.json()
         logger.warning("Alice list_plans → %s", resp.status_code)
