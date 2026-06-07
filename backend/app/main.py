@@ -413,6 +413,11 @@ app.add_exception_handler(Exception, unhandled_exception_handler)
 # ── Routes ────────────────────────────────────────────────────────────────────
 app.include_router(api_router)
 
+# Contrat interne unifié /internal (privé, hors /api → non exposé par nginx) ─────
+from app.api.v1.internal_admin import router as internal_admin_router  # noqa: E402
+
+app.include_router(internal_admin_router)
+
 # ── Fichiers statiques (logos uploadés) ───────────────────────────────────────
 os.makedirs("uploads/logos", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
