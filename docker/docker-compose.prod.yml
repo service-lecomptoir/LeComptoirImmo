@@ -70,41 +70,11 @@ services:
     networks:
       - locataire_net
 
-  # ── Alice backend (même base de données) ─────────────────────────────────
-  alice-backend:
-    build:
-      context: ../alice/backend
-      dockerfile: ../../docker/Dockerfile.alice-backend
-      target: production
-    container_name: alice_backend
-    restart: always
-    env_file:
-      - ../alice/backend/.env.prod
-    environment:
-      APP_ENV: production
-      DEBUG: "false"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    expose:
-      - "8001"
-    networks:
-      - locataire_net
-
-  # ── Alice frontend ─────────────────────────────────────────────────────────
-  alice-frontend:
-    build:
-      context: ../alice/frontend
-      dockerfile: ../../docker/Dockerfile.alice-frontend
-      target: production
-      args:
-        VITE_API_URL: "https://alice.lecomptoir.services"
-    container_name: alice_frontend
-    restart: always
-    expose:
-      - "80"
-    networks:
-      - locataire_net
+  # ── Alice (console admin SaaS) ────────────────────────────────────────────────
+  # EXTRAITE vers le projet autonome LeComptoirAlice (dépôt + compose dédiés,
+  # ~/LeComptoirAlice/docker/docker-compose.prod.yml). Mêmes conteneurs
+  # alice_backend / alice_frontend sur le réseau partagé docker_locataire_net,
+  # base partagée. Le nginx ci-dessous les résout toujours par alias réseau.
 
   # ── Nginx reverse proxy + SSL ─────────────────────────────────────────────────
   nginx:
@@ -122,8 +92,6 @@ services:
     depends_on:
       - backend
       - frontend
-      - alice-backend
-      - alice-frontend
     networks:
       - locataire_net
 
