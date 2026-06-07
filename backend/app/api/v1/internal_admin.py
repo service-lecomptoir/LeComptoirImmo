@@ -8,6 +8,7 @@ joignable uniquement par Alice sur le réseau Docker interne.
 Protégé par l'en-tête `X-Internal-Key` == `ALICE_INTERNAL_KEY` (clé partagée).
 """
 import uuid
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException
@@ -18,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.core.permissions import Role
 from app.database import get_db
+from app.models.property import Property
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.user_service import UserService
@@ -38,9 +40,22 @@ class ManagerOut(BaseModel):
     id: uuid.UUID
     email: EmailStr
     full_name: str
+    owner_full_name: Optional[str] = None
     phone: Optional[str] = None
     role: str
     is_active: bool
+    created_at: Optional[datetime] = None
+    property_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class PropertyOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    address: Optional[str] = None
+    zip_code: Optional[str] = None
+    city: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -69,11 +84,63 @@ class Stats(BaseModel):
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+async def _property_counts(db: AsyncSession) -> dict[uuid.UUID, int]:
+    """Nb de biens par créateur (gestionnaire), en une requête."""
+    rows = await db.execute(
+        select(Property.created_by, func.count(Property.id)).group_by(Property.created_by)
+    )
+    return {cb: n for cb, n in rows.all() if cb is not None}
+
+
+def _manager_out(user: User, property_count: int = 0) -> ManagerOut:
+    return ManagerOut(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        owner_full_name=getattr(user, "owner_full_name", None),
+        phone=getattr(user, "phone", None),
+        role=user.role.value if hasattr(user.role, "value") else str(user.role),
+        is_active=user.is_active,
+        created_at=getattr(user, "created_at", None),
+        property_count=property_count,
+    )
+
+
 @router.get("/managers", response_model=list[ManagerOut])
 async def list_managers(_: None = Depends(require_internal_key), db: AsyncSession = Depends(get_db)):
     rows = (
         await db.execute(
             select(User).where(User.role.in_(_MANAGER_ROLES)).order_by(User.full_name)
+        )
+    ).scalars().all()
+    counts = await _property_counts(db)
+    return [_manager_out(u, counts.get(u.id, 0)) for u in rows]
+
+
+@router.get("/managers/{manager_id}", response_model=ManagerOut)
+async def get_manager(
+    manager_id: uuid.UUID,
+    _: None = Depends(require_internal_key),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await db.get(User, manager_id)
+    if user is None or user.role not in _MANAGER_ROLES:
+        raise HTTPException(status_code=404, detail="Gestionnaire introuvable.")
+    count = await db.scalar(
+        select(func.count(Property.id)).where(Property.created_by == manager_id)
+    ) or 0
+    return _manager_out(user, count)
+
+
+@router.get("/managers/{manager_id}/properties", response_model=list[PropertyOut])
+async def manager_properties(
+    manager_id: uuid.UUID,
+    _: None = Depends(require_internal_key),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = (
+        await db.execute(
+            select(Property).where(Property.created_by == manager_id).order_by(Property.name)
         )
     ).scalars().all()
     return list(rows)
