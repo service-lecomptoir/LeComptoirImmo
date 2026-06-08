@@ -80,7 +80,7 @@ export default function OwnerDetail() {
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-500">Fiche propriétaire</p>
+          <p className="text-sm text-gray-500">Fiche propriétaire (bailleur)</p>
         </div>
         <div className="flex gap-2">
           <button

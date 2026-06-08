@@ -33,7 +33,7 @@ export interface NavItem {
 export const navGestionnaire: NavItem[] = [
   { label: 'Gestion locative', isSeparator: true },
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
-  { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
+  { to: '/owners', icon: KeyRound, label: 'Propriétaires (bailleurs)' },
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },

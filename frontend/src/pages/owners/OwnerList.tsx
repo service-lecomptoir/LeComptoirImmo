@@ -86,8 +86,8 @@ export default function OwnerList() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Propriétaires</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{total} propriétaire{total > 1 ? 's' : ''}</p>
+          <h1 className="text-2xl font-bold text-gray-900">Propriétaires (bailleurs)</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{total} propriétaire{total > 1 ? 's' : ''} (bailleur{total > 1 ? 's' : ''})</p>
         </div>
         <div className="flex items-center gap-3">
           {isManager && <ViewToggle value={view} onChange={setView} />}
@@ -102,7 +102,7 @@ export default function OwnerList() {
             onClick={() => setShowForm(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
-            <Plus size={16} /> Nouveau propriétaire
+            <Plus size={16} /> Nouveau propriétaire (bailleur)
           </button>
         </div>
       </div>

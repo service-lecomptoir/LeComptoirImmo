@@ -134,7 +134,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
     <Modal
       isOpen
       onClose={onClose}
-      title={isEdit ? 'Modifier le propriétaire' : 'Nouveau propriétaire'}
+      title={isEdit ? 'Modifier le propriétaire (bailleur)' : 'Nouveau propriétaire (bailleur)'}
       size="lg"
       footer={
         <>
