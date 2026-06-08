@@ -1,13 +1,14 @@
 # ── Production VPS ────────────────────────────────────────────────────────────
 # Usage : docker compose -f docker/docker-compose.prod.yml up -d --build
 #
-# Stack : PostgreSQL (base partagée) + LeComptoirImmo (backend 8000 / frontend)
-#         + Alice (backend 8001 / frontend) + Nginx reverse proxy + Certbot
+# Stack : PostgreSQL + LeComptoirImmo (backend 8000 / frontend) + Nginx reverse
+#         proxy (sert aussi le sous-domaine alice.* par alias réseau) + Certbot.
+# NB : Alice est un produit autonome (dépôt + compose dédiés LeComptoirAlice) ;
+#      LeCI l'interroge uniquement via son API interne (X-Internal-Key).
 #
 # Les secrets viennent des fichiers .env.prod (hors git) — la prod lit .env.prod
 # DIRECTEMENT (pas .env, qui reste la config de dev avec @localhost) :
-#   - backend/.env.prod        → POSTGRES_*, SECRET_KEY, DATABASE_URL (@postgres), ALICE_*, SMTP_*
-#   - alice/backend/.env.prod  → SECRET_KEY, DATABASE_URL (@postgres, même base), INTERNAL_API_KEY
+#   - backend/.env.prod  → POSTGRES_*, SECRET_KEY, DATABASE_URL (@postgres), ALICE_*, SMTP_*
 
 services:
 
