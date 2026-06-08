@@ -1,3 +1,7 @@
+# ── Ancien Alice interne (extrait vers le dépôt autonome LeComptoirAlice) ──────
+# Garde-fou : aucun dossier alice/ ne doit réapparaître dans ce dépôt.
+/alice/
+
 # ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
