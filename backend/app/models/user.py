@@ -41,7 +41,7 @@ class User(Base, TimestampMixin):
     owner_national_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Logo du gestionnaire (« Mes informations ») — affiché en en-tête des documents
-    # (avis d'échéance « façon Foncia », à la place du logo).
+    # (avis d'échéance, mise en page moderne, à la place du logo).
     logo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 

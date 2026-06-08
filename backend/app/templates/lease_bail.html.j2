@@ -47,8 +47,10 @@
   {% if is_mandataire %}
   <p class="sub">Le cas échéant, représenté par le mandataire :</p>
   <p class="row"><span class="lbl">Nom ou raison sociale du mandataire :</span> <span class="v">{{ mandataire_name }}</span></p>
+  {% if mandataire_company %}<p class="row"><span class="lbl">Société :</span> <span class="v">{{ mandataire_company }}</span></p>{% endif %}
+  {% if mandataire_national_id %}<p class="row"><span class="lbl">SIRET :</span> <span class="v">{{ mandataire_national_id }}</span></p>{% endif %}
   <p class="row"><span class="lbl">Adresse du mandataire :</span> <span class="v">{{ mandataire_address or '' }}</span></p>
-  <p class="row"><span class="lbl">Activité exercée :</span> Gestion locative</p>
+  <p class="row"><span class="lbl">Activité exercée :</span> Gestion locative, agissant pour le compte du bailleur</p>
   {% endif %}
 
   {% if has_guarantor %}

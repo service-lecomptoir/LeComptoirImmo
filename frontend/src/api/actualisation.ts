@@ -91,7 +91,7 @@ export const actualisationApi = {
     apiClient.put<ChargeRow>(`/actualisation/charges/regularizations/${regId}`, data),
   deleteCharge: (regId: string) => apiClient.delete(`/actualisation/charges/regularizations/${regId}`),
 
-  // ── Téléchargement PDF (façon Foncia) ──
+  // ── Téléchargement PDF (par blocs) ──
   downloadRegularizationPdf: (regId: string, filename: string) =>
     _downloadBlob(apiClient.get(`/actualisation/charges/regularizations/${regId}/pdf`, { responseType: 'blob' }), filename),
   downloadRevisionPdf: (leaseId: string, filename: string) =>

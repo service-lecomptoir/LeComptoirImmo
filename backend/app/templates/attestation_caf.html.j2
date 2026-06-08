@@ -149,7 +149,13 @@
       </td>
       <td style="width:42%;">
         <strong>Signature &ndash; cachet</strong><br>
-        <span style="font-size:7.5pt;color:#555;">(du propriétaire, du bailleur ou de la famille d'accueil)</span>
+        <span style="font-size:7.5pt;color:#555;">(du propriétaire, du bailleur ou de son mandataire)</span>
+        {% if mandataire_company or mandataire_national_id %}
+        <div style="font-size:7.5pt;color:#333;margin-top:3px;">Pour le compte du bailleur :
+          {% if mandataire_company %}<strong>{{ mandataire_company }}</strong>{% endif %}
+          {% if mandataire_national_id %}<br>SIRET : {{ mandataire_national_id }}{% endif %}
+        </div>
+        {% endif %}
         <div style="height:46px;">&nbsp;</div>
       </td>
     </tr>

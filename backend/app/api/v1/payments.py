@@ -537,7 +537,7 @@ async def download_quittance(
     tenant_names = " & ".join(names)
     layout = get_layout()
 
-    # 0) Quittance par BLOCS (façon Foncia) si le template par défaut en possède.
+    # 0) Quittance par BLOCS (mise en page moderne) si le template par défaut en possède.
     _gid0 = getattr(payment.lease, "created_by", None) if getattr(payment, "lease", None) else None
     if _gid0:
         from sqlalchemy import select as _sel0

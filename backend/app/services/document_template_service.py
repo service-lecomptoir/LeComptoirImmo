@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document_template import DocumentTemplate, TemplateType, PAPETERIE_ORDER
-from app.services.avis_blocks_render_service import default_avis_blocks, default_blocks, FONCIA_THEME
+from app.services.avis_blocks_render_service import default_avis_blocks, default_blocks, DEFAULT_THEME
 
 # Rôles qui génèrent des documents → reçoivent les templates par défaut.
 TEMPLATE_OWNER_ROLES = {"admin", "gestionnaire", "gestionnaire_proprio"}
@@ -33,9 +33,9 @@ DEFAULT_TEMPLATES = {
 </table>
 <p style="color:#6b7280;">Nous vous remercions de votre confiance et restons à votre disposition pour toute question.</p>""",
         "footer_text": "Document généré par Le Comptoir Immo. Pour toute question, contactez votre gestionnaire.",
-        # Éditeur par blocs « façon Foncia » (rendu prioritaire si présent).
+        # Éditeur par blocs (mise en page moderne, rendu prioritaire si présent).
         "blocks": default_avis_blocks(),
-        "theme": FONCIA_THEME,
+        "theme": DEFAULT_THEME,
     },
     TemplateType.QUITTANCE: {
         "name": "Quittance de loyer",
@@ -54,28 +54,28 @@ DEFAULT_TEMPLATES = {
 <p style="color:#6b7280;">Fait le {{date}}.</p>""",
         "footer_text": "Quittance délivrée conformément à l'article 21 de la loi n°89-462 du 6 juillet 1989. Valable sous réserve d'encaissement.",
         "blocks": default_blocks("quittance"),
-        "theme": FONCIA_THEME,
+        "theme": DEFAULT_THEME,
     },
     TemplateType.REGULARISATION_CHARGES: {
         "name": "Régularisation de charges locatives",
         "content_html": "<p>Régularisation de charges locatives — {{period_range}}.</p>",
         "footer_text": "Document établi conformément à l'article 23 de la loi n° 89-462 du 6 juillet 1989.",
         "blocks": default_blocks("regularisation_charges"),
-        "theme": FONCIA_THEME,
+        "theme": DEFAULT_THEME,
     },
     TemplateType.REVISION_LOYER: {
         "name": "Révision loyer",
         "content_html": "<p>Révision de loyer (IRL).</p>",
         "footer_text": "Révision effectuée conformément à l'article 17-1 de la loi n° 89-462 du 6 juillet 1989.",
         "blocks": default_blocks("revision_loyer"),
-        "theme": FONCIA_THEME,
+        "theme": DEFAULT_THEME,
     },
     TemplateType.TAXES_FONCIERES: {
         "name": "Décompte Taxes Foncières",
         "content_html": "<p>Décompte taxes foncières (TEOM) — {{period_range}}.</p>",
         "footer_text": "Récupération conforme à l'article 23 de la loi n° 89-462 du 6 juillet 1989.",
         "blocks": default_blocks("taxes_foncieres"),
-        "theme": FONCIA_THEME,
+        "theme": DEFAULT_THEME,
     },
 }
 

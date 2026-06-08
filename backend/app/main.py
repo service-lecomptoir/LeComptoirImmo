@@ -340,7 +340,7 @@ async def _apply_column_migrations() -> None:
         "DROP TABLE IF EXISTS units",
         # Complément d'adresse du bien (ligne 1 des documents : « APPART 11 »…)
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS address2 VARCHAR(200)",
-        # ── Éditeur « Ma papeterie » par blocs (avis d'échéance façon Foncia) ────
+        # ── Éditeur « Ma papeterie » par blocs (avis d'échéance, mise en page moderne) ────
         "ALTER TABLE document_templates ADD COLUMN IF NOT EXISTS blocks JSONB",
         "ALTER TABLE document_templates ADD COLUMN IF NOT EXISTS theme JSONB",
         # Logo du gestionnaire (profil « Mes informations »)

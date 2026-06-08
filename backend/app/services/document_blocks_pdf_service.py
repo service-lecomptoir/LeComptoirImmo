@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Génération par BLOCS (façon Foncia) des documents de la papeterie autres que
+"""Génération par BLOCS (mise en page moderne) des documents de la papeterie autres que
 l'avis d'échéance : quittance, régularisation de charges, révision de loyer,
 décompte de taxes foncières. Réutilise le moteur de blocs et le thème.
 """
@@ -53,7 +53,7 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
     from app.models.document_template import DocumentTemplate
     from app.models.user import User
     from app.services.avis_blocks_render_service import (
-        render_avis_blocks_html, default_blocks, FONCIA_THEME)
+        render_avis_blocks_html, default_blocks, DEFAULT_THEME)
 
     tmpl = None
     if gestionnaire_user_id:
@@ -65,7 +65,7 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
         ))).scalar_one_or_none()
 
     blocks = (getattr(tmpl, "blocks", None) or default_blocks(template_type) or [])
-    theme = getattr(tmpl, "theme", None) or FONCIA_THEME
+    theme = getattr(tmpl, "theme", None) or DEFAULT_THEME
 
     logo_path = None
     sender_name, sender_addr = "", ""
@@ -84,7 +84,7 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
     if not variables.get("company_name"):
         variables["company_name"] = sender_name
     if not variables.get("company_address"):
-        # Émetteur enrichi : Société + « SIRET : … » + adresse (sidebar « façon Foncia »).
+        # Émetteur enrichi : Société + « SIRET : … » + adresse (sidebar de l'en-tête).
         variables["company_address"] = build_emitter_address(sender_addr, owner_company, owner_national_id)
 
     html = render_avis_blocks_html(blocks, theme, variables, line_items=line_items, logo_path=logo_path)

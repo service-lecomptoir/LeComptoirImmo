@@ -56,7 +56,7 @@ class DocumentTemplate(Base, TimestampMixin):
     content_html: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     footer_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Éditeur par blocs (avis d'échéance « façon Foncia » et futurs documents) :
+    # Éditeur par blocs (avis d'échéance et autres documents de la papeterie) :
     # liste ordonnée de blocs réordonnables + thème (palette/police). NULL = pas
     # encore migré → on retombe sur le rendu HTML classique (content_html).
     blocks: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)

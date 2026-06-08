@@ -117,6 +117,9 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
         "is_mandataire": bool(is_mandataire and manager is not None),
         "mandataire_name": (getattr(manager, "full_name", "") if manager else "") or "",
         "mandataire_address": (getattr(manager, "address", "") if manager else "") or "",
+        # Société + SIRET du mandataire (gestionnaire agissant « pour le compte du bailleur »).
+        "mandataire_company": (getattr(manager, "owner_company", "") if manager else "") or "",
+        "mandataire_national_id": (getattr(manager, "owner_national_id", "") if manager else "") or "",
         "has_guarantor": bool(getattr(lease, "has_guarantor", False)),
         "guarantor_name": getattr(lease, "guarantor_name", "") or "",
         "tenant_name": tenant.full_name if tenant else "",
@@ -169,7 +172,7 @@ def tenant_reference(tenant) -> str:
 
 
 def _civil_name(tenant) -> str:
-    """Nom du destinataire « façon Foncia » : civilité + prénom + NOM, en majuscules.
+    """Nom du destinataire : civilité + prénom + NOM, en majuscules.
     Ex. « M JOHNNY MONERVILLE ». Vide si pas de locataire."""
     if not tenant:
         return ""
@@ -269,7 +272,7 @@ class AvisEcheancePDFService:
             "tenant_reference": tenant_reference(getattr(avis_full, "tenant", None)),
             "property_reference": (getattr(property_obj, "reference", "") or
                                    getattr(property_obj, "name", "")) if property_obj else "",
-            # Nom du destinataire « façon Foncia » : civilité + prénom + NOM (majuscules).
+            # Nom du destinataire : civilité + prénom + NOM (majuscules).
             "tenant_civil_name": _civil_name(getattr(avis_full, "tenant", None)),
             # Adresse du bien décomposée pour le bloc destinataire (lignes séparées).
             "property_address2": (getattr(property_obj, "address2", "") or "") if property_obj else "",
@@ -286,7 +289,7 @@ class AvisEcheancePDFService:
         }
         _gid = getattr(_lease_rel, "created_by", None)
 
-        # 1a) Éditeur par blocs « façon Foncia » : si le template par défaut de
+        # 1a) Éditeur par blocs (mise en page moderne) : si le template par défaut de
         # l'avis en possède, on rend via le moteur de blocs (prioritaire).
         from app.models.document_template import DocumentTemplate
         from app.models.user import User

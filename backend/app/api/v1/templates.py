@@ -70,7 +70,7 @@ class TemplatePreviewIn(BaseModel):
     header_color: str = "#1E3A5F"
     template_id: Optional[uuid.UUID] = None  # pour récupérer le logo enregistré
     layout: Optional[dict] = None            # surcharge de mise en page (sinon globale)
-    blocks: Optional[list] = None            # éditeur par blocs (avis façon Foncia)
+    blocks: Optional[list] = None            # éditeur par blocs (mise en page moderne)
     theme: Optional[dict] = None             # thème (palette/police) des blocs
 
 
@@ -134,7 +134,7 @@ async def preview_document_pdf(
         "tax_days": "365", "tax_quote_part": f"{eur(178)} €", "tax_provisions": f"{eur(0)} €",
     }
 
-    # Éditeur par blocs (avis d'échéance « façon Foncia ») : rendu prioritaire.
+    # Éditeur par blocs (avis d'échéance, mise en page moderne) : rendu prioritaire.
     if data.blocks is not None:
         from app.services.avis_blocks_render_service import render_avis_blocks_html
         # Le moteur de blocs n'ajoute pas le symbole € → on l'inclut dans les

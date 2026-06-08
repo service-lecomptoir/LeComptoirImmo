@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Rendu de l'avis d'échéance « façon Foncia » à partir d'un modèle de BLOCS.
+"""Rendu de l'avis d'échéance (mise en page moderne) à partir d'un modèle de BLOCS.
 
 Le template stocke une liste ordonnée de blocs (`blocks`) + un thème (`theme`).
 Chaque bloc a un type, un état activé/désactivé et des `props` (champs texte
 pouvant contenir des {{variables}}). Ce service compose le HTML final (rendu
-ensuite en PDF par xhtml2pdf), en reproduisant la mise en page Foncia :
+ensuite en PDF par xhtml2pdf), en reproduisant une mise en page moderne :
 
   • bandeau d'en-tête (logo à gauche, titre + sous-titres à droite) ;
   • zone deux colonnes : sidebar d'infos (gauche) / corps (droite) ;
@@ -32,7 +32,7 @@ except Exception:  # pragma: no cover
     _SVG_OK = False
 
 
-# Icônes de la sidebar (style ligne, façon Foncia). Tracé SVG (viewBox 24×24).
+# Icônes de la sidebar (style ligne). Tracé SVG (viewBox 24×24).
 _ICON_PATHS = {
     "info": "<circle cx='12' cy='12' r='10'/><line x1='12' y1='16' x2='12' y2='12'/>"
             "<line x1='12' y1='8' x2='12.01' y2='8'/>",
@@ -88,8 +88,8 @@ def _icon_data_uri(name: str, color: str) -> Optional[str]:
         return None
 
 
-# ── Thème Foncia (palette extraite du PDF de référence) ──────────────────────
-FONCIA_THEME = {
+# ── Thème par défaut (palette extraite du modèle de référence) ───────────────
+DEFAULT_THEME = {
     "navy": "#003D7C",          # titres / texte principal
     "orange": "#EB690B",        # bloc référence + accents
     "gray": "#949191",          # corps de la sidebar
@@ -162,7 +162,7 @@ def default_avis_blocks() -> list[dict]:
     ]
 
 
-# ── Blocs communs (réutilisés par tous les documents façon Foncia) ───────────
+# ── Blocs communs (réutilisés par tous les documents de la papeterie) ────────
 def _common_sidebar() -> dict:
     return {"id": "sidebar", "type": "sidebar", "enabled": True, "props": {
         "sections": [
@@ -216,7 +216,7 @@ def _greeting(intro: str, salutation: str = "Cher locataire,") -> dict:
 
 
 def default_blocks(template_type: str) -> Optional[list[dict]]:
-    """Blocs par défaut (façon Foncia) selon le type de document de la papeterie."""
+    """Blocs par défaut selon le type de document de la papeterie."""
     if template_type == "avis_echeance":
         return default_avis_blocks()
 
@@ -334,7 +334,7 @@ def _money(text: Optional[str], variables: dict) -> str:
 
 
 def _theme(theme: Optional[dict]) -> dict:
-    t = dict(FONCIA_THEME)
+    t = dict(DEFAULT_THEME)
     if isinstance(theme, dict):
         t.update({k: v for k, v in theme.items() if v})
     return t
@@ -398,7 +398,7 @@ def _render_sidebar(props: dict, t: dict, variables: dict) -> str:
                     f'<div style="color:{t["gray"]}; font-size:6.8pt; margin:1px 0;">{val}</div>')
         lines = "".join(line_html)
 
-        # Icône de section (façon Foncia) AU-DESSUS du titre, sur sa propre ligne.
+        # Icône de section AU-DESSUS du titre, sur sa propre ligne.
         icon_uri = _icon_data_uri(_icon_for(sec), t["navy"])
         icon_html = (f'<div style="margin-bottom:2px;"><img src="{icon_uri}" '
                      f'style="width:13px; height:13px;"/></div>' if icon_uri else "")
@@ -420,7 +420,7 @@ def _render_recipient(props: dict, t: dict, variables: dict) -> str:
         date_html = (f'<div style="color:{t["navy"]}; font-size:8pt; margin-bottom:10px; text-align:right;">'
                      f'{_sub(props.get("date_text"), variables)}</div>')
     # Adresse du destinataire : alignée à gauche, décalée vers le centre-droite,
-    # interligne SERRÉ façon Foncia → un seul bloc, lignes séparées par <br/>
+    # interligne SERRÉ → un seul bloc, lignes séparées par <br/>
     # (évite l'espacement entre <div> successifs). `**texte**` → gras.
     vals = []
     for l in props.get("lines", []):
@@ -433,7 +433,7 @@ def _render_recipient(props: dict, t: dict, variables: dict) -> str:
 
 
 def _render_reference(props: dict, t: dict, variables: dict) -> str:
-    # Interligne serré (façon Foncia) : lignes regroupées dans un seul bloc.
+    # Interligne serré : lignes regroupées dans un seul bloc.
     _vals = [_sub(l, variables).strip() for l in props.get("lines", []) if (l or "").strip()]
     _inner = "<br/>".join(v for v in _vals if v)
     lines = (f'<div style="color:{t["orange"]}; font-size:8.5pt; line-height:1.15;">{_inner}</div>'
@@ -572,7 +572,7 @@ def _render_highlight(props: dict, t: dict, variables: dict) -> str:
 
 
 def _render_table(props: dict, t: dict, variables: dict) -> str:
-    """Tableau générique multi-colonnes (façon Foncia). Colonnes configurables ;
+    """Tableau générique multi-colonnes. Colonnes configurables ;
     lignes de type section / data / total / result (bandeau teal)."""
     heading = _sub(props.get("heading"), variables)
     columns = props.get("columns") or []

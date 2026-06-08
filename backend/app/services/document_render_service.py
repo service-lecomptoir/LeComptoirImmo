@@ -63,7 +63,7 @@ def substitute(content_html: str, variables: dict) -> str:
 
 
 def build_emitter_address(address: str = "", company: str = "", national_id: str = "") -> str:
-    """Bloc émetteur enrichi (pour la sidebar « façon Foncia ») : Société puis
+    """Bloc émetteur enrichi (pour la sidebar de l'en-tête) : Société puis
     « SIRET : … » puis l'adresse, séparés par des retours à la ligne. Les champs
     vides sont ignorés."""
     parts: list[str] = []

@@ -632,7 +632,7 @@ export default function TemplateEditor() {
 
   // Mode éditeur plein écran
   if (editMode) {
-    // Tout document doté de blocs → éditeur par blocs « façon Foncia ».
+    // Tout document doté de blocs → éditeur par blocs (mise en page moderne).
     const useBlockEditor =
       Array.isArray(editTemplate?.blocks) && (editTemplate?.blocks?.length ?? 0) > 0
     return (

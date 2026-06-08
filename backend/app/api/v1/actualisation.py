@@ -542,7 +542,7 @@ async def delete_charge_regularization(
     await ChargeRegularizationService.delete(db, reg, lease)
 
 
-# ── Génération PDF (façon Foncia, par blocs) ─────────────────────────────────
+# ── Génération PDF (par blocs) ───────────────────────────────────────────────
 def _pdf_response(pdf: bytes, filename: str) -> Response:
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
@@ -554,7 +554,7 @@ async def regularization_pdf(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    """PDF de la régularisation de charges (façon Foncia)."""
+    """PDF de la régularisation de charges (par blocs)."""
     from app.services.document_blocks_pdf_service import ChargeRegularizationPDFService
     reg, _lease = await _get_regul_and_lease(db, reg_id, current_user)
     pdf = await ChargeRegularizationPDFService.generate(db, reg)
@@ -567,7 +567,7 @@ async def revision_pdf(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    """PDF de révision de loyer (IRL, façon Foncia)."""
+    """PDF de révision de loyer (IRL, par blocs)."""
     from app.services.document_blocks_pdf_service import RevisionLoyerPDFService
     lease = (await db.execute(select(Lease).where(Lease.id == lease_id))).scalar_one_or_none()
     if not lease:

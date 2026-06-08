@@ -172,6 +172,9 @@ async def attestation_caf(
         "a_jour": True,
         "decence": True,
         "today": _today_str(),
+        # Mandataire (gestionnaire) signataire « pour le compte du bailleur ».
+        "mandataire_company": getattr(current_user, "owner_company", "") or "",
+        "mandataire_national_id": getattr(current_user, "owner_national_id", "") or "",
     }
 
     html = render_template("attestation_caf.html.j2", ctx)
