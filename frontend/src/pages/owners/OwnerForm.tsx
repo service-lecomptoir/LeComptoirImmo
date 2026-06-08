@@ -16,7 +16,6 @@ const schema = z.object({
   national_id: z.string().optional(),
   email: z.string().email('Email invalide').optional().or(z.literal('')),
   phone: z.string().optional(),
-  phone2: z.string().optional(),
   address: z.string().optional(),
   iban: z.string().optional(),
   bic: z.string().optional(),
@@ -82,7 +81,6 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       national_id: owner.national_id ?? '',
       email: owner.email ?? '',
       phone: owner.phone ?? '',
-      phone2: owner.phone2 ?? '',
       address: owner.address ?? '',
       iban: owner.iban ?? '',
       bic: owner.bic ?? '',
@@ -106,7 +104,6 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       national_id: clean(data.national_id),
       email: clean(data.email),
       phone: clean(data.phone),
-      phone2: clean(data.phone2),
       address: clean(data.address),
       iban: data.iban ? data.iban.replace(/\s+/g, '').toUpperCase() : null,
       bic: data.bic ? data.bic.replace(/\s+/g, '').toUpperCase() : null,
@@ -188,10 +185,9 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
         {/* Contact */}
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <OwnerField label="Email" name="email" type="email" register={register} errors={errors} />
             <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
-            <PhoneField label="Téléphone 2" value={watch('phone2') || ''} onChange={v => setValue('phone2', v)} />
           </div>
           <div className="mt-3">
             <OwnerField label="Adresse (chèque / espèces)" name="address" placeholder="12 rue de la République, 75001 Paris" register={register} errors={errors} />

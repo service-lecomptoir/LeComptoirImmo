@@ -117,7 +117,6 @@ export default function OwnerDetail() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" value={owner.email} full />
             <Field label="Téléphone" value={owner.phone} />
-            <Field label="Téléphone 2" value={owner.phone2} />
             <Field label="Adresse" value={owner.address} full />
           </div>
         </div>
