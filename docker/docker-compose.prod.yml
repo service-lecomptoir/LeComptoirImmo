@@ -1,10 +1,12 @@
 # ── Production VPS ────────────────────────────────────────────────────────────
 # Usage : docker compose -f docker/docker-compose.prod.yml up -d --build
 #
-# Stack : PostgreSQL + LeComptoirImmo (backend 8000 / frontend) + Nginx reverse
-#         proxy (sert aussi le sous-domaine alice.* par alias réseau) + Certbot.
-# NB : Alice est un produit autonome (dépôt + compose dédiés LeComptoirAlice) ;
-#      LeCI l'interroge uniquement via son API interne (X-Internal-Key).
+# Stack : PostgreSQL + LeComptoirImmo (backend 8000 / frontend, exposés en interne).
+# NB 1 : le reverse-proxy TLS mutualisé (nginx + certbot) a été EXTRAIT vers le
+#        projet d'infra autonome « LeComptoirInfra » (~/LeComptoirInfra, projet
+#        compose « edge »). Il route immo/alice/sejour/portail360 et détient le cert.
+# NB 2 : Alice est un produit autonome (dépôt LeComptoirAlice) ; LeCI l'interroge
+#        uniquement via son API interne (X-Internal-Key).
 #
 # Les secrets viennent des fichiers .env.prod (hors git) — la prod lit .env.prod
 # DIRECTEMENT (pas .env, qui reste la config de dev avec @localhost) :
@@ -71,45 +73,15 @@ services:
     networks:
       - locataire_net
 
-  # ── Alice (console admin SaaS) ────────────────────────────────────────────────
-  # EXTRAITE vers le projet autonome LeComptoirAlice (dépôt + compose dédiés,
-  # ~/LeComptoirAlice/docker/docker-compose.prod.yml). Mêmes conteneurs
-  # alice_backend / alice_frontend sur le réseau partagé docker_locataire_net,
-  # base partagée. Le nginx ci-dessous les résout toujours par alias réseau.
-
-  # ── Nginx reverse proxy + SSL ─────────────────────────────────────────────────
-  nginx:
-    image: nginx:1.25-alpine
-    container_name: locataire_nginx
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx-site.conf:/etc/nginx/conf.d/default.conf:ro
-      - certbot_www:/var/www/certbot:ro
-      - certbot_certs:/etc/letsencrypt:ro
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - locataire_net
-
-  # ── Certbot (Let's Encrypt SSL) ───────────────────────────────────────────────
-  certbot:
-    image: certbot/certbot:latest
-    container_name: locataire_certbot
-    volumes:
-      - certbot_www:/var/www/certbot
-      - certbot_certs:/etc/letsencrypt
-    # Émission/renouvellement à exécuter manuellement (voir deploy.sh --ssl)
+  # ── Reverse-proxy TLS (nginx + certbot) ───────────────────────────────────────
+  # RETIRÉ d'ici : extrait vers le projet d'infra autonome « LeComptoirInfra »
+  # (~/LeComptoirInfra, projet compose « edge »). Les conteneurs backend/frontend
+  # ci-dessus restent exposés en interne (réseau docker_locataire_net) et sont
+  # routés par l'edge mutualisé. Voir LeComptoirInfra/README.md.
 
 volumes:
   postgres_data:
   uploads_data:
-  certbot_www:
-  certbot_certs:
 
 networks:
   locataire_net:
