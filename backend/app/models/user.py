@@ -35,6 +35,10 @@ class User(Base, TimestampMixin):
     # Nom et prénom du propriétaire (bailleur) — utilisé pour le bail, l'attestation
     # de loyer et le formulaire tiers payant. Distinct du nom de la résidence.
     owner_full_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    # Société / SCI du bailleur (mandataire = société ; GP = SCI le cas échéant)
+    owner_company: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    # SIRET / N° de pièce d'identité du bailleur
+    owner_national_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Logo du gestionnaire (« Mes informations ») — affiché en en-tête des documents
     # (avis d'échéance « façon Foncia », à la place du logo).

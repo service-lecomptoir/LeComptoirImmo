@@ -29,6 +29,8 @@ class UserUpdate(BaseModel):
     address: Optional[str] = None
     # Nom et prénom du propriétaire (bailleur) — pour bail / attestation / tiers payant.
     owner_full_name: Optional[str] = None
+    owner_company: Optional[str] = None
+    owner_national_id: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):

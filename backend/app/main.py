@@ -319,6 +319,9 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users DROP COLUMN IF EXISTS bank_holder",
         # Fiche propriétaire : un seul numéro de téléphone → suppression de phone2.
         "ALTER TABLE owners DROP COLUMN IF EXISTS phone2",
+        # Identité du bailleur sur le compte gestionnaire : société/SCI + SIRET/N° pièce.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_company VARCHAR(200)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_national_id VARCHAR(50)",
         # ── 018 : nettoyage des reliques de la fusion bien/logement ─────────────
         # Loyer/charges/dépôt sont portés par le contrat (leases), plus par le bien.
         "ALTER TABLE properties DROP COLUMN IF EXISTS base_rent",

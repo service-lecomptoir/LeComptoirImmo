@@ -43,6 +43,8 @@ class ManagerOut(BaseModel):
     email: EmailStr
     full_name: str
     owner_full_name: Optional[str] = None
+    owner_company: Optional[str] = None
+    owner_national_id: Optional[str] = None
     phone: Optional[str] = None
     role: str
     is_active: bool
@@ -66,6 +68,8 @@ class ManagerCreate(BaseModel):
     email: EmailStr
     full_name: str = Field("", max_length=255)
     owner_full_name: Optional[str] = None
+    owner_company: Optional[str] = None
+    owner_national_id: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     role: str = "gestionnaire"
@@ -76,6 +80,8 @@ class ManagerUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     owner_full_name: Optional[str] = None
+    owner_company: Optional[str] = None
+    owner_national_id: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     role: Optional[str] = None
@@ -115,6 +121,8 @@ def _manager_out(user: User, property_count: int = 0) -> ManagerOut:
         email=user.email,
         full_name=user.full_name,
         owner_full_name=getattr(user, "owner_full_name", None),
+        owner_company=getattr(user, "owner_company", None),
+        owner_national_id=getattr(user, "owner_national_id", None),
         phone=getattr(user, "phone", None),
         role=user.role.value if hasattr(user.role, "value") else str(user.role),
         is_active=user.is_active,
@@ -178,6 +186,10 @@ async def create_manager(
     )
     if data.owner_full_name is not None:
         user.owner_full_name = data.owner_full_name
+    if data.owner_company is not None:
+        user.owner_company = data.owner_company
+    if data.owner_national_id is not None:
+        user.owner_national_id = data.owner_national_id
     if data.phone is not None:
         user.phone = data.phone
     if data.address is not None:
@@ -209,6 +221,8 @@ async def update_manager(
             email=data.email,
             full_name=data.full_name,
             owner_full_name=data.owner_full_name,
+            owner_company=data.owner_company,
+            owner_national_id=data.owner_national_id,
             phone=data.phone,
             address=data.address,
             is_active=data.is_active,

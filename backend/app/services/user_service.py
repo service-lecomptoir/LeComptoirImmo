@@ -105,6 +105,10 @@ class UserService:
             user.address = data.address or None
         if getattr(data, "owner_full_name", None) is not None:
             user.owner_full_name = data.owner_full_name or None
+        if getattr(data, "owner_company", None) is not None:
+            user.owner_company = data.owner_company or None
+        if getattr(data, "owner_national_id", None) is not None:
+            user.owner_national_id = data.owner_national_id or None
 
         await db.flush()
         await db.refresh(user)
