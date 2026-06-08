@@ -137,6 +137,11 @@ function SidebarInfoBlock({ line1, address, personName, refCode }: SidebarInfoBl
 
 // ── Carte d'en-tête gestionnaire (dégradé + icône immo) ──────────────────────
 function ManagerHeaderCard({ roleLabel, name, address }: { roleLabel: string; name: string; address?: string }) {
+  // Rôle affiché sur deux lignes : « Gestionnaire » puis le qualificatif
+  // (mandataire / propriétaire), de façon identique pour les deux types.
+  const _parts = roleLabel.trim().split(/\s+/)
+  const roleFirst = _parts[0]
+  const roleRest = _parts.slice(1).join(' ')
   return (
     <div className="px-4 py-4 border-b border-gray-700">
       <div
@@ -149,9 +154,9 @@ function ManagerHeaderCard({ roleLabel, name, address }: { roleLabel: string; na
         </div>
         <div className="min-w-0">
           {name && <p className="text-white font-bold text-sm leading-tight truncate">{name}</p>}
-          <span className="inline-block mt-1 text-white/90 text-[9px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5"
+          <span className="inline-block mt-1 text-white/90 text-[9px] font-semibold uppercase tracking-wide rounded-lg px-2 py-1 text-center leading-tight"
             style={{ background: 'rgba(255,255,255,0.22)' }}>
-            {roleLabel}
+            {roleFirst}{roleRest && <><br />{roleRest}</>}
           </span>
         </div>
       </div>
