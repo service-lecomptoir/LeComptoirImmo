@@ -317,6 +317,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users DROP COLUMN IF EXISTS iban",
         "ALTER TABLE users DROP COLUMN IF EXISTS bic",
         "ALTER TABLE users DROP COLUMN IF EXISTS bank_holder",
+        # Fiche propriétaire : un seul numéro de téléphone → suppression de phone2.
+        "ALTER TABLE owners DROP COLUMN IF EXISTS phone2",
         # ── 018 : nettoyage des reliques de la fusion bien/logement ─────────────
         # Loyer/charges/dépôt sont portés par le contrat (leases), plus par le bien.
         "ALTER TABLE properties DROP COLUMN IF EXISTS base_rent",

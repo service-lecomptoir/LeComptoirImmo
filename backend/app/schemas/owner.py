@@ -13,7 +13,6 @@ class OwnerCreate(BaseModel):
     national_id: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    phone2: Optional[str] = None
     address: Optional[str] = None
     iban: Optional[str] = None
     bic: Optional[str] = None
@@ -37,7 +36,6 @@ class OwnerUpdate(BaseModel):
     national_id: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    phone2: Optional[str] = None
     address: Optional[str] = None
     iban: Optional[str] = None
     bic: Optional[str] = None
@@ -56,7 +54,6 @@ class OwnerResponse(BaseModel):
     national_id: Optional[str]
     email: Optional[str]
     phone: Optional[str]
-    phone2: Optional[str]
     address: Optional[str]
     iban: Optional[str]
     bic: Optional[str]

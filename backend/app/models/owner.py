@@ -37,7 +37,6 @@ class Owner(Base, TimestampMixin):
     # ── Contact ───────────────────────────────────────────────────────────────
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    phone2: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
 
     # ── Coordonnées bancaires (RIB) — communiquées au locataire pour le règlement ─

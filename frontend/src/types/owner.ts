@@ -10,7 +10,6 @@ export interface Owner {
   national_id: string | null
   email: string | null
   phone: string | null
-  phone2: string | null
   address: string | null
   iban: string | null
   bic: string | null
@@ -42,7 +41,6 @@ export interface OwnerCreate {
   national_id?: string
   email?: string
   phone?: string
-  phone2?: string
   address?: string
   iban?: string
   bic?: string
