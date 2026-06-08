@@ -1,6 +1,5 @@
 import uuid
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import date, datetime
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -165,10 +164,8 @@ class NotificationService:
     async def generate_expiring_lease_alerts(db: AsyncSession) -> int:
         """Crée des notifications pour les baux expirant dans ≤ 90 jours."""
         from app.models.lease import Lease
-        from sqlalchemy import and_
 
         today = date.today()
-        in_90_days = date(today.year, today.month, today.day)
         from datetime import timedelta
         horizon = today + timedelta(days=90)
 

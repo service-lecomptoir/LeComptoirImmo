@@ -14,8 +14,7 @@ from app.models.lease import Lease
 from app.models.property import Property
 from app.core.permissions import Role
 from app.schemas.ticket import (
-    TicketCreate, TicketUpdate, TicketResponse, TicketListItem,
-    TicketMessageCreate, TicketMessageResponse,
+    TicketCreate, TicketUpdate, TicketMessageCreate,
 )
 from app.services.ticket_service import TicketService
 

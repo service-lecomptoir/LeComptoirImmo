@@ -31,17 +31,29 @@ class TestUserList:
 @pytest.mark.asyncio
 class TestUserCreate:
     async def test_admin_creates_user(self, client, admin_token):
+        # Règle : les comptes gestionnaire/admin sont créés EXCLUSIVEMENT depuis Alice.
+        # L'admin ne peut créer que des rôles non-gestionnaire (propriétaire, locataire).
         resp = await client.post("/api/v1/users", headers=auth(admin_token), json={
             "email": "new_user@test.fr",
             "password": "NewPass1!",
             "full_name": "Nouvel Utilisateur",
-            "role": "gestionnaire",
+            "role": "proprietaire",
         })
         assert resp.status_code == 201
         data = resp.json()
         assert data["email"] == "new_user@test.fr"
-        assert data["role"] == "gestionnaire"
+        assert data["role"] == "proprietaire"
         assert "hashed_password" not in data
+
+    async def test_admin_cannot_create_gestionnaire(self, client, admin_token):
+        # Les comptes gestionnaire ne se créent que depuis Alice → 403 attendu.
+        resp = await client.post("/api/v1/users", headers=auth(admin_token), json={
+            "email": f"gest_{uuid.uuid4().hex[:8]}@test.fr",
+            "password": "GestPass1!",
+            "full_name": "Gestionnaire interdit",
+            "role": "gestionnaire",
+        })
+        assert resp.status_code == 403
 
     async def test_gestionnaire_can_create_locataire(self, client, gestionnaire_token):
         # Gestionnaire peut créer un locataire ou propriétaire (pas admin/gestionnaire)

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +7,6 @@ from sqlalchemy.orm import selectinload
 
 from app.models.ticket import Ticket, TicketMessage, TicketStatus
 from app.models.tenant import Tenant
-from app.models.user import User
 from app.schemas.ticket import TicketCreate, TicketUpdate, TicketMessageCreate
 from app.core.exceptions import NotFoundException, BadRequestException
 

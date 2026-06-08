@@ -19,7 +19,6 @@ routeur déterministe de la Phase 1. Le canal et le périmètre restent identiqu
 from __future__ import annotations
 import re
 from datetime import date
-from typing import Optional
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession

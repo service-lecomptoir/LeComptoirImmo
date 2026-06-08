@@ -1,7 +1,7 @@
 """API Offres & Services — gestion et consultation."""
 import uuid
 import os
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

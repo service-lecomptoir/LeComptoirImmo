@@ -2,7 +2,6 @@
 Service de génération PDF via Jinja2 + WeasyPrint.
 """
 import io
-import uuid
 from pathlib import Path
 from typing import Any
 

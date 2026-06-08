@@ -10,7 +10,6 @@ from app.database import get_db
 from app.api.deps import get_current_user, get_current_active_admin, get_current_gestionnaire
 from app.core.permissions import Role
 from app.core.features import require_feature, get_plan_name
-from app.api.v1._isolation import gp_tenant_ids as _isolation_gp_tenant_ids
 from app.models.user import User
 from app.models.email_domain import EmailDomain
 from app.schemas.user import (

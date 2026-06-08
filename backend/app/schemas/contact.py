@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from app.models.contact import ContactCategory
 
 

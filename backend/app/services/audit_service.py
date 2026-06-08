@@ -1,7 +1,7 @@
 """Service d'audit — enregistre les actions critiques dans audit_logs."""
 import logging
 import uuid
-from typing import Optional, Any
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 

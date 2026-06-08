@@ -5,13 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.api.deps import require_role, get_current_user
+from app.api.deps import require_role
 from app.api.v1._isolation import agency_property_ids, assert_manager_scope
 from app.models.user import User
 from app.core.permissions import Role
 from app.schemas.entretien import (
     PrestataireCreate, PrestataireUpdate, PrestataireResponse,
-    EntretienCreate, EntretienUpdate, EntretienResponse,
+    EntretienCreate, EntretienUpdate,
 )
 from app.services.entretien_service import PrestataireService, EntretienService
 from app.models.entretien import EntretienStatus

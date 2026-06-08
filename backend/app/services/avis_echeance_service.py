@@ -4,17 +4,16 @@ Service AvisEcheance — Génération des avis d'échéances (manuelle et automa
 import uuid
 import calendar
 import logging
-from datetime import date, timedelta, datetime
+from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
 from app.models.lease import Lease
 from app.models.tenant import Tenant
-from app.models.property import Property
 from app.models.payment import Payment, PaymentStatus
 from app.core.exceptions import ConflictException, NotFoundException, BadRequestException
 
@@ -422,7 +421,6 @@ class AvisEcheanceService:
         """
         avis = await cls.get_by_id(db, avis_id)
 
-        old_apl = float(avis.amount_apl) if avis.amount_apl else None
         apl = float(new_apl) if new_apl and new_apl > 0 else None
 
         # Recalcule le total de l'avis

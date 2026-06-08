@@ -15,14 +15,11 @@ from app.api.deps import require_role
 from app.api.v1._isolation import assert_payment_access, assert_lease_access
 from app.models.user import User
 from app.models.owner import Owner
-from app.models.lease import LeaseType
 from app.core.features import require_feature
 from app.services.lease_service import LeaseService
 from app.services.payment_service import PaymentService
 from app.services.pdf_service import render_template, html_to_pdf
-from app.core.exceptions import NotFoundException, BadRequestException
-from pydantic import BaseModel
-from typing import Optional
+from app.core.exceptions import BadRequestException
 
 router = APIRouter(prefix="/letters", tags=["Letters"])
 

@@ -12,7 +12,6 @@ from app.api.deps import get_current_user
 from app.core.permissions import Role
 from app.models.message import ProprietaireMessage
 from app.models.user import User
-from app.models.property import Property
 
 router = APIRouter(prefix="/proprietaire-messages", tags=["Messages propriétaire"])
 

@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.document_template import DocumentTemplate, TemplateType, PAPETERIE_ORDER
+from app.models.document_template import DocumentTemplate, TemplateType
 from app.services.avis_blocks_render_service import default_avis_blocks, default_blocks, DEFAULT_THEME
 
 # Rôles qui génèrent des documents → reçoivent les templates par défaut.

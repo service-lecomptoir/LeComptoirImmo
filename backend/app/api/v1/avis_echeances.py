@@ -3,7 +3,6 @@ API Avis d'échéances — Génération manuelle, automatique, listing, PDF.
 """
 import uuid
 import logging
-from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -21,9 +20,6 @@ from app.services.avis_echeance_service import AvisEcheanceService
 from app.schemas.avis_echeance import (
     AvisEcheanceGenerateIn,
     AvisEcheaneBulkGenerateIn,
-    AvisEcheanceOut,
-    AvisEcheanceSummary,
-    GenerateMonthlyResult,
     AvisEcheancePatchApl,
     AvisEcheancePatch,
 )

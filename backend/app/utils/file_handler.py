@@ -3,8 +3,6 @@ Gestion des fichiers uploadés.
 Les fichiers sont stockés dans : uploads/{entity_type}/{entity_id}/{uuid}_{filename}
 """
 import uuid
-import os
-import shutil
 from pathlib import Path
 from typing import Optional
 

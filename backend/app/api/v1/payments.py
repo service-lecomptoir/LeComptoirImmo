@@ -1,5 +1,4 @@
 import uuid
-from datetime import date
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
@@ -15,9 +14,7 @@ from app.models.payment import PaymentStatus
 from app.schemas.payment import (
     PaymentCreate,
     PaymentRecordIn,
-    PaymentUpdate,
     PaymentResponse,
-    PaymentListItem,
     PaymentListResponse,
     DashboardStats,
     MonthlyStats,
@@ -91,7 +88,6 @@ async def locataire_current_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    from datetime import date
     from sqlalchemy import select
     from app.models.tenant import Tenant
     from app.models.payment import Payment as PaymentModel
@@ -103,7 +99,6 @@ async def locataire_current_payment(
 
     from sqlalchemy.orm import selectinload
     from app.models.lease import Lease
-    from app.models.property import Property
     result = await db.execute(
         select(PaymentModel)
         .options(
@@ -158,7 +153,7 @@ async def locataire_declare_payment(
     from sqlalchemy import select
     from app.models.tenant import Tenant
     from app.models.notification import Notification, NotificationType, NotificationPriority
-    from app.core.exceptions import BadRequestException, NotFoundException
+    from app.core.exceptions import BadRequestException
 
     tenant_res = await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
     tenant = tenant_res.scalar_one_or_none()
@@ -677,7 +672,6 @@ async def send_quittance(
             "quittance_sent_at": payment.quittance_sent_at,
         }
     except Exception as e:
-        from app.core.exceptions import BadRequestException
         if "non payé" in str(e):
             raise HTTPException(status_code=400, detail=str(e))
         raise

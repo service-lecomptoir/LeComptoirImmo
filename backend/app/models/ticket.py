@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 from sqlalchemy import String, Text, Boolean, ForeignKey, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,7 +10,6 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.tenant import Tenant
-    from app.models.lease import Lease
     from app.models.user import User
 
 

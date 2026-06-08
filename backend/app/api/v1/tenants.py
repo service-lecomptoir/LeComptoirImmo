@@ -9,7 +9,7 @@ from app.api.deps import get_current_user, get_current_gestionnaire
 from app.core.permissions import Role
 from app.api.v1._isolation import agency_tenant_ids as _agency_tenant_ids, assert_manager_scope
 from app.models.user import User
-from app.models.document import EntityType, DocumentType
+from app.models.document import EntityType
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, TenantListItem
 from app.schemas.document import DocumentResponse
 from app.services.tenant_service import TenantService

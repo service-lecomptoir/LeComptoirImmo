@@ -85,10 +85,10 @@ class TestSubscriptionResponseStructure:
             assert "property_count" in data
             assert "can_create_property" in data
 
-    async def test_blocked_gestionnaire_cannot_create_property(self, client, gestionnaire_token):
-        """Un gestionnaire bloqué (is_blocked=True) doit avoir can_create_property=False."""
-        import httpx
-
+    async def test_blocked_gestionnaire_is_locked_out(self, client, gestionnaire_token):
+        """Une licence bloquée (is_blocked=True) suspend le compte : toute requête
+        authentifiée est refusée (401), ce qui empêche a fortiori la création de biens.
+        L'enforcement se fait au niveau de get_current_user (_check_alice_license)."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
@@ -105,8 +105,7 @@ class TestSubscriptionResponseStructure:
             mock_client.get.return_value = mock_response
 
             resp = await client.get("/api/v1/subscription", headers=auth(gestionnaire_token))
-            assert resp.status_code == 200
-            assert resp.json()["can_create_property"] is False
+            assert resp.status_code == 401
 
     async def test_property_limit_reached_cannot_create(self, client, gestionnaire_token):
         """Atteinte de la limite property_limit → can_create_property=False."""

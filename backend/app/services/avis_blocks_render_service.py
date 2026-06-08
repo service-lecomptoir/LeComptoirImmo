@@ -16,7 +16,6 @@ de façon fiable. Couleurs et placements proviennent du thème.
 from __future__ import annotations
 
 import base64
-import html as _html
 import io
 import re
 from functools import lru_cache

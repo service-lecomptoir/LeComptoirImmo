@@ -12,7 +12,6 @@ from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.lease import Lease
 from app.models.payment import Payment
-from app.services import scoring_service
 from app.services.scoring_service import KIND_META, event_kinds, compute
 
 router = APIRouter(prefix="/scoring", tags=["Scoring locataires"])

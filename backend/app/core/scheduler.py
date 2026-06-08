@@ -76,7 +76,6 @@ async def _job_generate_monthly_avis() -> None:
     from app.services.avis_echeance_service import AvisEcheanceService
     from app.services.email_service import send_avis_echeance
     from app.models.avis_echeance import AvisEcheance
-    from app.models.tenant import Tenant
 
     today = date.today()
     months = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",

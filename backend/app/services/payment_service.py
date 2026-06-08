@@ -10,8 +10,6 @@ from app.models.lease import Lease
 from app.models.tenant import Tenant
 from app.models.property import Property
 from app.schemas.payment import (
-    PaymentCreate,
-    PaymentUpdate,
     PaymentRecordIn,
     PaymentListItem,
     MonthlyStats,

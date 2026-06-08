@@ -1,10 +1,10 @@
 """API Settings — configuration dynamique du scheduler et paramètres globaux."""
 import logging
 from datetime import datetime, date
-from typing import Any, List, Optional
+from typing import List, Optional
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 

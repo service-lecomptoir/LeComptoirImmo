@@ -18,7 +18,6 @@ from app.schemas.lease import (
     LeaseUpdate,
     LeaseTerminate,
     LeaseResponse,
-    LeaseListItem,
     LeaseListResponse,
 )
 from app.services.lease_service import LeaseService

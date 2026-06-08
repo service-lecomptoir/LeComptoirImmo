@@ -14,7 +14,6 @@ from app.schemas.inspection import (
     InspectionListResponse,
 )
 from app.services.inspection_service import InspectionService
-from app.api.v1.auth import get_current_user
 from app.api.v1._isolation import agency_member_ids, assert_manager_scope
 
 router = APIRouter(prefix="/inspections", tags=["Inspections"])

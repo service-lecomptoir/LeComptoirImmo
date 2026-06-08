@@ -1,24 +1,23 @@
 """API Templates — gestion des modèles de documents."""
 import uuid
 import os
-import shutil
 from datetime import date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, status
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.api.deps import get_current_user, require_role
+from app.api.deps import require_role
 from app.core.permissions import Role
 from app.models.document_template import DocumentTemplate, TemplateType
 from app.schemas.document_template import (
     DocumentTemplateCreate, DocumentTemplateUpdate, DocumentTemplateResponse
 )
 from app.services.document_template_service import (
-    DEFAULT_TEMPLATES, ensure_default_templates,
+    ensure_default_templates,
 )
 
 router = APIRouter(prefix="/templates", tags=["Templates"])

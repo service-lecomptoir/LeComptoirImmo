@@ -3,11 +3,11 @@ import uuid
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.api.deps import get_current_user, get_current_gestionnaire
+from app.api.deps import get_current_gestionnaire
 from app.core.permissions import Role
 from app.models.automation import AutomationRule, CommunicationLog, RuleType
 from app.models.tenant import Tenant
@@ -152,8 +152,6 @@ async def list_logs(
 
     # ── Scope par rôle ────────────────────────────────────────────────────────
     if role == Role.GESTIONNAIRE_PROPRIO:
-        from app.api.v1._isolation import gp_tenant_ids as _gp_tenant_ids
-        from app.models.property import Property
         # Logs liés aux locataires du GP
         my_tenant_ids = (await db.execute(
             select(Tenant.id).where(Tenant.created_by == current_user.id)

@@ -6,7 +6,6 @@ from sqlalchemy import select, func
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate, UserRoleUpdate, UserPasswordUpdate
 from app.core.security import hash_password, verify_password
-from app.core.permissions import Role
 from app.core.exceptions import (
     NotFoundException, ConflictException, BadRequestException
 )

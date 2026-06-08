@@ -1,10 +1,10 @@
 """API Dashboard — statistiques avancées pour aide à la décision."""
 import uuid
 from typing import Optional
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, and_, case
+from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -32,7 +32,6 @@ async def get_dashboard_stats(
 
     # ── Périmètre ─────────────────────────────────────────────────────────────
     prop_ids_filter: list = []   # GP : liste blanche de ses biens
-    excluded_prop_ids: list = [] # Mandataire : biens GP à exclure
     is_gp = role == Role.GESTIONNAIRE_PROPRIO
     is_mandataire = role == Role.GESTIONNAIRE
 
