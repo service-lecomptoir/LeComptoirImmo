@@ -69,18 +69,23 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
 
     logo_path = None
     sender_name, sender_addr = "", ""
+    owner_company, owner_national_id = "", ""
     if gestionnaire_user_id:
         user = (await db.execute(select(User).where(User.id == gestionnaire_user_id))).scalar_one_or_none()
         if user:
             logo_path = getattr(user, "logo_path", None)
             sender_name = user.full_name or ""
             sender_addr = getattr(user, "address", "") or ""
+            owner_company = getattr(user, "owner_company", "") or ""
+            owner_national_id = getattr(user, "owner_national_id", "") or ""
 
+    from app.services.document_render_service import build_emitter_address
     variables = dict(variables)
     if not variables.get("company_name"):
         variables["company_name"] = sender_name
     if not variables.get("company_address"):
-        variables["company_address"] = sender_addr
+        # Émetteur enrichi : Société + « SIRET : … » + adresse (sidebar « façon Foncia »).
+        variables["company_address"] = build_emitter_address(sender_addr, owner_company, owner_national_id)
 
     html = render_avis_blocks_html(blocks, theme, variables, line_items=line_items, logo_path=logo_path)
     return html_to_pdf(html)

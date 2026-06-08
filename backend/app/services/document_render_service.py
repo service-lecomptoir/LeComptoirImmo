@@ -62,6 +62,20 @@ def substitute(content_html: str, variables: dict) -> str:
     return _VAR_RE.sub(_var_repl, out)
 
 
+def build_emitter_address(address: str = "", company: str = "", national_id: str = "") -> str:
+    """Bloc émetteur enrichi (pour la sidebar « façon Foncia ») : Société puis
+    « SIRET : … » puis l'adresse, séparés par des retours à la ligne. Les champs
+    vides sont ignorés."""
+    parts: list[str] = []
+    if (company or "").strip():
+        parts.append(company.strip())
+    if (national_id or "").strip():
+        parts.append(f"SIRET : {national_id.strip()}")
+    if (address or "").strip():
+        parts.append(address.strip())
+    return "\n".join(parts)
+
+
 def _format_address_html(addr: str) -> str:
     """Met l'adresse sur plusieurs lignes : « n° et rue » puis « code postal Ville ».
     Découpe sur les retours à la ligne et les virgules saisies dans le profil."""
@@ -96,6 +110,8 @@ def _wrap(
     layout: dict,
     sender_name: str = "",
     sender_addr: str = "",
+    sender_company: str = "",
+    sender_national_id: str = "",
 ) -> str:
     sp = (layout or {}).get("spacing", {}) if isinstance(layout, dict) else {}
     fs = int(sp.get("font_size", 10) or 10)
@@ -120,6 +136,10 @@ def _wrap(
     if logo_uri:
         brand_parts.append(f'<div><img src="{logo_uri}" style="width:150px; height:100px;" alt="logo"/></div>')
     brand_parts.append(f'<div class="sender-name">{company}</div>')
+    if sender_company:
+        brand_parts.append(f'<div class="sender-company">{_html.escape(sender_company)}</div>')
+    if sender_national_id:
+        brand_parts.append(f'<div class="sender-siret">SIRET&nbsp;: {_html.escape(sender_national_id)}</div>')
     if company_addr:
         brand_parts.append(f'<div class="sender-addr">{company_addr}</div>')
     sender_brand = "".join(brand_parts)
@@ -135,6 +155,8 @@ def _wrap(
   .hdr {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
   .hdr td {{ vertical-align: top; }}
   .sender-name {{ font-size: {fs + 4}pt; font-weight: bold; color: {accent}; }}
+  .sender-company {{ font-size: {fs}pt; font-weight: bold; color: {text_color}; margin-top: 2px; }}
+  .sender-siret {{ font-size: {fs - 1}pt; color: #6b7280; }}
   .sender-addr {{ font-size: {fs - 1}pt; color: #6b7280; margin-top: 6px; }}
   .recipient {{ text-align: right; }}
   .rc-name {{ font-weight: bold; font-size: {fs + 1}pt; color: {text_color}; }}
@@ -175,6 +197,8 @@ def build_document_html(
     property_address: str,
     variables: dict,
     layout: dict,
+    sender_company: str = "",
+    sender_national_id: str = "",
 ) -> str:
     """Construit le HTML d'un document à partir de champs bruts (brouillon d'éditeur),
     avec EXACTEMENT la même mise en page que le document final (`_wrap`)."""
@@ -186,8 +210,8 @@ def build_document_html(
     vars2 = {**variables}
     if not vars2.get("company_name"):
         vars2["company_name"] = sender_name
-    body = substitute(content_html or "", vars2)
-    return _wrap(tmpl, body, recipient_lines, property_address, layout, sender_name, sender_addr)
+    return _wrap(tmpl, substitute(content_html or "", vars2), recipient_lines, property_address,
+                 layout, sender_name, sender_addr, sender_company, sender_national_id)
 
 
 async def render_saved_document(
@@ -218,6 +242,7 @@ async def render_saved_document(
     # En-tête : nom + adresse issus du PROFIL du gestionnaire (les champs « cabinet »
     # du template ont été retirés ; on retombe dessus uniquement par sécurité).
     sender_name, sender_addr = "", ""
+    sender_company, sender_national_id = "", ""
     try:
         from app.models.user import User
         user = (await db.execute(
@@ -226,6 +251,8 @@ async def render_saved_document(
         if user:
             sender_name = user.full_name or tmpl.company_name or ""
             sender_addr = getattr(user, "address", "") or tmpl.company_address or ""
+            sender_company = getattr(user, "owner_company", "") or ""
+            sender_national_id = getattr(user, "owner_national_id", "") or ""
     except Exception:
         pass
 
@@ -234,4 +261,5 @@ async def render_saved_document(
         variables = {**variables, "company_name": sender_name}
 
     body = substitute(tmpl.content_html, variables)
-    return _wrap(tmpl, body, recipient_lines, property_address, layout, sender_name, sender_addr)
+    return _wrap(tmpl, body, recipient_lines, property_address, layout, sender_name, sender_addr,
+                 sender_company, sender_national_id)

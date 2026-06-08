@@ -304,6 +304,7 @@ class AvisEcheancePDFService:
             from app.services.avis_blocks_render_service import render_avis_blocks_html
             # Nom + adresse de l'expéditeur depuis le profil du gestionnaire.
             sender_name, sender_addr = "", ""
+            owner_company, owner_national_id = "", ""
             user = None
             try:
                 user = (await db.execute(
@@ -312,12 +313,15 @@ class AvisEcheancePDFService:
                 if user:
                     sender_name = user.full_name or avis_tmpl.company_name or ""
                     sender_addr = getattr(user, "address", "") or avis_tmpl.company_address or ""
+                    owner_company = getattr(user, "owner_company", "") or ""
+                    owner_national_id = getattr(user, "owner_national_id", "") or ""
             except Exception:
                 pass
             if not variables.get("company_name"):
                 variables["company_name"] = sender_name
             if not variables.get("company_address"):
-                variables["company_address"] = sender_addr
+                from app.services.document_render_service import build_emitter_address
+                variables["company_address"] = build_emitter_address(sender_addr, owner_company, owner_national_id)
             # Le moteur de blocs n'ajoute pas le symbole € (contrairement aux anciens
             # templates HTML) → on le préfixe ici, dans le contexte blocs uniquement.
             def _eur(v):
