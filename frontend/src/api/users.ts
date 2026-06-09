@@ -11,7 +11,7 @@ interface CreateUserPayload {
 export const usersApi = {
   /** Liste tous les utilisateurs (admin) ou propriétaires/locataires (gestionnaire).
    *  `unlinked_tenant` exclut les comptes déjà rattachés à une fiche locataire. */
-  list: (params?: { role?: string; unlinked_tenant?: boolean }) =>
+  list: (params?: { role?: string; unlinked_tenant?: boolean; unlinked_owner?: boolean }) =>
     apiClient.get<User[]>('/users', { params }),
 
   /** Crée un compte utilisateur */

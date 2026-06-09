@@ -37,7 +37,11 @@ class Owner(Base, TimestampMixin):
     # ── Contact ───────────────────────────────────────────────────────────────
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    # Adresse postale structurée (même format que les biens) : rue / CP / ville / pays.
+    address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)  # rue (n° + voie)
+    zip_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    city: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
 
     # ── Coordonnées bancaires (RIB) — communiquées au locataire pour le règlement ─
     iban: Mapped[Optional[str]] = mapped_column(String(34), nullable=True)
@@ -78,6 +82,22 @@ class Owner(Base, TimestampMixin):
         # « Prénom Nom » sans la civilité (séparée du nom, cf. documents/listes).
         parts = [self.first_name or "", self.last_name]
         return " ".join(p for p in parts if p).strip()
+
+    @property
+    def full_address(self) -> Optional[str]:
+        """Adresse postale recomposée sur une ligne : « rue, CP Ville [, Pays] ».
+        Format consommé par la génération de documents (lettres, quittances) qui
+        re-découpe ensuite en lignes. None si aucune composante."""
+        loc = " ".join(p for p in [(self.zip_code or "").strip(), (self.city or "").strip()] if p)
+        country = (self.country or "").strip()
+        # Le pays n'est ajouté que s'il diffère de « France » (implicite par défaut).
+        parts = [
+            (self.address or "").strip(),
+            loc,
+            country if country and country.lower() != "france" else "",
+        ]
+        joined = ", ".join(p for p in parts if p)
+        return joined or None
 
     def __repr__(self) -> str:
         return f"<Owner {self.full_name}>"

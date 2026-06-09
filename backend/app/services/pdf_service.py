@@ -314,7 +314,7 @@ class AvisEcheancePDFService:
                 )).scalar_one_or_none()
                 if user:
                     sender_name = user.full_name or avis_tmpl.company_name or ""
-                    sender_addr = getattr(user, "address", "") or avis_tmpl.company_address or ""
+                    sender_addr = (getattr(user, "full_address", None) or "") or avis_tmpl.company_address or ""
                     owner_company = getattr(user, "owner_company", "") or ""
                     owner_national_id = getattr(user, "owner_national_id", "") or ""
             except Exception:

@@ -102,6 +102,12 @@ class UserService:
             user.phone = data.phone or None
         if data.address is not None:
             user.address = data.address or None
+        if getattr(data, "zip_code", None) is not None:
+            user.zip_code = data.zip_code or None
+        if getattr(data, "city", None) is not None:
+            user.city = data.city or None
+        if getattr(data, "country", None) is not None:
+            user.country = data.country or None
         if getattr(data, "owner_full_name", None) is not None:
             user.owner_full_name = data.owner_full_name or None
         if getattr(data, "owner_company", None) is not None:

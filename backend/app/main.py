@@ -319,6 +319,15 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users DROP COLUMN IF EXISTS bank_holder",
         # Fiche propriétaire : un seul numéro de téléphone → suppression de phone2.
         "ALTER TABLE owners DROP COLUMN IF EXISTS phone2",
+        # Adresse propriétaire structurée (rue/CP/ville/pays), comme les biens.
+        # `address` reste la rue ; on ajoute CP, ville, pays.
+        "ALTER TABLE owners ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20)",
+        "ALTER TABLE owners ADD COLUMN IF NOT EXISTS city VARCHAR(120)",
+        "ALTER TABLE owners ADD COLUMN IF NOT EXISTS country VARCHAR(80)",
+        # Adresse du profil gestionnaire (Mes informations) structurée, idem.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(120)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(80)",
         # Identité du bailleur sur le compte gestionnaire : société/SCI + SIRET/N° pièce.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_company VARCHAR(200)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_national_id VARCHAR(50)",

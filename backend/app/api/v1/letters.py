@@ -138,7 +138,7 @@ async def attestation_caf(
     sd = lease.start_date
 
     # Adresse bailleur (texte libre) → coupée en « rue » / « CP Ville » devant le code postal
-    bailleur_addr1, bailleur_addr2 = _split_address(owner.address if owner else None)
+    bailleur_addr1, bailleur_addr2 = _split_address(owner.full_address if owner else None)
     # Adresse logement → rue (champ structuré) puis « CP Ville »
     logement_street = (prop.address if prop else "") or ""
     logement_cpville = " ".join(p for p in [(prop.zip_code if prop else ""), (prop.city if prop else "")] if p).strip()
@@ -225,7 +225,7 @@ async def versement_direct_caf(
         bailleur_nom, bailleur_prenom = owner.last_name or "", owner.first_name or ""
     else:
         bailleur_nom, bailleur_prenom = current_user.full_name, ""
-    b_rue, b_cp, b_commune = _split_address_parts(owner.address if owner else None)
+    b_rue, b_cp, b_commune = _split_address_parts(owner.full_address if owner else None)
 
     ctx = {
         "bailleur_nom": bailleur_nom,

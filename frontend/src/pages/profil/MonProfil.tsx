@@ -4,6 +4,8 @@ import { useAuthStore } from '@/store/authStore'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 import { PhoneInput } from '@/components/common/PhoneInput'
+import AddressAutocomplete from '@/components/common/AddressAutocomplete'
+import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
 import { usersApi, type EmailDomain } from '@/api/users'
@@ -30,6 +32,9 @@ export default function MonProfil() {
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [address, setAddress] = useState(user?.address ?? '')
+  const [zipCode, setZipCode] = useState(user?.zip_code ?? '')
+  const [city, setCity] = useState(user?.city ?? '')
+  const [country, setCountry] = useState(user?.country ?? '')
   const [iban, setIban] = useState('')
   const [bic, setBic] = useState('')
   const [bankHolder, setBankHolder] = useState('')
@@ -160,6 +165,9 @@ export default function MonProfil() {
         setOwnerId(o.id)
         setPhone(o.phone ?? '')
         setAddress(o.address ?? '')
+        setZipCode(o.zip_code ?? '')
+        setCity(o.city ?? '')
+        setCountry(o.country ?? '')
         setIban(o.iban ?? '')
         setBic(o.bic ?? '')
         setBankHolder(o.bank_holder ?? '')
@@ -213,7 +221,12 @@ export default function MonProfil() {
         full_name: isManager ? fullName : joinName(firstName, lastName),
         email: email.trim() || undefined,
         phone: phone || null,
-        ...(isLocataire ? {} : { address: address || null }),
+        ...(isLocataire ? {} : {
+          address: address || null,
+          zip_code: zipCode || null,
+          city: city || null,
+          country: country || null,
+        }),
         ...(isManager ? { owner_full_name: joinName(ownerFirstName, ownerLastName) || null } : {}),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
@@ -221,6 +234,9 @@ export default function MonProfil() {
         await ownersApi.updateMe({
           phone: phone || null,
           address: address || null,
+          zip_code: zipCode || null,
+          city: city || null,
+          country: country || null,
           iban: iban ? iban.replace(/\s+/g, '').toUpperCase() : null,
           bic: bic ? bic.replace(/\s+/g, '').toUpperCase() : null,
           bank_holder: bankHolder || null,
@@ -306,10 +322,49 @@ export default function MonProfil() {
           <PhoneInput value={phone} onChange={setPhone} inputClassName={inp} />
         </div>
         {!isLocataire && (
-          <div>
-            <label className={lbl}>Adresse</label>
-            <textarea className={`${inp} resize-none`} rows={2} value={address}
-              onChange={e => setAddress(e.target.value)} placeholder="12 rue de la République, 75001 Paris" />
+          <div className="space-y-3">
+            <div>
+              <label className={lbl}>Adresse</label>
+              <AddressAutocomplete
+                value={address}
+                onChange={setAddress}
+                onSelect={({ street, postcode, city: c }) => {
+                  setAddress(street)
+                  if (postcode) setZipCode(postcode)
+                  if (c) setCity(c)
+                }}
+                className={inp}
+                placeholder="12 rue de la République"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className={lbl}>Code postal</label>
+                <CommuneAutocomplete
+                  value={zipCode}
+                  onChange={setZipCode}
+                  onSelect={({ zip, city: c }) => { setZipCode(zip); setCity(c) }}
+                  display="postcode"
+                  className={inp}
+                  placeholder="ex. 75001"
+                />
+              </div>
+              <div>
+                <label className={lbl}>Ville</label>
+                <CommuneAutocomplete
+                  value={city}
+                  onChange={setCity}
+                  onSelect={({ zip, city: c }) => { setZipCode(zip); setCity(c) }}
+                  display="city"
+                  className={inp}
+                  placeholder="ex. Paris"
+                />
+              </div>
+              <div>
+                <label className={lbl}>Pays</label>
+                <input className={inp} value={country} onChange={e => setCountry(e.target.value)} placeholder="France" />
+              </div>
+            </div>
           </div>
         )}
 

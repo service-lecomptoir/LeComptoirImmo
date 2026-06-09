@@ -26,7 +26,10 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     # Coordonnées du compte (agence/gestionnaire). Le RIB du bailleur est sur la fiche.
     phone: Optional[str] = None
-    address: Optional[str] = None
+    address: Optional[str] = None  # rue (n° + voie)
+    zip_code: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     # Nom et prénom du propriétaire (bailleur) — pour bail / attestation / tiers payant.
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
@@ -38,7 +41,10 @@ class ProfileUpdate(BaseModel):
     full_name = nom de la résidence ; owner_full_name = nom et prénom du propriétaire."""
     full_name: Optional[str] = None
     phone: Optional[str] = None
-    address: Optional[str] = None
+    address: Optional[str] = None  # rue (n° + voie)
+    zip_code: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     owner_full_name: Optional[str] = None
 
 
@@ -79,6 +85,9 @@ class UserResponse(BaseModel):
     is_active: bool
     phone: Optional[str] = None
     address: Optional[str] = None
+    zip_code: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     owner_full_name: Optional[str] = None
     logo_url: Optional[str] = None
     created_at: datetime

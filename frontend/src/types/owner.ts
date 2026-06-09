@@ -11,6 +11,9 @@ export interface Owner {
   email: string | null
   phone: string | null
   address: string | null
+  zip_code: string | null
+  city: string | null
+  country: string | null
   iban: string | null
   bic: string | null
   bank_holder: string | null
@@ -42,6 +45,9 @@ export interface OwnerCreate {
   email?: string
   phone?: string
   address?: string
+  zip_code?: string
+  city?: string
+  country?: string
   iban?: string
   bic?: string
   bank_holder?: string

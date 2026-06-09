@@ -31,7 +31,11 @@ class User(Base, TimestampMixin):
     # ── Coordonnées (profil — agence/gestionnaire) ────────────────────────────
     # full_name = NOM DE LA RÉSIDENCE (marque/affichage partout).
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    # Adresse postale structurée (même format que les biens) : rue / CP / ville / pays.
+    address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)  # rue (n° + voie)
+    zip_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    city: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    country: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
     # Nom et prénom du propriétaire (bailleur) — utilisé pour le bail, l'attestation
     # de loyer et le formulaire tiers payant. Distinct du nom de la résidence.
     owner_full_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
@@ -58,6 +62,20 @@ class User(Base, TimestampMixin):
     agency_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), nullable=True, index=True
     )
+
+    @property
+    def full_address(self) -> Optional[str]:
+        """Adresse postale recomposée sur une ligne : « rue, CP Ville [, Pays] ».
+        Consommée par la génération de documents (en-tête émetteur). None si vide."""
+        loc = " ".join(p for p in [(self.zip_code or "").strip(), (self.city or "").strip()] if p)
+        country = (self.country or "").strip()
+        parts = [
+            (self.address or "").strip(),
+            loc,
+            country if country and country.lower() != "france" else "",
+        ]
+        joined = ", ".join(p for p in parts if p)
+        return joined or None
 
     def __repr__(self) -> str:
         return f"<User {self.email} [{self.role}]>"

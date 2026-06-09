@@ -117,7 +117,12 @@ export default function OwnerDetail() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" value={owner.email} full />
             <Field label="Téléphone" value={owner.phone} />
-            <Field label="Adresse" value={owner.address} full />
+            <Field
+              label="Adresse"
+              value={[owner.address, [owner.zip_code, owner.city].filter(Boolean).join(' '), owner.country && owner.country.toLowerCase() !== 'france' ? owner.country : '']
+                .filter(Boolean).join(', ') || null}
+              full
+            />
           </div>
         </div>
 

@@ -128,7 +128,7 @@ async def locataire_current_payment(
         if owner:
             payee = {
                 "name": owner.bank_holder or owner.full_name,
-                "address": owner.address,
+                "address": owner.full_address,
                 "iban": owner.iban,
                 "bic": owner.bic,
             }

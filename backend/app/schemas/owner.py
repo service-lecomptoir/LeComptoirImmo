@@ -13,7 +13,10 @@ class OwnerCreate(BaseModel):
     national_id: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    address: Optional[str] = None
+    address: Optional[str] = None  # rue (n° + voie)
+    zip_code: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     iban: Optional[str] = None
     bic: Optional[str] = None
     bank_holder: Optional[str] = None
@@ -49,7 +52,10 @@ class OwnerUpdate(BaseModel):
     national_id: Optional[str] = None
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
-    address: Optional[str] = None
+    address: Optional[str] = None  # rue (n° + voie)
+    zip_code: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     iban: Optional[str] = None
     bic: Optional[str] = None
     bank_holder: Optional[str] = None
@@ -68,6 +74,9 @@ class OwnerResponse(BaseModel):
     email: Optional[str]
     phone: Optional[str]
     address: Optional[str]
+    zip_code: Optional[str] = None
+    city: Optional[str] = None
+    country: Optional[str] = None
     iban: Optional[str]
     bic: Optional[str]
     bank_holder: Optional[str]

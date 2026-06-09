@@ -250,7 +250,7 @@ async def render_saved_document(
         )).scalar_one_or_none()
         if user:
             sender_name = user.full_name or tmpl.company_name or ""
-            sender_addr = getattr(user, "address", "") or tmpl.company_address or ""
+            sender_addr = (getattr(user, "full_address", None) or "") or tmpl.company_address or ""
             sender_company = getattr(user, "owner_company", "") or ""
             sender_national_id = getattr(user, "owner_national_id", "") or ""
     except Exception:
