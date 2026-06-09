@@ -6,6 +6,7 @@ import { Building2 } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { ownersApi } from '@/api/owners'
+import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import type { Owner } from '@/types/owner'
 
 const schema = z.object({
@@ -202,7 +203,14 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
             <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
           </div>
           <div className="mt-3">
-            <OwnerField label="Adresse (chèque / espèces)" name="address" placeholder="12 rue de la République, 75001 Paris" register={register} errors={errors} />
+            <label className="block text-xs font-medium text-gray-700 mb-1">Adresse (chèque / espèces)</label>
+            <AddressAutocomplete
+              value={watch('address') || ''}
+              onChange={v => setValue('address', v)}
+              onSelect={({ label }) => setValue('address', label)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="12 rue de la République, 75001 Paris"
+            />
           </div>
         </div>
 

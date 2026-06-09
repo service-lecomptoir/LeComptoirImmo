@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/api/client'
+import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import {
   Phone, Mail, MapPin, Star, Plus, Search,
   Trash2, Edit2, Building2, Wrench, Zap, Paintbrush,
@@ -159,8 +160,17 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
-            <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.address}
-              onChange={e => setForm({ ...form, address: e.target.value })} />
+            <AddressAutocomplete
+              value={form.address}
+              onChange={v => setForm({ ...form, address: v })}
+              onSelect={({ street, postcode, city }) => setForm(f => ({
+                ...f,
+                address: street,
+                zip_code: postcode || f.zip_code,
+                city: city || f.city,
+              }))}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

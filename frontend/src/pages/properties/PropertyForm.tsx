@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { UserRound, Plus, X, AlertTriangle } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
+import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import { propertiesApi } from '@/api/properties'
 import { ownersApi } from '@/api/owners'
 import { useAuthStore } from '@/store/authStore'
@@ -164,9 +165,10 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
 
   const selectedOwnerId = watch('owner_id')
 
-  // Code postal / ville sont pilotés par CommuneAutocomplete (setValue) → on les
-  // enregistre manuellement auprès de react-hook-form (plus d'input register()).
+  // Adresse / code postal / ville sont pilotés par les autocomplétions (setValue)
+  // → on les enregistre manuellement auprès de react-hook-form.
   useEffect(() => {
+    register('address')
     register('zip_code')
     register('city')
   }, [register])
@@ -294,7 +296,18 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
           <div className="space-y-3">
             <div>
               <label className={lbl}>Adresse <span className="text-red-500">*</span></label>
-              <input {...register('address')} className={inp} placeholder="10 rue de la Paix" />
+              <AddressAutocomplete
+                value={watch('address') || ''}
+                onChange={v => { setValue('address', v, { shouldValidate: true }); clearErrors('address') }}
+                onSelect={({ street, postcode, city }) => {
+                  setValue('address', street, { shouldValidate: true })
+                  if (postcode) setValue('zip_code', postcode, { shouldValidate: true })
+                  if (city) setValue('city', city, { shouldValidate: true })
+                  clearErrors(['address', 'zip_code', 'city'])
+                }}
+                className={inp}
+                placeholder="10 rue de la Paix"
+              />
               {errors.address && <p className={err}>{errors.address.message}</p>}
             </div>
             <div>
