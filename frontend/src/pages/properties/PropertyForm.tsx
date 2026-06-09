@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { UserRound, Plus, X, AlertTriangle } from 'lucide-react'
+import { UserRound, Plus, X, AlertTriangle, Building2, MapPin, Ruler, Sparkles, FileText, Home, Store, Boxes } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
@@ -111,6 +111,24 @@ function CreateOwnerPanel({ onCreated, onCancel }: CreateOwnerPanelProps) {
   )
 }
 
+// ─── En-tête de section (icône + titre) ────────────────────────────────────────
+function SectionTitle({ icon: Icon, children }: { icon: typeof Building2; children: React.ReactNode }) {
+  return (
+    <h3 className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+      <Icon size={14} className="text-blue-500" />
+      {children}
+    </h3>
+  )
+}
+
+// Types de bien présentés en cartes cliquables (plus lisible qu'un <select>).
+const PROPERTY_TYPE_CARDS: { value: FormData['property_type']; label: string; icon: typeof Home }[] = [
+  { value: 'appartement', label: 'Appartement', icon: Building2 },
+  { value: 'maison', label: 'Maison', icon: Home },
+  { value: 'local_commercial', label: 'Local commercial', icon: Store },
+  { value: 'autre', label: 'Autre', icon: Boxes },
+]
+
 // ─── Main form ────────────────────────────────────────────────────────────────
 export function PropertyForm({ property, onClose, onSaved }: Props) {
   const isEdit = !!property
@@ -168,6 +186,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
   // Adresse / code postal / ville sont pilotés par les autocomplétions (setValue)
   // → on les enregistre manuellement auprès de react-hook-form.
   useEffect(() => {
+    register('property_type')
     register('address')
     register('zip_code')
     register('city')
@@ -273,26 +292,38 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
           </div>
         )}
         {/* Identification */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="col-span-2">
+        <div>
+          <div className="mb-4">
             <label className={lbl}>Nom du bien <span className="text-red-500">*</span></label>
             <input {...register('name')} className={inp} placeholder="ex. Résidence Les Acacias, Appt 3B..." />
             {errors.name && <p className={err}>{errors.name.message}</p>}
           </div>
-          <div>
-            <label className={lbl}>Type de bien <span className="text-red-500">*</span></label>
-            <select {...register('property_type')} className={inp}>
-              <option value="appartement">Appartement</option>
-              <option value="maison">Maison</option>
-              <option value="local_commercial">Local commercial</option>
-              <option value="autre">Autre</option>
-            </select>
+          <label className={lbl}>Type de bien <span className="text-red-500">*</span></label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {PROPERTY_TYPE_CARDS.map(({ value, label, icon: Icon }) => {
+              const active = watch('property_type') === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setValue('property_type', value, { shouldValidate: true })}
+                  className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-xs font-medium transition-colors ${
+                    active
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon size={18} className={active ? 'text-blue-600' : 'text-gray-400'} />
+                  {label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
         {/* Adresse */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Adresse</h3>
+          <SectionTitle icon={MapPin}>Adresse</SectionTitle>
           <div className="space-y-3">
             <div>
               <label className={lbl}>Adresse <span className="text-red-500">*</span></label>
@@ -357,7 +388,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
 
         {/* Caractéristiques du bien */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Caractéristiques</h3>
+          <SectionTitle icon={Ruler}>Caractéristiques</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className={lbl}>Type (nombre de pièces)</label>
@@ -392,7 +423,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
               <label className={lbl}>Classe énergie (DPE)</label>
               <select {...register('energy_class')} className={inp}>
                 <option value="">— Sélectionner —</option>
-                {ENERGY_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                {ENERGY_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
           </div>
@@ -400,7 +431,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
 
         {/* Équipements & extérieurs */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Équipements & extérieurs</h3>
+          <SectionTitle icon={Sparkles}>Équipements & extérieurs</SectionTitle>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {AMENITIES.map(a => (
               <label key={a.key} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 text-sm text-gray-700">
@@ -419,9 +450,9 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
           </div>
         ) : (
           <div>
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            <SectionTitle icon={UserRound}>
               Propriétaire <span className="text-red-500 font-normal normal-case">*</span>
-            </h3>
+            </SectionTitle>
 
             {!showCreateOwner ? (
               <div className="flex gap-2">
@@ -460,9 +491,9 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
 
         {/* Notes */}
         <div>
-          <label className={lbl}>Notes</label>
+          <SectionTitle icon={FileText}>Notes internes</SectionTitle>
           <textarea {...register('notes')} rows={2}
-            className={`${inp} resize-none`} />
+            className={`${inp} resize-none`} placeholder="Informations internes (non visibles par le locataire)…" />
         </div>
       </form>
     </Modal>

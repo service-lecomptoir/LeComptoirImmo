@@ -35,8 +35,30 @@ describe('Typologie', () => {
 })
 
 describe('DPE', () => {
-  it('couvre les classes A à G', () => {
-    expect(ENERGY_CLASSES).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G'])
+  it('couvre les classes A à G + « non soumis » (NS)', () => {
+    expect(ENERGY_CLASSES.map(c => c.value)).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'NS'])
+  })
+
+  it('a des valeurs ≤ 2 caractères (contrainte colonne energy_class VARCHAR(2)) et des libellés non vides', () => {
+    for (const c of ENERGY_CLASSES) {
+      expect(c.value.length).toBeLessThanOrEqual(2)
+      expect(c.label.trim().length).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('Chauffage — couverture du parc', () => {
+  it('inclut fioul, bois/granulés et réseau urbain', () => {
+    const values = HEATING_OPTIONS.map(h => h.value)
+    expect(values).toContain('fioul')
+    expect(values).toContain('bois_granules')
+    expect(values).toContain('reseau_urbain')
+  })
+
+  it('a des valeurs ≤ 30 caractères (contrainte colonne heating_type VARCHAR(30))', () => {
+    for (const h of HEATING_OPTIONS) {
+      expect(h.value.length).toBeLessThanOrEqual(30)
+    }
   })
 })
 
