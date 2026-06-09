@@ -1,14 +1,14 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, model_validator
 from app.models.tenant import Civility
 
 
 class OwnerCreate(BaseModel):
     civility: Optional[Civility] = None
     first_name: Optional[str] = None
-    last_name: str
+    last_name: Optional[str] = None
     company_name: Optional[str] = None
     national_id: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -20,12 +20,25 @@ class OwnerCreate(BaseModel):
     notes: Optional[str] = None
     user_id: Optional[uuid.UUID] = None  # Compte de connexion (optionnel)
 
-    @field_validator("last_name")
-    @classmethod
-    def not_empty(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Le nom ne peut pas être vide")
-        return v.strip()
+    @model_validator(mode="after")
+    def check_identity(self):
+        # Une fiche est valide si elle identifie soit une PERSONNE (prénom + nom),
+        # soit une PERSONNE MORALE (société + SIREN/SIRET). `last_name` est NOT NULL
+        # en base : à défaut de nom de personne, on y recopie la société (le
+        # full_name affiche déjà la société en priorité → aucun impact d'affichage).
+        first = (self.first_name or "").strip()
+        last = (self.last_name or "").strip()
+        company = (self.company_name or "").strip()
+        siren = (self.national_id or "").strip()
+        person_ok = bool(first and last)
+        company_ok = bool(company and siren)
+        if not person_ok and not company_ok:
+            raise ValueError(
+                "Renseignez soit le prénom ET le nom, soit la société ET le SIREN/SIRET."
+            )
+        if not last and company:
+            self.last_name = company
+        return self
 
 
 class OwnerUpdate(BaseModel):

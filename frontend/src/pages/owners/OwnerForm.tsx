@@ -11,7 +11,7 @@ import type { Owner } from '@/types/owner'
 const schema = z.object({
   civility: z.enum(['M', 'Mme', 'Autre']).optional(),
   first_name: z.string().optional(),
-  last_name: z.string().min(1, 'Nom / dénomination requis'),
+  last_name: z.string().optional(),
   company_name: z.string().optional(),
   national_id: z.string().optional(),
   email: z.string().email('Email invalide').optional().or(z.literal('')),
@@ -21,7 +21,15 @@ const schema = z.object({
   bic: z.string().optional(),
   bank_holder: z.string().optional(),
   notes: z.string().optional(),
-})
+}).refine(
+  // Identité valide = personne (prénom + nom) OU personne morale (société + SIREN).
+  (d) => (!!d.first_name?.trim() && !!d.last_name?.trim())
+      || (!!d.company_name?.trim() && !!d.national_id?.trim()),
+  {
+    message: 'Renseignez soit le prénom et le nom, soit la société et le SIREN/SIRET.',
+    path: ['last_name'],
+  },
+)
 
 type FormData = z.infer<typeof schema>
 
@@ -99,7 +107,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
     const payload: any = {
       civility: data.civility || null,
       first_name: clean(data.first_name),
-      last_name: (data.last_name ?? '').trim(),
+      last_name: clean(data.last_name),
       company_name: clean(data.company_name),
       national_id: clean(data.national_id),
       email: clean(data.email),
@@ -174,11 +182,15 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
               </select>
             </div>
             <OwnerField label="Prénom" name="first_name" register={register} errors={errors} />
-            <OwnerField label="Nom" name="last_name" required register={register} errors={errors} />
+            <OwnerField label="Nom" name="last_name" register={register} errors={errors} />
           </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Renseignez <span className="font-medium">soit</span> le prénom et le nom (personne),
+            <span className="font-medium"> soit</span> la société et le SIREN/SIRET (personne morale).
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            <OwnerField label="Société / SCI (le cas échéant)" name="company_name" placeholder="SCI Les Tilleuls" register={register} errors={errors} />
-            <OwnerField label="SIRET / N° pièce" name="national_id" register={register} errors={errors} />
+            <OwnerField label="Société / SCI" name="company_name" placeholder="SCI Les Tilleuls" register={register} errors={errors} />
+            <OwnerField label="SIREN / SIRET" name="national_id" register={register} errors={errors} />
           </div>
         </div>
 
