@@ -356,7 +356,9 @@ export default function PropertyList() {
 
               {/* Propriétaire + actions */}
               <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
-                <span className="text-xs text-gray-600 truncate">{prop.owner_name || '—'}</span>
+                <span className="text-xs text-gray-600 truncate">
+                  <span className="text-gray-400">Propriétaire : </span>{prop.owner_name || '—'}
+                </span>
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                   <button
                     onClick={() => openEdit(prop.id)}
