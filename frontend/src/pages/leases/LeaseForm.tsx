@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { UserRound, Plus, X } from 'lucide-react'
+import { UserRound, Plus, X, Building2, Users, FileSignature, Euro } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
+import { SectionTitle } from '@/components/common/SectionTitle'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
@@ -233,7 +234,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
 
         {/* ── Bien & logement ── */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Bien immobilier</h3>
+          <SectionTitle icon={Building2}>Bien immobilier</SectionTitle>
           <div>
             <label className={lbl}>Bien immobilier <span className="text-red-500">*</span></label>
             <select
@@ -255,7 +256,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
 
         {/* ── Locataire ── */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Locataire</h3>
+          <SectionTitle icon={UserRound}>Locataire</SectionTitle>
           {!showCreateTenant ? (
             <div className="flex gap-2">
               <select
@@ -286,7 +287,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
 
         {/* ── Co-titulaires (optionnel) ── */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Co-titulaires (optionnel)</h3>
+          <SectionTitle icon={Users}>Co-titulaires (optionnel)</SectionTitle>
           <p className="text-xs text-gray-400 mb-2">
             Locataires secondaires, solidaires du bail. Ils apparaîtront sur l'avis d'échéance, la quittance et le bail.
           </p>
@@ -338,7 +339,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
 
         {/* ── Type et dates ── */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contrat</h3>
+          <SectionTitle icon={FileSignature}>Contrat</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className={lbl}>Type de bail <span className="text-red-500">*</span></label>
@@ -363,7 +364,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
 
         {/* ── Finances ── */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Finances</h3>
+          <SectionTitle icon={Euro}>Finances</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className={lbl}>Loyer HC (€) <span className="text-red-500">*</span></label>
