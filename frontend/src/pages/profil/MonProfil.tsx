@@ -29,6 +29,8 @@ export default function MonProfil() {
   const [lastName, setLastName] = useState(splitName(user?.full_name).last)
   const [ownerFirstName, setOwnerFirstName] = useState(splitName(user?.owner_full_name).first)
   const [ownerLastName, setOwnerLastName] = useState(splitName(user?.owner_full_name).last)
+  const [ownerCompany, setOwnerCompany] = useState(user?.owner_company ?? '')
+  const [ownerNationalId, setOwnerNationalId] = useState(user?.owner_national_id ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [address, setAddress] = useState(user?.address ?? '')
@@ -58,6 +60,7 @@ export default function MonProfil() {
   const isLocataire = user?.role === 'locataire'
   // Domaines e-mail autorisés : pour les comptes qui envoient des communications.
   const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
+  const isGP = user?.role === 'gestionnaire_proprio'
   const [domains, setDomains] = useState<EmailDomain[]>([])
   const [newDomain, setNewDomain] = useState('')
   const [domainErr, setDomainErr] = useState<string | null>(null)
@@ -227,7 +230,12 @@ export default function MonProfil() {
           city: city || null,
           country: country || null,
         }),
-        ...(isManager ? { owner_full_name: joinName(ownerFirstName, ownerLastName) || null } : {}),
+        ...(isManager ? {
+          // GP = personne bailleur ; mandataire = pas de nom/prénom de propriétaire.
+          owner_full_name: isGP ? (joinName(ownerFirstName, ownerLastName) || null) : null,
+          owner_company: ownerCompany.trim() || null,
+          owner_national_id: ownerNationalId.trim() || null,
+        } : {}),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
       if (showRib && ownerId) {
@@ -303,12 +311,20 @@ export default function MonProfil() {
             </div>
           </div>
         )}
+        {/* Identité bailleur. Mandataire = société/SIREN (ce n'est pas un propriétaire).
+            GP = personne (Nom/Prénom) + société/SCI + SIREN, comme dans Alice. */}
         {isManager && (
           <div>
-            <label className={lbl}>Nom et prénom du propriétaire</label>
+            <label className={lbl}>{isGP ? 'Propriétaire (bailleur)' : 'Société (mandataire)'}</label>
+            {isGP && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <input className={inp} value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)} placeholder="Prénom" />
+                <input className={inp} value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)} placeholder="Nom" />
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input className={inp} value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)} placeholder="Prénom" />
-              <input className={inp} value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)} placeholder="Nom" />
+              <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder={isGP ? 'Société / SCI (le cas échéant)' : 'Société'} />
+              <input className={inp} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="SIREN / SIRET" />
             </div>
             <p className="text-xs text-gray-400 mt-1">Utilisé comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
           </div>
@@ -519,13 +535,21 @@ export default function MonProfil() {
           </ul>
 
           {tgStatus?.linked ? (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-              <div className="flex items-center gap-2 text-sm text-emerald-800">
-                <Check size={15} className="text-emerald-600" />
-                Telegram est connecté{tgStatus.bot_username ? <> à <span className="font-medium">@{tgStatus.bot_username}</span></> : null}. Écrivez « aide » au bot pour commencer ; vous recevez aussi chaque matin un « point du jour ».
+            <div className="flex items-start justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+              <div className="flex items-start gap-2 text-sm text-emerald-800 min-w-0">
+                <Check size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <p>
+                    Telegram est connecté{tgStatus.bot_username ? <> à <span className="font-semibold">@{tgStatus.bot_username}</span></> : null}.
+                  </p>
+                  <p className="mt-1 text-emerald-700">
+                    Écrivez <span className="font-semibold">« aide »</span> au bot pour commencer. Vous recevez aussi
+                    chaque matin un <span className="font-semibold">point du jour</span>.
+                  </p>
+                </div>
               </div>
               <button onClick={unlinkTg} disabled={tgBusy}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 whitespace-nowrap">
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 whitespace-nowrap shrink-0">
                 <Unlink size={14} /> Délier
               </button>
             </div>

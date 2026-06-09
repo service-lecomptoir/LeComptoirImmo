@@ -45,7 +45,10 @@ class ProfileUpdate(BaseModel):
     zip_code: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
+    # Identité bailleur : nom/prénom (GP) + société/SCI + SIREN/SIRET (mandataire ET GP).
     owner_full_name: Optional[str] = None
+    owner_company: Optional[str] = None
+    owner_national_id: Optional[str] = None
 
 
 class UserRoleUpdate(BaseModel):
@@ -89,6 +92,8 @@ class UserResponse(BaseModel):
     city: Optional[str] = None
     country: Optional[str] = None
     owner_full_name: Optional[str] = None
+    owner_company: Optional[str] = None
+    owner_national_id: Optional[str] = None
     logo_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime

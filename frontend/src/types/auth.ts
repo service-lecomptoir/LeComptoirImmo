@@ -12,6 +12,8 @@ export interface User {
   city?: string | null
   country?: string | null
   owner_full_name?: string | null
+  owner_company?: string | null
+  owner_national_id?: string | null
   logo_url?: string | null
   created_at: string
   updated_at: string
