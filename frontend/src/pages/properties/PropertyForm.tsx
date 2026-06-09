@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { UserRound, Plus, X, AlertTriangle, Building2, MapPin, Ruler, Sparkles, FileText, Home, Store, Boxes } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
+import { SectionTitle } from '@/components/common/SectionTitle'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import { propertiesApi } from '@/api/properties'
@@ -108,16 +109,6 @@ function CreateOwnerPanel({ onCreated, onCancel }: CreateOwnerPanelProps) {
         {loading ? 'Création...' : 'Créer et lier la fiche'}
       </button>
     </div>
-  )
-}
-
-// ─── En-tête de section (icône + titre) ────────────────────────────────────────
-function SectionTitle({ icon: Icon, children }: { icon: typeof Building2; children: React.ReactNode }) {
-  return (
-    <h3 className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-      <Icon size={14} className="text-blue-500" />
-      {children}
-    </h3>
   )
 }
 

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Building2 } from 'lucide-react'
+import { Building2, Contact, Phone, Landmark } from 'lucide-react'
+import { SectionTitle } from '@/components/common/SectionTitle'
 import { Modal } from '@/components/common/Modal'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { ownersApi } from '@/api/owners'
@@ -171,7 +172,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
 
         {/* Identité */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Identité</h3>
+          <SectionTitle icon={Contact}>Identité</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
@@ -197,7 +198,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
 
         {/* Contact */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact</h3>
+          <SectionTitle icon={Phone}>Contact</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <OwnerField label="Email" name="email" type="email" register={register} errors={errors} />
             <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
@@ -216,8 +217,8 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
 
         {/* Coordonnées bancaires */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Coordonnées bancaires (RIB)</h3>
-          <p className="text-xs text-gray-400 mb-3">Communiquées au locataire pour le règlement du loyer.</p>
+          <SectionTitle icon={Landmark}>Coordonnées bancaires (RIB)</SectionTitle>
+          <p className="-mt-2 text-xs text-gray-400 mb-3">Communiquées au locataire pour le règlement du loyer.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div className="col-span-3">
               <OwnerField label="Titulaire du compte" name="bank_holder" register={register} errors={errors} />

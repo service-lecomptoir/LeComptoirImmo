@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { UserRound, Plus, X } from 'lucide-react'
+import { UserRound, Plus, X, Contact, Phone, Briefcase, FileText } from 'lucide-react'
 import { Modal } from '@/components/common/Modal'
+import { SectionTitle } from '@/components/common/SectionTitle'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { tenantsApi } from '@/api/tenants'
 import { usersApi } from '@/api/users'
@@ -28,6 +29,22 @@ const schema = z.object({
 })
 
 type FormData = z.infer<typeof schema>
+
+// Sources de revenus courantes (champ informatif — stocké en texte côté API).
+const INCOME_SOURCES = [
+  'Salaire (CDI)',
+  'Salaire (CDD)',
+  'Intérim',
+  'Indépendant / profession libérale',
+  'Chef d’entreprise / dirigeant',
+  'Retraite',
+  'Pension / rente',
+  'Allocations (CAF, chômage…)',
+  'Revenus fonciers',
+  'Bourse étudiante',
+  'Garant / caution solidaire',
+  'Autre',
+] as const
 
 // ─── Field helper — must be defined at module level (outside TenantForm)
 // so React never treats it as a new component type on re-render, which would
@@ -267,7 +284,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
 
         {/* Identité */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Identité</h3>
+          <SectionTitle icon={Contact}>Identité</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
@@ -290,7 +307,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
 
         {/* Contact */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact</h3>
+          <SectionTitle icon={Phone}>Contact</SectionTitle>
           <div className="space-y-3">
             {/* Email en pleine largeur — une adresse longue reste entièrement visible */}
             <TenantField label="Email" name="email" type="email" register={register} errors={errors} />
@@ -302,20 +319,27 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
 
         {/* Situation professionnelle */}
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Situation professionnelle</h3>
+          <SectionTitle icon={Briefcase}>Situation professionnelle</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <TenantField label="Employeur" name="employer" register={register} errors={errors} />
             <PhoneField label="Tél. employeur" value={watch('employer_phone') || ''} onChange={v => setValue('employer_phone', v)} />
             <TenantField label="Revenu mensuel (€)" name="monthly_income" type="number" register={register} errors={errors} />
           </div>
           <div className="mt-3">
-            <TenantField label="Source de revenus" name="income_source" register={register} errors={errors} />
+            <label className="block text-xs font-medium text-gray-700 mb-1">Source de revenus</label>
+            <select
+              {...register('income_source')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— Sélectionner —</option>
+              {INCOME_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
         </div>
 
         {/* Notes */}
         <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+          <SectionTitle icon={FileText}>Notes</SectionTitle>
           <textarea
             {...register('notes')}
             rows={3}
