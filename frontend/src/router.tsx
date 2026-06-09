@@ -1,54 +1,69 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { useAuthStore, roleHomePath } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed, firstAllowedPath } from '@/lib/features'
+// Login & Landing restent en import direct : ils servent au tout premier rendu
+// (avant authentification) → pas de bénéfice à les différer.
 import Login from '@/pages/Login'
 import Landing from '@/pages/Landing'
-import Dashboard from '@/pages/Dashboard'
-import TenantList from '@/pages/tenants/TenantList'
-import TenantDetail from '@/pages/tenants/TenantDetail'
-import OwnerList from '@/pages/owners/OwnerList'
-import OwnerDetail from '@/pages/owners/OwnerDetail'
-import PropertyList from '@/pages/properties/PropertyList'
-import PropertyDetail from '@/pages/properties/PropertyDetail'
-import LeaseList from '@/pages/leases/LeaseList'
-import LeaseDetail from '@/pages/leases/LeaseDetail'
-import PaymentList from '@/pages/payments/PaymentList'
-import NotificationList from '@/pages/notifications/NotificationList'
-import AdminUsers from '@/pages/admin/AdminUsers'
-import AvisEcheanceList from '@/pages/avis-echeances/AvisEcheanceList'
-import ContactList from '@/pages/contacts/ContactList'
-import Automatisation from '@/pages/automatisation/Automatisation'
-import TemplateEditor from '@/pages/templates/TemplateEditor'
-import ProprietaireDashboard from '@/pages/proprietaire/ProprietaireDashboard'
-import ProprietaireBiens from '@/pages/proprietaire/ProprietaireBiens'
-import ProprietaireLocataires from '@/pages/proprietaire/ProprietaireLocataires'
-import ProprietaireRevenus from '@/pages/proprietaire/ProprietaireRevenus'
-import ProprietaireFiscal from '@/pages/proprietaire/ProprietaireFiscal'
-import LocataireDashboard from '@/pages/locataire/LocataireDashboard'
-import LocataireAvis from '@/pages/locataire/LocataireAvis'
-import LocatairePaiements from '@/pages/locataire/LocatairePaiements'
-import LocataireDocuments from '@/pages/locataire/LocataireDocuments'
-import LocataireMessages from '@/pages/locataire/LocataireMessages'
-import LocatairePayer from '@/pages/locataire/LocatairePayer'
-import IncidentList from '@/pages/incidents/IncidentList'
-import EntretienList from '@/pages/entretien/EntretienList'
-import ProprietaireEntretien from '@/pages/proprietaire/ProprietaireEntretien'
-import ProprietaireIncidents from '@/pages/proprietaire/ProprietaireIncidents'
-import ProprietaireMessages from '@/pages/proprietaire/ProprietaireMessages'
-import QuittanceList from '@/pages/quittances/QuittanceList'
-import OffersManager from '@/pages/offers/OffersManager'
-import LocataireOffres from '@/pages/locataire/LocataireOffres'
-import MonAbonnement from '@/pages/subscription/MonAbonnement'
-import MonProfil from '@/pages/profil/MonProfil'
-import GuideUtilisateur from '@/pages/guide/GuideUtilisateur'
-import ScoringList from '@/pages/scoring/ScoringList'
-import FinancesParProprietaire from '@/pages/finances/FinancesParProprietaire'
-import Actualisation from '@/pages/actualisation/Actualisation'
-import DocumentsCaf from '@/pages/documents-caf/DocumentsCaf'
+
+// ── Pages authentifiées : chargées à la demande (code-splitting) ──────────────
+// Chaque route ne télécharge son JS que lorsqu'on y navigue → bundle initial
+// bien plus léger, premier affichage plus rapide.
+const Dashboard = lazy(() => import('@/pages/Dashboard'))
+const TenantList = lazy(() => import('@/pages/tenants/TenantList'))
+const TenantDetail = lazy(() => import('@/pages/tenants/TenantDetail'))
+const OwnerList = lazy(() => import('@/pages/owners/OwnerList'))
+const OwnerDetail = lazy(() => import('@/pages/owners/OwnerDetail'))
+const PropertyList = lazy(() => import('@/pages/properties/PropertyList'))
+const PropertyDetail = lazy(() => import('@/pages/properties/PropertyDetail'))
+const LeaseList = lazy(() => import('@/pages/leases/LeaseList'))
+const LeaseDetail = lazy(() => import('@/pages/leases/LeaseDetail'))
+const PaymentList = lazy(() => import('@/pages/payments/PaymentList'))
+const NotificationList = lazy(() => import('@/pages/notifications/NotificationList'))
+const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers'))
+const AvisEcheanceList = lazy(() => import('@/pages/avis-echeances/AvisEcheanceList'))
+const ContactList = lazy(() => import('@/pages/contacts/ContactList'))
+const Automatisation = lazy(() => import('@/pages/automatisation/Automatisation'))
+const TemplateEditor = lazy(() => import('@/pages/templates/TemplateEditor'))
+const ProprietaireDashboard = lazy(() => import('@/pages/proprietaire/ProprietaireDashboard'))
+const ProprietaireBiens = lazy(() => import('@/pages/proprietaire/ProprietaireBiens'))
+const ProprietaireLocataires = lazy(() => import('@/pages/proprietaire/ProprietaireLocataires'))
+const ProprietaireRevenus = lazy(() => import('@/pages/proprietaire/ProprietaireRevenus'))
+const ProprietaireFiscal = lazy(() => import('@/pages/proprietaire/ProprietaireFiscal'))
+const LocataireDashboard = lazy(() => import('@/pages/locataire/LocataireDashboard'))
+const LocataireAvis = lazy(() => import('@/pages/locataire/LocataireAvis'))
+const LocatairePaiements = lazy(() => import('@/pages/locataire/LocatairePaiements'))
+const LocataireDocuments = lazy(() => import('@/pages/locataire/LocataireDocuments'))
+const LocataireMessages = lazy(() => import('@/pages/locataire/LocataireMessages'))
+const LocatairePayer = lazy(() => import('@/pages/locataire/LocatairePayer'))
+const IncidentList = lazy(() => import('@/pages/incidents/IncidentList'))
+const EntretienList = lazy(() => import('@/pages/entretien/EntretienList'))
+const ProprietaireEntretien = lazy(() => import('@/pages/proprietaire/ProprietaireEntretien'))
+const ProprietaireIncidents = lazy(() => import('@/pages/proprietaire/ProprietaireIncidents'))
+const ProprietaireMessages = lazy(() => import('@/pages/proprietaire/ProprietaireMessages'))
+const QuittanceList = lazy(() => import('@/pages/quittances/QuittanceList'))
+const OffersManager = lazy(() => import('@/pages/offers/OffersManager'))
+const LocataireOffres = lazy(() => import('@/pages/locataire/LocataireOffres'))
+const MonAbonnement = lazy(() => import('@/pages/subscription/MonAbonnement'))
+const MonProfil = lazy(() => import('@/pages/profil/MonProfil'))
+const GuideUtilisateur = lazy(() => import('@/pages/guide/GuideUtilisateur'))
+const ScoringList = lazy(() => import('@/pages/scoring/ScoringList'))
+const FinancesParProprietaire = lazy(() => import('@/pages/finances/FinancesParProprietaire'))
+const Actualisation = lazy(() => import('@/pages/actualisation/Actualisation'))
+const DocumentsCaf = lazy(() => import('@/pages/documents-caf/DocumentsCaf'))
+
+// Indicateur de chargement pendant le téléchargement d'une page différée (lazy).
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+    </div>
+  )
+}
 
 function RoleBasedRedirect() {
   const { user, isAuthenticated } = useAuthStore()
@@ -108,7 +123,9 @@ function AppLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuClick={() => setNavOpen(true)} />
         <main ref={mainRef} className="flex-1 overflow-auto">
-          <Outlet />
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

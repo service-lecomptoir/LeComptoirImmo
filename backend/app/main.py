@@ -371,6 +371,35 @@ async def _apply_column_migrations() -> None:
         """,
         # Orphelins (created_by cassé/cyclique) → leur propre agence.
         "UPDATE users SET agency_id = id WHERE agency_id IS NULL",
+        # ── Index de performance sur les clés étrangères « chaudes » ─────────────
+        # PostgreSQL n'indexe PAS automatiquement les FK. Ces colonnes servent de
+        # filtre dans la quasi-totalité des listes (par bail, bien, locataire,
+        # propriétaire, créateur) → index B-tree pour éviter les seq scans.
+        "CREATE INDEX IF NOT EXISTS ix_properties_owner_id ON properties (owner_id)",
+        "CREATE INDEX IF NOT EXISTS ix_properties_owner_user_id ON properties (owner_user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_properties_created_by ON properties (created_by)",
+        "CREATE INDEX IF NOT EXISTS ix_leases_property_id ON leases (property_id)",
+        "CREATE INDEX IF NOT EXISTS ix_leases_tenant_id ON leases (tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_leases_created_by ON leases (created_by)",
+        "CREATE INDEX IF NOT EXISTS ix_payments_lease_id ON payments (lease_id)",
+        "CREATE INDEX IF NOT EXISTS ix_payments_tenant_id ON payments (tenant_id)",
+        # NB : avis_echeances.lease_id/tenant_id déjà indexés par le modèle (index=True).
+        "CREATE INDEX IF NOT EXISTS ix_tenants_created_by ON tenants (created_by)",
+        "CREATE INDEX IF NOT EXISTS ix_tenants_user_id ON tenants (user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_owners_created_by ON owners (created_by)",
+        "CREATE INDEX IF NOT EXISTS ix_owners_user_id ON owners (user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_contacts_created_by ON contacts (created_by)",
+        "CREATE INDEX IF NOT EXISTS ix_lease_tenants_tenant_id ON lease_tenants (tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_tickets_lease_id ON tickets (lease_id)",
+        "CREATE INDEX IF NOT EXISTS ix_inspections_lease_id ON inspections (lease_id)",
+        "CREATE INDEX IF NOT EXISTS ix_inspections_property_id ON inspections (property_id)",
+        "CREATE INDEX IF NOT EXISTS ix_entretiens_prestataire_id ON entretiens (prestataire_id)",
+        "CREATE INDEX IF NOT EXISTS ix_notifications_user_id ON notifications (user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_audit_logs_user_id ON audit_logs (user_id)",
+        # NB : payments & avis_echeances ont déjà une UNIQUE(lease_id, period_year,
+        # period_month) → l'index couvrant ce pattern existe déjà (pas de doublon).
+        # Liste des notifications d'un utilisateur, non lues d'abord, plus récentes en tête.
+        "CREATE INDEX IF NOT EXISTS ix_notifications_user_read_created ON notifications (user_id, is_read, created_at DESC)",
     ]
     try:
         async with engine.begin() as conn:

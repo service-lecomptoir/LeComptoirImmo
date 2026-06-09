@@ -8,7 +8,7 @@ import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
 import type { Role } from '@/types/auth'
 import clsx from 'clsx'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 // ── Skeleton commun ───────────────────────────────────────────────────────────
 
@@ -194,21 +194,23 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     if (isGestionnaire) loadFeatures()
   }, [isGestionnaire, loadFeatures])
 
-  const getNavItems = (): NavItem[] => (user ? navForRole(user.role) : [])
-
-  const roleFiltered = getNavItems().filter(
-    (item) => !item.roles || item.roles.includes(user?.role as Role)
-  )
-  // Masque les entrées dont la fonctionnalité n'est pas incluse dans le plan.
-  const featureFiltered = roleFiltered.filter(
-    (item) => item.isSeparator || isFeatureAllowed(features, featureForPath(item.to ?? ''))
-  )
-  // Retire les séparateurs orphelins (plus aucune entrée à leur suite).
-  const filteredItems = featureFiltered.filter((item, idx) => {
-    if (!item.isSeparator) return true
-    const next = featureFiltered[idx + 1]
-    return !!next && !next.isSeparator
-  })
+  // Liste de navigation : filtrée par rôle puis par plan, séparateurs orphelins
+  // retirés. Mémoïsée — ne se recalcule que si le rôle ou les features changent
+  // (et non à chaque rendu, ex. ouverture/fermeture du menu mobile).
+  const filteredItems = useMemo<NavItem[]>(() => {
+    const items = user ? navForRole(user.role) : []
+    const roleFiltered = items.filter(
+      (item) => !item.roles || item.roles.includes(user?.role as Role)
+    )
+    const featureFiltered = roleFiltered.filter(
+      (item) => item.isSeparator || isFeatureAllowed(features, featureForPath(item.to ?? ''))
+    )
+    return featureFiltered.filter((item, idx) => {
+      if (!item.isSeparator) return true
+      const next = featureFiltered[idx + 1]
+      return !!next && !next.isSeparator
+    })
+  }, [user, features])
 
   // ── Header sidebar ────────────────────────────────────────────────────────
   const renderHeader = () => {
