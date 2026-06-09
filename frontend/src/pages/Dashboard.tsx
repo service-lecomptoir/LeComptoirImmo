@@ -239,11 +239,11 @@ export default function Dashboard() {
           <div className="flex justify-around mt-3 text-center">
             <div>
               <p className="text-lg font-bold text-blue-600">{stats.occupancy.occupied_units}</p>
-              <p className="text-xs text-gray-400">Occupées</p>
+              <p className="text-xs text-gray-400">{stats.occupancy.occupied_units > 1 ? 'Occupées' : 'Occupée'}</p>
             </div>
             <div>
               <p className="text-lg font-bold text-gray-400">{stats.occupancy.vacant_units}</p>
-              <p className="text-xs text-gray-400">Vacantes</p>
+              <p className="text-xs text-gray-400">{stats.occupancy.vacant_units > 1 ? 'Vacantes' : 'Vacante'}</p>
             </div>
           </div>
         </div>
