@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Edit, FileDown, XCircle,
   Home, User, Calendar, CreditCard, ShieldCheck, StickyNote, ClipboardList, Plus,
-  HeartHandshake, Trash2,
+  HeartHandshake, Trash2, DoorOpen,
 } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import { scoringApi, type RelationEvent, type EventKind } from '@/api/scoring'
@@ -325,6 +325,16 @@ export default function LeaseDetail() {
           >
             <FileDown size={15} /> {pdfLoading ? 'Génération…' : 'Bail non meublé'}
           </button>
+          {lease.is_active && (
+            <button
+              onClick={() => navigate(`/sorties?lease=${lease.id}`)}
+              className="flex items-center gap-2 px-3 py-2 border text-sm rounded-lg text-white hover:opacity-90"
+              style={{ background: '#0E9F8E', borderColor: '#0E9F8E' }}
+              title="Préavis, état des lieux de sortie, dépôt de garantie, clôture"
+            >
+              <DoorOpen size={15} /> Organiser la sortie
+            </button>
+          )}
           {lease.is_active && (
             <button
               onClick={() => setShowTerminate(true)}

@@ -92,6 +92,8 @@ async def _listing_out(db: AsyncSession, listing: Listing) -> dict:
         "public_path": f"/annonce/{listing.public_token}" if listing.public_token else None,
         "scheduled_at": listing.scheduled_at,
         "published_at": listing.published_at,
+        "views_count": int(listing.views_count or 0),
+        "last_viewed_at": listing.last_viewed_at,
         "available_photos": available,
     }
 
@@ -151,6 +153,47 @@ async def delete_platform(
     p = await _own_platform(db, user, platform_id)
     await db.delete(p)
     await db.commit()
+
+
+# ── Vue d'ensemble des annonces (suivi des performances) ─────────────────────
+@router.get("/listings", summary="Mes annonces — statut et performances")
+async def list_listings(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Statut + statistiques (vues) de chaque annonce du périmètre du gestionnaire,
+    indexés par bien — alimente la vue d'ensemble de la page Publication."""
+    role = Role(user.role)
+    if role == Role.ADMIN:
+        prop_ids = None
+    elif role == Role.GESTIONNAIRE_PROPRIO:
+        prop_ids = set((await db.execute(
+            select(Property.id).where(
+                (Property.created_by == user.id) | (Property.owner_user_id == user.id)
+            )
+        )).scalars().all())
+    else:
+        from app.api.v1._isolation import agency_property_ids
+        prop_ids = await agency_property_ids(db, user)
+
+    q = select(Listing)
+    if prop_ids is not None:
+        if not prop_ids:
+            return []
+        q = q.where(Listing.property_id.in_(prop_ids))
+    rows = (await db.execute(q)).scalars().all()
+    return [
+        {
+            "property_id": l.property_id,
+            "status": l.status,
+            "public_path": f"/annonce/{l.public_token}" if l.public_token and l.status == "published" else None,
+            "scheduled_at": l.scheduled_at,
+            "published_at": l.published_at,
+            "views_count": int(l.views_count or 0),
+            "last_viewed_at": l.last_viewed_at,
+        }
+        for l in rows
+    ]
 
 
 # ── Annonce d'un bien ───────────────────────────────────────────────────────────

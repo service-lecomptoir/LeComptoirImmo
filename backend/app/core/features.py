@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 FEATURE_KEYS = {
     "dashboard", "properties", "tenants", "leases", "avis_echeances", "payments",
     "quittances", "actualisation", "automatisation", "templates", "diffusion",
+    "candidatures", "sortie_locataire",
     "incidents", "entretiens", "contacts", "offres", "documents_caf", "admin",
     "finances", "performance_biens", "liasse_fiscale", "agents_ia",
 }

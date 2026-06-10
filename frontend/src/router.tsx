@@ -58,6 +58,8 @@ const DocumentsCaf = lazy(() => import('@/pages/documents-caf/DocumentsCaf'))
 const DiffusionPage = lazy(() => import('@/pages/publishing/DiffusionPage'))
 const PropertyPublish = lazy(() => import('@/pages/publishing/PropertyPublish'))
 const AnnoncePublic = lazy(() => import('@/pages/public/AnnoncePublic'))
+const CandidaturesPage = lazy(() => import('@/pages/candidatures/CandidaturesPage'))
+const SortiesPage = lazy(() => import('@/pages/sorties/SortiesPage'))
 
 // Indicateur de chargement pendant le téléchargement d'une page différée (lazy).
 function PageLoader() {
@@ -158,6 +160,8 @@ export const router = createBrowserRouter([
       { path: 'properties/:id', element: <PropertyDetail /> },
       { path: 'properties/:id/publish', element: <PropertyPublish /> },
       { path: 'diffusion', element: <DiffusionPage /> },
+      { path: 'candidatures', element: <CandidaturesPage /> },
+      { path: 'sorties', element: <SortiesPage /> },
       { path: 'leases', element: <LeaseList /> },
       { path: 'leases/:id', element: <LeaseDetail /> },
       { path: 'scoring', element: <ScoringList /> },

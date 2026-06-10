@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Megaphone, Plus, Trash2, Pencil, Building2, ChevronRight, X } from 'lucide-react'
-import { publishingApi, type PublishPlatform, type PlatformKind } from '@/api/publishing'
+import { Megaphone, Plus, Trash2, Pencil, Building2, ChevronRight, X, Eye } from 'lucide-react'
+import { publishingApi, type PublishPlatform, type PlatformKind, type ListingOverview } from '@/api/publishing'
 import { propertiesApi } from '@/api/properties'
 import { toast } from '@/store/toast'
 
@@ -20,8 +20,16 @@ interface Prop { id: string; name: string; city?: string; zip_code?: string; ref
 
 const EMPTY = { name: '', kind: 'site' as PlatformKind, target: '', is_active: true }
 
+const LISTING_STATUS: Record<string, { label: string; cls: string }> = {
+  draft:       { label: 'Brouillon',  cls: 'bg-gray-100 text-gray-600' },
+  scheduled:   { label: 'Programmée', cls: 'bg-amber-100 text-amber-700' },
+  published:   { label: 'Publiée',    cls: 'bg-emerald-100 text-emerald-700' },
+  unpublished: { label: 'Dépubliée',  cls: 'bg-gray-200 text-gray-600' },
+}
+
 export default function DiffusionPage() {
   const [platforms, setPlatforms] = useState<PublishPlatform[]>([])
+  const [overviews, setOverviews] = useState<Record<string, ListingOverview>>({})
   const [props, setProps] = useState<Prop[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -32,13 +40,15 @@ export default function DiffusionPage() {
   const load = async () => {
     setLoading(true)
     try {
-      const [pf, pr] = await Promise.all([
+      const [pf, pr, ov] = await Promise.all([
         publishingApi.listPlatforms(),
         propertiesApi.list({ limit: 200 }),
+        publishingApi.listListings(),
       ])
       setPlatforms(pf.data)
       const items = (pr.data as any).items ?? pr.data
       setProps(items as Prop[])
+      setOverviews(Object.fromEntries(ov.data.map(o => [o.property_id, o])))
     } catch { /* */ } finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
@@ -72,9 +82,9 @@ export default function DiffusionPage() {
   return (
     <div className="p-4 sm:p-6 max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Megaphone size={22} /> Diffusion des annonces</h1>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><Megaphone size={22} /> Publication des annonces</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Définissez vos plateformes de partage, puis composez et publiez l'annonce de chaque bien (photos et contenu pré-enregistrés, publication immédiate ou programmée).
+          Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes, et suivez leurs performances (vues).
         </p>
       </div>
 
@@ -112,29 +122,45 @@ export default function DiffusionPage() {
         )}
       </div>
 
-      {/* ── Biens à diffuser ── */}
+      {/* ── Annonces par bien : statut + performances ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Diffuser un bien</h2>
+        <h2 className="font-semibold text-gray-900 mb-4">Mes annonces</h2>
         {loading ? (
           <p className="text-sm text-gray-400">Chargement…</p>
         ) : props.length === 0 ? (
           <p className="text-sm text-gray-400">Aucun bien.</p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {props.map(p => (
-              <li key={p.id}>
-                <Link to={`/properties/${p.id}/publish`} className="py-3 flex items-center justify-between gap-3 hover:bg-gray-50 -mx-2 px-2 rounded-lg">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Building2 size={18} className="text-gray-400 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                      <p className="text-xs text-gray-400 truncate">{[p.zip_code, p.city].filter(Boolean).join(' ')}</p>
+            {props.map(p => {
+              const ov = overviews[p.id]
+              const st = ov ? (LISTING_STATUS[ov.status] ?? LISTING_STATUS.draft) : null
+              return (
+                <li key={p.id}>
+                  <Link to={`/properties/${p.id}/publish`} className="py-3 flex items-center justify-between gap-3 hover:bg-gray-50 -mx-2 px-2 rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Building2 size={18} className="text-gray-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
+                        <p className="text-xs text-gray-400 truncate">{[p.zip_code, p.city].filter(Boolean).join(' ')}</p>
+                      </div>
                     </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 shrink-0">Gérer l'annonce <ChevronRight size={14} /></span>
-                </Link>
-              </li>
-            ))}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {ov && ov.status === 'published' && (
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-500" title="Vues de la page publique">
+                          <Eye size={13} /> {ov.views_count}
+                        </span>
+                      )}
+                      {st ? (
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+                      ) : (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-400">À créer</span>
+                      )}
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">Gérer <ChevronRight size={14} /></span>
+                    </div>
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>

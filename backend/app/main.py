@@ -206,6 +206,9 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS credit_applied NUMERIC(10,2) NOT NULL DEFAULT 0",
         # Sujet déclaré par le locataire sur une démarche → agent IA notifié (push)
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS topic VARCHAR(20)",
+        # Publication des annonces : suivi de performance (vues de la page publique)
+        "ALTER TABLE listings ADD COLUMN IF NOT EXISTS views_count INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE listings ADD COLUMN IF NOT EXISTS last_viewed_at TIMESTAMPTZ",
         # Règle d'appel de loyer sur le contrat (période contractuelle / calendrier)
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS rent_call_rule VARCHAR(20) NOT NULL DEFAULT 'calendrier'",
         # Fréquence d'appel du loyer (mensuelle / bimestrielle / trimestrielle / semestrielle / annuelle)

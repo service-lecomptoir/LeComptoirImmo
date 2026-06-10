@@ -5,7 +5,7 @@ from app.api.v1 import (
     avis_echeances, contacts, automation, templates, dashboard,
     tickets, entretiens, messages, proprietaire_perf, offers, subscription,
     webhook, audit, settings, public, actualisation, scoring, telegram,
-    publishing,
+    publishing, candidatures, lease_exits,
 )
 from app.core.features import require_feature
 
@@ -49,4 +49,6 @@ api_router.include_router(audit.router)
 api_router.include_router(settings.router)
 api_router.include_router(public.router)
 api_router.include_router(publishing.router, dependencies=_feat("diffusion"))
+api_router.include_router(candidatures.router, dependencies=_feat("candidatures"))
+api_router.include_router(lease_exits.router, dependencies=_feat("sortie_locataire"))
 api_router.include_router(actualisation.router, dependencies=_feat("actualisation"))

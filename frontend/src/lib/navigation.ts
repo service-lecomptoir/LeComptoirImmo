@@ -17,6 +17,7 @@ import {
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
   ShoppingBag, Package, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
+  UserCheck, DoorOpen,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -44,7 +45,9 @@ export const navGestionnaire: NavItem[] = [
   { to: '/actualisation', icon: TrendingUp, label: 'Révision des loyers et charges' },
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Ma papeterie' },
-  { to: '/diffusion', icon: Megaphone, label: 'Diffusion des annonces' },
+  { to: '/diffusion', icon: Megaphone, label: 'Publication des annonces' },
+  { to: '/candidatures', icon: UserCheck, label: 'Candidatures' },
+  { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
@@ -85,7 +88,9 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/actualisation', icon: TrendingUp, label: 'Révision des loyers et charges' },
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Ma papeterie' },
-  { to: '/diffusion', icon: Megaphone, label: 'Diffusion des annonces' },
+  { to: '/diffusion', icon: Megaphone, label: 'Publication des annonces' },
+  { to: '/candidatures', icon: UserCheck, label: 'Candidatures' },
+  { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
@@ -128,7 +133,9 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   // Gestionnaire / admin
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
-  '/diffusion': 'Diffusez vos biens : photos et contenu pré-enregistrés par bien, plateformes de partage, publication immédiate ou programmée.',
+  '/diffusion': 'Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes et suivez leurs performances (vues).',
+  '/candidatures': 'Dossiers candidats centralisés : vérification des pièces, analyse et comparaison des profils, sélection du locataire le plus adapté.',
+  '/sorties': "Sortie du locataire : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture du dossier.",
   '/abonnement': 'Vos factures (PDF), votre formule et la gestion de votre abonnement.',
   // Espace propriétaire
   '/proprietaire': "Vue d'ensemble : revenus, taux d'occupation et points d'attention sur vos biens.",

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Text, Numeric, Boolean, ForeignKey, DateTime
+from sqlalchemy import String, Text, Numeric, Boolean, ForeignKey, DateTime, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
@@ -55,6 +55,9 @@ class Listing(Base, TimestampMixin):
     public_token: Mapped[Optional[str]] = mapped_column(String(40), nullable=True, unique=True, index=True)
     scheduled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Suivi de performance : nombre de consultations de la page publique.
+    views_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    last_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )

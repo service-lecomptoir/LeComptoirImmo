@@ -31,6 +31,32 @@ export default function AnnoncePublic() {
   const [notFound, setNotFound] = useState(false)
   const [active, setActive] = useState(0)
 
+  // ── Candidature ──
+  const [form, setForm] = useState({
+    full_name: '', email: '', phone: '', employment: '', monthly_income: '', has_guarantor: false, message: '',
+  })
+  const [applyState, setApplyState] = useState<'idle' | 'sending' | 'done' | 'dup' | 'error'>('idle')
+
+  const apply = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token || !form.full_name.trim() || !form.email.trim()) return
+    setApplyState('sending')
+    try {
+      const r = await apiClient.post<{ status: string }>(`/public/listings/${token}/apply`, {
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || null,
+        employment: form.employment.trim() || null,
+        monthly_income: form.monthly_income.trim() ? Number(form.monthly_income) : null,
+        has_guarantor: form.has_guarantor,
+        message: form.message.trim() || null,
+      })
+      setApplyState(r.data.status === 'already_applied' ? 'dup' : 'done')
+    } catch {
+      setApplyState('error')
+    }
+  }
+
   useEffect(() => {
     if (!token) return
     apiClient.get<PublicListing>(`/public/listings/${token}`)
@@ -165,6 +191,58 @@ export default function AnnoncePublic() {
               <button onClick={() => share('email')} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">E-mail</button>
             </div>
           </div>
+        </div>
+
+        {/* ── Candidater ── */}
+        <div id="candidater" className="bg-white rounded-2xl border border-gray-200 p-6 mt-6">
+          <h2 className="text-lg font-bold text-gray-900">Candidater à cette annonce</h2>
+          <p className="text-sm text-gray-500 mt-1">Déposez votre dossier : le gestionnaire vous recontactera.</p>
+
+          {applyState === 'done' ? (
+            <div className="mt-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+              ✅ Candidature envoyée. Le gestionnaire reviendra vers vous rapidement.
+            </div>
+          ) : applyState === 'dup' ? (
+            <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+              Vous avez déjà candidaté à cette annonce avec cet e-mail.
+            </div>
+          ) : (
+            <form onSubmit={apply} className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input required placeholder="Nom et prénom *" value={form.full_name}
+                onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              <input required type="email" placeholder="E-mail *" value={form.email}
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              <input placeholder="Téléphone" value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              <input placeholder="Situation professionnelle (CDI, étudiant…)" value={form.employment}
+                onChange={e => setForm(f => ({ ...f, employment: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              <input type="number" min="0" placeholder="Revenus mensuels nets (€)" value={form.monthly_income}
+                onChange={e => setForm(f => ({ ...f, monthly_income: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              <label className="flex items-center gap-2 text-sm text-gray-700 px-1">
+                <input type="checkbox" checked={form.has_guarantor}
+                  onChange={e => setForm(f => ({ ...f, has_guarantor: e.target.checked }))} />
+                J'ai un garant
+              </label>
+              <textarea placeholder="Message (facultatif)" value={form.message} rows={3}
+                onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none sm:col-span-2" />
+              {applyState === 'error' && (
+                <p className="text-sm text-red-600 sm:col-span-2">Échec de l'envoi — vérifiez vos informations puis réessayez.</p>
+              )}
+              <div className="sm:col-span-2 flex justify-end">
+                <button type="submit" disabled={applyState === 'sending'}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
+                  style={{ background: '#0D2F5C' }}>
+                  {applyState === 'sending' ? 'Envoi…' : 'Envoyer ma candidature'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">Annonce diffusée via Le Comptoir Immo</p>

@@ -30,7 +30,20 @@ export interface Listing {
   public_path?: string | null
   scheduled_at?: string | null
   published_at?: string | null
+  views_count: number
+  last_viewed_at?: string | null
   available_photos: ListingPhoto[]
+}
+
+/** Statut + performances d'une annonce (vue d'ensemble), indexé par bien. */
+export interface ListingOverview {
+  property_id: string
+  status: ListingStatus
+  public_path?: string | null
+  scheduled_at?: string | null
+  published_at?: string | null
+  views_count: number
+  last_viewed_at?: string | null
 }
 
 export interface ListingSave {
@@ -49,6 +62,9 @@ export const publishingApi = {
   updatePlatform: (id: string, d: Omit<PublishPlatform, 'id'>) =>
     apiClient.put<PublishPlatform>(`/publishing/platforms/${id}`, d),
   deletePlatform: (id: string) => apiClient.delete(`/publishing/platforms/${id}`),
+
+  // Vue d'ensemble (statut + vues par bien)
+  listListings: () => apiClient.get<ListingOverview[]>('/publishing/listings'),
 
   // Annonce d'un bien
   getListing: (propertyId: string) =>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, Image as ImageIcon, Send, Clock, EyeOff, Save, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Upload, Image as ImageIcon, Send, Clock, EyeOff, Save, ExternalLink, Eye, TrendingUp } from 'lucide-react'
 import { publishingApi, uploadPropertyPhoto, type Listing, type PublishPlatform } from '@/api/publishing'
 import { toast } from '@/store/toast'
 
@@ -125,9 +125,35 @@ export default function PropertyPublish() {
       </Link>
 
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-        <h1 className="text-2xl font-bold text-gray-900">Diffusion de l'annonce</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Publication de l'annonce</h1>
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${st.cls}`}>{st.label}</span>
       </div>
+
+      {/* Performances (suivi des vues) */}
+      {(listing.status === 'published' || listing.views_count > 0) && (
+        <div className="mb-5 grid grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-400 flex items-center gap-1"><Eye size={12} /> Vues</p>
+            <p className="text-xl font-bold text-gray-900 mt-0.5">{listing.views_count}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-400 flex items-center gap-1"><Clock size={12} /> En ligne depuis</p>
+            <p className="text-xl font-bold text-gray-900 mt-0.5">
+              {listing.published_at
+                ? `${Math.max(1, Math.ceil((Date.now() - new Date(listing.published_at).getTime()) / 86400000))} j`
+                : '—'}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <p className="text-xs text-gray-400 flex items-center gap-1"><TrendingUp size={12} /> Vues / jour</p>
+            <p className="text-xl font-bold text-gray-900 mt-0.5">
+              {listing.published_at
+                ? (listing.views_count / Math.max(1, Math.ceil((Date.now() - new Date(listing.published_at).getTime()) / 86400000))).toFixed(1)
+                : '—'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Lien public quand publiée */}
       {listing.status === 'published' && publicUrl && (

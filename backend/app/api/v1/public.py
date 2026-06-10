@@ -112,6 +112,11 @@ async def public_listing(token: str, db: AsyncSession = Depends(get_db)):
     if not prop:
         raise HTTPException(status_code=404, detail="Annonce introuvable")
 
+    # Suivi de performance : chaque consultation publique compte une vue.
+    from datetime import datetime as _dt, timezone as _tz
+    listing.views_count = int(listing.views_count or 0) + 1
+    listing.last_viewed_at = _dt.now(_tz.utc)
+
     # Photos sélectionnées (ordre conservé) ; repli sur toutes les images du bien.
     photos: list[str] = []
     ids = [uuid.UUID(x) for x in (listing.photo_ids or []) if x]
@@ -130,8 +135,11 @@ async def public_listing(token: str, db: AsyncSession = Depends(get_db)):
         mgr = await db.get(User, listing.created_by)
         contact_name = getattr(mgr, "full_name", None) if mgr else None
 
+    await db.commit()  # persiste le compteur de vues
+
     return {
         "title": listing.title or prop.name,
+        "can_apply": True,
         "description": listing.description or prop.description,
         "price": float(listing.price) if listing.price is not None else None,
         "photos": photos,
@@ -156,3 +164,54 @@ async def public_listing(token: str, db: AsyncSession = Depends(get_db)):
             },
         },
     }
+
+
+class PublicApplicationIn(BaseModel):
+    """Dépôt de candidature depuis la page d'annonce publique."""
+    full_name: str = Field(..., min_length=2, max_length=200)
+    email: EmailStr
+    phone: Optional[str] = Field(None, max_length=30)
+    employment: Optional[str] = Field(None, max_length=150)
+    monthly_income: Optional[float] = Field(None, ge=0, le=1_000_000)
+    has_guarantor: bool = False
+    message: Optional[str] = Field(None, max_length=2000)
+
+
+@router.post("/listings/{token}/apply", status_code=201, summary="Candidater à une annonce")
+async def apply_to_listing(token: str, data: PublicApplicationIn, db: AsyncSession = Depends(get_db)):
+    """Crée un dossier de candidature pour l'annonce publiée (centralisé dans
+    « Candidatures » côté gestionnaire)."""
+    from app.models.publishing import Listing
+    from app.models.candidature import Candidature
+    from app.api.v1.candidatures import default_docs
+
+    listing = (await db.execute(
+        select(Listing).where(Listing.public_token == token)
+    )).scalar_one_or_none()
+    if not listing or listing.status != "published":
+        raise HTTPException(status_code=404, detail="Annonce introuvable")
+
+    # Anti-doublon simple : une candidature par e-mail et par bien.
+    from app.models.candidature import Candidature as _C
+    dup = (await db.execute(select(_C).where(
+        _C.property_id == listing.property_id,
+        _C.email == str(data.email).lower(),
+    ))).scalar_one_or_none()
+    if dup:
+        return {"status": "already_applied"}
+
+    c = Candidature(
+        property_id=listing.property_id,
+        full_name=data.full_name.strip(),
+        email=str(data.email).lower(),
+        phone=(data.phone or "").strip() or None,
+        employment=(data.employment or "").strip() or None,
+        monthly_income=data.monthly_income,
+        has_guarantor=data.has_guarantor,
+        message=(data.message or "").strip() or None,
+        docs=default_docs(),
+        source="annonce",
+    )
+    db.add(c)
+    await db.commit()
+    return {"status": "received"}
