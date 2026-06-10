@@ -26,7 +26,7 @@ export default function CandidaturesPage() {
   const [showCompare, setShowCompare] = useState(false)
   const [compare, setCompare] = useState<{ rent_reference: number | null; candidates: Candidature[] } | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ property_id: '', full_name: '', email: '', phone: '', employment: '', monthly_income: '', has_guarantor: false, message: '' })
+  const [form, setForm] = useState({ property_id: '', first_name: '', last_name: '', email: '', phone: '', employment: '', monthly_income: '', has_guarantor: false, message: '' })
   const [busy, setBusy] = useState(false)
 
   const load = async () => {
@@ -85,12 +85,13 @@ export default function CandidaturesPage() {
 
   const createManual = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.property_id || !form.full_name.trim()) return
+    const fullName = `${form.first_name.trim()} ${form.last_name.trim()}`.trim()
+    if (!form.property_id || !fullName) return
     setBusy(true)
     try {
       await candidaturesApi.create({
         property_id: form.property_id,
-        full_name: form.full_name.trim(),
+        full_name: fullName,
         email: form.email.trim() || null,
         phone: form.phone.trim() || null,
         employment: form.employment.trim() || null,
@@ -100,7 +101,7 @@ export default function CandidaturesPage() {
       })
       toast.success('Candidature ajoutée.')
       setShowForm(false)
-      setForm({ property_id: '', full_name: '', email: '', phone: '', employment: '', monthly_income: '', has_guarantor: false, message: '' })
+      setForm({ property_id: '', first_name: '', last_name: '', email: '', phone: '', employment: '', monthly_income: '', has_guarantor: false, message: '' })
       await load()
     } catch { /* */ } finally { setBusy(false) }
   }
@@ -337,8 +338,8 @@ export default function CandidaturesPage() {
 
       {/* ── Modale ajout manuel ── */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Nouveau dossier candidat</h3>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
@@ -349,8 +350,11 @@ export default function CandidaturesPage() {
                 <option value="">Bien concerné *</option>
                 {props.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-              <input required placeholder="Nom et prénom *" value={form.full_name}
-                onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+              <input required placeholder="Prénom *" value={form.first_name}
+                onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              <input required placeholder="Nom *" value={form.last_name}
+                onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
               <input type="email" placeholder="E-mail" value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}

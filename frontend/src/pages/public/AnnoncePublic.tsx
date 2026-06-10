@@ -33,17 +33,18 @@ export default function AnnoncePublic() {
 
   // ── Candidature ──
   const [form, setForm] = useState({
-    full_name: '', email: '', phone: '', employment: '', monthly_income: '', has_guarantor: false, message: '',
+    first_name: '', last_name: '', email: '', phone: '', employment: '', monthly_income: '', has_guarantor: false, message: '',
   })
   const [applyState, setApplyState] = useState<'idle' | 'sending' | 'done' | 'dup' | 'error'>('idle')
 
   const apply = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!token || !form.full_name.trim() || !form.email.trim()) return
+    const fullName = `${form.first_name.trim()} ${form.last_name.trim()}`.trim()
+    if (!token || !fullName || !form.email.trim()) return
     setApplyState('sending')
     try {
       const r = await apiClient.post<{ status: string }>(`/public/listings/${token}/apply`, {
-        full_name: form.full_name.trim(),
+        full_name: fullName,
         email: form.email.trim(),
         phone: form.phone.trim() || null,
         employment: form.employment.trim() || null,
@@ -208,8 +209,11 @@ export default function AnnoncePublic() {
             </div>
           ) : (
             <form onSubmit={apply} className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input required placeholder="Nom et prénom *" value={form.full_name}
-                onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+              <input required placeholder="Prénom *" value={form.first_name}
+                onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+              <input required placeholder="Nom *" value={form.last_name}
+                onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm" />
               <input required type="email" placeholder="E-mail *" value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
