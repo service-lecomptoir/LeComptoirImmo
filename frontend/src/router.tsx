@@ -29,6 +29,7 @@ import { featureForPath, isFeatureAllowed, firstAllowedPath } from '@/lib/featur
 // (avant authentification) → pas de bénéfice à les différer.
 import Login from '@/pages/Login'
 import Landing from '@/pages/Landing'
+import { RouteError } from '@/components/common/RouteError'
 
 // ── Pages authentifiées : chargées à la demande (code-splitting) ──────────────
 // Chaque route ne télécharge son JS que lorsqu'on y navigue → bundle initial
@@ -162,6 +163,7 @@ export const router = createBrowserRouter([
   { path: '/', element: <PublicHome /> },
   {
     path: '/annonce/:token',
+    errorElement: <RouteError />,
     element: (
       <Suspense fallback={<PageLoader />}>
         <AnnoncePublic />
@@ -170,6 +172,7 @@ export const router = createBrowserRouter([
   },
   {
     element: <AppLayout />,
+    errorElement: <RouteError />,
     children: [
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'tenants', element: <TenantList /> },
