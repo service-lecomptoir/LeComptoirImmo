@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Edit, Trash2,
+  ArrowLeft, Edit, Trash2, Megaphone,
   MapPin, Home, Ruler, Bath, Layers, Flame, Zap, Check
 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
@@ -74,6 +74,13 @@ export default function PropertyDetail() {
           </div>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => navigate(`/properties/${property.id}/publish`)}
+            className="flex items-center gap-2 px-3 py-2 border text-sm rounded-lg text-white hover:opacity-90"
+            style={{ background: '#0E9F8E', borderColor: '#0E9F8E' }}
+          >
+            <Megaphone size={15} /> Diffuser
+          </button>
           <button
             onClick={() => setShowEditProp(true)}
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50"

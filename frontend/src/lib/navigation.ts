@@ -16,7 +16,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  ShoppingBag, Package, KeyRound, TrendingUp, Landmark, ShieldCheck,
+  ShoppingBag, Package, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -44,6 +44,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/actualisation', icon: TrendingUp, label: 'Révision des loyers et charges' },
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Ma papeterie' },
+  { to: '/diffusion', icon: Megaphone, label: 'Diffusion des annonces' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
@@ -84,6 +85,7 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/actualisation', icon: TrendingUp, label: 'Révision des loyers et charges' },
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Ma papeterie' },
+  { to: '/diffusion', icon: Megaphone, label: 'Diffusion des annonces' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
@@ -126,6 +128,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   // Gestionnaire / admin
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
+  '/diffusion': 'Diffusez vos biens : photos et contenu pré-enregistrés par bien, plateformes de partage, publication immédiate ou programmée.',
   '/abonnement': 'Vos factures (PDF), votre formule et la gestion de votre abonnement.',
   // Espace propriétaire
   '/proprietaire': "Vue d'ensemble : revenus, taux d'occupation et points d'attention sur vos biens.",

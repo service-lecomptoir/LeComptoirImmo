@@ -204,6 +204,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS declared_amount NUMERIC(10,2)",
         # Crédit (avance / trop-perçu) consommé par un paiement, déduit de l'échéance suivante
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS credit_applied NUMERIC(10,2) NOT NULL DEFAULT 0",
+        # Sujet déclaré par le locataire sur une démarche → agent IA notifié (push)
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS topic VARCHAR(20)",
         # Règle d'appel de loyer sur le contrat (période contractuelle / calendrier)
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS rent_call_rule VARCHAR(20) NOT NULL DEFAULT 'calendrier'",
         # Fréquence d'appel du loyer (mensuelle / bimestrielle / trimestrielle / semestrielle / annuelle)

@@ -181,6 +181,21 @@ async def _job_send_telegram_reminders() -> None:
             logger.error(f"[Scheduler] telegram_reminders error: {exc}")
 
 
+async def _job_publish_scheduled_listings() -> None:
+    """Toutes les 10 min : publie les annonces programmées arrivées à échéance."""
+    from app.database import AsyncSessionLocal
+    from app.services.listing_service import ListingService
+
+    async with AsyncSessionLocal() as db:
+        try:
+            count = await ListingService.publish_due(db)
+            await db.commit()
+            if count:
+                logger.info(f"[Scheduler] {count} annonce(s) programmée(s) publiée(s)")
+        except Exception as exc:
+            logger.error(f"[Scheduler] publish_scheduled_listings error: {exc}")
+
+
 def start_scheduler(
     avis_day: int = 1, avis_hour: int = 7, avis_minute: int = 30,
     reminder_hour: int = 8, reminder_minute: int = 0,
@@ -222,11 +237,18 @@ def start_scheduler(
         replace_existing=True,
         misfire_grace_time=3600,
     )
+    scheduler.add_job(
+        _job_publish_scheduled_listings,
+        CronTrigger(minute="*/10"),
+        id="publish_scheduled_listings",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
 
     scheduler.start()
     logger.info(
-        "[Scheduler] Démarré — 5 tâches planifiées (avis: jour=%d %02d:%02d ; "
-        "rappels Telegram: %02d:%02d)",
+        "[Scheduler] Démarré — 6 tâches planifiées (avis: jour=%d %02d:%02d ; "
+        "rappels Telegram: %02d:%02d ; publication annonces: */10 min)",
         avis_day, avis_hour, avis_minute, reminder_hour, reminder_minute,
     )
 

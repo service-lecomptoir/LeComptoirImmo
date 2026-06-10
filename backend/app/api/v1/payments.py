@@ -202,6 +202,19 @@ async def locataire_declare_payment(
     db.add(notif)
     await db.flush()
     await db.commit()
+
+    # Push « Agent Comptable » : prévient spontanément le gestionnaire sur Telegram
+    # (best-effort, non bloquant — n'affecte pas la déclaration déjà enregistrée).
+    try:
+        from app.services import agent_events
+        await agent_events.notify_manager(
+            db, manager_id, "paiement",
+            f"{tenant.full_name} a déclaré avoir réglé le loyer de {payment.period_label} "
+            f"({amount:.2f} € par {label}).",
+            cta="Validez le règlement dans l'application pour l'enregistrer.",
+        )
+    except Exception:  # noqa: BLE001
+        pass
     return {"status": "declared", "method": method}
 
 

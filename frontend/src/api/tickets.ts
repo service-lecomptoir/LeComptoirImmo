@@ -5,6 +5,7 @@ export interface Ticket {
   title: string
   description: string
   category: 'incident' | 'question' | 'demande' | 'autre'
+  topic?: 'voisinage' | 'logement' | 'paiement' | 'autre' | null
   status: 'open' | 'in_progress' | 'resolved' | 'pending_closure' | 'closed'
   priority: 'low' | 'medium' | 'high' | 'urgent'
   tenant_id: string
@@ -40,7 +41,7 @@ export const ticketsApi = {
   get: (id: string) =>
     apiClient.get<Ticket>(`/tickets/${id}`),
 
-  create: (data: { title: string; description: string; category: string; priority: string }) =>
+  create: (data: { title: string; description: string; category: string; priority: string; topic?: string }) =>
     apiClient.post<{ id: string; status: string }>('/tickets', data),
 
   update: (id: string, data: Partial<Pick<Ticket, 'title' | 'description' | 'category' | 'priority' | 'status' | 'assigned_to_id'>>) =>

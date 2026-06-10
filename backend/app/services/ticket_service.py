@@ -29,6 +29,7 @@ class TicketService:
             description=data.description,
             category=data.category,
             priority=data.priority,
+            topic=getattr(data, "topic", None),
             tenant_id=tenant.id,
             status=TicketStatus.OPEN,
         )

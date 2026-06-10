@@ -27,6 +27,7 @@ def _enrich_ticket(ticket, include_messages: bool = False) -> dict:
         "title": ticket.title,
         "description": ticket.description,
         "category": ticket.category,
+        "topic": getattr(ticket, "topic", None),
         "status": ticket.status,
         "priority": ticket.priority,
         "tenant_id": ticket.tenant_id,
@@ -75,6 +76,26 @@ async def create_ticket(
     ticket = await TicketService.create(db, data, current_user.id)
     await db.commit()
     await db.refresh(ticket)
+    # Push « agent IA » : prévient spontanément le gestionnaire du locataire,
+    # via l'agent compétent selon le sujet déclaré (best-effort, non bloquant).
+    try:
+        from app.models.tenant import Tenant
+        from app.services import agent_events
+        tenant = await db.get(Tenant, ticket.tenant_id)
+        manager_id = getattr(tenant, "created_by", None) if tenant else None
+        tenant_name = (getattr(tenant, "full_name", None) if tenant else None) or "Un locataire"
+        detail = (ticket.description or "").strip()
+        if len(detail) > 240:
+            detail = detail[:240].rstrip() + "…"
+        body = f"{tenant_name} signale : « {ticket.title} »."
+        if detail and detail != ticket.title:
+            body += f"\n{detail}"
+        await agent_events.notify_manager(
+            db, manager_id, ticket.topic or "autre", body,
+            cta="Ouvrez la démarche dans l'application pour répondre.",
+        )
+    except Exception:  # noqa: BLE001 — la notification ne doit jamais bloquer la création
+        pass
     return {"id": ticket.id, "status": ticket.status}
 
 

@@ -6,10 +6,14 @@ vérité, base dédiée) via son API /internal (app.services.alice_client) — p
 aucune lecture/écriture directe des tables alice_*.
 """
 import logging
+import uuid
 from typing import Optional, List
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_db
 from app.services import alice_client
 
 logger = logging.getLogger(__name__)
@@ -86,3 +90,69 @@ async def create_subscription_request(
     )
     background.add_task(_notify_team, data)
     return {"status": "received"}
+
+
+@router.get("/listings/{token}", summary="Page d'annonce publique (sans authentification)")
+async def public_listing(token: str, db: AsyncSession = Depends(get_db)):
+    """Annonce publiée d'un bien, accessible par son jeton. 404 si introuvable ou
+    non publiée (brouillon / programmée / dépubliée)."""
+    from app.models.publishing import Listing
+    from app.models.property import Property
+    from app.models.document import Document
+    from app.models.user import User
+    from app.services.listing_service import build_photo_url
+
+    listing = (await db.execute(
+        select(Listing).where(Listing.public_token == token)
+    )).scalar_one_or_none()
+    if not listing or listing.status != "published":
+        raise HTTPException(status_code=404, detail="Annonce introuvable")
+
+    prop = await db.get(Property, listing.property_id)
+    if not prop:
+        raise HTTPException(status_code=404, detail="Annonce introuvable")
+
+    # Photos sélectionnées (ordre conservé) ; repli sur toutes les images du bien.
+    photos: list[str] = []
+    ids = [uuid.UUID(x) for x in (listing.photo_ids or []) if x]
+    if ids:
+        docs = (await db.execute(
+            select(Document).where(Document.id.in_(ids))
+        )).scalars().all()
+        by_id = {str(d.id): d for d in docs}
+        for x in (listing.photo_ids or []):
+            d = by_id.get(str(x))
+            if d and (d.mime_type or "").lower().startswith("image/"):
+                photos.append(build_photo_url(d.file_path))
+
+    contact_name = None
+    if listing.created_by:
+        mgr = await db.get(User, listing.created_by)
+        contact_name = getattr(mgr, "full_name", None) if mgr else None
+
+    return {
+        "title": listing.title or prop.name,
+        "description": listing.description or prop.description,
+        "price": float(listing.price) if listing.price is not None else None,
+        "photos": photos,
+        "published_at": listing.published_at,
+        "contact_name": contact_name,
+        "property": {
+            "city": prop.city,
+            "zip_code": prop.zip_code,
+            "property_type": prop.property_type,
+            "typology": prop.typology,
+            "area_sqm": float(prop.area_sqm) if prop.area_sqm is not None else None,
+            "floor": prop.floor,
+            "bathrooms": prop.bathrooms,
+            "energy_class": prop.energy_class,
+            "heating_type": prop.heating_type,
+            "furnished": prop.furnished,
+            "features": {
+                "elevator": prop.has_elevator, "balcony": prop.has_balcony,
+                "terrace": prop.has_terrace, "garden": prop.has_garden,
+                "parking": prop.has_parking, "cellar": prop.has_cellar,
+                "fiber": prop.has_fiber, "air_conditioning": prop.has_air_conditioning,
+            },
+        },
+    }

@@ -43,6 +43,10 @@ class Ticket(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
 
+    # Sujet déclaré par le locataire — pilote l'agent IA notifié au gestionnaire
+    # (voisinage → Sécurité, logement → Administratif…). Voir services/agent_events.py.
+    topic: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+
     category: Mapped[str] = mapped_column(
         SAEnum(TicketCategory, name="ticket_category_enum", create_type=False,
                values_callable=lambda obj: [e.value for e in obj]),

@@ -19,6 +19,20 @@ const CATEGORY_LABELS: Record<string, string> = {
   autre:    'Autre',
 }
 
+// Types de signalement proposés au locataire. Chaque type est routé vers l'agent
+// IA compétent côté gestionnaire (voisinage → Sécurité, logement → Administratif).
+// Le paiement se déclare via l'espace « loyers », pas ici.
+const TOPIC_OPTIONS: { value: string; label: string; category: string }[] = [
+  { value: 'logement',  label: 'Problème dans le logement (fuite, panne…)', category: 'incident' },
+  { value: 'voisinage', label: 'Problème de voisinage',                      category: 'incident' },
+  { value: 'autre',     label: 'Autre demande',                              category: 'autre' },
+]
+const TOPIC_LABELS: Record<string, string> = {
+  voisinage: 'Voisinage', logement: 'Logement', paiement: 'Paiement', autre: 'Autre',
+}
+const topicOrCategory = (t: Ticket) =>
+  (t.topic && TOPIC_LABELS[t.topic]) || CATEGORY_LABELS[t.category] || 'Autre'
+
 const PRIORITY_LABELS: Record<string, { label: string; color: string }> = {
   low:    { label: 'Basse',   color: '#6B7280' },
   medium: { label: 'Normale', color: '#2563EB' },
@@ -37,8 +51,8 @@ export default function LocataireMessages() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
 
-  // Nouveau ticket
-  const [form, setForm] = useState({ title: '', description: '', category: 'incident', priority: 'medium' })
+  // Nouveau ticket — `topic` pilote l'agent notifié ; la catégorie en est dérivée.
+  const [form, setForm] = useState({ title: '', description: '', topic: 'logement', priority: 'medium' })
   const [isCreating, setIsCreating] = useState(false)
 
   const load = async () => {
@@ -64,9 +78,13 @@ export default function LocataireMessages() {
     if (!form.title || !form.description) return
     setIsCreating(true)
     try {
-      await ticketsApi.create(form)
+      const category = TOPIC_OPTIONS.find(o => o.value === form.topic)?.category ?? 'autre'
+      await ticketsApi.create({
+        title: form.title, description: form.description,
+        category, priority: form.priority, topic: form.topic,
+      })
       setShowForm(false)
-      setForm({ title: '', description: '', category: 'incident', priority: 'medium' })
+      setForm({ title: '', description: '', topic: 'logement', priority: 'medium' })
       await load()
     } finally { setIsCreating(false) }
   }
@@ -155,16 +173,15 @@ export default function LocataireMessages() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type de signalement</label>
                 <select
-                  value={form.category}
-                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  value={form.topic}
+                  onChange={e => setForm(f => ({ ...f, topic: e.target.value }))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
                 >
-                  <option value="incident">Incident</option>
-                  <option value="question">Question</option>
-                  <option value="demande">Demande</option>
-                  <option value="autre">Autre</option>
+                  {TOPIC_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -249,7 +266,7 @@ export default function LocataireMessages() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-400">{CATEGORY_LABELS[ticket.category]}</span>
+                          <span className="text-xs text-gray-400">{topicOrCategory(ticket)}</span>
                           <span className="text-gray-300">·</span>
                           <span className="text-xs text-gray-400">
                             {format(new Date(ticket.created_at), 'd MMM yyyy', { locale: fr })}
@@ -279,7 +296,7 @@ export default function LocataireMessages() {
                   <div>
                     <h3 className="font-semibold text-gray-900">{selected.title}</h3>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-gray-500">{CATEGORY_LABELS[selected.category]}</span>
+                      <span className="text-xs text-gray-500">{topicOrCategory(selected)}</span>
                       <span className="text-gray-300">·</span>
                       <span className="text-xs font-medium" style={{ color: PRIORITY_LABELS[selected.priority]?.color }}>
                         {PRIORITY_LABELS[selected.priority]?.label}

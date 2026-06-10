@@ -31,6 +31,8 @@ class TicketCreate(BaseModel):
     description: str
     category: TicketCategory = TicketCategory.AUTRE
     priority: TicketPriority = TicketPriority.MEDIUM
+    # Sujet déclaré (voisinage / logement / autre) — route vers l'agent IA notifié.
+    topic: Optional[str] = None
 
 
 class TicketUpdate(BaseModel):

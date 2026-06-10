@@ -55,6 +55,9 @@ const ScoringList = lazy(() => import('@/pages/scoring/ScoringList'))
 const FinancesParProprietaire = lazy(() => import('@/pages/finances/FinancesParProprietaire'))
 const Actualisation = lazy(() => import('@/pages/actualisation/Actualisation'))
 const DocumentsCaf = lazy(() => import('@/pages/documents-caf/DocumentsCaf'))
+const DiffusionPage = lazy(() => import('@/pages/publishing/DiffusionPage'))
+const PropertyPublish = lazy(() => import('@/pages/publishing/PropertyPublish'))
+const AnnoncePublic = lazy(() => import('@/pages/public/AnnoncePublic'))
 
 // Indicateur de chargement pendant le téléchargement d'une page différée (lazy).
 function PageLoader() {
@@ -136,6 +139,14 @@ export const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
   { path: '/', element: <PublicHome /> },
   {
+    path: '/annonce/:token',
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <AnnoncePublic />
+      </Suspense>
+    ),
+  },
+  {
     element: <AppLayout />,
     children: [
       { path: 'dashboard', element: <Dashboard /> },
@@ -145,6 +156,8 @@ export const router = createBrowserRouter([
       { path: 'owners/:id', element: <OwnerDetail /> },
       { path: 'properties', element: <PropertyList /> },
       { path: 'properties/:id', element: <PropertyDetail /> },
+      { path: 'properties/:id/publish', element: <PropertyPublish /> },
+      { path: 'diffusion', element: <DiffusionPage /> },
       { path: 'leases', element: <LeaseList /> },
       { path: 'leases/:id', element: <LeaseDetail /> },
       { path: 'scoring', element: <ScoringList /> },
