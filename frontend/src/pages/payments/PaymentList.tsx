@@ -325,9 +325,9 @@ export default function PaymentList() {
                     )}
                   </td>
 
-                  {/* Colonne quittance */}
+                  {/* Colonne quittance — uniquement si le mois est intégralement payé */}
                   <td className="px-4 py-3">
-                    {['paid', 'partial'].includes(p.status) ? (
+                    {p.status === 'paid' ? (
                       <div className="flex items-center gap-2">
                         {/* Télécharger */}
                         <button

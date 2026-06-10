@@ -410,11 +410,16 @@ async def validate_declaration(
         _select(_Tenant).where(_Tenant.id == payment.tenant_id)
     )).scalar_one_or_none()
     if tenant and tenant.user_id:
+        _quittance_note = (
+            " Votre quittance est disponible."
+            if payment.status == PaymentStatus.PAID
+            else " La quittance sera disponible une fois le loyer du mois intégralement réglé."
+        )
         db.add(Notification(
             title="Paiement validé",
             message=(
                 f"Votre règlement du loyer de {payment.period_label} a été validé "
-                f"par votre gestionnaire. Votre quittance est disponible."
+                f"par votre gestionnaire.{_quittance_note}"
             ),
             notification_type=NotificationType.PAIEMENT_RECU,
             priority=NotificationPriority.NORMAL,
@@ -504,9 +509,12 @@ async def download_quittance(
     # Isolation par rôle : locataire→le sien, propriétaire→son bien, mandataire→hors GP.
     await assert_payment_access(db, current_user, payment)
 
-    if payment.status not in (PaymentStatus.PAID, PaymentStatus.PARTIAL):
+    # Règle : une quittance n'est générée que lorsque le mois est INTÉGRALEMENT payé.
+    if payment.status != PaymentStatus.PAID:
         from app.core.exceptions import BadRequestException
-        raise BadRequestException("Impossible de générer une quittance pour un loyer non payé")
+        raise BadRequestException(
+            "La quittance n'est disponible que lorsque le loyer du mois est intégralement payé."
+        )
 
     # Marquer comme générée si c'est la première fois
     if not payment.quittance_generated_at:

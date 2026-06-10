@@ -286,7 +286,7 @@ export default function LocataireDocuments() {
     }
     if (cat.key === 'quittances') {
       const virtual = payments
-        .filter((p: any) => p.status === 'paid' || p.status === 'partial')
+        .filter((p: any) => p.status === 'paid')
         .map((p: any) => ({
           id: `pay-${p.id}`,
           label: `Quittance — ${p.period_label}`,

@@ -36,8 +36,8 @@ export default function QuittanceList() {
           month,
           limit: 200,
         })
-        // Garder seulement les payés / partiels (qui peuvent avoir une quittance)
-        setPayments(data.items.filter(p => ['paid', 'partial'].includes(p.status)))
+        // Règle : quittance uniquement pour un loyer INTÉGRALEMENT payé.
+        setPayments(data.items.filter(p => p.status === 'paid'))
         setTotal(data.total)
       } finally {
         setIsLoading(false)
@@ -232,7 +232,7 @@ export default function QuittanceList() {
                     <Receipt size={36} className="text-gray-300 mb-3" />
                     <p className="text-sm font-medium text-gray-500">Aucune quittance pour cette période</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      Les quittances apparaissent automatiquement lorsqu'un paiement est enregistré comme payé ou partiel.
+                      Les quittances apparaissent automatiquement lorsqu'un loyer est intégralement payé.
                     </p>
                   </div>
                 </td>

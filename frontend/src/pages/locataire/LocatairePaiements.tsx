@@ -74,7 +74,7 @@ export default function LocatairePaiements() {
                   cancelled: { label: 'Annulé', variant: 'gray' },
                 }
                 const { label, variant } = statusMap[p.status] ?? { label: p.status, variant: 'gray' }
-                const canDownloadQuittance = p.status === 'paid' || p.status === 'partial'
+                const canDownloadQuittance = p.status === 'paid'
                 return (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">

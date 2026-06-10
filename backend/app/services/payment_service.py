@@ -462,8 +462,11 @@ class PaymentService:
     async def send_quittance(db: AsyncSession, payment_id: uuid.UUID) -> Payment:
         """Marque la quittance comme envoyée et enregistre l'horodatage."""
         payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
-        if payment.status not in (PaymentStatus.PAID, PaymentStatus.PARTIAL):
-            raise BadRequestException("Impossible de générer une quittance pour un loyer non payé")
+        # Règle : quittance uniquement si le mois est intégralement payé.
+        if payment.status != PaymentStatus.PAID:
+            raise BadRequestException(
+                "La quittance n'est disponible que lorsque le loyer du mois est intégralement payé."
+            )
         now = datetime.now(timezone.utc)
         if not payment.quittance_generated_at:
             payment.quittance_generated_at = now
