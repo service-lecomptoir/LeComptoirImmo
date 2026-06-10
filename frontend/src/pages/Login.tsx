@@ -7,6 +7,7 @@ import { Eye, EyeOff, Mail, Lock, ChevronRight } from 'lucide-react'
 import { useAuthStore, roleHomePath } from '@/store/authStore'
 import type { AccountType } from '@/store/authStore'
 import SubscriptionModal from './SubscriptionModal'
+import { LogoMark } from '@/components/common/Logo'
 
 const ACCOUNT_TYPES: {
   id: AccountType
@@ -109,7 +110,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                style={{ background: '#F07800' }}>
-            <span className="text-white font-bold text-sm">LC</span>
+            <LogoMark size={26} className="text-white" />
           </div>
           <span className="text-white font-bold text-lg tracking-wide">Le Comptoir Immo</span>
         </div>
@@ -248,7 +249,7 @@ export default function Login() {
           <div className="inline-flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center"
                  style={{ background: '#0D2F5C' }}>
-              <span className="text-white font-bold text-xs">LC</span>
+              <LogoMark size={24} className="text-white" />
             </div>
             <span className="font-bold text-lg" style={{ color: '#0D2F5C' }}>Le Comptoir Immo</span>
           </div>
