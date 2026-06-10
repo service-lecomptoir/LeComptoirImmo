@@ -1,5 +1,25 @@
 import { useRef, useEffect, useState, lazy, Suspense } from 'react'
+import type { ComponentType } from 'react'
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router-dom'
+
+// Recharge la page (une seule fois / 10 s) quand un chunk lazy a disparu après un
+// déploiement : l'onglet ouvert référence d'anciens fichiers hashés supprimés
+// → on récupère le nouvel index.html + les chunks à jour au lieu de planter.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lazyPage<T extends ComponentType<any>>(factory: () => Promise<{ default: T }>) {
+  return lazy(() =>
+    factory().catch((err) => {
+      const KEY = 'chunk-reload-ts'
+      const last = Number(sessionStorage.getItem(KEY) || '0')
+      if (Date.now() - last > 10000) {
+        sessionStorage.setItem(KEY, String(Date.now()))
+        window.location.reload()
+        return new Promise<{ default: T }>(() => {}) // jamais résolue : reload en cours
+      }
+      throw err
+    }),
+  )
+}
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { useAuthStore, roleHomePath } from '@/store/authStore'
@@ -13,53 +33,53 @@ import Landing from '@/pages/Landing'
 // ── Pages authentifiées : chargées à la demande (code-splitting) ──────────────
 // Chaque route ne télécharge son JS que lorsqu'on y navigue → bundle initial
 // bien plus léger, premier affichage plus rapide.
-const Dashboard = lazy(() => import('@/pages/Dashboard'))
-const TenantList = lazy(() => import('@/pages/tenants/TenantList'))
-const TenantDetail = lazy(() => import('@/pages/tenants/TenantDetail'))
-const OwnerList = lazy(() => import('@/pages/owners/OwnerList'))
-const OwnerDetail = lazy(() => import('@/pages/owners/OwnerDetail'))
-const PropertyList = lazy(() => import('@/pages/properties/PropertyList'))
-const PropertyDetail = lazy(() => import('@/pages/properties/PropertyDetail'))
-const LeaseList = lazy(() => import('@/pages/leases/LeaseList'))
-const LeaseDetail = lazy(() => import('@/pages/leases/LeaseDetail'))
-const PaymentList = lazy(() => import('@/pages/payments/PaymentList'))
-const NotificationList = lazy(() => import('@/pages/notifications/NotificationList'))
-const AdminUsers = lazy(() => import('@/pages/admin/AdminUsers'))
-const AvisEcheanceList = lazy(() => import('@/pages/avis-echeances/AvisEcheanceList'))
-const ContactList = lazy(() => import('@/pages/contacts/ContactList'))
-const Automatisation = lazy(() => import('@/pages/automatisation/Automatisation'))
-const TemplateEditor = lazy(() => import('@/pages/templates/TemplateEditor'))
-const ProprietaireDashboard = lazy(() => import('@/pages/proprietaire/ProprietaireDashboard'))
-const ProprietaireBiens = lazy(() => import('@/pages/proprietaire/ProprietaireBiens'))
-const ProprietaireLocataires = lazy(() => import('@/pages/proprietaire/ProprietaireLocataires'))
-const ProprietaireRevenus = lazy(() => import('@/pages/proprietaire/ProprietaireRevenus'))
-const ProprietaireFiscal = lazy(() => import('@/pages/proprietaire/ProprietaireFiscal'))
-const LocataireDashboard = lazy(() => import('@/pages/locataire/LocataireDashboard'))
-const LocataireAvis = lazy(() => import('@/pages/locataire/LocataireAvis'))
-const LocatairePaiements = lazy(() => import('@/pages/locataire/LocatairePaiements'))
-const LocataireDocuments = lazy(() => import('@/pages/locataire/LocataireDocuments'))
-const LocataireMessages = lazy(() => import('@/pages/locataire/LocataireMessages'))
-const LocatairePayer = lazy(() => import('@/pages/locataire/LocatairePayer'))
-const IncidentList = lazy(() => import('@/pages/incidents/IncidentList'))
-const EntretienList = lazy(() => import('@/pages/entretien/EntretienList'))
-const ProprietaireEntretien = lazy(() => import('@/pages/proprietaire/ProprietaireEntretien'))
-const ProprietaireIncidents = lazy(() => import('@/pages/proprietaire/ProprietaireIncidents'))
-const ProprietaireMessages = lazy(() => import('@/pages/proprietaire/ProprietaireMessages'))
-const QuittanceList = lazy(() => import('@/pages/quittances/QuittanceList'))
-const OffersManager = lazy(() => import('@/pages/offers/OffersManager'))
-const LocataireOffres = lazy(() => import('@/pages/locataire/LocataireOffres'))
-const MonAbonnement = lazy(() => import('@/pages/subscription/MonAbonnement'))
-const MonProfil = lazy(() => import('@/pages/profil/MonProfil'))
-const GuideUtilisateur = lazy(() => import('@/pages/guide/GuideUtilisateur'))
-const ScoringList = lazy(() => import('@/pages/scoring/ScoringList'))
-const FinancesParProprietaire = lazy(() => import('@/pages/finances/FinancesParProprietaire'))
-const Actualisation = lazy(() => import('@/pages/actualisation/Actualisation'))
-const DocumentsCaf = lazy(() => import('@/pages/documents-caf/DocumentsCaf'))
-const DiffusionPage = lazy(() => import('@/pages/publishing/DiffusionPage'))
-const PropertyPublish = lazy(() => import('@/pages/publishing/PropertyPublish'))
-const AnnoncePublic = lazy(() => import('@/pages/public/AnnoncePublic'))
-const CandidaturesPage = lazy(() => import('@/pages/candidatures/CandidaturesPage'))
-const SortiesPage = lazy(() => import('@/pages/sorties/SortiesPage'))
+const Dashboard = lazyPage(() => import('@/pages/Dashboard'))
+const TenantList = lazyPage(() => import('@/pages/tenants/TenantList'))
+const TenantDetail = lazyPage(() => import('@/pages/tenants/TenantDetail'))
+const OwnerList = lazyPage(() => import('@/pages/owners/OwnerList'))
+const OwnerDetail = lazyPage(() => import('@/pages/owners/OwnerDetail'))
+const PropertyList = lazyPage(() => import('@/pages/properties/PropertyList'))
+const PropertyDetail = lazyPage(() => import('@/pages/properties/PropertyDetail'))
+const LeaseList = lazyPage(() => import('@/pages/leases/LeaseList'))
+const LeaseDetail = lazyPage(() => import('@/pages/leases/LeaseDetail'))
+const PaymentList = lazyPage(() => import('@/pages/payments/PaymentList'))
+const NotificationList = lazyPage(() => import('@/pages/notifications/NotificationList'))
+const AdminUsers = lazyPage(() => import('@/pages/admin/AdminUsers'))
+const AvisEcheanceList = lazyPage(() => import('@/pages/avis-echeances/AvisEcheanceList'))
+const ContactList = lazyPage(() => import('@/pages/contacts/ContactList'))
+const Automatisation = lazyPage(() => import('@/pages/automatisation/Automatisation'))
+const TemplateEditor = lazyPage(() => import('@/pages/templates/TemplateEditor'))
+const ProprietaireDashboard = lazyPage(() => import('@/pages/proprietaire/ProprietaireDashboard'))
+const ProprietaireBiens = lazyPage(() => import('@/pages/proprietaire/ProprietaireBiens'))
+const ProprietaireLocataires = lazyPage(() => import('@/pages/proprietaire/ProprietaireLocataires'))
+const ProprietaireRevenus = lazyPage(() => import('@/pages/proprietaire/ProprietaireRevenus'))
+const ProprietaireFiscal = lazyPage(() => import('@/pages/proprietaire/ProprietaireFiscal'))
+const LocataireDashboard = lazyPage(() => import('@/pages/locataire/LocataireDashboard'))
+const LocataireAvis = lazyPage(() => import('@/pages/locataire/LocataireAvis'))
+const LocatairePaiements = lazyPage(() => import('@/pages/locataire/LocatairePaiements'))
+const LocataireDocuments = lazyPage(() => import('@/pages/locataire/LocataireDocuments'))
+const LocataireMessages = lazyPage(() => import('@/pages/locataire/LocataireMessages'))
+const LocatairePayer = lazyPage(() => import('@/pages/locataire/LocatairePayer'))
+const IncidentList = lazyPage(() => import('@/pages/incidents/IncidentList'))
+const EntretienList = lazyPage(() => import('@/pages/entretien/EntretienList'))
+const ProprietaireEntretien = lazyPage(() => import('@/pages/proprietaire/ProprietaireEntretien'))
+const ProprietaireIncidents = lazyPage(() => import('@/pages/proprietaire/ProprietaireIncidents'))
+const ProprietaireMessages = lazyPage(() => import('@/pages/proprietaire/ProprietaireMessages'))
+const QuittanceList = lazyPage(() => import('@/pages/quittances/QuittanceList'))
+const OffersManager = lazyPage(() => import('@/pages/offers/OffersManager'))
+const LocataireOffres = lazyPage(() => import('@/pages/locataire/LocataireOffres'))
+const MonAbonnement = lazyPage(() => import('@/pages/subscription/MonAbonnement'))
+const MonProfil = lazyPage(() => import('@/pages/profil/MonProfil'))
+const GuideUtilisateur = lazyPage(() => import('@/pages/guide/GuideUtilisateur'))
+const ScoringList = lazyPage(() => import('@/pages/scoring/ScoringList'))
+const FinancesParProprietaire = lazyPage(() => import('@/pages/finances/FinancesParProprietaire'))
+const Actualisation = lazyPage(() => import('@/pages/actualisation/Actualisation'))
+const DocumentsCaf = lazyPage(() => import('@/pages/documents-caf/DocumentsCaf'))
+const DiffusionPage = lazyPage(() => import('@/pages/publishing/DiffusionPage'))
+const PropertyPublish = lazyPage(() => import('@/pages/publishing/PropertyPublish'))
+const AnnoncePublic = lazyPage(() => import('@/pages/public/AnnoncePublic'))
+const CandidaturesPage = lazyPage(() => import('@/pages/candidatures/CandidaturesPage'))
+const SortiesPage = lazyPage(() => import('@/pages/sorties/SortiesPage'))
 
 // Indicateur de chargement pendant le téléchargement d'une page différée (lazy).
 function PageLoader() {
