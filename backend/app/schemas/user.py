@@ -30,7 +30,8 @@ class UserUpdate(BaseModel):
     zip_code: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
-    # Nom et prénom du propriétaire (bailleur) — pour bail / attestation / tiers payant.
+    # Identité bailleur : type (personne/societe) + nom/prénom OU société + SIREN/SIRET.
+    owner_kind: Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
@@ -47,7 +48,8 @@ class ProfileUpdate(BaseModel):
     zip_code: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
-    # Identité bailleur : nom/prénom (GP) + société/SCI + SIREN/SIRET (mandataire ET GP).
+    # Identité bailleur : type + nom/prénom (personne) OU société/SCI + SIREN/SIRET.
+    owner_kind: Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
@@ -95,6 +97,7 @@ class UserResponse(BaseModel):
     zip_code: Optional[str] = None
     city: Optional[str] = None
     country: Optional[str] = None
+    owner_kind: Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None

@@ -42,6 +42,7 @@ class ManagerOut(BaseModel):
     id: uuid.UUID
     email: EmailStr
     full_name: str
+    owner_kind: Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
@@ -67,6 +68,7 @@ class PropertyOut(BaseModel):
 class ManagerCreate(BaseModel):
     email: EmailStr
     full_name: str = Field("", max_length=255)
+    owner_kind: Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
@@ -79,6 +81,7 @@ class ManagerCreate(BaseModel):
 class ManagerUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    owner_kind: Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
@@ -120,6 +123,7 @@ def _manager_out(user: User, property_count: int = 0) -> ManagerOut:
         id=user.id,
         email=user.email,
         full_name=user.full_name,
+        owner_kind=getattr(user, "owner_kind", None),
         owner_full_name=getattr(user, "owner_full_name", None),
         owner_company=getattr(user, "owner_company", None),
         owner_national_id=getattr(user, "owner_national_id", None),
@@ -184,6 +188,8 @@ async def create_manager(
         UserCreate(email=data.email, password=data.password, full_name=data.full_name, role=Role(data.role)),
         created_by=None,  # compte principal (agence), créé par la plateforme
     )
+    if data.owner_kind in ("personne", "societe"):
+        user.owner_kind = data.owner_kind
     if data.owner_full_name is not None:
         user.owner_full_name = data.owner_full_name
     if data.owner_company is not None:
@@ -220,6 +226,7 @@ async def update_manager(
         UserUpdate(
             email=data.email,
             full_name=data.full_name,
+            owner_kind=data.owner_kind,
             owner_full_name=data.owner_full_name,
             owner_company=data.owner_company,
             owner_national_id=data.owner_national_id,

@@ -31,6 +31,8 @@ export default function MonProfil() {
   const [ownerLastName, setOwnerLastName] = useState(splitName(user?.owner_full_name).last)
   const [ownerCompany, setOwnerCompany] = useState(user?.owner_company ?? '')
   const [ownerNationalId, setOwnerNationalId] = useState(user?.owner_national_id ?? '')
+  // Type d'identité bailleur : 'personne' (Prénom/Nom) ou 'societe' (Société/SCI + SIRET).
+  const [ownerKind, setOwnerKind] = useState<'personne' | 'societe'>(user?.owner_kind === 'societe' ? 'societe' : 'personne')
   const [email, setEmail] = useState(user?.email ?? '')
   const [phone, setPhone] = useState(user?.phone ?? '')
   const [address, setAddress] = useState(user?.address ?? '')
@@ -231,8 +233,11 @@ export default function MonProfil() {
           country: country || null,
         }),
         ...(isManager ? {
-          // GP = personne bailleur ; mandataire = pas de nom/prénom de propriétaire.
-          owner_full_name: isGP ? (joinName(ownerFirstName, ownerLastName) || null) : null,
+          // Mandataire = société par nature ; GP = selon le type choisi (personne/société).
+          // Le nom des documents dérive côté serveur du type (owner_kind).
+          owner_kind: isGP ? ownerKind : 'societe',
+          owner_full_name: (isGP && ownerKind === 'personne')
+            ? (joinName(ownerFirstName, ownerLastName) || null) : null,
           owner_company: ownerCompany.trim() || null,
           owner_national_id: ownerNationalId.trim() || null,
         } : {}),
@@ -312,20 +317,36 @@ export default function MonProfil() {
           </div>
         )}
         {/* Identité bailleur. Mandataire = société/SIREN (ce n'est pas un propriétaire).
-            GP = personne (Nom/Prénom) + société/SCI + SIREN, comme dans Alice. */}
+            GP = choix personne (Prénom/Nom) OU société/SCI + SIREN. Le nom utilisé sur
+            les documents (bail, attestations) dérive de ce choix. */}
         {isManager && (
           <div>
             <label className={lbl}>{isGP ? 'Propriétaire (bailleur)' : 'Société (mandataire)'}</label>
+            {/* Le GP choisit son type d'identité ; le mandataire est une société par nature. */}
             {isGP && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <button type="button" onClick={() => setOwnerKind('personne')}
+                  className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${ownerKind === 'personne' ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  Personne (Prénom / Nom)
+                </button>
+                <button type="button" onClick={() => setOwnerKind('societe')}
+                  className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${ownerKind === 'societe' ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  Société / SCI
+                </button>
+              </div>
+            )}
+            {isGP && ownerKind === 'personne' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input className={inp} value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)} placeholder="Prénom" />
                 <input className={inp} value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)} placeholder="Nom" />
               </div>
             )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder={isGP ? 'Société / SCI (le cas échéant)' : 'Société'} />
-              <input className={inp} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="SIREN / SIRET" />
-            </div>
+            {(!isGP || ownerKind === 'societe') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder={isGP ? 'Société / SCI' : 'Société'} />
+                <input className={inp} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="SIREN / SIRET" />
+              </div>
+            )}
             <p className="text-xs text-gray-400 mt-1">Utilisé comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
           </div>
         )}

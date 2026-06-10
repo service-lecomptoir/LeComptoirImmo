@@ -36,6 +36,9 @@ class User(Base, TimestampMixin):
     zip_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     city: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    # Type d'identité du bailleur : 'personne' (Prénom/Nom) ou 'societe' (Société/SCI).
+    # Détermine le nom affiché sur les documents (bail, attestations).
+    owner_kind: Mapped[str] = mapped_column(String(10), nullable=False, default="personne", server_default="personne")
     # Nom et prénom du propriétaire (bailleur) — utilisé pour le bail, l'attestation
     # de loyer et le formulaire tiers payant. Distinct du nom de la résidence.
     owner_full_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
@@ -79,6 +82,17 @@ class User(Base, TimestampMixin):
         ]
         joined = ", ".join(p for p in parts if p)
         return joined or None
+
+    @property
+    def bailleur_name(self) -> Optional[str]:
+        """Nom du bailleur pour les documents (bail, attestations), selon le type :
+        société → dénomination (owner_company) ; personne → owner_full_name.
+        Repli sur l'autre champ si le champ attendu est vide."""
+        company = (self.owner_company or "").strip()
+        person = (self.owner_full_name or "").strip()
+        if (self.owner_kind or "personne") == "societe":
+            return company or person or None
+        return person or company or None
 
     def __repr__(self) -> str:
         return f"<User {self.email} [{self.role}]>"

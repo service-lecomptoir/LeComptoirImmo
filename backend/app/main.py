@@ -333,6 +333,10 @@ async def _apply_column_migrations() -> None:
         # Identité du bailleur sur le compte gestionnaire : société/SCI + SIRET/N° pièce.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_company VARCHAR(200)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_national_id VARCHAR(50)",
+        # Type d'identité du bailleur : 'personne' / 'societe'. Backfill : 'societe'
+        # si une société est déjà renseignée sans nom de personne, sinon 'personne'.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_kind VARCHAR(10) NOT NULL DEFAULT 'personne'",
+        "UPDATE users SET owner_kind='societe' WHERE owner_kind='personne' AND COALESCE(owner_company,'')<>'' AND COALESCE(owner_full_name,'')=''",
         # ── 018 : nettoyage des reliques de la fusion bien/logement ─────────────
         # Loyer/charges/dépôt sont portés par le contrat (leases), plus par le bien.
         "ALTER TABLE properties DROP COLUMN IF EXISTS base_rent",

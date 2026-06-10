@@ -110,6 +110,8 @@ class UserService:
             user.country = data.country or None
         if getattr(data, "template_pinned_vars", None) is not None:
             user.template_pinned_vars = data.template_pinned_vars or None
+        if getattr(data, "owner_kind", None) in ("personne", "societe"):
+            user.owner_kind = data.owner_kind
         if getattr(data, "owner_full_name", None) is not None:
             user.owner_full_name = data.owner_full_name or None
         if getattr(data, "owner_company", None) is not None:

@@ -11,6 +11,7 @@ export interface User {
   zip_code?: string | null
   city?: string | null
   country?: string | null
+  owner_kind?: string | null
   owner_full_name?: string | null
   owner_company?: string | null
   owner_national_id?: string | null
