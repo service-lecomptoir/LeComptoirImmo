@@ -21,6 +21,108 @@ from app.models.document import Document
 from app.models.publishing import Listing
 
 
+_PROPERTY_TYPE_LABELS = {
+    "appartement": "Appartement", "maison": "Maison",
+    "local_commercial": "Local commercial", "autre": "Bien",
+}
+_AMENITIES = [
+    ("furnished", "meublé"), ("kitchen_equipped", "cuisine équipée"),
+    ("has_elevator", "ascenseur"), ("has_balcony", "balcon"),
+    ("has_terrace", "terrasse"), ("has_garden", "jardin"),
+    ("has_parking", "parking"), ("has_cellar", "cave"),
+    ("has_fiber", "fibre optique"), ("has_air_conditioning", "climatisation"),
+]
+
+
+def _property_facts(prop, price=None) -> list[str]:
+    """Liste des caractéristiques CONNUES du bien (jamais inventées)."""
+    facts: list[str] = []
+    ptype = _PROPERTY_TYPE_LABELS.get(getattr(prop, "property_type", None) or "", "Bien")
+    facts.append(f"Type : {ptype}")
+    if getattr(prop, "typology", None):
+        facts.append(f"Typologie : {prop.typology}")
+    if getattr(prop, "area_sqm", None):
+        facts.append(f"Surface : {float(prop.area_sqm):g} m²")
+    if getattr(prop, "floor", None) is not None:
+        facts.append(f"Étage : {prop.floor}")
+    if getattr(prop, "bathrooms", None):
+        facts.append(f"Salle(s) d'eau : {prop.bathrooms}")
+    if getattr(prop, "heating_type", None):
+        facts.append(f"Chauffage : {prop.heating_type}")
+    if getattr(prop, "energy_class", None):
+        facts.append(f"Classe énergie (DPE) : {prop.energy_class}")
+    loc = " ".join(p for p in [getattr(prop, "zip_code", None), getattr(prop, "city", None)] if p)
+    if loc:
+        facts.append(f"Localisation : {loc}")
+    equip = [label for attr, label in _AMENITIES if getattr(prop, attr, False)]
+    if equip:
+        facts.append("Équipements : " + ", ".join(equip))
+    if price:
+        facts.append(f"Loyer indicatif : {float(price):g} € / mois")
+    return facts
+
+
+def _fallback_draft(prop, facts: list[str]) -> dict:
+    """Brouillon déterministe (sans LLM) à partir des caractéristiques connues."""
+    ptype = _PROPERTY_TYPE_LABELS.get(getattr(prop, "property_type", None) or "", "Bien")
+    bits = [ptype]
+    if getattr(prop, "typology", None):
+        bits.append(str(prop.typology))
+    if getattr(prop, "area_sqm", None):
+        bits.append(f"{float(prop.area_sqm):g} m²")
+    title = " ".join(bits)
+    if getattr(prop, "city", None):
+        title += f" à {prop.city}"
+    equip = [label for attr, label in _AMENITIES if getattr(prop, attr, False)]
+    sentences = [f"{ptype}" + (f" de type {prop.typology}" if getattr(prop, 'typology', None) else "")
+                 + (f" d'environ {float(prop.area_sqm):g} m²" if getattr(prop, 'area_sqm', None) else "")
+                 + (f", situé à {prop.city}" if getattr(prop, 'city', None) else "") + "."]
+    if equip:
+        sentences.append("Il dispose de : " + ", ".join(equip) + ".")
+    if getattr(prop, "energy_class", None):
+        sentences.append(f"Classe énergétique (DPE) : {prop.energy_class}.")
+    sentences.append("Disponible à la location — contactez-nous pour organiser une visite.")
+    return {"title": title[:120], "description": " ".join(sentences)}
+
+
+async def generate_listing_draft(prop, price=None) -> dict:
+    """Génère un brouillon { title, description } depuis les caractéristiques du bien.
+
+    Utilise le LLM s'il est configuré (ancré sur les seules caractéristiques connues,
+    interdiction d'inventer) ; sinon repli déterministe. Le résultat est proposé à
+    l'édition côté gestionnaire (jamais enregistré automatiquement)."""
+    import json
+    import re as _re
+    from app.services import llm_service
+
+    facts = _property_facts(prop, price)
+    if llm_service.enabled():
+        try:
+            system = (
+                "Tu es un expert en rédaction d'annonces immobilières de location en France. "
+                "À partir des CARACTÉRISTIQUES fournies, rédige une annonce attractive, "
+                "honnête et concise, en français. N'invente AUCUNE information absente des "
+                "caractéristiques. Réponds STRICTEMENT en JSON valide, sans texte autour : "
+                '{"title": "<accroche max 80 caractères>", "description": "<120 à 220 mots, '
+                'phrases courtes>"}.'
+            )
+            reply = await llm_service.chat(
+                [{"role": "system", "content": system},
+                 {"role": "user", "content": "CARACTÉRISTIQUES :\n- " + "\n- ".join(facts)}],
+                temperature=0.6, max_tokens=600,
+            )
+            if reply:
+                txt = _re.sub(r"^```(?:json)?|```$", "", reply.strip(), flags=_re.MULTILINE).strip()
+                data = json.loads(txt)
+                title = (data.get("title") or "").strip()
+                desc = (data.get("description") or "").strip()
+                if title and desc:
+                    return {"title": title[:200], "description": desc, "source": "ia"}
+        except Exception:  # noqa: BLE001 — repli déterministe
+            pass
+    return {**_fallback_draft(prop, facts), "source": "modele"}
+
+
 def build_photo_url(file_path: Optional[str]) -> Optional[str]:
     """URL servie pour un document uploadé (mount StaticFiles « /uploads »).
 

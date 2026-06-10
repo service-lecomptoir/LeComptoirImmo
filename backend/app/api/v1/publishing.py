@@ -21,7 +21,7 @@ from app.database import get_db
 from app.models.property import Property
 from app.models.publishing import Listing, PublishPlatform
 from app.models.user import User
-from app.services.listing_service import ListingService, build_photo_url
+from app.services.listing_service import ListingService, build_photo_url, generate_listing_draft
 
 router = APIRouter(prefix="/publishing", tags=["Diffusion"])
 
@@ -254,6 +254,22 @@ async def delete_property_photo(
         if kept != listing.photo_ids:
             listing.photo_ids = kept
     await db.commit()
+
+
+@router.post("/properties/{property_id}/listing/generate", summary="Rédiger l'annonce avec l'IA")
+async def generate_listing(
+    property_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Propose un titre + une description rédigés à partir des caractéristiques
+    connues du bien (LLM si configuré, sinon modèle). Non enregistré : à éditer
+    puis sauvegarder."""
+    prop = await _accessible_property(db, user, property_id)
+    listing = await ListingService.get_or_create(db, property_id, user.id)
+    await db.commit()
+    draft = await generate_listing_draft(prop, listing.price)
+    return draft
 
 
 @router.post("/properties/{property_id}/listing/publish", summary="Publier maintenant")

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, Image as ImageIcon, Send, Clock, EyeOff, Save, ExternalLink, Eye, TrendingUp, Trash2 } from 'lucide-react'
+import { ArrowLeft, Upload, Image as ImageIcon, Send, Clock, EyeOff, Save, ExternalLink, Eye, TrendingUp, Trash2, Sparkles } from 'lucide-react'
 import { publishingApi, uploadPropertyPhoto, type Listing, type PublishPlatform } from '@/api/publishing'
 import { toast } from '@/store/toast'
 
@@ -20,6 +20,7 @@ export default function PropertyPublish() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [when, setWhen] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -86,6 +87,19 @@ export default function PropertyPublish() {
     if (!when) { toast.error('Choisissez une date de publication.'); return }
     const iso = new Date(when).toISOString()
     act(() => publishingApi.schedule(id!, iso), 'Publication programmée.')
+  }
+
+  const generate = async () => {
+    if (!id) return
+    if ((title.trim() || description.trim()) &&
+        !window.confirm('Remplacer le titre et la description actuels par une proposition rédigée par l\'IA ?')) return
+    setGenerating(true)
+    try {
+      const { data } = await publishingApi.generate(id)
+      setTitle(data.title)
+      setDescription(data.description)
+      toast.success(data.source === 'ia' ? 'Annonce rédigée par l\'IA.' : 'Brouillon généré depuis les caractéristiques du bien.')
+    } catch { /* intercepteur affiche l'erreur */ } finally { setGenerating(false) }
   }
 
   const togglePhoto = (pid: string) =>
@@ -184,6 +198,14 @@ export default function PropertyPublish() {
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-xs text-gray-400">Le titre et la description peuvent être rédigés automatiquement à partir des caractéristiques du bien.</p>
+          <button type="button" onClick={generate} disabled={generating}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #0E9F8E 130%)' }}>
+            <Sparkles size={14} /> {generating ? 'Rédaction…' : "Rédiger avec l'IA"}
+          </button>
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Titre de l'annonce</label>
           <input value={title} onChange={e => setTitle(e.target.value)}

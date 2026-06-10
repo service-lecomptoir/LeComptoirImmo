@@ -79,6 +79,10 @@ export const publishingApi = {
     apiClient.post<Listing>(`/publishing/properties/${propertyId}/listing/unpublish`),
   deletePhoto: (propertyId: string, documentId: string) =>
     apiClient.delete(`/publishing/properties/${propertyId}/photos/${documentId}`),
+  generate: (propertyId: string) =>
+    apiClient.post<{ title: string; description: string; source: string }>(
+      `/publishing/properties/${propertyId}/listing/generate`,
+    ),
 }
 
 /** Upload d'une photo rattachée au bien (document image), réutilisable dans l'annonce. */
