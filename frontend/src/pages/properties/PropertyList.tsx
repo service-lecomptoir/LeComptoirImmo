@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2, Download } from 'lucide-react'
+import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2, Download, KeyRound } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 import { PropertyForm } from './PropertyForm'
@@ -67,6 +67,8 @@ export default function PropertyList() {
   const [showLimitNotice, setShowLimitNotice] = useState(false)
   const [checkingLicense, setCheckingLicense] = useState(false)
   const user = useAuthStore(s => s.user)
+  // Mandataire : on regroupe les biens par propriétaire (comme les autres onglets).
+  const isMandataire = user?.role === 'gestionnaire'
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
   const [view, setView] = useViewMode('properties', 'grid')
   const [limit, setLimit] = useState(100)
@@ -173,6 +175,83 @@ export default function PropertyList() {
       ]))
     toast.success(`${properties.length} bien(s) exporté(s)`)
   }
+
+  // Carte d'un bien (vue mosaïque), réutilisée en grille simple ET groupée.
+  const renderCard = (prop: PropertyListItem) => (
+    <div
+      key={prop.id}
+      onClick={() => navigate(`/properties/${prop.id}`)}
+      className="group relative flex flex-col gap-3 bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-300"
+    >
+      {/* Type + occupation */}
+      <div className="flex items-center justify-between gap-2">
+        <StatusBadge
+          label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
+          variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
+        />
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+          prop.is_occupied ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+        }`}>
+          {prop.is_occupied ? 'Occupé' : 'Disponible'}
+        </span>
+      </div>
+
+      {/* Icône + nom + adresse */}
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+          <Building2 size={18} className="text-blue-600" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold text-gray-900 truncate">{prop.name}</p>
+          {(prop.full_address || prop.city) && (
+            <p className="text-xs text-gray-500 whitespace-pre-line leading-tight">{prop.full_address || prop.city}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Méta : typologie / surface / lots */}
+      {(prop.typology || prop.area_sqm != null || prop.unit_count > 1) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+          {prop.typology && <span>{prop.typology}</span>}
+          {prop.area_sqm != null && <span>{prop.area_sqm} m²</span>}
+          {prop.unit_count > 1 && <span>{prop.unit_count} lots</span>}
+        </div>
+      )}
+
+      {/* Propriétaire (masqué pour le mandataire : déjà en en-tête de groupe) + actions */}
+      <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
+        <span className="text-xs text-gray-600 truncate">
+          {isMandataire ? '' : (prop.owner_name || '')}
+        </span>
+        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => openEdit(prop.id)}
+            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
+            title="Modifier"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            onClick={() => setDeleteId(prop.id)}
+            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors"
+            title="Supprimer"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  // Regroupement par propriétaire (mandataire uniquement), ordre alphabétique.
+  const ownerGroups: [string, PropertyListItem[]][] = (() => {
+    const acc: Record<string, PropertyListItem[]> = {}
+    for (const p of properties) {
+      const key = p.owner_name || 'Sans propriétaire'
+      ;(acc[key] ||= []).push(p)
+    }
+    return Object.entries(acc).sort((a, b) => a[0].localeCompare(b[0], 'fr'))
+  })()
 
   return (
     <div className="p-4 sm:p-6">
@@ -309,75 +388,25 @@ export default function PropertyList() {
             </table>
           </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {properties.map(prop => (
-            <div
-              key={prop.id}
-              onClick={() => navigate(`/properties/${prop.id}`)}
-              className="group relative flex flex-col gap-3 bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-300"
-            >
-              {/* Type + occupation */}
-              <div className="flex items-center justify-between gap-2">
-                <StatusBadge
-                  label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
-                  variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
-                />
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                  prop.is_occupied
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-green-100 text-green-700'
-                }`}>
-                  {prop.is_occupied ? 'Occupé' : 'Disponible'}
-                </span>
+      ) : isMandataire ? (
+        // Mandataire : biens regroupés par propriétaire (en-tête + grille de cartes).
+        <div className="space-y-6">
+          {ownerGroups.map(([owner, list]) => (
+            <div key={owner}>
+              <div className="flex items-center gap-2 mb-3">
+                <KeyRound size={15} className="text-blue-600" />
+                <h3 className="text-sm font-semibold text-gray-900">{owner}</h3>
+                <span className="text-xs text-gray-400">· {list.length} bien{list.length > 1 ? 's' : ''}</span>
               </div>
-
-              {/* Icône + nom + adresse */}
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                  <Building2 size={18} className="text-blue-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{prop.name}</p>
-                  {(prop.full_address || prop.city) && (
-                    <p className="text-xs text-gray-500 whitespace-pre-line leading-tight">{prop.full_address || prop.city}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Méta : typologie / surface / lots */}
-              {(prop.typology || prop.area_sqm != null || prop.unit_count > 1) && (
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                  {prop.typology && <span>{prop.typology}</span>}
-                  {prop.area_sqm != null && <span>{prop.area_sqm} m²</span>}
-                  {prop.unit_count > 1 && <span>{prop.unit_count} lots</span>}
-                </div>
-              )}
-
-              {/* Propriétaire + actions */}
-              <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
-                <span className="text-xs text-gray-600 truncate">
-                  <span className="text-gray-400">Propriétaire : </span>{prop.owner_name || '—'}
-                </span>
-                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                  <button
-                    onClick={() => openEdit(prop.id)}
-                    className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
-                    title="Modifier"
-                  >
-                    <Pencil size={14} />
-                  </button>
-                  <button
-                    onClick={() => setDeleteId(prop.id)}
-                    className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors"
-                    title="Supprimer"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {list.map(renderCard)}
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {properties.map(renderCard)}
         </div>
       )}
 
