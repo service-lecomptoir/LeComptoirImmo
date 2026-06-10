@@ -10,6 +10,8 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import type { Property } from '@/types/property'
 import { PROPERTY_TYPE_LABELS, AMENITIES, HEATING_OPTIONS } from '@/types/property'
+import { useFeaturesStore } from '@/store/featuresStore'
+import { isFeatureAllowed } from '@/lib/features'
 
 const HEATING_LABELS: Record<string, string> = Object.fromEntries(
   HEATING_OPTIONS.map(h => [h.value, h.label])
@@ -23,6 +25,7 @@ export default function PropertyDetail() {
   const [showEditProp, setShowEditProp] = useState(false)
   const [showDeleteProp, setShowDeleteProp] = useState(false)
   const [isDeletingProp, setIsDeletingProp] = useState(false)
+  const canDiffuser = isFeatureAllowed(useFeaturesStore(s => s.features), 'diffusion')
 
   const fetchData = async () => {
     if (!id) return
@@ -74,13 +77,15 @@ export default function PropertyDetail() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => navigate(`/properties/${property.id}/publish`)}
-            className="flex items-center gap-2 px-3 py-2 border text-sm rounded-lg text-white hover:opacity-90"
-            style={{ background: '#0E9F8E', borderColor: '#0E9F8E' }}
-          >
-            <Megaphone size={15} /> Diffuser
-          </button>
+          {canDiffuser && (
+            <button
+              onClick={() => navigate(`/properties/${property.id}/publish`)}
+              className="flex items-center gap-2 px-3 py-2 border text-sm rounded-lg text-white hover:opacity-90"
+              style={{ background: '#0E9F8E', borderColor: '#0E9F8E' }}
+            >
+              <Megaphone size={15} /> Diffuser
+            </button>
+          )}
           <button
             onClick={() => setShowEditProp(true)}
             className="flex items-center gap-2 px-3 py-2 border border-gray-300 text-sm text-gray-700 rounded-lg hover:bg-gray-50"
