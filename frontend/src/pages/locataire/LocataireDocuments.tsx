@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   FileText, Download, Upload, ChevronDown, ChevronRight,
-  FileCheck, Home, Shield, RefreshCw, TrendingUp, Trash2, X,
+  FileCheck, Home, Shield, RefreshCw, TrendingUp, Trash2, X, Calendar,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { downloadBlob } from '@/utils/download'
+import { docFilename } from '@/utils/filename'
+import { leasesApi } from '@/api/leases'
+import { paymentsApi } from '@/api/payments'
+import { avisEcheancesApi } from '@/api/avis_echeances'
 
 const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -21,10 +25,21 @@ interface Doc {
   mime_type?: string
 }
 
+// Ligne affichée : document stocké (upload) OU document généré à la volée
+// (bail, quittance, avis) avec son propre déclencheur de téléchargement.
+interface DocRow {
+  id: string
+  label: string
+  typeLabel: string
+  date?: string
+  onDownload: () => void
+}
+
 // ── Mapping document types → catégories ──────────────────────────────────────
 
 type CategoryKey =
   | 'bail'
+  | 'avis'
   | 'quittances'
   | 'etats_des_lieux'
   | 'assurance'
@@ -51,6 +66,13 @@ const CATEGORIES: CategoryDef[] = [
     icon: <FileText size={16} className="text-blue-600" />,
     types: ['contrat_bail', 'avenant'],
     description: 'Contrat de location et avenants',
+  },
+  {
+    key: 'avis',
+    label: "Avis d'échéances",
+    icon: <Calendar size={16} className="text-blue-600" />,
+    types: [],
+    description: 'Vos appels de loyer, en PDF',
   },
   {
     key: 'quittances',
@@ -143,6 +165,9 @@ function authHeaders() {
 
 export default function LocataireDocuments() {
   const [documents, setDocuments] = useState<Doc[]>([])
+  const [leases, setLeases] = useState<any[]>([])
+  const [payments, setPayments] = useState<any[]>([])
+  const [avis, setAvis] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [collapsed, setCollapsed] = useState<Set<CategoryKey>>(new Set())
   const [uploadingFor, setUploadingFor] = useState<CategoryKey | null>(null)
@@ -150,9 +175,8 @@ export default function LocataireDocuments() {
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // ── Chargement des documents ──────────────────────────────────────────────
+  // ── Chargement des documents stockés (uploads) ────────────────────────────
   const loadDocs = async () => {
-    setIsLoading(true)
     try {
       const r = await fetch(`${apiBase}/api/v1/documents?limit=200`, {
         headers: authHeaders(),
@@ -166,12 +190,34 @@ export default function LocataireDocuments() {
       setDocuments(list)
     } catch {
       // silently ignore
-    } finally {
-      setIsLoading(false)
     }
   }
 
-  useEffect(() => { loadDocs() }, [])
+  // ── Chargement global : documents stockés + bail + quittances + avis ───────
+  // Les quittances, le bail et les avis ne sont pas stockés comme documents : ils
+  // sont générés à la volée. On les agrège ici depuis leurs sources pour qu'ils
+  // soient disponibles au bon endroit (« Mes documents »).
+  const loadAll = async () => {
+    setIsLoading(true)
+    const [, leasesR, paymentsR, avisR] = await Promise.allSettled([
+      loadDocs(),
+      leasesApi.list({ limit: 50 }),
+      paymentsApi.list({ limit: 200 }),
+      avisEcheancesApi.list({ limit: 200 }),
+    ])
+    if (leasesR.status === 'fulfilled') {
+      const d: any = leasesR.value.data
+      setLeases(d?.items ?? d ?? [])
+    }
+    if (paymentsR.status === 'fulfilled') {
+      const d: any = paymentsR.value.data
+      setPayments(d?.items ?? d ?? [])
+    }
+    if (avisR.status === 'fulfilled') setAvis(avisR.value.data ?? [])
+    setIsLoading(false)
+  }
+
+  useEffect(() => { loadAll() }, [])
 
   // ── Auto-dismiss success ──────────────────────────────────────────────────
   useEffect(() => {
@@ -200,6 +246,68 @@ export default function LocataireDocuments() {
     } catch {
       // silently ignore
     }
+  }
+
+  const downloadAvis = async (a: any) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      const r = await fetch(avisEcheancesApi.pdfUrl(a.id), { headers: { Authorization: `Bearer ${token}` } })
+      const blob = await r.blob()
+      downloadBlob(blob, docFilename('avis_echeance', { tenant: a.tenant_full_name, property: a.property_name, month: a.period_month, year: a.period_year }))
+    } catch {
+      // silently ignore
+    }
+  }
+
+  const fmtDate = (d?: string) => (d ? format(new Date(d), 'd MMM yyyy', { locale: fr }) : '')
+
+  // Lignes d'une catégorie : documents stockés + documents générés (bail/quittances/avis).
+  const rowsFor = (cat: CategoryDef): DocRow[] => {
+    const stored: DocRow[] = documents
+      .filter(d => cat.types.includes(d.document_type))
+      .map(d => ({
+        id: d.id,
+        label: d.label || d.file_name,
+        typeLabel: TYPE_LABELS[d.document_type] ?? d.document_type,
+        date: d.created_at,
+        onDownload: () => handleDownload(d),
+      }))
+    if (cat.key === 'bail') {
+      const virtual = leases.map((l: any) => ({
+        id: `lease-${l.id}`,
+        label: `Contrat de bail${l.property_name ? ' — ' + l.property_name : ''}`,
+        typeLabel: 'Contrat de bail',
+        date: l.start_date ?? l.created_at,
+        onDownload: () => leasesApi.downloadPdf(
+          l.id, docFilename('bail_non_meuble', { tenant: l.tenant_full_name, property: l.property_name }),
+        ),
+      }))
+      return [...virtual, ...stored]
+    }
+    if (cat.key === 'quittances') {
+      const virtual = payments
+        .filter((p: any) => p.status === 'paid' || p.status === 'partial')
+        .map((p: any) => ({
+          id: `pay-${p.id}`,
+          label: `Quittance — ${p.period_label}`,
+          typeLabel: 'Quittance',
+          date: p.payment_date,
+          onDownload: () => paymentsApi.downloadQuittance(
+            p.id, docFilename('quittance', { tenant: p.tenant_full_name, property: p.property_name, month: p.period_month, year: p.period_year }),
+          ),
+        }))
+      return [...virtual, ...stored]
+    }
+    if (cat.key === 'avis') {
+      return avis.map((a: any) => ({
+        id: `avis-${a.id}`,
+        label: `Avis d'échéance — ${a.period_range_label || a.period_label}`,
+        typeLabel: "Avis d'échéance",
+        date: a.created_at,
+        onDownload: () => downloadAvis(a),
+      }))
+    }
+    return stored
   }
 
   // ── Upload assurance ──────────────────────────────────────────────────────
@@ -244,30 +352,23 @@ export default function LocataireDocuments() {
   }
 
   // ── Rendu d'une ligne document ────────────────────────────────────────────
-  const renderDocRow = (doc: Doc) => (
-    <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+  const renderDocRow = (row: DocRow) => (
+    <tr key={row.id} className="hover:bg-gray-50 transition-colors">
       <td className="px-4 py-2.5">
         <div className="flex items-center gap-2">
           <FileText size={13} className="text-blue-400 shrink-0" />
-          <span className="text-sm text-gray-800 truncate max-w-xs">{doc.label || doc.file_name}</span>
+          <span className="text-sm text-gray-800 truncate max-w-xs">{row.label}</span>
         </div>
-        {doc.label && doc.file_name && doc.label !== doc.file_name && (
-          <p className="text-xs text-gray-400 ml-5 mt-0.5">{doc.file_name}</p>
-        )}
       </td>
       <td className="px-4 py-2.5">
         <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
-          {TYPE_LABELS[doc.document_type] ?? doc.document_type}
+          {row.typeLabel}
         </span>
       </td>
-      <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">
-        {doc.created_at
-          ? format(new Date(doc.created_at), 'd MMM yyyy', { locale: fr })
-          : ''}
-      </td>
+      <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
       <td className="px-4 py-2.5 text-right">
         <button
-          onClick={() => handleDownload(doc)}
+          onClick={row.onDownload}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-blue-600 hover:bg-blue-50 border border-blue-200 transition-colors"
         >
           <Download size={11} />
@@ -279,7 +380,7 @@ export default function LocataireDocuments() {
 
   // ── Rendu d'une catégorie ─────────────────────────────────────────────────
   const renderCategory = (cat: CategoryDef) => {
-    const docs = documents.filter(d => cat.types.includes(d.document_type))
+    const docs = rowsFor(cat)
     const isOpen = !collapsed.has(cat.key)
 
     return (
