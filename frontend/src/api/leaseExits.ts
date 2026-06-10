@@ -59,4 +59,15 @@ export const leaseExitsApi = {
     apiClient.patch<LeaseExit>(`/lease-exits/${id}`, data),
   close: (id: string) => apiClient.post<LeaseExit>(`/lease-exits/${id}/close`),
   remove: (id: string) => apiClient.delete(`/lease-exits/${id}`),
+
+  // ── Côté locataire ──
+  myPreavis: () =>
+    apiClient.get<{
+      lease_id: string; sent: boolean; status: string | null
+      notice_received_at: string | null; departure_date: string | null
+    } | null>('/lease-exits/locataire/mine'),
+  sendPreavis: (departure_date?: string | null) =>
+    apiClient.post<{ status: string; departure_date: string | null }>(
+      '/lease-exits/locataire/preavis', { departure_date: departure_date || null },
+    ),
 }

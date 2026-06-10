@@ -277,6 +277,22 @@ class _CommentIn(BaseModel):
     comment: Optional[str] = None
 
 
+class _DraftIn(BaseModel):
+    topic: Optional[str] = None
+    hint: Optional[str] = None
+
+
+@router.post("/draft", summary="Rédiger une démarche avec l'IA (aide locataire)")
+async def draft_ticket(
+    data: _DraftIn,
+    current_user: User = Depends(get_current_user),
+):
+    """Propose un Sujet + une Description selon le type de signalement choisi
+    (et un éventuel mot du locataire). Non enregistré : à éditer puis envoyer."""
+    from app.services.ticket_ai import generate_ticket_draft
+    return await generate_ticket_draft(data.topic, data.hint)
+
+
 class _EditMsgIn(BaseModel):
     content: str
 

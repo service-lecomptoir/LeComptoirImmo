@@ -32,6 +32,7 @@ EVENT_AGENT: dict[str, str] = {
     "paiement": "comptable",      # déclaration de paiement       → Agent Comptable
     "voisinage": "securite",      # trouble / conflit de voisinage → Agent Sécurité
     "logement": "administratif",  # problème dans le logement      → Agent Administratif
+    "preavis": "administratif",   # préavis de départ du locataire → Agent Administratif
     "autre": "administratif",     # divers (catch-all)             → Agent Administratif
 }
 
@@ -40,6 +41,7 @@ TOPIC_LABEL: dict[str, str] = {
     "paiement": "Paiement déclaré",
     "voisinage": "Problème de voisinage signalé",
     "logement": "Problème dans le logement signalé",
+    "preavis": "Préavis de départ reçu",
     "autre": "Nouvelle démarche",
 }
 

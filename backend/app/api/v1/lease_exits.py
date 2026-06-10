@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_role
+from app.api.deps import require_role, get_current_user
 from app.api.v1._isolation import assert_lease_access
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.permissions import Role
@@ -38,6 +38,10 @@ _STATUSES = ("preavis", "etat_des_lieux", "decompte", "cloture")
 class ExitCreate(BaseModel):
     lease_id: uuid.UUID
     notice_received_at: Optional[date] = None
+    departure_date: Optional[date] = None
+
+
+class PreavisIn(BaseModel):
     departure_date: Optional[date] = None
 
 
@@ -259,3 +263,109 @@ async def delete_exit(
     await assert_lease_access(db, user, lease, write=True)
     await db.delete(ex)
     await db.commit()
+
+
+# ── Côté locataire : envoi d'un préavis de départ ─────────────────────────────
+async def _tenant_active_lease(db: AsyncSession, user: User):
+    tenant = (await db.execute(
+        select(Tenant).where(Tenant.user_id == user.id)
+    )).scalar_one_or_none()
+    if not tenant:
+        raise BadRequestException("Profil locataire introuvable.")
+    lease = (await db.execute(
+        select(Lease).where(Lease.tenant_id == tenant.id, Lease.is_active.is_(True))
+        .order_by(Lease.start_date.desc())
+    )).scalars().first()
+    return tenant, lease
+
+
+@router.get("/locataire/mine", summary="Mon préavis de départ (locataire)")
+async def my_preavis(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Statut du préavis pour le bail actif du locataire (null si aucun bail actif)."""
+    tenant = (await db.execute(
+        select(Tenant).where(Tenant.user_id == user.id)
+    )).scalar_one_or_none()
+    if not tenant:
+        return None
+    lease = (await db.execute(
+        select(Lease).where(Lease.tenant_id == tenant.id, Lease.is_active.is_(True))
+        .order_by(Lease.start_date.desc())
+    )).scalars().first()
+    if not lease:
+        return None
+    ex = (await db.execute(
+        select(LeaseExit).where(LeaseExit.lease_id == lease.id)
+    )).scalar_one_or_none()
+    return {
+        "lease_id": lease.id,
+        "sent": bool(ex),
+        "status": ex.status if ex else None,
+        "notice_received_at": ex.notice_received_at if ex else None,
+        "departure_date": ex.departure_date if ex else None,
+    }
+
+
+@router.post("/locataire/preavis", status_code=201, summary="Envoyer un préavis de départ (locataire)")
+async def send_preavis(
+    data: PreavisIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Le locataire transmet son préavis de départ : ouvre (ou met à jour) le dossier
+    de sortie côté gestionnaire et le notifie. La résiliation reste à la main du
+    gestionnaire (état des lieux, décompte, clôture)."""
+    tenant, lease = await _tenant_active_lease(db, user)
+    if not lease:
+        raise BadRequestException("Aucun bail actif : impossible d'envoyer un préavis.")
+    ex = (await db.execute(
+        select(LeaseExit).where(LeaseExit.lease_id == lease.id)
+    )).scalar_one_or_none()
+    if ex and ex.status == "cloture":
+        raise BadRequestException("Le dossier de sortie de ce bail est déjà clôturé.")
+    if ex:
+        if not ex.notice_received_at:
+            ex.notice_received_at = date.today()
+        if data.departure_date:
+            ex.departure_date = data.departure_date
+    else:
+        entry = (await db.execute(
+            select(Inspection).where(
+                Inspection.lease_id == lease.id, Inspection.inspection_type == "entree"
+            ).order_by(Inspection.inspection_date.desc())
+        )).scalars().first()
+        ex = LeaseExit(
+            lease_id=lease.id, status="preavis", notice_received_at=date.today(),
+            departure_date=data.departure_date,
+            entry_inspection_id=entry.id if entry else None,
+            deposit_amount=float(lease.deposit_amount or 0), deductions=[], created_by=user.id,
+        )
+        db.add(ex)
+    await db.flush()
+
+    manager_id = getattr(lease, "created_by", None)
+    dep = f" Départ souhaité : {ex.departure_date:%d/%m/%Y}." if ex.departure_date else ""
+    try:
+        from app.models.notification import Notification, NotificationType, NotificationPriority
+        db.add(Notification(
+            title=f"Préavis de départ — {tenant.full_name}",
+            message=f"{tenant.full_name} a transmis un préavis de départ.{dep} "
+                    f"Ouvrez « Sortie du locataire » pour le traiter.",
+            notification_type=NotificationType.SYSTEME, priority=NotificationPriority.HIGH,
+            entity_type="lease_exit", entity_id=ex.id, user_id=manager_id,
+        ))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from app.services import agent_events
+        await agent_events.notify_manager(
+            db, manager_id, "preavis",
+            f"{tenant.full_name} a transmis un préavis de départ.{dep}",
+            cta="Ouvrez « Sortie du locataire » pour organiser l'état des lieux et le décompte.",
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    await db.commit()
+    return {"status": "received", "departure_date": ex.departure_date}

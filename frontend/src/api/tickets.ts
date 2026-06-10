@@ -44,6 +44,9 @@ export const ticketsApi = {
   create: (data: { title: string; description: string; category: string; priority: string; topic?: string }) =>
     apiClient.post<{ id: string; status: string }>('/tickets', data),
 
+  draft: (data: { topic?: string; hint?: string }) =>
+    apiClient.post<{ title: string; description: string; source: string }>('/tickets/draft', data),
+
   update: (id: string, data: Partial<Pick<Ticket, 'title' | 'description' | 'category' | 'priority' | 'status' | 'assigned_to_id'>>) =>
     apiClient.patch<Ticket>(`/tickets/${id}`, data),
 
