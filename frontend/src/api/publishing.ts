@@ -77,6 +77,8 @@ export const publishingApi = {
     apiClient.post<Listing>(`/publishing/properties/${propertyId}/listing/schedule`, { scheduled_at }),
   unpublish: (propertyId: string) =>
     apiClient.post<Listing>(`/publishing/properties/${propertyId}/listing/unpublish`),
+  deletePhoto: (propertyId: string, documentId: string) =>
+    apiClient.delete(`/publishing/properties/${propertyId}/photos/${documentId}`),
 }
 
 /** Upload d'une photo rattachée au bien (document image), réutilisable dans l'annonce. */

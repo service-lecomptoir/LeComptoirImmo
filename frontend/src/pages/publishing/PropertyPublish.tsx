@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Upload, Image as ImageIcon, Send, Clock, EyeOff, Save, ExternalLink, Eye, TrendingUp } from 'lucide-react'
+import { ArrowLeft, Upload, Image as ImageIcon, Send, Clock, EyeOff, Save, ExternalLink, Eye, TrendingUp, Trash2 } from 'lucide-react'
 import { publishingApi, uploadPropertyPhoto, type Listing, type PublishPlatform } from '@/api/publishing'
 import { toast } from '@/store/toast'
 
@@ -90,6 +90,18 @@ export default function PropertyPublish() {
 
   const togglePhoto = (pid: string) =>
     setPhotoIds(prev => prev.includes(pid) ? prev.filter(x => x !== pid) : [...prev, pid])
+
+  const deletePhoto = async (pid: string) => {
+    if (!id) return
+    if (!window.confirm('Supprimer définitivement cette photo ? Elle sera retirée du bien et de l\'annonce.')) return
+    setBusy(true)
+    try {
+      await publishingApi.deletePhoto(id, pid)
+      setListing(prev => prev ? { ...prev, available_photos: prev.available_photos.filter(p => p.id !== pid) } : prev)
+      setPhotoIds(prev => prev.filter(x => x !== pid))
+      toast.success('Photo supprimée.')
+    } catch { /* intercepteur affiche l'erreur */ } finally { setBusy(false) }
+  }
   const togglePlatform = (pid: string) =>
     setPlatformIds(prev => prev.includes(pid) ? prev.filter(x => x !== pid) : [...prev, pid])
 
@@ -211,13 +223,21 @@ export default function PropertyPublish() {
                 const idx = photoIds.indexOf(ph.id)
                 const sel = idx >= 0
                 return (
-                  <button key={ph.id} type="button" onClick={() => togglePhoto(ph.id)}
+                  <div key={ph.id}
                     className={`relative rounded-lg overflow-hidden aspect-square border-2 ${sel ? 'border-blue-600' : 'border-transparent'}`}>
-                    <img src={media(ph.url)} alt={ph.label ?? ''} className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => togglePhoto(ph.id)} title={sel ? 'Retirer de l\'annonce' : 'Ajouter à l\'annonce'}
+                      className="absolute inset-0 w-full h-full">
+                      <img src={media(ph.url)} alt={ph.label ?? ''} className="w-full h-full object-cover" />
+                    </button>
                     {sel && (
-                      <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">{idx + 1}</span>
+                      <span className="absolute top-1 left-1 w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center pointer-events-none">{idx + 1}</span>
                     )}
-                  </button>
+                    <button type="button" onClick={() => deletePhoto(ph.id)} disabled={busy}
+                      title="Supprimer définitivement la photo"
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/55 hover:bg-red-600 text-white flex items-center justify-center disabled:opacity-50">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 )
               })}
             </div>

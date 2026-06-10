@@ -227,6 +227,35 @@ async def save_listing(
     return await _listing_out(db, listing)
 
 
+@router.delete("/properties/{property_id}/photos/{document_id}", status_code=204,
+               summary="Supprimer définitivement une photo du bien")
+async def delete_property_photo(
+    property_id: uuid.UUID,
+    document_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Supprime la photo (fichier + document) et la retire de l'annonce si présente."""
+    from app.models.document import Document
+    from app.services.document_service import DocumentService
+
+    await _accessible_property(db, user, property_id)
+    doc = await db.get(Document, document_id)
+    et = getattr(doc.entity_type, "value", doc.entity_type) if doc else None
+    if not doc or et != "property" or doc.entity_id != property_id:
+        raise NotFoundException("Photo", str(document_id))
+    await DocumentService.delete(db, document_id)
+
+    listing = (await db.execute(
+        select(Listing).where(Listing.property_id == property_id)
+    )).scalar_one_or_none()
+    if listing and listing.photo_ids:
+        kept = [x for x in listing.photo_ids if str(x) != str(document_id)]
+        if kept != listing.photo_ids:
+            listing.photo_ids = kept
+    await db.commit()
+
+
 @router.post("/properties/{property_id}/listing/publish", summary="Publier maintenant")
 async def publish_listing(
     property_id: uuid.UUID,
