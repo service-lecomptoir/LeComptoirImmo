@@ -32,6 +32,9 @@ export interface NavItem {
 
 // Navigation Gestionnaire mandataire / Admin
 export const navGestionnaire: NavItem[] = [
+  { label: 'Mise en location', isSeparator: true },
+  { to: '/diffusion', icon: Megaphone, label: 'Publication des annonces' },
+  { to: '/candidatures', icon: UserCheck, label: 'Candidatures' },
   { label: 'Gestion locative', isSeparator: true },
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
   { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
@@ -45,8 +48,6 @@ export const navGestionnaire: NavItem[] = [
   { to: '/actualisation', icon: TrendingUp, label: 'Révision des loyers et charges' },
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Ma papeterie' },
-  { to: '/diffusion', icon: Megaphone, label: 'Publication des annonces' },
-  { to: '/candidatures', icon: UserCheck, label: 'Candidatures' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
@@ -76,6 +77,9 @@ export const navProprietaire: NavItem[] = [
 
 // Navigation Gestionnaire-Propriétaire : identique au mandataire SANS « Vue propriétaire »
 export const navGestionnairePropio: NavItem[] = [
+  { label: 'Mise en location', isSeparator: true },
+  { to: '/diffusion', icon: Megaphone, label: 'Publication des annonces' },
+  { to: '/candidatures', icon: UserCheck, label: 'Candidatures' },
   { label: 'Gestion locative', isSeparator: true },
   { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
   { to: '/properties', icon: Building2, label: 'Propriétés' },
@@ -88,8 +92,6 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/actualisation', icon: TrendingUp, label: 'Révision des loyers et charges' },
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Ma papeterie' },
-  { to: '/diffusion', icon: Megaphone, label: 'Publication des annonces' },
-  { to: '/candidatures', icon: UserCheck, label: 'Candidatures' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
