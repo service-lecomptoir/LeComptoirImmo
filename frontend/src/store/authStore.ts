@@ -33,6 +33,8 @@ interface AuthState {
   logout: () => void
   fetchMe: () => Promise<void>
   initialize: () => Promise<void>
+  /** Met à jour l'utilisateur courant en mémoire (ex. après modif de profil). */
+  setUser: (user: User) => void
 }
 
 export function roleHomePath(role: Role | undefined): string {
@@ -42,6 +44,7 @@ export function roleHomePath(role: Role | undefined): string {
 }
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
+  setUser: (user: User) => set({ user }),
   user: null,
   accessToken: null,
   refreshToken: null,

@@ -34,6 +34,8 @@ class UserUpdate(BaseModel):
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
+    # « Ma papeterie » : variables épinglées par type de document.
+    template_pinned_vars: Optional[dict] = None
 
 
 class ProfileUpdate(BaseModel):
@@ -49,6 +51,8 @@ class ProfileUpdate(BaseModel):
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
+    # « Ma papeterie » : variables épinglées par type de document.
+    template_pinned_vars: Optional[dict] = None
 
 
 class UserRoleUpdate(BaseModel):
@@ -94,6 +98,7 @@ class UserResponse(BaseModel):
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
+    template_pinned_vars: Optional[dict] = None
     logo_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime

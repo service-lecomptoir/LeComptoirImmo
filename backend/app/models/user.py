@@ -2,7 +2,7 @@ import uuid
 from typing import Optional
 from sqlalchemy import String, Boolean, Enum as SAEnum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.database import Base, TimestampMixin
 from app.core.permissions import Role
@@ -48,6 +48,9 @@ class User(Base, TimestampMixin):
     # (avis d'échéance, mise en page moderne, à la place du logo).
     logo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # « Ma papeterie » : variables épinglées par l'utilisateur, par type de document.
+    # Forme : { "<template_type>": ["{{var}}", …], … }. Null/absent = aucune épingle.
+    template_pinned_vars: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
     # NB : le RIB du bailleur vit désormais sur la fiche propriétaire (table owners),
     # plus sur le compte utilisateur (colonnes iban/bic/bank_holder supprimées).

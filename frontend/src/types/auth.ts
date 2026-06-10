@@ -14,6 +14,7 @@ export interface User {
   owner_full_name?: string | null
   owner_company?: string | null
   owner_national_id?: string | null
+  template_pinned_vars?: Record<string, string[]> | null
   logo_url?: string | null
   created_at: string
   updated_at: string

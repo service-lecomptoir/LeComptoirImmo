@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   ArrowLeft, Save, RefreshCw, ChevronUp, ChevronDown, GripVertical,
-  Eye, EyeOff, Plus, Trash2, Palette, Check,
+  Eye, EyeOff, Plus, Trash2, Palette, Check, Pin, PinOff,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import { useAuthStore } from '@/store/authStore'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Block { id: string; type: string; enabled: boolean; props: any }
@@ -39,42 +40,54 @@ const BLOCK_META: Record<string, { label: string; hint: string }> = {
   free_text: { label: 'Texte libre', hint: 'Paragraphe libre que vous rédigez.' },
 }
 
-// Variables insérables.
-const VARS: { k: string; l: string }[] = [
-  { k: '{{tenant_name}}', l: 'Nom locataire' },
-  { k: '{{tenant_civil_name}}', l: 'Civilité + nom' },
-  { k: '{{tenant_email}}', l: 'Email locataire' },
-  { k: '{{tenant_phone}}', l: 'Tél locataire' },
-  { k: '{{tenant_login}}', l: 'Identifiant locataire' },
-  { k: '{{property_name}}', l: 'Bien' },
-  { k: '{{property_address}}', l: 'Adresse bien' },
-  { k: '{{property_reference}}', l: 'Réf. du bien' },
-  { k: '{{company_name}}', l: 'Gestionnaire' },
-  { k: '{{company_address}}', l: 'Adresse gestionnaire' },
-  { k: '{{period_range}}', l: 'Période' },
-  { k: '{{due_date}}', l: 'Échéance' },
-  { k: '{{total_due}}', l: 'Total dû' },
-  { k: '{{rent_amount}}', l: 'Loyer' },
-  { k: '{{charges_amount}}', l: 'Charges' },
-  { k: '{{apl_amount}}', l: 'APL (aide au logement)' },
-  { k: '{{today_date}}', l: 'Date du jour' },
+// Variables insérables. `g` = groupe métier : 'common' (tous documents) ou la
+// famille propre à un type de document (avis/quittance/regul/revision/taxe).
+type VarGroup = 'common' | 'avis' | 'quittance' | 'regul' | 'revision' | 'taxe'
+const VARS: { k: string; l: string; g: VarGroup }[] = [
+  { k: '{{tenant_name}}', l: 'Nom locataire', g: 'common' },
+  { k: '{{tenant_civil_name}}', l: 'Civilité + nom', g: 'common' },
+  { k: '{{tenant_email}}', l: 'Email locataire', g: 'common' },
+  { k: '{{tenant_phone}}', l: 'Tél locataire', g: 'common' },
+  { k: '{{tenant_login}}', l: 'Identifiant locataire', g: 'common' },
+  { k: '{{property_name}}', l: 'Bien', g: 'common' },
+  { k: '{{property_address}}', l: 'Adresse bien', g: 'common' },
+  { k: '{{property_reference}}', l: 'Réf. du bien', g: 'common' },
+  { k: '{{company_name}}', l: 'Gestionnaire', g: 'common' },
+  { k: '{{company_address}}', l: 'Adresse gestionnaire', g: 'common' },
+  { k: '{{today_date}}', l: 'Date du jour', g: 'common' },
+  // Avis d'échéance
+  { k: '{{period_range}}', l: 'Période', g: 'avis' },
+  { k: '{{due_date}}', l: 'Échéance', g: 'avis' },
+  { k: '{{total_due}}', l: 'Total dû', g: 'avis' },
+  { k: '{{rent_amount}}', l: 'Loyer', g: 'avis' },
+  { k: '{{charges_amount}}', l: 'Charges', g: 'avis' },
+  { k: '{{apl_amount}}', l: 'APL (aide au logement)', g: 'avis' },
   // Régularisation de charges
-  { k: '{{regul_real}}', l: 'Régul : dépenses' },
-  { k: '{{regul_provisions}}', l: 'Régul : provisions' },
-  { k: '{{regul_quote_part}}', l: 'Régul : quote-part' },
-  { k: '{{regul_result_amount}}', l: 'Régul : solde' },
+  { k: '{{regul_real}}', l: 'Régul : dépenses', g: 'regul' },
+  { k: '{{regul_provisions}}', l: 'Régul : provisions', g: 'regul' },
+  { k: '{{regul_quote_part}}', l: 'Régul : quote-part', g: 'regul' },
+  { k: '{{regul_result_amount}}', l: 'Régul : solde', g: 'regul' },
   // Révision de loyer
-  { k: '{{rev_old_rent}}', l: 'Révision : loyer actuel' },
-  { k: '{{rev_new_rent}}', l: 'Révision : nouveau loyer' },
-  { k: '{{rev_old_index}}', l: 'Révision : ancien indice' },
-  { k: '{{rev_new_index}}', l: 'Révision : nouvel indice' },
-  { k: '{{rev_coeff}}', l: 'Révision : coefficient' },
-  { k: '{{rev_effective_date}}', l: 'Révision : date d’effet' },
+  { k: '{{rev_old_rent}}', l: 'Révision : loyer actuel', g: 'revision' },
+  { k: '{{rev_new_rent}}', l: 'Révision : nouveau loyer', g: 'revision' },
+  { k: '{{rev_old_index}}', l: 'Révision : ancien indice', g: 'revision' },
+  { k: '{{rev_new_index}}', l: 'Révision : nouvel indice', g: 'revision' },
+  { k: '{{rev_coeff}}', l: 'Révision : coefficient', g: 'revision' },
+  { k: '{{rev_effective_date}}', l: 'Révision : date d’effet', g: 'revision' },
   // Taxes foncières
-  { k: '{{tax_total}}', l: 'Taxe : montant total' },
-  { k: '{{tax_days}}', l: 'Taxe : nb de jours' },
-  { k: '{{tax_quote_part}}', l: 'Taxe : quote-part' },
+  { k: '{{tax_total}}', l: 'Taxe : montant total', g: 'taxe' },
+  { k: '{{tax_days}}', l: 'Taxe : nb de jours', g: 'taxe' },
+  { k: '{{tax_quote_part}}', l: 'Taxe : quote-part', g: 'taxe' },
 ]
+
+// Groupe métier pertinent pour chaque type de document.
+const TYPE_GROUP: Record<string, VarGroup> = {
+  avis_echeance: 'avis',
+  quittance: 'avis',          // mêmes montants que l'avis (loyer/charges/APL/total)
+  regularisation_charges: 'regul',
+  revision_loyer: 'revision',
+  taxes_foncieres: 'taxe',
+}
 
 const THEME_FIELDS: { key: string; label: string }[] = [
   { key: 'navy', label: 'Couleur principale (titres)' },
@@ -300,6 +313,35 @@ export default function AvisBlockEditor({ template, onBack, onSaved }: Props) {
   const dragIndex = useRef<number | null>(null)
   const activeInsert = useRef<((txt: string) => void) | null>(null)
 
+  // ── Variables : pertinentes au type affichées, autres repliées + épingles perso ──
+  const { user, setUser } = useAuthStore()
+  const tType = template.template_type
+  const relevantGroup = TYPE_GROUP[tType] || 'avis'
+  const [showMoreVars, setShowMoreVars] = useState(false)
+  // Variables épinglées par l'utilisateur pour CE type de document (préférence compte).
+  const pinned: string[] = user?.template_pinned_vars?.[tType] ?? []
+  const isDefaultVar = (v: { g: VarGroup }) => v.g === 'common' || v.g === relevantGroup
+  // Affichées d'office : pertinentes au type + communes + épinglées perso.
+  const primaryVars = VARS.filter(v => isDefaultVar(v) || pinned.includes(v.k))
+  // Repliées sous « + Autres variables » : le reste.
+  const moreVars = VARS.filter(v => !isDefaultVar(v) && !pinned.includes(v.k))
+
+  const togglePin = async (k: string) => {
+    if (!user) return
+    const cur = { ...(user.template_pinned_vars || {}) }
+    const list = new Set(cur[tType] || [])
+    if (list.has(k)) list.delete(k); else list.add(k)
+    cur[tType] = [...list]
+    if (cur[tType].length === 0) delete cur[tType]
+    // Optimiste : on met à jour le store, puis on persiste (toast géré par l'intercepteur).
+    setUser({ ...user, template_pinned_vars: cur })
+    try {
+      await apiClient.patch('/users/me', { template_pinned_vars: cur })
+    } catch {
+      setUser(user) // rollback si échec
+    }
+  }
+
   // Aperçu PDF
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -377,18 +419,61 @@ export default function AvisBlockEditor({ template, onBack, onSaved }: Props) {
       <div className="flex-1 min-h-0 flex">
         {/* Colonne gauche : blocs */}
         <div className="w-[440px] shrink-0 border-r bg-white flex flex-col">
-          {/* Chips de variables */}
+          {/* Chips de variables : pertinentes au document affichées, autres repliées.
+              L'icône épingle ajoute/retire une variable de l'affichage par défaut (perso, par compte). */}
           <div className="shrink-0 px-3 py-2 border-b bg-gray-50">
             <p className="text-[11px] text-gray-400 mb-1.5">Cliquez dans un champ, puis insérez une variable :</p>
             <div className="flex flex-wrap gap-1">
-              {VARS.map(v => (
-                <button key={v.k} type="button" title={v.k}
-                  onClick={() => activeInsert.current?.(v.k)}
-                  className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-white border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-700">
-                  {v.l}
-                </button>
-              ))}
+              {primaryVars.map(v => {
+                const isPinnedExtra = !isDefaultVar(v) && pinned.includes(v.k)
+                return (
+                  <span key={v.k} className="group inline-flex items-center rounded bg-white border border-gray-200 hover:border-blue-300">
+                    <button type="button" title={v.k}
+                      onClick={() => activeInsert.current?.(v.k)}
+                      className="px-1.5 py-0.5 text-[11px] font-medium text-gray-600 group-hover:text-blue-700">
+                      {v.l}
+                    </button>
+                    {/* On ne peut désépingler que les variables « extra » (ajoutées perso),
+                        pas les pertinentes par défaut. */}
+                    {isPinnedExtra && (
+                      <button type="button" title="Retirer de mes variables"
+                        onClick={() => togglePin(v.k)}
+                        className="pr-1 text-gray-300 hover:text-red-500">
+                        <PinOff size={11} />
+                      </button>
+                    )}
+                  </span>
+                )
+              })}
             </div>
+
+            {moreVars.length > 0 && (
+              <>
+                <button type="button" onClick={() => setShowMoreVars(s => !s)}
+                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-blue-700">
+                  {showMoreVars ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  {showMoreVars ? 'Masquer les autres variables' : `+ Autres variables (${moreVars.length})`}
+                </button>
+                {showMoreVars && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {moreVars.map(v => (
+                      <span key={v.k} className="group inline-flex items-center rounded bg-white border border-dashed border-gray-200 hover:border-blue-300">
+                        <button type="button" title={v.k}
+                          onClick={() => activeInsert.current?.(v.k)}
+                          className="px-1.5 py-0.5 text-[11px] text-gray-500 group-hover:text-blue-700">
+                          {v.l}
+                        </button>
+                        <button type="button" title="Épingler à mes variables"
+                          onClick={() => togglePin(v.k)}
+                          className="pr-1 text-gray-300 hover:text-blue-600">
+                          <Pin size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Panneau thème */}

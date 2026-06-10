@@ -128,7 +128,7 @@ def default_avis_blocks() -> list[dict]:
         }},
         {"id": "recipient", "type": "recipient", "enabled": True, "props": {
             "date_text": "Le {{today_date}}",
-            "lines": ["{{tenant_civil_name}}", "{{property_address2}}",
+            "lines": ["{{tenant_civil_name}}",
                       "{{property_street}}", "{{property_city_line}}"],
         }},
         {"id": "reference", "type": "reference", "enabled": True, "props": {
@@ -183,7 +183,7 @@ def _common_sidebar() -> dict:
 def _common_recipient() -> dict:
     return {"id": "recipient", "type": "recipient", "enabled": True, "props": {
         "date_text": "Le {{today_date}}",
-        "lines": ["{{tenant_civil_name}}", "**{{property_address2}}**",
+        "lines": ["{{tenant_civil_name}}",
                   "{{property_street}}", "{{property_city_line}}"],
     }}
 

@@ -328,6 +328,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(120)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(80)",
+        # « Ma papeterie » : variables épinglées par type de document (préférence compte).
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS template_pinned_vars JSONB",
         # Identité du bailleur sur le compte gestionnaire : société/SCI + SIRET/N° pièce.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_company VARCHAR(200)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_national_id VARCHAR(50)",
