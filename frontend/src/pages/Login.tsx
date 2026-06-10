@@ -185,6 +185,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [accountType, setAccountType] = useState<AccountType>('gestionnaire')
   const [showSubscribe, setShowSubscribe] = useState(false)
+  const [showForgot, setShowForgot] = useState(false)
 
   const activeType = ACCOUNT_TYPES.find(t => t.id === accountType)!
 
@@ -372,6 +373,7 @@ export default function Login() {
                 </label>
                 <button
                   type="button"
+                  onClick={() => setShowForgot(true)}
                   className="text-xs font-medium hover:underline"
                   style={{ color: '#F07800' }}
                 >
@@ -493,6 +495,47 @@ export default function Login() {
       </div>
 
       <SubscriptionModal open={showSubscribe} onClose={() => setShowSubscribe(false)} />
+
+      {/* Aide « Mot de passe oublié ? » — adaptée au profil sélectionné */}
+      {showForgot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+             onClick={() => setShowForgot(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+               onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-2" style={{ color: '#0D2F5C' }}>
+              Mot de passe oublié&nbsp;?
+            </h3>
+            {accountType === 'gestionnaire' ? (
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Votre accès gestionnaire est géré par <span className="font-semibold">Le Comptoir Immo</span>.
+                Pour réinitialiser votre mot de passe, contactez votre interlocuteur habituel
+                (ou répondez à l'e-mail de votre abonnement)&nbsp;: nous le réinitialisons et vous
+                communiquons un accès temporaire.
+              </p>
+            ) : (
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Votre compte est géré par votre <span className="font-semibold">gestionnaire</span>.
+                Contactez-le&nbsp;: il peut réinitialiser votre mot de passe en quelques secondes
+                depuis son espace, puis vous communique vos nouveaux identifiants.
+              </p>
+            )}
+            <p className="mt-3 text-xs text-gray-400">
+              Par sécurité, les mots de passe sont chiffrés et ne peuvent pas être communiqués tels quels.
+            </p>
+            <div className="mt-5 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowForgot(false)}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
+                style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #1A4A8A 100%)' }}
+              >
+                J'ai compris
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
