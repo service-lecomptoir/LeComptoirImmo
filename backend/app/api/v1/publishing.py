@@ -218,11 +218,7 @@ async def save_listing(
 ):
     await _accessible_property(db, user, property_id)
     listing = await ListingService.get_or_create(db, property_id, user.id)
-    await ListingService.update(
-        db, listing,
-        title=data.title, description=data.description, price=data.price,
-        photo_ids=data.photo_ids, platform_ids=data.platform_ids,
-    )
+    await ListingService.update(db, listing, data.model_dump(exclude_unset=True))
     await db.commit()
     return await _listing_out(db, listing)
 

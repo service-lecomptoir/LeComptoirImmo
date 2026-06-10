@@ -156,26 +156,22 @@ class ListingService:
         return listing
 
     @staticmethod
-    async def update(
-        db: AsyncSession,
-        listing: Listing,
-        *,
-        title: Optional[str] = None,
-        description: Optional[str] = None,
-        price=None,
-        photo_ids: Optional[list] = None,
-        platform_ids: Optional[list] = None,
-    ) -> Listing:
-        if title is not None:
-            listing.title = title.strip() or None
-        if description is not None:
-            listing.description = description.strip() or None
-        if price is not None:
-            listing.price = price
-        if photo_ids is not None:
-            listing.photo_ids = [str(x) for x in photo_ids]
-        if platform_ids is not None:
-            listing.platform_ids = [str(x) for x in platform_ids]
+    async def update(db: AsyncSession, listing: Listing, fields: dict) -> Listing:
+        """Applique les champs RÉELLEMENT fournis (clé présente) ; une valeur `null`
+        EFFACE le champ (titre/description/loyer) — on ne confond plus « champ vidé »
+        et « champ non transmis ». `fields` = data.model_dump(exclude_unset=True)."""
+        if "title" in fields:
+            v = fields["title"]
+            listing.title = (v.strip() or None) if isinstance(v, str) else None
+        if "description" in fields:
+            v = fields["description"]
+            listing.description = (v.strip() or None) if isinstance(v, str) else None
+        if "price" in fields:
+            listing.price = fields["price"]  # None = loyer effacé
+        if fields.get("photo_ids") is not None:
+            listing.photo_ids = [str(x) for x in fields["photo_ids"]]
+        if fields.get("platform_ids") is not None:
+            listing.platform_ids = [str(x) for x in fields["platform_ids"]]
         await db.flush()
         return listing
 
