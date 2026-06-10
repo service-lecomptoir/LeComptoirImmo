@@ -4,6 +4,7 @@ import { Megaphone, Plus, Trash2, Pencil, Building2, ChevronRight, X, Eye } from
 import { publishingApi, type PublishPlatform, type PlatformKind, type ListingOverview } from '@/api/publishing'
 import { propertiesApi } from '@/api/properties'
 import { toast } from '@/store/toast'
+import { useAuthStore } from '@/store/authStore'
 
 const KIND_LABELS: Record<PlatformKind, string> = {
   reseau: 'Réseau social', site: 'Site web', email: 'E-mail de dépôt', lien: 'Lien', autre: 'Autre',
@@ -16,7 +17,7 @@ const KIND_HINT: Record<PlatformKind, string> = {
   autre: 'Détail (facultatif)',
 }
 
-interface Prop { id: string; name: string; city?: string; zip_code?: string; reference?: string | null }
+interface Prop { id: string; name: string; city?: string; zip_code?: string; reference?: string | null; owner_name?: string | null }
 
 const EMPTY = { name: '', kind: 'site' as PlatformKind, target: '', is_active: true }
 
@@ -36,6 +37,9 @@ export default function DiffusionPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
+  const user = useAuthStore(s => s.user)
+  // Mandataire : annonces regroupées par propriétaire (comme les autres onglets).
+  const isMandataire = user?.role === 'gestionnaire'
 
   const load = async () => {
     setLoading(true)
@@ -77,6 +81,47 @@ export default function DiffusionPage() {
   const remove = async (p: PublishPlatform) => {
     if (!window.confirm(`Supprimer la plateforme « ${p.name} » ?`)) return
     try { await publishingApi.deletePlatform(p.id); toast.success('Plateforme supprimée.'); await load() } catch { /* */ }
+  }
+
+  // Regroupement par propriétaire (mandataire), ordre alphabétique.
+  const ownerGroups: [string, Prop[]][] = (() => {
+    const acc: Record<string, Prop[]> = {}
+    for (const p of props) {
+      const key = p.owner_name || 'Sans propriétaire'
+      ;(acc[key] ||= []).push(p)
+    }
+    return Object.entries(acc).sort((a, b) => a[0].localeCompare(b[0], 'fr'))
+  })()
+
+  const renderRow = (p: Prop) => {
+    const ov = overviews[p.id]
+    const st = ov ? (LISTING_STATUS[ov.status] ?? LISTING_STATUS.draft) : null
+    return (
+      <li key={p.id}>
+        <Link to={`/properties/${p.id}/publish`} className="py-3 flex items-center justify-between gap-3 hover:bg-gray-50 -mx-2 px-2 rounded-lg">
+          <div className="flex items-center gap-3 min-w-0">
+            <Building2 size={18} className="text-gray-400 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
+              <p className="text-xs text-gray-400 truncate">{[p.zip_code, p.city].filter(Boolean).join(' ')}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {ov && ov.status === 'published' && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500" title="Vues de la page publique">
+                <Eye size={13} /> {ov.views_count}
+              </span>
+            )}
+            {st ? (
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+            ) : (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-400">À créer</span>
+            )}
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">Gérer <ChevronRight size={14} /></span>
+          </div>
+        </Link>
+      </li>
+    )
   }
 
   return (
@@ -124,43 +169,27 @@ export default function DiffusionPage() {
 
       {/* ── Annonces par bien : statut + performances ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Mes annonces</h2>
+        <h2 className="font-semibold text-gray-900 mb-4">{isMandataire ? 'Annonces' : 'Mes annonces'}</h2>
         {loading ? (
           <p className="text-sm text-gray-400">Chargement…</p>
         ) : props.length === 0 ? (
           <p className="text-sm text-gray-400">Aucun bien.</p>
+        ) : isMandataire ? (
+          <div className="space-y-5">
+            {ownerGroups.map(([owner, items]) => (
+              <div key={owner}>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                  {owner} <span className="text-gray-300">· {items.length} bien{items.length > 1 ? 's' : ''}</span>
+                </h3>
+                <ul className="divide-y divide-gray-100">
+                  {items.map(renderRow)}
+                </ul>
+              </div>
+            ))}
+          </div>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {props.map(p => {
-              const ov = overviews[p.id]
-              const st = ov ? (LISTING_STATUS[ov.status] ?? LISTING_STATUS.draft) : null
-              return (
-                <li key={p.id}>
-                  <Link to={`/properties/${p.id}/publish`} className="py-3 flex items-center justify-between gap-3 hover:bg-gray-50 -mx-2 px-2 rounded-lg">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Building2 size={18} className="text-gray-400 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                        <p className="text-xs text-gray-400 truncate">{[p.zip_code, p.city].filter(Boolean).join(' ')}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {ov && ov.status === 'published' && (
-                        <span className="inline-flex items-center gap-1 text-xs text-gray-500" title="Vues de la page publique">
-                          <Eye size={13} /> {ov.views_count}
-                        </span>
-                      )}
-                      {st ? (
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
-                      ) : (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-50 text-gray-400">À créer</span>
-                      )}
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">Gérer <ChevronRight size={14} /></span>
-                    </div>
-                  </Link>
-                </li>
-              )
-            })}
+            {props.map(renderRow)}
           </ul>
         )}
       </div>
