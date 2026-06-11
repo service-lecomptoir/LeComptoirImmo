@@ -185,7 +185,22 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const isGestionnaire = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
   const leaseInfo = useLocataireLeaseInfo(isLocataire)
   const proprietaireInfo = useProprietaireInfo(isProprietaire, user?.full_name ?? '')
-  const agencyAddress = isGestionnaire ? (user?.address ?? '') : ''
+  // Adresse de l'agence sur deux lignes (rue / CP ville), construite à partir des
+  // champs structurés — jamais une chaîne « rue, CP ville » à virgule (convention projet).
+  // Compat : un compte ancien peut avoir tout dans `address` (CP/ville absents) ; dans
+  // ce cas on transforme la virgule en saut de ligne pour conserver le rendu deux lignes.
+  const agencyAddress = (() => {
+    if (!isGestionnaire) return ''
+    const structured = [
+      user?.address,
+      [user?.zip_code, user?.city].filter(Boolean).join(' '),
+      user?.country && user.country.toLowerCase() !== 'france' ? user.country : '',
+    ].filter(Boolean).join('\n')
+    if (!user?.zip_code && !user?.city && structured.includes(',')) {
+      return structured.replace(/,\s*/g, '\n')
+    }
+    return structured
+  })()
 
   // Fonctionnalités autorisées par le plan (gestionnaire/GP uniquement).
   const features = useFeaturesStore(s => s.features)
