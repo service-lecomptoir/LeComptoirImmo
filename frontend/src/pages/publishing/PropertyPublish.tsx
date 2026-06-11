@@ -124,10 +124,15 @@ export default function PropertyPublish() {
     if (!files?.length || !id) return
     setBusy(true)
     try {
+      const prevIds = new Set((listing?.available_photos ?? []).map(p => p.id))
       for (const f of Array.from(files)) await uploadPropertyPhoto(id, f)
       const r = await publishingApi.getListing(id)
       // conserve les sélections + le contenu en cours d'édition
       setListing(prev => prev ? { ...prev, available_photos: r.data.available_photos } : r.data)
+      // Sélectionne automatiquement les photos qui viennent d'être ajoutées
+      // (évite de publier une annonce sans aucune image cochée).
+      const added = r.data.available_photos.filter(p => !prevIds.has(p.id)).map(p => p.id)
+      if (added.length) setPhotoIds(prev => [...prev, ...added.filter(x => !prev.includes(x))])
       toast.success('Photo(s) ajoutée(s).')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Échec de l'envoi")
