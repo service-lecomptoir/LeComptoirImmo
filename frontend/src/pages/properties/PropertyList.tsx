@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2, Download, KeyRound, ChevronRight, ChevronDown } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
@@ -260,6 +260,45 @@ export default function PropertyList() {
     return Object.entries(acc).sort((a, b) => a[0].localeCompare(b[0], 'fr'))
   })()
 
+  // Ligne de tableau d'un bien (vue liste) — réutilisée à plat ou par groupe.
+  const renderPropRow = (prop: PropertyListItem) => (
+    <tr
+      key={prop.id}
+      onClick={() => navigate(`/properties/${prop.id}`)}
+      className="hover:bg-gray-50 cursor-pointer transition-colors"
+    >
+      <td className="px-4 py-3">
+        <StatusBadge
+          label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
+          variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
+        />
+      </td>
+      <td className="px-4 py-3"><span className="font-medium text-gray-900">{prop.name}</span></td>
+      <td className="px-4 py-3">
+        {!isMandataire && prop.owner_name ? <span className="text-gray-700 text-xs">{prop.owner_name}</span> : null}
+      </td>
+      <td className="px-4 py-3 text-center">
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+          prop.is_occupied ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+        }`}>
+          {prop.is_occupied ? 'Occupé' : 'Disponible'}
+        </span>
+      </td>
+      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1">
+          <button onClick={() => openEdit(prop.id)}
+            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors" title="Modifier">
+            <Pencil size={14} />
+          </button>
+          <button onClick={() => setDeleteId(prop.id)}
+            className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors" title="Supprimer">
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </td>
+    </tr>
+  )
+
   return (
     <div className="p-4 sm:p-6">
       {/* Header */}
@@ -344,53 +383,26 @@ export default function PropertyList() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {properties.map(prop => (
-                  <tr
-                    key={prop.id}
-                    onClick={() => navigate(`/properties/${prop.id}`)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <StatusBadge
-                        label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
-                        variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900">{prop.name}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {prop.owner_name ? <span className="text-gray-700 text-xs">{prop.owner_name}</span> : null}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        prop.is_occupied
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {prop.is_occupied ? 'Occupé' : 'Disponible'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openEdit(prop.id)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
-                          title="Modifier"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(prop.id)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Supprimer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {isMandataire
+                  ? ownerGroups.map(([owner, list]) => {
+                      const open = !collapsedOwners.has(owner)
+                      return (
+                        <Fragment key={owner}>
+                          <tr className="bg-gray-50/70 hover:bg-gray-100 cursor-pointer" onClick={() => toggleOwner(owner)}>
+                            <td colSpan={5} className="px-4 py-2">
+                              <div className="flex items-center gap-2">
+                                {open ? <ChevronDown size={15} className="text-gray-400 shrink-0" /> : <ChevronRight size={15} className="text-gray-400 shrink-0" />}
+                                <KeyRound size={14} className="text-blue-600 shrink-0" />
+                                <span className="text-sm font-semibold text-gray-900">{owner}</span>
+                                <span className="text-xs text-gray-400">· {list.length} bien{list.length > 1 ? 's' : ''}</span>
+                              </div>
+                            </td>
+                          </tr>
+                          {open && list.map(renderPropRow)}
+                        </Fragment>
+                      )
+                    })
+                  : properties.map(renderPropRow)}
               </tbody>
             </table>
           </div>
