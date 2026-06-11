@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { formatPhoneGroups, digitsOnly } from '@/utils/format'
 
 export interface Country {
   code: string
@@ -50,7 +51,8 @@ export function PhoneInput({ value, onChange, inputClassName, placeholder, disab
   }, [value])
 
   const emit = (d: string, l: string) => {
-    const num = l.trim()
+    // Stockage = chiffres only (l'affichage groupé est purement visuel).
+    const num = digitsOnly(l)
     onChange(num ? `${d} ${num}` : '')
   }
 
@@ -72,10 +74,10 @@ export function PhoneInput({ value, onChange, inputClassName, placeholder, disab
       </select>
       <input
         type="tel"
-        value={local}
+        value={formatPhoneGroups(local)}
         disabled={disabled}
         onChange={e => emit(dial, e.target.value)}
-        placeholder={placeholder || 'Numéro de téléphone'}
+        placeholder={placeholder || '06 94 12 34 56'}
         className={inp}
       />
     </div>

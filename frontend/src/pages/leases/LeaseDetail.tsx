@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { LeaseForm } from './LeaseForm'
 import { LEASE_TYPE_LABELS, RENT_CALL_RULE_LABELS, PAYMENT_FREQUENCY_LABELS } from '@/types/lease'
 import { docFilename } from '@/utils/filename'
+import { formatNir } from '@/utils/format'
 import {
   INSPECTION_TYPE_LABELS,
   CONDITION_LABELS,
@@ -412,7 +413,7 @@ export default function LeaseDetail() {
           </h2>
           <InfoRow label={lease.co_tenants && lease.co_tenants.length > 0 ? 'Locataire principal' : 'Nom et prénom'} value={lease.tenant?.full_name} />
           <InfoRow label="Email" value={lease.tenant?.email} />
-          <InfoRow label="Numéro de sécurité sociale" value={lease.tenant?.national_id} />
+          <InfoRow label="Numéro de sécurité sociale" value={lease.tenant?.national_id ? formatNir(lease.tenant.national_id) : lease.tenant?.national_id} />
           <InfoRow label="Téléphone" value={lease.tenant?.phone} />
           {lease.co_tenants && lease.co_tenants.length > 0 && (
             <div className="mt-3 pt-3 border-t border-gray-100">

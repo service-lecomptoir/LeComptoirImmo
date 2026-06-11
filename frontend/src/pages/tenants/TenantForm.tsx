@@ -6,6 +6,7 @@ import { UserRound, Plus, X, Contact, Phone, Briefcase, FileText } from 'lucide-
 import { Modal } from '@/components/common/Modal'
 import { SectionTitle } from '@/components/common/SectionTitle'
 import { PhoneInput } from '@/components/common/PhoneInput'
+import { formatNir, digitsOnly } from '@/utils/format'
 import { tenantsApi } from '@/api/tenants'
 import { usersApi } from '@/api/users'
 import type { Tenant } from '@/types/tenant'
@@ -301,7 +302,19 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
             <TenantField label="Date de naissance" name="birth_date" type="date" required register={register} errors={errors} />
             <TenantField label="Lieu de naissance" name="birth_place" register={register} errors={errors} />
-            <TenantField label="Numéro de sécurité sociale" name="national_id" required register={register} errors={errors} />
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Numéro de sécurité sociale<span className="text-red-500 ml-0.5">*</span>
+              </label>
+              <input
+                value={formatNir(watch('national_id') || '')}
+                onChange={e => setValue('national_id', digitsOnly(e.target.value), { shouldValidate: true })}
+                inputMode="numeric"
+                placeholder="1 99 11 33 123 456 78"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.national_id && <p className="mt-1 text-xs text-red-600">{errors.national_id.message as string}</p>}
+            </div>
           </div>
         </div>
 

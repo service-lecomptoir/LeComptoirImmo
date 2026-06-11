@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import type { Tenant } from '@/types/tenant'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+import { formatNir } from '@/utils/format'
 
 const CIVILITY_LABELS: Record<string, string> = { M: 'M.', Mme: 'Mme', Autre: 'Autre' }
 
@@ -115,7 +116,7 @@ export default function TenantDetail() {
             <Field label="Nom" value={tenant.last_name} />
             <Field label="Date de naissance" value={birthDate} />
             <Field label="Lieu de naissance" value={tenant.birth_place} />
-            <Field label="Numéro de sécurité sociale" value={tenant.national_id} />
+            <Field label="Numéro de sécurité sociale" value={tenant.national_id ? formatNir(tenant.national_id) : tenant.national_id} />
           </div>
         </div>
 
