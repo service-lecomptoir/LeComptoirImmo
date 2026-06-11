@@ -6,10 +6,11 @@ import {
 import {
   Building2, Users, TrendingUp, AlertTriangle, Home,
   CreditCard, CheckCircle, ArrowUpRight, ArrowDownRight,
-  Activity, Euro, RefreshCw, Wrench
+  Activity, Euro, RefreshCw, Wrench, KeyRound
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/api/client'
+import { useAuthStore } from '@/store/authStore'
 
 const MONTH_LABELS: Record<string, string> = {
   '01': 'Jan', '02': 'Fév', '03': 'Mar', '04': 'Avr',
@@ -30,6 +31,7 @@ interface Stats {
   financial: { total_rent_expected: number; total_rent_received: number; total_outstanding: number; collection_rate: number; total_deposits: number }
   monthly_revenues: Array<{ month: string; expected: number; received: number; outstanding: number }>
   top_properties: Array<{ property_id: string; property_name: string; units_count: number; occupied_count: number; monthly_revenue: number; outstanding: number }>
+  by_owner?: Array<{ owner_name: string; properties_count: number; occupied_count: number; monthly_revenue: number; outstanding: number }>
   alerts: { leases_expiring_30d: number; leases_expiring_90d: number; overdue_payments: number; overdue_amount: number; tenants_no_insurance: number }
   total_tenants: number
   total_properties: number
@@ -70,6 +72,7 @@ function KPICard({ title, value, sub, icon: Icon, color, trend }: {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const isMandataire = useAuthStore(s => s.user?.role === 'gestionnaire')
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -263,6 +266,35 @@ export default function Dashboard() {
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Ventilation par propriétaire (mandataire) */}
+      {isMandataire && stats.by_owner && stats.by_owner.length > 0 && (
+        <div className="bg-white rounded-xl border p-5">
+          <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <KeyRound size={16} className="text-blue-600" /> Ventilation par propriétaire
+          </h2>
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+            {stats.by_owner.map(o => (
+              <div key={o.owner_name} className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                  <KeyRound size={14} className="text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">{o.owner_name}</p>
+                    <span className="text-sm font-semibold text-gray-900 ml-2 shrink-0">{fmtEur(o.monthly_revenue)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span>{o.properties_count} bien{o.properties_count > 1 ? 's' : ''}</span>
+                    <span>· {o.occupied_count} occupé{o.occupied_count > 1 ? 's' : ''}</span>
+                    {o.outstanding > 0 && <span className="text-red-500">· Impayés {fmtEur(o.outstanding)}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Top propriétés */}
       {stats.top_properties.length > 0 && (

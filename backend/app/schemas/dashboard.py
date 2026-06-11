@@ -45,6 +45,15 @@ class PropertyStats(BaseModel):
     outstanding: float
 
 
+class OwnerBreakdown(BaseModel):
+    """Ventilation des indicateurs par propriétaire (vue mandataire)."""
+    owner_name: str
+    properties_count: int
+    occupied_count: int
+    monthly_revenue: float
+    outstanding: float
+
+
 class AlertStats(BaseModel):
     leases_expiring_30d: int
     leases_expiring_90d: int
@@ -58,6 +67,7 @@ class DashboardStats(BaseModel):
     financial: FinancialStats
     monthly_revenues: list[MonthlyRevenue]
     top_properties: list[PropertyStats]
+    by_owner: list[OwnerBreakdown] = []
     alerts: AlertStats
     total_tenants: int
     total_properties: int

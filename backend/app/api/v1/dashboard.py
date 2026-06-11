@@ -16,7 +16,7 @@ from app.models.payment import Payment, PaymentStatus
 from app.models.tenant import Tenant
 from app.schemas.dashboard import (
     DashboardStats, OccupancyStats, FinancialStats,
-    MonthlyRevenue, PropertyStats, AlertStats, FiscalRevenueFoncier
+    MonthlyRevenue, PropertyStats, AlertStats, FiscalRevenueFoncier, OwnerBreakdown
 )
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -242,6 +242,29 @@ async def get_dashboard_stats(
 
     top_properties.sort(key=lambda x: x.monthly_revenue, reverse=True)
 
+    # ── Ventilation par propriétaire (réutilise les agrégats par bien) ──────────
+    owner_acc: dict = {}
+    for prop in properties:
+        key = (prop.owner_name or "").strip() or "Sans propriétaire"
+        a = owner_acc.setdefault(
+            key, {"properties_count": 0, "occupied_count": 0, "monthly_revenue": 0.0, "outstanding": 0.0}
+        )
+        a["properties_count"] += 1
+        a["occupied_count"] += 1 if occ_by_prop.get(prop.id, 0) else 0
+        a["monthly_revenue"] += rev_by_prop.get(prop.id, 0.0)
+        a["outstanding"] += out_by_prop.get(prop.id, 0.0)
+    by_owner = [
+        OwnerBreakdown(
+            owner_name=name,
+            properties_count=v["properties_count"],
+            occupied_count=v["occupied_count"],
+            monthly_revenue=round(v["monthly_revenue"], 2),
+            outstanding=round(v["outstanding"], 2),
+        )
+        for name, v in owner_acc.items()
+    ]
+    by_owner.sort(key=lambda x: x.monthly_revenue, reverse=True)
+
     # ── Alertes ───────────────────────────────────────────────────────────────
     expiring_30_res = await db.execute(
         _lease_scope(
@@ -348,6 +371,7 @@ async def get_dashboard_stats(
         ),
         monthly_revenues=monthly_revenues,
         top_properties=top_properties,
+        by_owner=by_owner,
         alerts=AlertStats(
             leases_expiring_30d=expiring_30,
             leases_expiring_90d=expiring_90,
