@@ -59,7 +59,7 @@ export default function OwnerDetail() {
     <div className={`min-w-0 ${full ? 'col-span-2' : ''}`}>
       <p className="text-xs text-gray-500">{label}</p>
       {value
-        ? <p className={`text-sm text-gray-900 break-words ${mono ? 'font-mono' : ''}`}>{value}</p>
+        ? <p className={`text-sm text-gray-900 break-words whitespace-pre-line ${mono ? 'font-mono' : ''}`}>{value}</p>
         : <p className="text-sm text-gray-300 italic">Non renseigné</p>}
     </div>
   )
@@ -120,7 +120,7 @@ export default function OwnerDetail() {
             <Field
               label="Adresse"
               value={[owner.address, [owner.zip_code, owner.city].filter(Boolean).join(' '), owner.country && owner.country.toLowerCase() !== 'france' ? owner.country : '']
-                .filter(Boolean).join(', ') || null}
+                .filter(Boolean).join('\n') || null}
               full
             />
           </div>
