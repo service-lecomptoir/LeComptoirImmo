@@ -191,15 +191,25 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   // ce cas on transforme la virgule en saut de ligne pour conserver le rendu deux lignes.
   const agencyAddress = (() => {
     if (!isGestionnaire) return ''
-    const structured = [
-      user?.address,
-      [user?.zip_code, user?.city].filter(Boolean).join(' '),
+    const cityLine = [user?.zip_code, user?.city].filter(Boolean).join(' ')
+    let street = (user?.address ?? '').trim()
+    if (street) {
+      // Compat : la rue contient parfois aussi « , CP Ville » (ancien format combiné).
+      // On tronque la rue avant le CP (ou la ville) pour éviter le doublon avec cityLine.
+      if (user?.zip_code && street.includes(user.zip_code)) {
+        street = street.slice(0, street.indexOf(user.zip_code)).replace(/[,\s]+$/, '')
+      } else if (user?.city && street.includes(user.city)) {
+        street = street.slice(0, street.indexOf(user.city)).replace(/[,\s]+$/, '')
+      } else if (!cityLine && street.includes(',')) {
+        // Tout est dans `address`, CP/ville absents : virgule → saut de ligne.
+        return street.replace(/,\s*/g, '\n')
+      }
+    }
+    return [
+      street,
+      cityLine,
       user?.country && user.country.toLowerCase() !== 'france' ? user.country : '',
     ].filter(Boolean).join('\n')
-    if (!user?.zip_code && !user?.city && structured.includes(',')) {
-      return structured.replace(/,\s*/g, '\n')
-    }
-    return structured
   })()
 
   // Fonctionnalités autorisées par le plan (gestionnaire/GP uniquement).
