@@ -7,6 +7,7 @@ import { tenantsApi } from '@/api/tenants'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { CardGridSkeleton } from '@/components/common/Skeleton'
+import { GenderAvatar } from '@/components/common/GenderAvatar'
 import { EmptyState } from '@/components/common/EmptyState'
 import { toast } from '@/store/toast'
 import { exportCsv } from '@/utils/exportCsv'
@@ -198,9 +199,7 @@ export default function TenantList() {
               className="group relative flex flex-col gap-3 bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-300"
             >
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <UserRound size={18} className="text-blue-700" />
-                </div>
+                <GenderAvatar civility={tenant.civility} size={40} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-900 truncate">{tenant.full_name}</p>
