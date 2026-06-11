@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Landmark, Search, FileDown, Loader2, CalendarClock } from 'lucide-react'
+import { Landmark, Search, FileDown, Loader2, CalendarClock, ExternalLink } from 'lucide-react'
+
+const CAF_PARTENAIRES_URL = 'https://partenaires.caf.fr/cnafappli/authentificationpartenaireappli/dist/#/connexion'
 import { leasesApi } from '@/api/leases'
 import { lettersApi } from '@/api/payments'
 import type { LeaseListItem } from '@/types/lease'
@@ -75,13 +77,29 @@ export default function DocumentsCaf() {
         </div>
       </div>
 
-      {declarationPeriod && (
+      {declarationPeriod ? (
         <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <CalendarClock size={18} className="mt-0.5 shrink-0 text-amber-600" />
           <div>
-            <span className="font-semibold">Déclaration de loyer à la CAF — période en cours (juillet → décembre).</span>{' '}
-            Pensez à fournir à vos locataires bénéficiaires (APL / tiers payant) leur attestation de loyer
-            à jour pour leur déclaration annuelle. Téléchargez-la ci-dessous, par contrat.
+            <span className="font-semibold">La déclaration de loyers à la CAF est ouverte (juillet → décembre).</span>{' '}
+            En tant que gestionnaire, déclarez les loyers de chaque locataire bénéficiaire directement sur la
+            plateforme partenaires de la CAF.
+            <a
+              href={CAF_PARTENAIRES_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 font-semibold text-amber-900 underline hover:text-amber-700"
+            >
+              Accéder à la plateforme partenaires CAF <ExternalLink size={14} />
+            </a>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+          <CalendarClock size={18} className="mt-0.5 shrink-0 text-gray-400" />
+          <div>
+            La déclaration de loyers n'est pas ouverte actuellement. Vous serez informé de son ouverture
+            (elle a lieu de juillet à décembre).
           </div>
         </div>
       )}
