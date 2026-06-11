@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ShieldCheck, X, Plus, Trash2, TrendingUp, AlertTriangle, KeyRound } from 'lucide-react'
+import { ShieldCheck, X, Plus, Trash2, TrendingUp, AlertTriangle, KeyRound, ChevronRight, ChevronDown } from 'lucide-react'
 import {
   scoringApi, GRADE_COLORS,
   type ScoringRow, type ScoringDetail, type EventKind, type RelationEvent,
 } from '@/api/scoring'
+import { useAuthStore } from '@/store/authStore'
 
 const POLARITY_STYLE: Record<string, { color: string; bg: string }> = {
   positif: { color: '#0E9F8E', bg: '#D1FAE5' },
@@ -156,6 +157,15 @@ export default function ScoringList() {
   const [rows, setRows] = useState<ScoringRow[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
+  // Mandataire : regroupement par propriétaire (pliable). GP : liste à plat (un seul bailleur = lui).
+  const isMandataire = useAuthStore(s => s.user?.role === 'gestionnaire')
+  const [collapsedOwners, setCollapsedOwners] = useState<Set<string>>(new Set())
+  const toggleOwner = (owner: string) =>
+    setCollapsedOwners(prev => {
+      const next = new Set(prev)
+      next.has(owner) ? next.delete(owner) : next.add(owner)
+      return next
+    })
 
   const load = () => {
     setLoading(true)
@@ -237,25 +247,38 @@ export default function ScoringList() {
         <div className="bg-white rounded-xl border py-12 text-center text-gray-400 text-sm">Chargement…</div>
       ) : rows.length === 0 ? (
         <div className="bg-white rounded-xl border py-12 text-center text-gray-400 text-sm">Aucun locataire à scorer.</div>
+      ) : !isMandataire ? (
+        // GP : liste à plat, sans rappel du propriétaire.
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {renderRows([...rows].sort((a, b) => a.score - b.score))}
+        </div>
       ) : (
+        // Mandataire : groupes par propriétaire, pliables/dépliables.
         <div className="space-y-5">
-          {groups.map(g => (
-            <div key={g.owner} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <div className="flex items-center gap-2">
-                  <KeyRound size={15} className="text-gray-500" />
-                  <span className="text-sm font-semibold text-gray-900">{g.owner}</span>
-                  <span className="text-xs text-gray-400">· {g.items.length} locataire{g.items.length > 1 ? 's' : ''}</span>
-                </div>
-                {g.risk > 0 && (
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: '#B91C1C', background: '#FEE2E2' }}>
-                    {g.risk} à risque
-                  </span>
-                )}
+          {groups.map(g => {
+            const open = !collapsedOwners.has(g.owner)
+            return (
+              <div key={g.owner} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => toggleOwner(g.owner)}
+                  className="w-full flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50 text-left hover:bg-gray-100"
+                >
+                  <div className="flex items-center gap-2">
+                    {open ? <ChevronDown size={15} className="text-gray-400 shrink-0" /> : <ChevronRight size={15} className="text-gray-400 shrink-0" />}
+                    <KeyRound size={15} className="text-gray-500" />
+                    <span className="text-sm font-semibold text-gray-900">{g.owner}</span>
+                    <span className="text-xs text-gray-400">· {g.items.length} locataire{g.items.length > 1 ? 's' : ''}</span>
+                  </div>
+                  {g.risk > 0 && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: '#B91C1C', background: '#FEE2E2' }}>
+                      {g.risk} à risque
+                    </span>
+                  )}
+                </button>
+                {open && renderRows(g.items)}
               </div>
-              {renderRows(g.items)}
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
