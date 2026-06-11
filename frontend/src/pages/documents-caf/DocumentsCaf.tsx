@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Landmark, Search, FileDown, Loader2 } from 'lucide-react'
+import { Landmark, Search, FileDown, Loader2, CalendarClock } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import { lettersApi } from '@/api/payments'
 import type { LeaseListItem } from '@/types/lease'
@@ -11,6 +11,8 @@ export default function DocumentsCaf() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [downloading, setDownloading] = useState<string | null>(null)
+  // Rappel de déclaration de loyer à la CAF : période juillet → décembre.
+  const declarationPeriod = new Date().getMonth() >= 6 // 6 = juillet … 11 = décembre
 
   useEffect(() => {
     leasesApi.list({ is_active: true, limit: 200 })
@@ -68,10 +70,21 @@ export default function DocumentsCaf() {
           <Landmark className="text-blue-600" size={20} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Documents CAF</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Espace CAF</h1>
           <p className="text-gray-500 text-sm">Génération de l'attestation de loyer (CERFA 10842*07) pour la CAF / MSA</p>
         </div>
       </div>
+
+      {declarationPeriod && (
+        <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <CalendarClock size={18} className="mt-0.5 shrink-0 text-amber-600" />
+          <div>
+            <span className="font-semibold">Déclaration de loyer à la CAF — période en cours (juillet → décembre).</span>{' '}
+            Pensez à fournir à vos locataires bénéficiaires (APL / tiers payant) leur attestation de loyer
+            à jour pour leur déclaration annuelle. Téléchargez-la ci-dessous, par contrat.
+          </div>
+        </div>
+      )}
 
       <p className="text-sm text-gray-500 mb-6 max-w-2xl">
         Sélectionnez un contrat : l'attestation de loyer est pré-remplie à partir des informations du bailleur,
