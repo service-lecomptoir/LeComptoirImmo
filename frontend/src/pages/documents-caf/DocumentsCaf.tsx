@@ -105,8 +105,9 @@ export default function DocumentsCaf() {
       )}
 
       <p className="text-sm text-gray-500 mb-6 max-w-2xl">
-        Sélectionnez un contrat : l'attestation de loyer est pré-remplie à partir des informations du bailleur,
-        du locataire et du bail. Le bailleur n'a plus qu'à la vérifier et la signer.
+        Sélectionnez un contrat : l'attestation de loyer et le formulaire tiers payant sont pré-remplis à
+        partir des informations du bailleur, du locataire et du bail. Le bailleur n'a plus qu'à les vérifier
+        et les signer.
       </p>
 
       <div className="relative mb-5 max-w-md">
