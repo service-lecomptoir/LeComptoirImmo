@@ -17,7 +17,7 @@ const schema = z.object({
   civility: z.enum(['M', 'Mme', 'Autre']).optional(),
   first_name: z.string().min(1, 'Prénom requis'),
   last_name: z.string().min(1, 'Nom requis'),
-  email: z.string().email('Email invalide').optional().or(z.literal('')),
+  email: z.string().min(1, 'Email requis').email('Email invalide'),
   phone: z.string().optional(),
   birth_date: z.string().min(1, 'Date de naissance requise'),
   birth_place: z.string().optional(),
@@ -323,7 +323,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
           <SectionTitle icon={Phone}>Contact</SectionTitle>
           <div className="space-y-3">
             {/* Email en pleine largeur — une adresse longue reste entièrement visible */}
-            <TenantField label="Email" name="email" type="email" register={register} errors={errors} />
+            <TenantField label="Email" name="email" type="email" required register={register} errors={errors} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
             </div>
