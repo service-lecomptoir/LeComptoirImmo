@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { formatPhoneGroups, digitsOnly } from '@/utils/format'
+import { groupPhoneDigits, digitsOnly } from '@/utils/format'
 
 export interface Country {
   code: string
@@ -46,13 +46,14 @@ export function PhoneInput({ value, onChange, inputClassName, placeholder, disab
   const { dial, local } = useMemo(() => {
     const v = (value || '').trim()
     const match = DIALS.find(c => v.startsWith(c.dial))
-    if (match) return { dial: match.dial, local: v.slice(match.dial.length).trim() }
-    return { dial: DEFAULT_DIAL, local: v }
+    // Avec indicatif : on retire le 0 initial du numéro local (« +594 0694… » → « +594 694… »).
+    if (match) return { dial: match.dial, local: digitsOnly(v.slice(match.dial.length)).replace(/^0+/, '') }
+    return { dial: DEFAULT_DIAL, local: digitsOnly(v).replace(/^0+/, '') }
   }, [value])
 
   const emit = (d: string, l: string) => {
-    // Stockage = chiffres only (l'affichage groupé est purement visuel).
-    const num = digitsOnly(l)
+    // Stockage = chiffres only, sans 0 initial (l'indicatif est toujours présent).
+    const num = digitsOnly(l).replace(/^0+/, '')
     onChange(num ? `${d} ${num}` : '')
   }
 
@@ -74,7 +75,7 @@ export function PhoneInput({ value, onChange, inputClassName, placeholder, disab
       </select>
       <input
         type="tel"
-        value={formatPhoneGroups(local)}
+        value={groupPhoneDigits(local)}
         disabled={disabled}
         onChange={e => emit(dial, e.target.value)}
         placeholder={placeholder || '06 94 12 34 56'}

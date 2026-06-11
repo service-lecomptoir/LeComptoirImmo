@@ -20,7 +20,7 @@ const schema = z.object({
   last_name: z.string().optional(),
   company_name: z.string().optional(),
   national_id: z.string().optional(),
-  email: z.string().email('Email invalide').optional().or(z.literal('')),
+  email: z.string().min(1, 'Email requis').email('Email invalide'),
   phone: z.string().optional(),
   address: z.string().optional(),
   zip_code: z.string().optional(),
@@ -314,7 +314,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
         <div>
           <SectionTitle icon={Phone}>Contact</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <OwnerField label="Email" name="email" type="email" register={register} errors={errors} />
+            <OwnerField label="Email" name="email" type="email" required register={register} errors={errors} />
             <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
           </div>
           <div className="mt-3 space-y-3">

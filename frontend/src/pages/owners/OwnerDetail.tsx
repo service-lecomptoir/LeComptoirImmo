@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatPhoneDisplay } from '@/utils/format'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Edit, Trash2, Building2, Landmark, ShieldCheck } from 'lucide-react'
 import { ownersApi } from '@/api/owners'
@@ -116,7 +117,7 @@ export default function OwnerDetail() {
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Contact</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" value={owner.email} full />
-            <Field label="Téléphone" value={owner.phone} />
+            <Field label="Téléphone" value={formatPhoneDisplay(owner.phone)} />
             <Field
               label="Adresse"
               value={[owner.address, [owner.zip_code, owner.city].filter(Boolean).join(' '), owner.country && owner.country.toLowerCase() !== 'france' ? owner.country : '']

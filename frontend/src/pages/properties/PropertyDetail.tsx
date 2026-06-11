@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatPhoneDisplay } from '@/utils/format'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Edit, Trash2, Megaphone,
@@ -154,7 +155,7 @@ export default function PropertyDetail() {
             {property.owner_phone && (
               <div>
                 <p className="text-xs text-gray-500">Téléphone</p>
-                <p className="text-sm text-gray-900">{property.owner_phone}</p>
+                <p className="text-sm text-gray-900">{formatPhoneDisplay(property.owner_phone)}</p>
               </div>
             )}
           </div>

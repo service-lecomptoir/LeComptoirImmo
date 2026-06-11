@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { formatPhoneDisplay } from '@/utils/format'
 import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2 } from 'lucide-react'
 import { candidaturesApi, type Candidature, type CandidatureStatus } from '@/api/candidatures'
 import { propertiesApi } from '@/api/properties'
@@ -223,7 +224,7 @@ export default function CandidaturesPage() {
               {/* Coordonnées & situation */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 {selected.email && <p><span className="text-gray-400">E-mail :</span> <span className="text-gray-800">{selected.email}</span></p>}
-                {selected.phone && <p><span className="text-gray-400">Téléphone :</span> <span className="text-gray-800">{selected.phone}</span></p>}
+                {selected.phone && <p><span className="text-gray-400">Téléphone :</span> <span className="text-gray-800">{formatPhoneDisplay(selected.phone)}</span></p>}
                 {selected.employment && <p><span className="text-gray-400">Situation :</span> <span className="text-gray-800">{selected.employment}</span></p>}
                 {selected.monthly_income != null && <p><span className="text-gray-400">Revenus :</span> <span className="text-gray-800">{selected.monthly_income.toLocaleString('fr-FR')} € / mois</span></p>}
               </div>

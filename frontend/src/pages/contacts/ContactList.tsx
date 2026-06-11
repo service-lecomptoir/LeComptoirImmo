@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatPhoneDisplay } from '@/utils/format'
 import { apiClient } from '@/api/client'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import {
@@ -371,7 +372,7 @@ export default function ContactList() {
                 {c.phone && (
                   <div className="flex items-center gap-2 text-xs text-gray-600">
                     <Phone size={12} className="text-gray-400 shrink-0" />
-                    <span>{c.phone}</span>
+                    <span>{formatPhoneDisplay(c.phone)}</span>
                   </div>
                 )}
                 {c.email && (

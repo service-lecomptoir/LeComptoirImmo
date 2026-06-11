@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { formatPhoneDisplay } from '@/utils/format'
 import { getErrorMessage } from '@/utils/errors'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, UserRound, ShieldCheck, Pencil, Trash2, Mail, Phone, Download } from 'lucide-react'
@@ -215,7 +216,7 @@ export default function TenantList() {
               {(tenant.email || tenant.phone) && (
                 <div className="flex flex-col gap-1 text-xs text-gray-600">
                   {tenant.email && <span className="flex items-center gap-1.5 truncate"><Mail size={12} className="text-gray-400 shrink-0" />{tenant.email}</span>}
-                  {tenant.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400 shrink-0" />{tenant.phone}</span>}
+                  {tenant.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400 shrink-0" />{formatPhoneDisplay(tenant.phone)}</span>}
                 </div>
               )}
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { formatPhoneDisplay } from '@/utils/format'
 import { Wrench, Plus, Pencil, Trash2, X } from 'lucide-react'
 import { entretiensApi, prestatairesApi, type Entretien, type Prestataire } from '@/api/entretiens'
 import { format } from 'date-fns'
@@ -284,7 +285,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                     <tr key={p.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{p.specialty ?? ''}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{p.phone ?? ''}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{formatPhoneDisplay(p.phone)}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{p.email ?? ''}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.is_active ? 'text-green-700 bg-green-100' : 'text-gray-500 bg-gray-100'}`}>

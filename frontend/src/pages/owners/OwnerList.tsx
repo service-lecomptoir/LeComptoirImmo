@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { formatPhoneDisplay } from '@/utils/format'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Building2, ShieldCheck, Pencil, Trash2, Mail, Phone, Download } from 'lucide-react'
 import { ownersApi } from '@/api/owners'
@@ -207,7 +208,7 @@ export default function OwnerList() {
               {(owner.email || owner.phone) && (
                 <div className="flex flex-col gap-1 text-xs text-gray-600">
                   {owner.email && <span className="flex items-center gap-1.5 truncate"><Mail size={12} className="text-gray-400 shrink-0" />{owner.email}</span>}
-                  {owner.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400 shrink-0" />{owner.phone}</span>}
+                  {owner.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-gray-400 shrink-0" />{formatPhoneDisplay(owner.phone)}</span>}
                 </div>
               )}
 

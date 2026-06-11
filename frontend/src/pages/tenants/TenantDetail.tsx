@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import type { Tenant } from '@/types/tenant'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { formatNir } from '@/utils/format'
+import { formatNir, formatPhoneDisplay } from '@/utils/format'
 
 const CIVILITY_LABELS: Record<string, string> = { M: 'M.', Mme: 'Mme', Autre: 'Autre' }
 
@@ -125,7 +125,7 @@ export default function TenantDetail() {
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Contact</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Email" value={tenant.email} full />
-            <Field label="Téléphone" value={tenant.phone} />
+            <Field label="Téléphone" value={formatPhoneDisplay(tenant.phone)} />
           </div>
         </div>
 
@@ -134,7 +134,7 @@ export default function TenantDetail() {
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Situation professionnelle</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Employeur" value={tenant.employer} />
-            <Field label="Tél. employeur" value={tenant.employer_phone} />
+            <Field label="Tél. employeur" value={formatPhoneDisplay(tenant.employer_phone)} />
             <Field label="Revenu mensuel" value={income} />
             <Field label="Source de revenus" value={tenant.income_source} />
           </div>
