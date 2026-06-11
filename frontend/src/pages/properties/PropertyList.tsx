@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2, Download, KeyRound } from 'lucide-react'
+import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2, Download, KeyRound, ChevronRight, ChevronDown } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 import { PropertyForm } from './PropertyForm'
@@ -69,6 +69,13 @@ export default function PropertyList() {
   const user = useAuthStore(s => s.user)
   // Mandataire : on regroupe les biens par propriétaire (comme les autres onglets).
   const isMandataire = user?.role === 'gestionnaire'
+  const [collapsedOwners, setCollapsedOwners] = useState<Set<string>>(new Set())
+  const toggleOwner = (owner: string) =>
+    setCollapsedOwners(prev => {
+      const next = new Set(prev)
+      next.has(owner) ? next.delete(owner) : next.add(owner)
+      return next
+    })
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
   const [view, setView] = useViewMode('properties', 'grid')
   const [limit, setLimit] = useState(100)
@@ -391,18 +398,24 @@ export default function PropertyList() {
       ) : isMandataire ? (
         // Mandataire : biens regroupés par propriétaire (en-tête + grille de cartes).
         <div className="space-y-6">
-          {ownerGroups.map(([owner, list]) => (
-            <div key={owner}>
-              <div className="flex items-center gap-2 mb-3">
-                <KeyRound size={15} className="text-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-900">{owner}</h3>
-                <span className="text-xs text-gray-400">· {list.length} bien{list.length > 1 ? 's' : ''}</span>
+          {ownerGroups.map(([owner, list]) => {
+            const open = !collapsedOwners.has(owner)
+            return (
+              <div key={owner}>
+                <button onClick={() => toggleOwner(owner)} className="w-full flex items-center gap-2 mb-3 text-left">
+                  {open ? <ChevronDown size={15} className="text-gray-400 shrink-0" /> : <ChevronRight size={15} className="text-gray-400 shrink-0" />}
+                  <KeyRound size={15} className="text-blue-600 shrink-0" />
+                  <h3 className="text-sm font-semibold text-gray-900">{owner}</h3>
+                  <span className="text-xs text-gray-400">· {list.length} bien{list.length > 1 ? 's' : ''}</span>
+                </button>
+                {open && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {list.map(renderCard)}
+                  </div>
+                )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {list.map(renderCard)}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
