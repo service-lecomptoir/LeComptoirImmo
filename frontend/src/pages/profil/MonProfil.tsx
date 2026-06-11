@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { Save, Landmark, KeyRound, Eye, EyeOff, AtSign, Plus, X, AlertTriangle, Image as ImageIcon, Trash2, UploadCloud, Bot, Send, Copy, Check, RefreshCw, Unlink } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
@@ -98,7 +99,7 @@ export default function MonProfil() {
         enabled: data.enabled,
       })
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Génération du code impossible')
+      toast.error(getErrorMessage(e, 'Génération du code impossible'))
     } finally {
       setTgBusy(false)
     }
@@ -139,7 +140,7 @@ export default function MonProfil() {
       await fetchMe()
       toast.success('Logo mis à jour')
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || "Échec du téléversement du logo")
+      toast.error(getErrorMessage(e, "Échec du téléversement du logo"))
     } finally {
       setLogoBusy(false)
       if (logoInputRef.current) logoInputRef.current.value = ''
@@ -195,7 +196,7 @@ export default function MonProfil() {
       setNewDomain('')
       toast.success('Domaine ajouté')
     } catch (e: any) {
-      setDomainErr(e?.response?.data?.detail || "Impossible d'ajouter ce domaine")
+      setDomainErr(getErrorMessage(e, "Impossible d'ajouter ce domaine"))
     } finally {
       setDomainBusy(false)
     }
@@ -258,7 +259,7 @@ export default function MonProfil() {
       await fetchMe()
       setMsg('Profil mis à jour.')
     } catch (e: any) {
-      setErr(e?.response?.data?.detail || "Erreur lors de l'enregistrement")
+      setErr(getErrorMessage(e, "Erreur lors de l'enregistrement"))
     } finally {
       setSaving(false)
     }
@@ -276,7 +277,7 @@ export default function MonProfil() {
       setPwdMsg('Mot de passe modifié.')
       setCurrentPassword(''); setNewPassword('')
     } catch (e: any) {
-      setPwdErr(e?.response?.data?.detail || 'Mot de passe actuel incorrect.')
+      setPwdErr(getErrorMessage(e, 'Mot de passe actuel incorrect.'))
     } finally {
       setPwdSaving(false)
     }

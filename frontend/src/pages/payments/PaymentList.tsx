@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw, ChevronRight, ChevronDown } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { docFilename } from '@/utils/filename'
@@ -124,7 +125,7 @@ export default function PaymentList() {
       setTimeout(() => setSuccessMsg(''), 4000)
       fetchPayments(search, filterStatus, filterYear, filterMonth)
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la validation')
+      alert(getErrorMessage(e, 'Erreur lors de la validation'))
     } finally {
       setValidatingId(null)
     }
@@ -139,7 +140,7 @@ export default function PaymentList() {
       setTimeout(() => setSuccessMsg(''), 4000)
       fetchPayments(search, filterStatus, filterYear, filterMonth)
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors du refus')
+      alert(getErrorMessage(e, 'Erreur lors du refus'))
     } finally {
       setValidatingId(null)
     }
@@ -424,7 +425,7 @@ export default function PaymentList() {
                             await paymentsApi.delete(p.id)
                             fetchPayments(search, filterStatus, filterYear, filterMonth)
                           } catch (e: any) {
-                            alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
+                            alert(getErrorMessage(e, 'Erreur lors de la suppression'))
                           }
                         }}
                         title="Supprimer ce paiement"

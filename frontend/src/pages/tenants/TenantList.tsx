@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, UserRound, ShieldCheck, Pencil, Trash2, Mail, Phone, Download } from 'lucide-react'
 import { tenantsApi } from '@/api/tenants'
@@ -69,8 +70,7 @@ export default function TenantList() {
       toast.success('Locataire supprimé')
     } catch (e: any) {
       setDeleteError(
-        e?.response?.data?.detail ||
-        "La suppression a échoué. Ce locataire est peut-être rattaché à un contrat."
+        getErrorMessage(e, "La suppression a échoué. Ce locataire est peut-être rattaché à un contrat.")
       )
     } finally {
       setIsDeleting(false)

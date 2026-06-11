@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Edit, FileDown, XCircle,
@@ -152,7 +153,7 @@ function InspectionForm({ leaseId, propertyId, onSaved, onCancel }: {
       })
       onSaved()
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Erreur lors de la création')
+      setError(getErrorMessage(e, 'Erreur lors de la création'))
     } finally {
       setSaving(false)
     }

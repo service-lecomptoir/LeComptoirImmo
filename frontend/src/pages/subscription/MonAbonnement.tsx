@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt, ListChecks, Check } from 'lucide-react'
 import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice, type BillingStatus, type AvailablePlan, type StripePayment } from '@/api/subscription'
 import { FEATURE_LABELS } from '@/lib/features'
@@ -53,7 +54,7 @@ export default function MonAbonnement() {
       const [b] = await Promise.all([subscriptionApi.billing()])
       setBilling(b.data)
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Changement de plan impossible')
+      toast.error(getErrorMessage(e, 'Changement de plan impossible'))
     } finally {
       setChangingPlan(false)
     }
@@ -65,7 +66,7 @@ export default function MonAbonnement() {
       const { data } = await subscriptionApi.checkout()
       window.location.href = data.url
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Impossible de démarrer le paiement')
+      toast.error(getErrorMessage(e, 'Impossible de démarrer le paiement'))
       setBillingBusy(false)
     }
   }
@@ -76,7 +77,7 @@ export default function MonAbonnement() {
       const { data } = await subscriptionApi.portal()
       window.location.href = data.url
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || "Impossible d'ouvrir le portail")
+      toast.error(getErrorMessage(e, "Impossible d'ouvrir le portail"))
       setBillingBusy(false)
     }
   }
@@ -101,7 +102,7 @@ export default function MonAbonnement() {
       setReason('')
       toast.success('Demande de résiliation envoyée')
     } catch (e: any) {
-      setResiliationError(e?.response?.data?.detail || "Erreur lors de l'envoi de la demande")
+      setResiliationError(getErrorMessage(e, "Erreur lors de l'envoi de la demande"))
     } finally {
       setSubmitting(false)
     }
@@ -110,7 +111,7 @@ export default function MonAbonnement() {
   useEffect(() => {
     subscriptionApi.get()
       .then(r => setInfo(r.data))
-      .catch(e => setError(e.response?.data?.detail ?? 'Erreur lors du chargement'))
+      .catch(e => setError(getErrorMessage(e, 'Erreur lors du chargement')))
       .finally(() => setLoading(false))
   }, [])
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { Plus, Pencil, Trash2, Tag, Euro, Phone, Image, Check, ToggleLeft, ToggleRight } from 'lucide-react'
 import { offersApi, OFFER_CATEGORIES } from '@/api/offers'
 import type { Offer, OfferCreate } from '@/api/offers'
@@ -26,7 +27,7 @@ function OfferForm({
     if (!form.title.trim()) { setError('Le titre est requis'); return }
     setSaving(true); setError('')
     try { await onSave(form) } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Erreur')
+      setError(getErrorMessage(e, 'Erreur'))
     } finally { setSaving(false) }
   }
 

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/api/client'
+import { getErrorMessage } from '@/utils/errors'
 import { useAuthStore } from '@/store/authStore'
 
 const MONTH_LABELS: Record<string, string> = {
@@ -84,11 +85,9 @@ export default function Dashboard() {
       .then(r => { setStats(r.data); setError(null) })
       .catch(e => {
         setStats(null)
-        const detail = e?.response?.data?.detail
-        const status = e?.response?.status
-        if (status === 403) setError('Accès refusé — rôle gestionnaire requis')
-        else if (detail) setError(String(detail))
-        else setError(`Erreur ${status ?? 'réseau'} — vérifiez que le serveur est démarré`)
+        setError(e?.response?.status === 403
+          ? 'Accès refusé — rôle gestionnaire requis'
+          : getErrorMessage(e, 'Erreur — vérifiez que le serveur est démarré'))
       })
       .finally(() => setLoading(false))
   }

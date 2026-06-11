@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import {
   ArrowLeft, Save, RefreshCw, ChevronUp, ChevronDown, GripVertical,
   Eye, EyeOff, Plus, Trash2, Palette, Check, Pin, PinOff,
@@ -390,7 +391,7 @@ export default function AvisBlockEditor({ template, onBack, onSaved }: Props) {
       setSavedOk(true); setTimeout(() => setSavedOk(false), 2000)
       onSaved()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || "Erreur lors de l'enregistrement")
+      alert(getErrorMessage(e, "Erreur lors de l'enregistrement"))
     } finally { setSaving(false) }
   }
 

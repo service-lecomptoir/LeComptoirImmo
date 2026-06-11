@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { X, Send, CheckCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
 
@@ -39,7 +40,7 @@ export default function SubscriptionModal({ open, onClose }: Props) {
       })
       setDone(true)
     } catch (e: any) {
-      setError(e?.response?.data?.detail || "Une erreur est survenue. Réessayez plus tard.")
+      setError(getErrorMessage(e, "Une erreur est survenue. Réessayez plus tard."))
     } finally {
       setSending(false)
     }

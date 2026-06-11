@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { downloadBlob } from '@/utils/download'
 import { docFilename } from '@/utils/filename'
+import { getErrorMessage } from '@/utils/errors'
 import { leasesApi } from '@/api/leases'
 import { paymentsApi } from '@/api/payments'
 import { avisEcheancesApi } from '@/api/avis_echeances'
@@ -338,7 +339,7 @@ export default function LocataireDocuments() {
 
       if (!r.ok) {
         const err = await r.json().catch(() => ({}))
-        setUploadError(err?.detail ?? 'Erreur lors de l\'upload')
+        setUploadError(getErrorMessage({ response: { data: err } }, "Erreur lors de l'upload"))
       } else {
         setUploadSuccess('Document uploadé avec succès !')
         await loadDocs()

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { MessageSquare, Clock, AlertCircle, CheckCircle, XCircle, Send, User, Building2, CheckCheck, Pencil } from 'lucide-react'
 import { ticketsApi, type Ticket } from '@/api/tickets'
 import { messagesApi, type ProprietaireMessage, type Conversation } from '@/api/messages'
@@ -106,7 +107,7 @@ function TicketsTab({
       await loadDetail(selected.id)
       await load(filter)
     } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? 'Erreur lors de la mise à jour du statut'
+      const msg = getErrorMessage(e, 'Erreur lors de la mise à jour du statut')
       setStatusError(msg)
       setTimeout(() => setStatusError(''), 4000)
     }
@@ -120,7 +121,7 @@ function TicketsTab({
       await loadDetail(selected.id)
       await load(filter)
     } catch (e: any) {
-      setStatusError(e?.response?.data?.detail ?? 'Erreur lors de la proposition de clôture')
+      setStatusError(getErrorMessage(e, 'Erreur lors de la proposition de clôture'))
       setTimeout(() => setStatusError(''), 4000)
     } finally { setIsActing(false) }
   }

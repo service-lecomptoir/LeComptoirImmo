@@ -102,7 +102,7 @@ export async function uploadPropertyPhoto(propertyId: string, file: File, label?
   })
   if (!r.ok) {
     const err = await r.json().catch(() => ({}))
-    throw new Error(err?.detail || "Échec de l'envoi de la photo")
+    throw new Error(typeof err?.detail === 'string' ? err.detail : "Échec de l'envoi de la photo")
   }
   return r.json()
 }

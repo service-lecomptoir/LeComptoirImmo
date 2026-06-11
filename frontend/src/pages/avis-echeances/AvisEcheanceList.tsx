@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
@@ -58,7 +59,7 @@ function EditAplModal({
       onSaved(data)
       onClose()
     } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Erreur')
+      setError(getErrorMessage(e, 'Erreur'))
     } finally {
       setLoading(false)
     }
@@ -137,7 +138,7 @@ function EditAvisModal({
       onSaved(data)
       onClose()
     } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Erreur lors de la sauvegarde')
+      setError(getErrorMessage(e, 'Erreur lors de la sauvegarde'))
     } finally {
       setLoading(false)
     }
@@ -269,7 +270,7 @@ function GenerateModal({
       onGenerated()
       onClose()
     } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Erreur lors de la génération')
+      setError(getErrorMessage(e, 'Erreur lors de la génération'))
     } finally {
       setLoading(false)
     }
@@ -374,7 +375,7 @@ function BulkGenerateModal({
       onGenerated(r.data.message)
       onClose()
     } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Erreur')
+      setError(getErrorMessage(e, 'Erreur'))
     } finally {
       setLoading(false)
     }
@@ -494,7 +495,7 @@ export default function AvisEcheanceList() {
       setTimeout(() => setSuccessMsg(''), 3000)
       load()
     } catch (e: any) {
-      setErrorMsg(e?.response?.data?.detail ?? 'Erreur lors de la relance')
+      setErrorMsg(getErrorMessage(e, 'Erreur lors de la relance'))
       setTimeout(() => setErrorMsg(''), 4000)
     }
   }
@@ -515,7 +516,7 @@ export default function AvisEcheanceList() {
       const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       if (!response.ok) {
         let detail = `Erreur ${response.status}`
-        try { const body = await response.json(); detail = body.detail || detail } catch {}
+        try { const body = await response.json(); if (typeof body?.detail === 'string') detail = body.detail } catch {}
         throw new Error(detail)
       }
       const blob = await response.blob()

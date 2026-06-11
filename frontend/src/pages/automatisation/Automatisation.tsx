@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { apiClient } from '@/api/client'
 import {
   Zap, Plus, Trash2, Edit2, ToggleLeft, ToggleRight,
@@ -320,7 +321,7 @@ export default function Automatisation() {
       setSchedulerMsg('Configuration enregistrée et scheduler mis à jour.')
       setTimeout(() => setSchedulerMsg(''), 4000)
     } catch (e: any) {
-      setSchedulerMsg('Erreur : ' + (e?.response?.data?.detail ?? 'inconnue'))
+      setSchedulerMsg('Erreur : ' + (getErrorMessage(e, 'inconnue')))
     } finally {
       setSchedulerSaving(false)
     }
@@ -337,7 +338,7 @@ export default function Automatisation() {
       setBulkMsg(data.message)
       setTimeout(() => setBulkMsg(''), 5000)
     } catch (e: any) {
-      setBulkMsg('Erreur : ' + (e?.response?.data?.detail ?? 'inconnue'))
+      setBulkMsg('Erreur : ' + (getErrorMessage(e, 'inconnue')))
     } finally {
       setGeneratingBulk(false)
     }

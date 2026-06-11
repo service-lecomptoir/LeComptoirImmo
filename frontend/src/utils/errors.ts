@@ -42,5 +42,12 @@ export function getErrorMessage(
   if (status === 413) return 'Fichier trop volumineux.'
   if (status && status >= 500) return 'Erreur interne du serveur. Réessayez dans un instant.'
 
+  // Erreur applicative levée manuellement (throw new Error("…")) — pas de réponse
+  // HTTP. On surface son message (mais jamais le « Request failed… » d'axios, qui
+  // a toujours une `response` et est déjà traité plus haut).
+  if (!error?.response && typeof error?.message === 'string' && error.message.trim()) {
+    return error.message
+  }
+
   return fallback
 }

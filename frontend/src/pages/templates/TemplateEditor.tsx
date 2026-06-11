@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import {
   ArrowLeft, Save, X, Star, Check, RefreshCw,
   Trash2, Pencil, Image as ImageIcon, FileText, GripHorizontal,
@@ -298,8 +299,7 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
       onSaved()
       onBack()
     } catch (e: any) {
-      const detail = e?.response?.data?.detail
-      setError(typeof detail === 'string' ? detail : JSON.stringify(detail) || 'Erreur lors de la sauvegarde')
+      setError(getErrorMessage(e, 'Erreur lors de la sauvegarde'))
     } finally {
       setSaving(false)
     }
@@ -612,7 +612,7 @@ export default function TemplateEditor() {
       await apiClient.delete(`/templates/${t.id}`)
       triggerReload()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
+      alert(getErrorMessage(e, 'Erreur lors de la suppression'))
     }
   }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { KeyRound, RefreshCw, Calculator, CheckCircle2, Pencil, Trash2, X, FileDown, HeartHandshake } from 'lucide-react'
 import { actualisationApi, type ChargeRow, type ChargePreview } from '@/api/actualisation'
 
@@ -67,7 +68,7 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
         newMonthly: f.newMonthly || String(r.data.suggested_monthly_provision),
       })
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors du calcul')
+      alert(getErrorMessage(e, 'Erreur lors du calcul'))
     } finally { setBusyId(null) }
   }
 
@@ -99,7 +100,7 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
       upd(row.lease_id, { preview: null, real: '', newMonthly: '', editRegId: null })
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la régularisation')
+      alert(getErrorMessage(e, 'Erreur lors de la régularisation'))
     } finally { setBusyId(null) }
   }
 
@@ -131,7 +132,7 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
       upd(row.lease_id, { preview: null, real: '', newMonthly: '', editRegId: null })
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
+      alert(getErrorMessage(e, 'Erreur lors de la suppression'))
     } finally { setBusyId(null) }
   }
 
@@ -143,7 +144,7 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
       await actualisationApi.downloadRegularizationPdf(
         r.id, `regularisation_charges_${row.tenant_full_name}.pdf`)
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Téléchargement du PDF impossible')
+      alert(getErrorMessage(e, 'Téléchargement du PDF impossible'))
     } finally { setBusyId(null) }
   }
 
@@ -161,7 +162,7 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
       flash(`Provision réévaluée d'un commun accord pour ${r.tenant_full_name}.`)
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la réévaluation')
+      alert(getErrorMessage(e, 'Erreur lors de la réévaluation'))
     } finally { setBusyId(null) }
   }
 

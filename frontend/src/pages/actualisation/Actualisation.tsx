@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getErrorMessage } from '@/utils/errors'
 import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt, Pencil, Trash2, X, FileDown, Landmark, HeartHandshake } from 'lucide-react'
 import { actualisationApi, type IrlIndexItem, type RevisionRow } from '@/api/actualisation'
 import ChargesPanel from './ChargesPanel'
@@ -53,7 +54,7 @@ export default function Actualisation() {
         flash(`Indice IRL T${iq} ${iy} enregistré.`)
       }
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de l\'enregistrement de l\'indice')
+      alert(getErrorMessage(e, 'Erreur lors de l\'enregistrement de l\'indice'))
       return
     }
     resetIrlForm()
@@ -74,7 +75,7 @@ export default function Actualisation() {
       const a = await actualisationApi.listIrl(); setIrl(a.data)
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la suppression')
+      alert(getErrorMessage(e, 'Erreur lors de la suppression'))
     }
   }
 
@@ -92,7 +93,7 @@ export default function Actualisation() {
       flash('Indice de référence réinitialisé.')
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la réinitialisation')
+      alert(getErrorMessage(e, 'Erreur lors de la réinitialisation'))
     } finally { setBusyId(null) }
   }
 
@@ -116,7 +117,7 @@ export default function Actualisation() {
       flash(`Loyer révisé pour ${r.tenant_full_name}.`)
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la révision')
+      alert(getErrorMessage(e, 'Erreur lors de la révision'))
     } finally { setBusyId(null) }
   }
 
@@ -134,7 +135,7 @@ export default function Actualisation() {
       flash(`Loyer réévalué d'un commun accord pour ${r.tenant_full_name}.`)
       load()
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Erreur lors de la réévaluation')
+      alert(getErrorMessage(e, 'Erreur lors de la réévaluation'))
     } finally { setBusyId(null) }
   }
 
@@ -143,7 +144,7 @@ export default function Actualisation() {
     try {
       await actualisationApi.downloadRevisionPdf(r.lease_id, `revision_loyer_${r.tenant_full_name}.pdf`)
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Téléchargement du PDF impossible')
+      alert(getErrorMessage(e, 'Téléchargement du PDF impossible'))
     } finally { setBusyId(null) }
   }
 
@@ -157,7 +158,7 @@ export default function Actualisation() {
         { lease_id: r.lease_id, year: f.year, teom_amount: amount },
         `taxes_foncieres_${f.year}_${r.tenant_full_name}.pdf`)
     } catch (e: any) {
-      alert(e?.response?.data?.detail || 'Téléchargement du PDF impossible')
+      alert(getErrorMessage(e, 'Téléchargement du PDF impossible'))
     } finally { setBusyId(null) }
   }
 
