@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Megaphone, Plus, Trash2, Pencil, Building2, ChevronRight, X, Eye } from 'lucide-react'
+import { Megaphone, Plus, Trash2, Pencil, Building2, ChevronRight, ChevronDown, X, Eye } from 'lucide-react'
 import { publishingApi, type PublishPlatform, type PlatformKind, type ListingOverview } from '@/api/publishing'
 import { propertiesApi } from '@/api/properties'
 import { toast } from '@/store/toast'
@@ -40,6 +40,13 @@ export default function DiffusionPage() {
   const user = useAuthStore(s => s.user)
   // Mandataire : annonces regroupées par propriétaire (comme les autres onglets).
   const isMandataire = user?.role === 'gestionnaire'
+  const [collapsedOwners, setCollapsedOwners] = useState<Set<string>>(new Set())
+  const toggleOwner = (owner: string) =>
+    setCollapsedOwners(prev => {
+      const next = new Set(prev)
+      next.has(owner) ? next.delete(owner) : next.add(owner)
+      return next
+    })
 
   const load = async () => {
     setLoading(true)
@@ -175,17 +182,28 @@ export default function DiffusionPage() {
         ) : props.length === 0 ? (
           <p className="text-sm text-gray-400">Aucun bien.</p>
         ) : isMandataire ? (
-          <div className="space-y-5">
-            {ownerGroups.map(([owner, items]) => (
-              <div key={owner}>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
-                  {owner} <span className="text-gray-300">· {items.length} bien{items.length > 1 ? 's' : ''}</span>
-                </h3>
-                <ul className="divide-y divide-gray-100">
-                  {items.map(renderRow)}
-                </ul>
-              </div>
-            ))}
+          <div className="space-y-4">
+            {ownerGroups.map(([owner, items]) => {
+              const open = !collapsedOwners.has(owner)
+              return (
+                <div key={owner}>
+                  <button
+                    onClick={() => toggleOwner(owner)}
+                    className="w-full flex items-center gap-2 mb-1 text-left"
+                  >
+                    {open ? <ChevronDown size={15} className="text-gray-400 shrink-0" /> : <ChevronRight size={15} className="text-gray-400 shrink-0" />}
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      {owner} <span className="text-gray-300">· {items.length} bien{items.length > 1 ? 's' : ''}</span>
+                    </span>
+                  </button>
+                  {open && (
+                    <ul className="divide-y divide-gray-100 pl-1">
+                      {items.map(renderRow)}
+                    </ul>
+                  )}
+                </div>
+              )
+            })}
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">
