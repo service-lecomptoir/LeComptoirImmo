@@ -7,6 +7,7 @@ from app.models.owner import Owner
 from app.models.property import Property
 from app.schemas.owner import OwnerCreate, OwnerUpdate
 from app.core.exceptions import NotFoundException
+from app.utils.address import normalize_address_fields
 
 
 class OwnerService:
@@ -146,6 +147,9 @@ class OwnerService:
         db: AsyncSession, data: OwnerCreate, created_by: uuid.UUID
     ) -> Owner:
         owner = Owner(**data.model_dump(), created_by=created_by)
+        owner.address, owner.zip_code, owner.city = normalize_address_fields(
+            owner.address, owner.zip_code, owner.city
+        )
         db.add(owner)
         await db.flush()
         return owner
@@ -195,6 +199,11 @@ class OwnerService:
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(owner, field, value)
+        # Normalisation « comme via l'autocomplétion » : découpe une adresse
+        # combinée (rue + CP + ville) ou retire le CP dupliqué dans la rue.
+        owner.address, owner.zip_code, owner.city = normalize_address_fields(
+            owner.address, owner.zip_code, owner.city
+        )
         await db.flush()
         # La fiche est la source de vérité → répercuter sur les biens liés.
         await OwnerService.sync_properties(db, owner)

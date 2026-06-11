@@ -9,6 +9,7 @@ from app.core.security import hash_password, verify_password
 from app.core.exceptions import (
     NotFoundException, ConflictException, BadRequestException
 )
+from app.utils.address import normalize_address_fields
 
 
 class UserService:
@@ -108,6 +109,11 @@ class UserService:
             user.city = data.city or None
         if getattr(data, "country", None) is not None:
             user.country = data.country or None
+        # Normalisation « comme via l'autocomplétion » : si l'adresse est combinée
+        # (rue + CP + ville d'un seul tenant) ou duplique le CP, on la découpe.
+        user.address, user.zip_code, user.city = normalize_address_fields(
+            user.address, user.zip_code, user.city
+        )
         if getattr(data, "template_pinned_vars", None) is not None:
             user.template_pinned_vars = data.template_pinned_vars or None
         if getattr(data, "owner_kind", None) in ("personne", "societe"):
