@@ -154,6 +154,7 @@ class LeaseService:
                 if lease.parent_property
                 else str(lease.property_id)
             ),
+            owner_name=(lease.parent_property.owner_name if lease.parent_property else None),
             lease_type=lease.lease_type,
             start_date=lease.start_date,
             end_date=lease.end_date,

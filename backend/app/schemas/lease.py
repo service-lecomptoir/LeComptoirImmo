@@ -129,6 +129,7 @@ class LeaseListItem(BaseModel):
     tenant_id: uuid.UUID
     tenant_full_name: str
     property_name: str
+    owner_name: Optional[str] = None
     lease_type: str
     start_date: date
     end_date: Optional[date] = None

@@ -88,6 +88,7 @@ export interface LeaseListItem {
   tenant_id: string
   tenant_full_name: string
   property_name: string
+  owner_name?: string | null
   lease_type: LeaseType
   start_date: string
   end_date?: string
