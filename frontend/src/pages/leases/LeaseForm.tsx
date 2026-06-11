@@ -12,6 +12,7 @@ import { tenantsApi } from '@/api/tenants'
 import type { Lease } from '@/types/lease'
 import type { PropertyListItem } from '@/types/property'
 import type { TenantListItem } from '@/types/tenant'
+import { getErrorMessage } from '@/utils/errors'
 
 const schema = z.object({
   property_id: z.string().min(1, 'Bien immobilier requis'),
@@ -64,7 +65,7 @@ function CreateTenantPanel({ onCreated, onCancel }: CreateTenantPanelProps) {
       })
       onCreated(data as unknown as TenantListItem)
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Erreur lors de la création')
+      setError(getErrorMessage(e, 'Erreur lors de la création du locataire'))
     } finally {
       setLoading(false)
     }
@@ -198,8 +199,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
       }
       onSaved()
     } catch (e: any) {
-      const detail = e?.response?.data?.detail
-      setSubmitError(typeof detail === 'string' ? detail : 'Erreur lors de l\'enregistrement du contrat')
+      setSubmitError(getErrorMessage(e, "Erreur lors de l'enregistrement du contrat"))
     }
   }
 

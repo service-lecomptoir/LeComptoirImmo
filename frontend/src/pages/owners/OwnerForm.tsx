@@ -12,6 +12,7 @@ import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
 import type { Owner } from '@/types/owner'
 import type { User } from '@/types/auth'
+import { getErrorMessage } from '@/utils/errors'
 
 const schema = z.object({
   civility: z.enum(['M', 'Mme', 'Autre']).optional(),
@@ -137,6 +138,10 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       setCreateUserError('Remplissez le nom/société, l\'email et le mot de passe ci-dessus')
       return
     }
+    if (newUserPassword.trim().length < 8) {
+      setCreateUserError('Le mot de passe doit contenir au moins 8 caractères.')
+      return
+    }
     setCreatingUser(true)
     setCreateUserError(null)
     try {
@@ -151,7 +156,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       setShowCreateUser(false)
       setNewUserPassword('')
     } catch (e: any) {
-      setCreateUserError(e?.response?.data?.detail || 'Erreur lors de la création')
+      setCreateUserError(getErrorMessage(e, 'Erreur lors de la création du compte'))
     } finally {
       setCreatingUser(false)
     }
@@ -190,12 +195,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       }
       onSaved()
     } catch (e: any) {
-      const detail = e?.response?.data?.detail
-      setSubmitError(
-        Array.isArray(detail)
-          ? detail.map((d: any) => `${d.loc?.slice(-1)[0] ?? ''} : ${d.msg}`).join(' · ')
-          : (detail || "Erreur lors de l'enregistrement du propriétaire.")
-      )
+      setSubmitError(getErrorMessage(e, "Erreur lors de l'enregistrement du propriétaire."))
     }
   }
 

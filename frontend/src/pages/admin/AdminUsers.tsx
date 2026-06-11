@@ -12,6 +12,7 @@ import { Modal } from '@/components/common/Modal'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import type { User, Role } from '@/types/auth'
 import { useAuthStore } from '@/store/authStore'
+import { getErrorMessage } from '@/utils/errors'
 
 /** Fiche (locataire ou propriétaire) candidate au rattachement d'un compte. */
 interface FicheOption {
@@ -194,7 +195,7 @@ export default function AdminUsers() {
       createForm.reset()
       setLinkFicheId('')
     } catch (e: any) {
-      setFormError(e?.response?.data?.detail || 'Erreur lors de la création.')
+      setFormError(getErrorMessage(e, 'Erreur lors de la création.'))
     } finally {
       setSubmitting(false)
     }
@@ -243,7 +244,7 @@ export default function AdminUsers() {
       setEditTarget(null)
       setResetPwd('')
     } catch (e: any) {
-      setFormError(e?.response?.data?.detail || 'Erreur lors de la modification.')
+      setFormError(getErrorMessage(e, 'Erreur lors de la modification.'))
     } finally {
       setSubmitting(false)
     }
@@ -257,7 +258,7 @@ export default function AdminUsers() {
       await load()
       setDeleteTarget(null)
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Erreur lors de la suppression.')
+      setError(getErrorMessage(e, 'Erreur lors de la suppression.'))
     }
   }
 

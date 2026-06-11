@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/authStore'
 import type { Property } from '@/types/property'
 import { TYPOLOGY_OPTIONS, HEATING_OPTIONS, ENERGY_CLASSES, AMENITIES } from '@/types/property'
 import type { Owner, OwnerListItem } from '@/types/owner'
+import { getErrorMessage } from '@/utils/errors'
 
 const schema = z.object({
   name: z.string().min(1, 'Nom requis'),
@@ -81,7 +82,7 @@ function CreateOwnerPanel({ onCreated, onCancel }: CreateOwnerPanelProps) {
       })
       onCreated(data)
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Erreur lors de la création')
+      setError(getErrorMessage(e, 'Erreur lors de la création'))
     } finally {
       setLoading(false)
     }
@@ -244,12 +245,10 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
     } catch (e: any) {
       // Erreurs serveur : limite d'offre atteinte (400), licence absente /
       // suspendue (403), service indisponible (503), validation, etc.
-      const detail = e?.response?.data?.detail
-      setSubmitError(
-        typeof detail === 'string'
-          ? detail
-          : "Une erreur est survenue lors de l'enregistrement. Vérifiez votre offre puis réessayez.",
-      )
+      setSubmitError(getErrorMessage(
+        e,
+        "Une erreur est survenue lors de l'enregistrement. Vérifiez votre offre puis réessayez.",
+      ))
     }
   }
 

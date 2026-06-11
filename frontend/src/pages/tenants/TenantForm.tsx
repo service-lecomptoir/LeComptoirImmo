@@ -7,6 +7,7 @@ import { Modal } from '@/components/common/Modal'
 import { SectionTitle } from '@/components/common/SectionTitle'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { formatNir, digitsOnly } from '@/utils/format'
+import { getErrorMessage } from '@/utils/errors'
 import { tenantsApi } from '@/api/tenants'
 import { usersApi } from '@/api/users'
 import type { Tenant } from '@/types/tenant'
@@ -136,6 +137,10 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       setCreateUserError('Remplissez prénom, nom, email et mot de passe ci-dessus')
       return
     }
+    if (newUserPassword.trim().length < 8) {
+      setCreateUserError('Le mot de passe doit contenir au moins 8 caractères.')
+      return
+    }
     setCreatingUser(true)
     setCreateUserError(null)
     try {
@@ -150,7 +155,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       setShowCreateUser(false)
       setNewUserPassword('')
     } catch (e: any) {
-      setCreateUserError(e?.response?.data?.detail || 'Erreur lors de la création')
+      setCreateUserError(getErrorMessage(e, 'Erreur lors de la création du compte'))
     } finally {
       setCreatingUser(false)
     }
@@ -189,12 +194,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       }
       onSaved()
     } catch (e: any) {
-      const detail = e?.response?.data?.detail
-      setSubmitError(
-        Array.isArray(detail)
-          ? detail.map((d: any) => `${d.loc?.slice(-1)[0] ?? ''} : ${d.msg}`).join(' · ')
-          : (detail || "Erreur lors de l'enregistrement du locataire.")
-      )
+      setSubmitError(getErrorMessage(e, "Erreur lors de l'enregistrement du locataire."))
     }
   }
 
