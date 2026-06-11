@@ -247,14 +247,14 @@ export default function PaymentList() {
         <table className="w-full min-w-[640px]">
           <thead>
             <tr className="border-b border-gray-100">
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Locataire</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Bien</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Période</th>
-              <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Dû</th>
-              <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Payé</th>
-              <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Solde</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Statut</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Quittance</th>
+              <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Locataire</th>
+              <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Bien</th>
+              <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Période</th>
+              <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Dû</th>
+              <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Payé</th>
+              <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Solde</th>
+              <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Statut</th>
+              <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Quittance</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
