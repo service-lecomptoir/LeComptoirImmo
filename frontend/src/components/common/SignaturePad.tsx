@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Eraser, PenLine } from 'lucide-react'
 
 /**
@@ -20,7 +20,9 @@ export function SignaturePad({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawing = useRef(false)
   const last = useRef<{ x: number; y: number } | null>(null)
-  const [hasInk, setHasInk] = useState(false)
+  // Ref (et non state) : lu de façon fiable dans le handler de fin de tracé,
+  // même pour un geste très rapide (pas de closure périmée).
+  const inked = useRef(false)
 
   // Initialise le fond blanc puis, le cas échéant, redessine la signature existante.
   useEffect(() => {
@@ -36,7 +38,7 @@ export function SignaturePad({
     ctx.strokeStyle = '#1f2937'
     if (value) {
       const img = new Image()
-      img.onload = () => { ctx.drawImage(img, 0, 0, cv.width, cv.height); setHasInk(true) }
+      img.onload = () => { ctx.drawImage(img, 0, 0, cv.width, cv.height); inked.current = true }
       img.src = value
     }
     // Volontairement sans dépendances : initialisation au montage uniquement.
@@ -66,7 +68,7 @@ export function SignaturePad({
     ctx.lineTo(p.x, p.y)
     ctx.stroke()
     last.current = p
-    if (!hasInk) setHasInk(true)
+    inked.current = true
   }
 
   const end = () => {
@@ -74,7 +76,7 @@ export function SignaturePad({
     drawing.current = false
     last.current = null
     const cv = canvasRef.current
-    if (cv && hasInk) onChange(cv.toDataURL('image/png'))
+    if (cv && inked.current) onChange(cv.toDataURL('image/png'))
   }
 
   const clear = () => {
@@ -83,7 +85,7 @@ export function SignaturePad({
     if (!cv || !ctx) return
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, cv.width, cv.height)
-    setHasInk(false)
+    inked.current = false
     onChange(null)
   }
 
