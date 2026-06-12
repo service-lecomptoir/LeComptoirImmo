@@ -22,7 +22,7 @@ DEFAULT_TEMPLATES = {
         "name": "Avis d'échéance",
         "content_html": """<h2>Avis d'échéance</h2>
 <p style="text-align:center;color:#6b7280;margin-top:0;">Loyer · {{month}}</p>
-<p>Madame, Monsieur,</p>
+<p>{{civility_greeting}},</p>
 <p>Nous vous prions de bien vouloir procéder au règlement de votre loyer, selon le détail ci-dessous, à échéance du <strong>{{due_date}}</strong>.</p>
 <h3>Détail du loyer</h3>
 <table>
@@ -41,7 +41,7 @@ DEFAULT_TEMPLATES = {
         "name": "Quittance de loyer",
         "content_html": """<h2>Quittance de loyer</h2>
 <p style="text-align:center;color:#6b7280;margin-top:0;">{{month}}</p>
-<p>Madame, Monsieur,</p>
+<p>{{civility_greeting}},</p>
 <p>Nous accusons réception de la somme de <strong>{{amount_paid}} €</strong> au titre du loyer et des charges du mois de <strong>{{month}}</strong>, et vous en donnons quittance.</p>
 <h3>Détail</h3>
 <table>
@@ -80,7 +80,7 @@ DEFAULT_TEMPLATES = {
     TemplateType.LETTRE_RELANCE: {
         "name": "Lettre de relance",
         "content_html": """<h2>Lettre de relance</h2>
-<p>Madame, Monsieur,</p>
+<p>{{civility_greeting}},</p>
 <p>Sauf erreur ou omission de notre part, le loyer de la période <strong>{{period_range}}</strong>, dont l'échéance était fixée au <strong>{{due_date}}</strong>, demeure impayé à ce jour.</p>
 <p>Le solde restant dû s'élève à <strong>{{amount_due}}</strong>. Nous vous remercions de bien vouloir le régulariser sous huitaine.</p>
 <p style="color:#6b7280;">Si votre règlement a croisé ce courrier, nous vous prions de ne pas en tenir compte.</p>""",

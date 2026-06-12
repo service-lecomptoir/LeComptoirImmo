@@ -182,6 +182,19 @@ def _civil_name(tenant) -> str:
     return " ".join(p for p in parts if p).upper()
 
 
+_CIVILITY_GREETING = {
+    "m": "Monsieur", "m.": "Monsieur", "monsieur": "Monsieur",
+    "mme": "Madame", "madame": "Madame",
+}
+
+
+def civility_greeting(tenant) -> str:
+    """Formule d'appel personnalisée selon la civilité connue : « Monsieur » /
+    « Madame » ; repli neutre « Madame, Monsieur » si inconnue ou « Autre »."""
+    civ = ((getattr(tenant, "civility", "") or "").strip().lower()) if tenant else ""
+    return _CIVILITY_GREETING.get(civ, "Madame, Monsieur")
+
+
 async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
     """Rend la lettre de relance via le template « lettre_relance » de la papeterie
     (modèle par blocs / thème Foncia) du gestionnaire, en réutilisant le moteur de
@@ -227,19 +240,10 @@ async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
     def _eur(v):
         return f"{eur(v)} €"
 
-    # Formule d'appel selon la civilité connue ; repli neutre sinon.
-    _civ = ((getattr(tenant, "civility", "") or "").strip().lower()) if tenant else ""
-    if _civ in ("m", "m.", "monsieur"):
-        civility_greeting = "Monsieur"
-    elif _civ in ("mme", "madame"):
-        civility_greeting = "Madame"
-    else:
-        civility_greeting = "Madame, Monsieur"
-
     variables = {
         "tenant_name": tenant.full_name if tenant else "",
         "tenant_civil_name": _civil_name(tenant),
-        "civility_greeting": civility_greeting,
+        "civility_greeting": civility_greeting(tenant),
         "tenant_email": (getattr(tenant, "email", "") or "") if tenant else "",
         "tenant_phone": (getattr(tenant, "phone", "") or "") if tenant else "",
         "tenant_login": tenant_reference(tenant),
@@ -363,6 +367,7 @@ class AvisEcheancePDFService:
                                    getattr(property_obj, "name", "")) if property_obj else "",
             # Nom du destinataire : civilité + prénom + NOM (majuscules).
             "tenant_civil_name": _civil_name(getattr(avis_full, "tenant", None)),
+            "civility_greeting": civility_greeting(getattr(avis_full, "tenant", None)),
             # Adresse du bien décomposée pour le bloc destinataire (lignes séparées).
             "property_address2": (getattr(property_obj, "address2", "") or "") if property_obj else "",
             "property_street": (getattr(property_obj, "address", "") or "") if property_obj else "",

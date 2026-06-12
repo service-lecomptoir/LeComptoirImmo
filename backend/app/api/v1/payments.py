@@ -601,12 +601,14 @@ async def download_quittance(
 
     # 1) Template ENREGISTRÉ par le gestionnaire (éditeur) si présent…
     from app.services.document_render_service import render_saved_document, eur
+    from app.services.pdf_service import civility_greeting
     _prop_obj = (payment.lease.parent_property
                  if getattr(payment, "lease", None) and getattr(payment.lease, "parent_property", None)
                  else None)
     _gid = getattr(payment.lease, "created_by", None) if getattr(payment, "lease", None) else None
     variables = {
         "tenant_name": names[0] if names else "",
+        "civility_greeting": civility_greeting(getattr(payment, "tenant", None)),
         "company_name": "",
         "property_name": _prop_obj.name if _prop_obj else "",
         "unit_ref": _prop_obj.name if _prop_obj else "",

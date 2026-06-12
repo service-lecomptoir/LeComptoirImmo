@@ -100,6 +100,7 @@ async def preview_document_pdf(
     variables = {
         "tenant_name": "Marie Dupont",
         "tenant_civil_name": "MME MARIE DUPONT",
+        "civility_greeting": "Madame",
         "tenant_email": "marie.dupont@email.fr",
         "tenant_phone": "06 12 34 56 78",
         "tenant_login": "2B12C23A",

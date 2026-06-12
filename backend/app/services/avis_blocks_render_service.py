@@ -137,7 +137,7 @@ def default_avis_blocks() -> list[dict]:
             "tenant_line": "Locataire : {{tenant_name}}",
         }},
         {"id": "greeting", "type": "greeting", "enabled": True, "props": {
-            "salutation": "Cher locataire,",
+            "salutation": "{{civility_greeting}},",
             "intro": "Veuillez trouver ci-après votre avis d'échéance {{period_range}}.",
         }},
         {"id": "amount_bar", "type": "amount_bar", "enabled": True, "props": {
@@ -208,7 +208,7 @@ def _header(title: str, subtitle1: str = "{{period_range}}", subtitle2: str = ""
     }}
 
 
-def _greeting(intro: str, salutation: str = "Cher locataire,") -> dict:
+def _greeting(intro: str, salutation: str = "{{civility_greeting}},") -> dict:
     return {"id": "greeting", "type": "greeting", "enabled": True, "props": {
         "salutation": salutation, "intro": intro,
     }}
@@ -680,6 +680,12 @@ def render_avis_blocks_html(
     t = _theme(theme)
     blocks = blocks or []
     line_items = line_items or []
+    # Filet de sécurité : la formule d'appel {{civility_greeting}} est utilisée par
+    # défaut dans toutes les salutations. Si un appelant ne la fournit pas, on évite
+    # une salutation vide en retombant sur la forme neutre.
+    variables = dict(variables or {})
+    if not variables.get("civility_greeting"):
+        variables["civility_greeting"] = "Madame, Monsieur"
 
     header_html = ""
     sidebar_html = ""

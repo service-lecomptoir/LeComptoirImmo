@@ -9,7 +9,7 @@ from datetime import date as _date
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.pdf_service import html_to_pdf, _civil_name, tenant_reference
+from app.services.pdf_service import html_to_pdf, _civil_name, tenant_reference, civility_greeting
 from app.services.document_render_service import eur
 
 _MOIS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
@@ -29,6 +29,7 @@ def _doc_common_vars(tenant, property_obj, today_fr: str) -> dict:
     return {
         "tenant_name": tenant.full_name if tenant else "",
         "tenant_civil_name": _civil_name(tenant),
+        "civility_greeting": civility_greeting(tenant),
         "tenant_email": (getattr(tenant, "email", "") or "") if tenant else "",
         "tenant_phone": (getattr(tenant, "phone", "") or "") if tenant else "",
         "tenant_login": tenant_reference(tenant),
