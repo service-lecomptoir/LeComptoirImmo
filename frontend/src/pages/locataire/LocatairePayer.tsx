@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Building2, Banknote, CheckCircle, AlertCircle } from 'lucide-react'
+import { Building2, Banknote, CheckCircle, AlertCircle, Wallet } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import { paymentsApi } from '@/api/payments'
+import { apurementApi, type ApurementPlan } from '@/api/apurement'
+import { StatusBadge } from '@/components/common/StatusBadge'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -42,21 +45,109 @@ export default function LocatairePayer() {
   const [amount, setAmount] = useState<number>(0)
   const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select')
   const [isSending, setIsSending] = useState(false)
+  const [allPayments, setAllPayments] = useState<any[]>([])
+  const [plans, setPlans] = useState<ApurementPlan[]>([])
 
   useEffect(() => {
-    apiClient.get('/payments/locataire/current')
-      .then(r => {
-        setPayment(r.data.payment)
-        setPayee(r.data.payee ?? null)
-        // Montant pré-rempli = ce qu'il RESTE à payer (net après APL et acomptes) = balance.
-        if (r.data.payment) {
-          const p = r.data.payment
+    Promise.allSettled([
+      apiClient.get('/payments/locataire/current'),
+      paymentsApi.list({ limit: 120 }),
+      apurementApi.mine(),
+    ]).then(([cur, lst, pl]) => {
+      if (cur.status === 'fulfilled') {
+        setPayment(cur.value.data.payment)
+        setPayee(cur.value.data.payee ?? null)
+        if (cur.value.data.payment) {
+          const p = cur.value.data.payment
           setAmount(Number(p.balance ?? p.amount_due) || 0)
         }
-      })
-      .catch(() => { })
-      .finally(() => setIsLoading(false))
+      }
+      if (lst.status === 'fulfilled') setAllPayments(lst.value.data.items ?? lst.value.data)
+      if (pl.status === 'fulfilled') setPlans(pl.value.data)
+    }).finally(() => setIsLoading(false))
   }, [])
+
+  // Solde actuel = cumul du reste à payer (loyers non soldés + échéances d'apurement
+  // non réglées), tous mois confondus.
+  const soldeActuel = Math.round((
+    allPayments.filter((p: any) => p.status !== 'cancelled')
+      .reduce((s: number, p: any) => s + (Number(p.balance ?? 0) || 0), 0)
+    + plans.flatMap(pl => pl.installments).filter(i => !i.paid).reduce((s, i) => s + i.amount, 0)
+  ) * 100) / 100
+
+  // Historique : loyers + échéances d'apurement.
+  const HIST_STATUS: Record<string, { label: string; variant: any }> = {
+    paid: { label: 'Payé', variant: 'green' }, partial: { label: 'Partiel', variant: 'yellow' },
+    pending: { label: 'En attente', variant: 'blue' }, late: { label: 'En retard', variant: 'red' },
+    declared: { label: 'Déclaré', variant: 'yellow' }, cancelled: { label: 'Annulé', variant: 'gray' },
+  }
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const history = [
+    ...allPayments.map((p: any) => ({
+      key: `p-${p.id}`, date: p.payment_date, intitule: `Loyer · ${p.period_label}`,
+      echeance: p.due_date, montant: p.amount_due ?? 0, status: p.status, sort: p.due_date || '',
+    })),
+    ...plans.flatMap(pl => pl.installments.map(i => ({
+      key: `i-${pl.id}-${i.seq}`, date: i.paid ? (i.paid_date || i.due_date) : null,
+      intitule: `Plan d'apurement · échéance ${i.seq}`, echeance: i.due_date, montant: i.amount,
+      status: i.paid ? 'paid' : i.declared ? 'declared' : (i.due_date < todayIso ? 'late' : 'pending'),
+      sort: i.due_date,
+    }))),
+  ].sort((a, b) => b.sort.localeCompare(a.sort))
+
+  const soldeCard = (
+    <div className={`rounded-xl border p-5 mb-5 ${soldeActuel > 0.005 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+      <div className="flex items-center gap-3">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${soldeActuel > 0.005 ? 'bg-amber-100' : 'bg-green-100'}`}>
+          <Wallet size={20} className={soldeActuel > 0.005 ? 'text-amber-600' : 'text-green-600'} />
+        </div>
+        <div>
+          <p className="text-xs uppercase tracking-wide font-medium text-gray-500">Solde actuel</p>
+          <p className={`text-2xl font-bold ${soldeActuel > 0.005 ? 'text-amber-700' : 'text-green-700'}`}>
+            {soldeActuel > 0.005 ? fmtEuro(soldeActuel) : '0,00 €'}
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {soldeActuel > 0.005 ? 'Reste à payer, cumul de tous les mois et plans d\'apurement' : 'Vous êtes à jour'}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+
+  const historyTable = history.length === 0 ? null : (
+    <div className="mt-8">
+      <h2 className="text-sm font-semibold text-gray-900 mb-2">Historique des paiements</h2>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px]">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Intitulé</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Échéance</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Montant</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {history.map(h => {
+                const st = HIST_STATUS[h.status] ?? { label: h.status, variant: 'gray' }
+                return (
+                  <tr key={h.key} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{h.date ? format(new Date(h.date), 'd MMM yyyy', { locale: fr }) : '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-800">{h.intitule}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{h.echeance ? format(new Date(h.echeance), 'd MMM yyyy', { locale: fr }) : '—'}</td>
+                    <td className="px-4 py-3 text-right text-sm font-medium text-gray-900 whitespace-nowrap">{fmtEuro(h.montant)}</td>
+                    <td className="px-4 py-3"><StatusBadge label={st.label} variant={st.variant} dot /></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
 
   const handleDeclare = async () => {
     if (!method || !payment || amount <= 0) return
@@ -83,15 +174,17 @@ export default function LocatairePayer() {
 
   if (!payment) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6 max-w-2xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Payer mon loyer</h1>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <CheckCircle size={40} className="mx-auto mb-3 text-green-400" />
+        {soldeCard}
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+          <CheckCircle size={36} className="mx-auto mb-2 text-green-400" />
           <p className="text-gray-700 font-medium">Aucun paiement en attente</p>
-          <p className="text-sm text-gray-400 mt-1">Vous êtes à jour dans vos règlements.</p>
+          <p className="text-sm text-gray-400 mt-1">Vous n'avez pas d'appel de loyer à régler actuellement.</p>
         </div>
+        {historyTable}
       </div>
     )
   }
@@ -128,6 +221,8 @@ export default function LocatairePayer() {
         <h1 className="text-2xl font-bold text-gray-900">Payer mon loyer</h1>
         <p className="text-gray-500 text-sm mt-1">Choisissez votre mode de règlement</p>
       </div>
+
+      {soldeCard}
 
       {/* Récapitulatif */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
@@ -319,6 +414,8 @@ export default function LocatairePayer() {
           </div>
         </div>
       )}
+
+      {historyTable}
     </div>
   )
 }

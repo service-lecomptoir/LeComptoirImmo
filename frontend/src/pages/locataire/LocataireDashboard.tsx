@@ -265,7 +265,7 @@ export default function LocataireDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-5">
         {[
           { icon: Calendar, label: 'Avis d\'échéances', to: '/locataire/avis-echeances', color: 'bg-blue-50 text-blue-600' },
-          { icon: CreditCard, label: 'Mes paiements', to: '/locataire/paiements', color: 'bg-green-50 text-green-600' },
+          { icon: CreditCard, label: 'Ma comptabilité', to: '/locataire/paiements', color: 'bg-green-50 text-green-600' },
           { icon: FileText, label: 'Mes documents', to: '/locataire/documents', color: 'bg-purple-50 text-purple-600' },
         ].map(item => (
           <button
