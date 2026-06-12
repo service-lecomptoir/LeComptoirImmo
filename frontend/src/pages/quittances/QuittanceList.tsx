@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { Receipt, Search, FileDown, CheckCircle2, Mail, RefreshCw, Filter } from 'lucide-react'
 import { paymentsApi } from '@/api/payments'
 import { docFilename } from '@/utils/filename'
-import { StatusBadge } from '@/components/common/StatusBadge'
-import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_VARIANTS } from '@/types/payment'
 import type { PaymentListItem } from '@/types/payment'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -211,7 +209,6 @@ export default function QuittanceList() {
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Période</th>
               <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Dû</th>
               <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Payé</th>
-              <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Statut paiement</th>
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Quittance</th>
               <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Envoi</th>
               <th className="px-4 py-3"></th>
@@ -220,14 +217,14 @@ export default function QuittanceList() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="text-center py-12 text-sm text-gray-500">
+                <td colSpan={8} className="text-center py-12 text-sm text-gray-500">
                   <RefreshCw size={18} className="animate-spin inline mr-2" />
                   Chargement...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={8}>
                   <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                     <Receipt size={36} className="text-gray-300 mb-3" />
                     <p className="text-sm font-medium text-gray-500">Aucune quittance pour cette période</p>
@@ -240,26 +237,19 @@ export default function QuittanceList() {
             ) : (
               filtered.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.tenant_full_name}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{p.tenant_full_name}</td>
                   <td className="px-4 py-3">
-                    <div className="text-sm text-gray-900">{p.property_name}</div>
+                    <div className="text-sm text-gray-900 whitespace-nowrap">{p.property_name}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{p.period_label}</td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(p.amount_due)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-green-700 font-medium">{fmtEuro(p.amount_paid)}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge
-                      label={PAYMENT_STATUS_LABELS[p.status]}
-                      variant={PAYMENT_STATUS_VARIANTS[p.status]}
-                      dot
-                    />
-                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{p.period_label}</td>
+                  <td className="px-4 py-3 text-sm text-right text-gray-900 whitespace-nowrap">{fmtEuro(p.amount_due)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-green-700 font-medium whitespace-nowrap">{fmtEuro(p.amount_paid)}</td>
 
-                  {/* Statut quittance générée */}
-                  <td className="px-4 py-3 text-xs">
+                  {/* Date de génération de la quittance */}
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">
                     {p.quittance_generated_at ? (
                       <span className="text-blue-600 font-medium">
-                        Générée le {format(new Date(p.quittance_generated_at), 'd MMM yyyy', { locale: fr })}
+                        {format(new Date(p.quittance_generated_at), 'd MMM yyyy', { locale: fr })}
                       </span>
                     ) : (
                       <span className="text-gray-400">Non générée</span>
@@ -267,11 +257,11 @@ export default function QuittanceList() {
                   </td>
 
                   {/* Statut envoi */}
-                  <td className="px-4 py-3 text-xs">
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">
                     {p.quittance_sent_at ? (
                       <span className="inline-flex items-center gap-1 text-green-700 font-medium">
                         <CheckCircle2 size={12} />
-                        Envoyée le {format(new Date(p.quittance_sent_at), 'd MMM yyyy', { locale: fr })}
+                        {format(new Date(p.quittance_sent_at), 'd MMM yyyy', { locale: fr })}
                       </span>
                     ) : (
                       <span className="text-orange-500">En attente</span>
@@ -326,7 +316,7 @@ export default function QuittanceList() {
 
       {/* Légende */}
       <p className="text-xs text-gray-400 mt-4">
-        Seuls les paiements avec statut <strong>Payé</strong> ou <strong>Partiel</strong> apparaissent dans cet espace.
+        Seuls les paiements avec statut <strong>Payé</strong> apparaissent dans cet espace.
         Pour générer les loyers du mois, rendez-vous dans la section <strong>Paiements</strong>.
       </p>
     </div>
