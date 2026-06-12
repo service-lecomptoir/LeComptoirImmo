@@ -18,13 +18,20 @@ const addressLines = (addr?: string | null): string[] =>
 // ── Constantes ────────────────────────────────────────────────────────────────
 
 const TEMPLATE_TYPES = [
-  { value: 'avis_echeance',           label: "Avis d'échéance" },
-  { value: 'lettre_relance',          label: 'Lettre de relance' },
-  { value: 'quittance',               label: 'Quittance de loyer' },
-  { value: 'regularisation_charges',  label: 'Régularisation de charges locatives' },
-  { value: 'revision_loyer',          label: 'Révision loyer' },
-  { value: 'taxes_foncieres',         label: 'Décompte Taxes Foncières' },
+  { value: 'avis_echeance',           label: "Avis d'échéance",                    blurb: "avis d'échéance" },
+  { value: 'lettre_relance',          label: 'Lettre de relance',                  blurb: 'lettre de relance' },
+  { value: 'quittance',               label: 'Quittance de loyer',                 blurb: 'quittances' },
+  { value: 'regularisation_charges',  label: 'Régularisation de charges locatives', blurb: 'régularisations de charges' },
+  { value: 'revision_loyer',          label: 'Révision loyer',                     blurb: 'révisions de loyer' },
+  { value: 'taxes_foncieres',         label: 'Décompte Taxes Foncières',           blurb: 'décomptes de taxes foncières' },
 ]
+
+// Énumération « a, b, c et d » construite depuis l'ordre des templates : toute
+// nouvelle entrée ci-dessus met à jour automatiquement la phrase d'introduction.
+const TEMPLATE_BLURBS = TEMPLATE_TYPES.map(t => t.blurb)
+const DOC_LIST_SENTENCE = TEMPLATE_BLURBS.length > 1
+  ? `${TEMPLATE_BLURBS.slice(0, -1).join(', ')} et ${TEMPLATE_BLURBS[TEMPLATE_BLURBS.length - 1]}`
+  : (TEMPLATE_BLURBS[0] ?? '')
 
 const PRESET_COLORS = ['#1E3A5F', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DC2626', '#374151']
 
@@ -665,7 +672,7 @@ export default function TemplateEditor() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Ma papeterie</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Personnalisez vos documents — avis d'échéance, quittances, régularisations de charges, révisions de loyer et décomptes de taxes foncières — en cliquant sur l'un des modèles ci-dessous.
+          Personnalisez vos documents&nbsp;: {DOC_LIST_SENTENCE} en cliquant sur l'un des modèles ci-dessous.
         </p>
       </div>
 
