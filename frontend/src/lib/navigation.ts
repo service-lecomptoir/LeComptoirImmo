@@ -65,6 +65,10 @@ export const navGestionnaire: NavItem[] = [
 
 // Navigation Propriétaire
 export const navProprietaire: NavItem[] = [
+  { label: 'Mise en location', isSeparator: true },
+  { to: '/proprietaire/annonces', icon: Megaphone, label: 'Annonces de mes biens' },
+  { to: '/candidatures', icon: UserCheck, label: 'Candidatures' },
+  { label: 'Mon espace', isSeparator: true },
   { to: '/proprietaire', icon: LayoutDashboard, label: 'Mon tableau de bord' },
   { to: '/proprietaire/biens', icon: Building2, label: 'Mes biens' },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
@@ -140,6 +144,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   '/sorties': "Sortie du locataire : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture du dossier.",
   '/abonnement': 'Vos factures (PDF), votre formule et la gestion de votre abonnement.',
   // Espace propriétaire
+  '/proprietaire/annonces': "Le statut de mise en location de vos biens (publiée, programmée, brouillon) et leurs performances (vues), en lecture seule.",
   '/proprietaire': "Vue d'ensemble : revenus, taux d'occupation et points d'attention sur vos biens.",
   '/proprietaire/biens': "Le détail de chaque bien confié et son statut d'occupation.",
   '/proprietaire/revenus': 'Les loyers perçus, par période et par bien.',

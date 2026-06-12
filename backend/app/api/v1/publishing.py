@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_role, get_manager_or_owner
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.permissions import Role
 from app.database import get_db
@@ -159,10 +159,10 @@ async def delete_platform(
 @router.get("/listings", summary="Mes annonces : statut et performances")
 async def list_listings(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    user: User = Depends(get_manager_or_owner),
 ):
-    """Statut + statistiques (vues) de chaque annonce du périmètre du gestionnaire,
-    indexés par bien : alimente la vue d'ensemble de la page Publication."""
+    """Statut + statistiques (vues) de chaque annonce du périmètre, indexés par bien.
+    Le propriétaire (lecture seule) ne voit que les annonces de SES biens."""
     role = Role(user.role)
     if role == Role.ADMIN:
         prop_ids = None
@@ -171,6 +171,11 @@ async def list_listings(
             select(Property.id).where(
                 (Property.created_by == user.id) | (Property.owner_user_id == user.id)
             )
+        )).scalars().all())
+    elif role == Role.PROPRIETAIRE:
+        # Lecture seule : strictement les biens dont il est le bailleur rattaché.
+        prop_ids = set((await db.execute(
+            select(Property.id).where(Property.owner_user_id == user.id)
         )).scalars().all())
     else:
         from app.api.v1._isolation import agency_property_ids
@@ -182,9 +187,19 @@ async def list_listings(
             return []
         q = q.where(Listing.property_id.in_(prop_ids))
     rows = (await db.execute(q)).scalars().all()
+    # Noms des biens (pour l'affichage), une requête groupée.
+    names: dict = {}
+    pids = list({l.property_id for l in rows})
+    if pids:
+        for pid, pname in (await db.execute(
+            select(Property.id, Property.name).where(Property.id.in_(pids))
+        )).all():
+            names[pid] = pname
     return [
         {
             "property_id": l.property_id,
+            "property_name": names.get(l.property_id),
+            "title": getattr(l, "title", None),
             "status": l.status,
             "public_path": f"/annonce/{l.public_token}" if l.public_token and l.status == "published" else None,
             "scheduled_at": l.scheduled_at,

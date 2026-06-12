@@ -52,6 +52,7 @@ const Automatisation = lazyPage(() => import('@/pages/automatisation/Automatisat
 const TemplateEditor = lazyPage(() => import('@/pages/templates/TemplateEditor'))
 const ProprietaireDashboard = lazyPage(() => import('@/pages/proprietaire/ProprietaireDashboard'))
 const ProprietaireBiens = lazyPage(() => import('@/pages/proprietaire/ProprietaireBiens'))
+const ProprietaireAnnonces = lazyPage(() => import('@/pages/proprietaire/ProprietaireAnnonces'))
 const ProprietaireLocataires = lazyPage(() => import('@/pages/proprietaire/ProprietaireLocataires'))
 const ProprietaireRevenus = lazyPage(() => import('@/pages/proprietaire/ProprietaireRevenus'))
 const ProprietaireFiscal = lazyPage(() => import('@/pages/proprietaire/ProprietaireFiscal'))
@@ -205,6 +206,7 @@ export const router = createBrowserRouter([
       { path: 'documents-caf', element: <DocumentsCaf /> },
       { path: 'proprietaire', element: <ProprietaireDashboard /> },
       { path: 'proprietaire/biens', element: <ProprietaireBiens /> },
+      { path: 'proprietaire/annonces', element: <ProprietaireAnnonces /> },
       { path: 'proprietaire/revenus', element: <ProprietaireRevenus /> },
       { path: 'proprietaire/locataires', element: <ProprietaireLocataires /> },
       { path: 'proprietaire/fiscal', element: <ProprietaireFiscal /> },

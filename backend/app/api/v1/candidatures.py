@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_role
+from app.api.deps import require_role, get_manager_or_owner
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.permissions import Role
 from app.database import get_db
@@ -67,6 +67,11 @@ async def _scope_property_ids(db: AsyncSession, user: User) -> Optional[set]:
             select(Property.id).where(
                 (Property.created_by == user.id) | (Property.owner_user_id == user.id)
             )
+        )).scalars().all())
+    # Propriétaire (lecture seule) : strictement SES biens (bailleur rattaché).
+    if role == Role.PROPRIETAIRE:
+        return set((await db.execute(
+            select(Property.id).where(Property.owner_user_id == user.id)
         )).scalars().all())
     from app.api.v1._isolation import agency_property_ids
     return await agency_property_ids(db, user)
@@ -141,7 +146,7 @@ async def list_candidatures(
     property_id: Optional[uuid.UUID] = Query(None),
     status: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    user: User = Depends(get_manager_or_owner),
 ):
     ids = await _scope_property_ids(db, user)
     q = select(Candidature).order_by(Candidature.created_at.desc())
@@ -199,7 +204,7 @@ async def doc_keys():
 async def compare_candidatures(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    user: User = Depends(get_manager_or_owner),
 ):
     """Profils côte à côte (hors refusées), triés par score décroissant — le premier
     est le candidat recommandé."""
@@ -222,7 +227,7 @@ async def compare_candidatures(
 async def get_candidature(
     candidature_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    user: User = Depends(get_manager_or_owner),
 ):
     c = await _accessible(db, user, candidature_id)
     return _out(c, await _rent_ref(db, c.property_id))

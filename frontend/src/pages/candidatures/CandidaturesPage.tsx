@@ -4,6 +4,7 @@ import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2 }
 import { candidaturesApi, type Candidature, type CandidatureStatus } from '@/api/candidatures'
 import { propertiesApi } from '@/api/properties'
 import { toast } from '@/store/toast'
+import { useAuthStore } from '@/store/authStore'
 
 interface Prop { id: string; name: string }
 
@@ -29,6 +30,8 @@ export default function CandidaturesPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ property_id: '', first_name: '', last_name: '', email: '', phone: '', employment: '', monthly_income: '', has_guarantor: false, message: '' })
   const [busy, setBusy] = useState(false)
+  // Propriétaire : accès en lecture seule (les écritures sont bloquées côté serveur).
+  const readOnly = useAuthStore(s => s.user?.role === 'proprietaire')
 
   const load = async () => {
     setLoading(true)
@@ -116,11 +119,17 @@ export default function CandidaturesPage() {
             Dossiers candidats centralisés : vérifiez les pièces, comparez les profils et sélectionnez le locataire le plus adapté.
           </p>
         </div>
-        <button onClick={() => setShowForm(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white self-start"
-          style={{ background: '#0D2F5C' }}>
-          <Plus size={16} /> Ajouter un dossier
-        </button>
+        {readOnly ? (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 bg-gray-100 self-start">
+            Lecture seule
+          </span>
+        ) : (
+          <button onClick={() => setShowForm(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white self-start"
+            style={{ background: '#0D2F5C' }}>
+            <Plus size={16} /> Ajouter un dossier
+          </button>
+        )}
       </div>
 
       {/* Filtres */}
@@ -195,9 +204,11 @@ export default function CandidaturesPage() {
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${(STATUS[selected.status] ?? STATUS.nouvelle).cls}`}>
                     {(STATUS[selected.status] ?? STATUS.nouvelle).label}
                   </span>
-                  <button onClick={() => remove(selected)} className="p-1.5 text-red-400 hover:text-red-600" title="Supprimer">
-                    <Trash2 size={16} />
-                  </button>
+                  {!readOnly && (
+                    <button onClick={() => remove(selected)} className="p-1.5 text-red-400 hover:text-red-600" title="Supprimer">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -240,12 +251,12 @@ export default function CandidaturesPage() {
                     <li key={d.key} className="flex items-center justify-between gap-3 text-sm bg-gray-50 rounded-lg px-3 py-2">
                       <span className="text-gray-700">{docLabels[d.key] ?? d.key}</span>
                       <span className="flex items-center gap-2 shrink-0">
-                        <button onClick={() => toggleDoc(selected, d.key, 'provided')} disabled={busy}
-                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${d.provided ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-500'}`}>
+                        <button onClick={() => toggleDoc(selected, d.key, 'provided')} disabled={busy || readOnly}
+                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${readOnly ? 'cursor-default' : ''} ${d.provided ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-500'}`}>
                           {d.provided ? 'Fournie' : 'À fournir'}
                         </button>
-                        <button onClick={() => toggleDoc(selected, d.key, 'verified')} disabled={busy || !d.provided}
-                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-full disabled:opacity-40 ${d.verified ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'}`}>
+                        <button onClick={() => toggleDoc(selected, d.key, 'verified')} disabled={busy || !d.provided || readOnly}
+                          className={`text-[11px] font-semibold px-2 py-0.5 rounded-full disabled:opacity-40 ${readOnly ? 'cursor-default' : ''} ${d.verified ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'}`}>
                           {d.verified ? 'Vérifiée ✓' : 'À vérifier'}
                         </button>
                       </span>
@@ -257,26 +268,28 @@ export default function CandidaturesPage() {
               {/* Notes */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">Notes internes</h3>
-                <textarea defaultValue={selected.notes ?? ''} rows={2}
-                  onBlur={e => { if ((selected.notes ?? '') !== e.target.value) patch(selected.id, { notes: e.target.value || null }) }}
-                  placeholder="Vos observations sur ce dossier…"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none" />
+                <textarea defaultValue={selected.notes ?? ''} rows={2} readOnly={readOnly}
+                  onBlur={e => { if (!readOnly && (selected.notes ?? '') !== e.target.value) patch(selected.id, { notes: e.target.value || null }) }}
+                  placeholder={readOnly ? 'Aucune note' : 'Vos observations sur ce dossier…'}
+                  className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none ${readOnly ? 'bg-gray-50 text-gray-600' : ''}`} />
               </div>
 
               {/* Actions de statut */}
               <div className="flex flex-wrap gap-2 pt-1">
-                <button onClick={() => patch(selected.id, { status: 'en_etude' })} disabled={busy || selected.status === 'en_etude'}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-100 hover:bg-amber-200 text-amber-800 disabled:opacity-50">
-                  <ShieldQuestion size={13} className="inline mr-1" />Mettre en étude
-                </button>
-                <button onClick={() => patch(selected.id, { status: 'retenue' })} disabled={busy || selected.status === 'retenue'}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 disabled:opacity-50">
-                  <BadgeCheck size={13} className="inline mr-1" />Retenir ce candidat
-                </button>
-                <button onClick={() => patch(selected.id, { status: 'refusee' })} disabled={busy || selected.status === 'refusee'}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 disabled:opacity-50">
-                  Refuser
-                </button>
+                {!readOnly && (<>
+                  <button onClick={() => patch(selected.id, { status: 'en_etude' })} disabled={busy || selected.status === 'en_etude'}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-100 hover:bg-amber-200 text-amber-800 disabled:opacity-50">
+                    <ShieldQuestion size={13} className="inline mr-1" />Mettre en étude
+                  </button>
+                  <button onClick={() => patch(selected.id, { status: 'retenue' })} disabled={busy || selected.status === 'retenue'}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 disabled:opacity-50">
+                    <BadgeCheck size={13} className="inline mr-1" />Retenir ce candidat
+                  </button>
+                  <button onClick={() => patch(selected.id, { status: 'refusee' })} disabled={busy || selected.status === 'refusee'}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 disabled:opacity-50">
+                    Refuser
+                  </button>
+                </>)}
                 <button onClick={() => openCompare(selected.property_id)}
                   className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-100 hover:bg-violet-200 text-violet-700">
                   <Scale size={13} className="inline mr-1" />Comparer
