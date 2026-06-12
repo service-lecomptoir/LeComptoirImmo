@@ -175,12 +175,21 @@ export default function TenantDetail() {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Identité</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Civilité" value={tenant.civility ? CIVILITY_LABELS[tenant.civility] : null} />
-            <Field label="Prénom" value={tenant.first_name} />
-            <Field label="Nom" value={tenant.last_name} />
-            <Field label="Date de naissance" value={birthDate} />
-            <Field label="Lieu de naissance" value={tenant.birth_place} />
-            <Field label="Numéro de sécurité sociale" value={tenant.national_id ? formatNir(tenant.national_id) : tenant.national_id} />
+            {tenant.company_name && !tenant.first_name ? (
+              <>
+                <Field label="Société / SCI" value={tenant.company_name} />
+                <Field label="SIREN / SIRET" value={tenant.siret} />
+              </>
+            ) : (
+              <>
+                <Field label="Civilité" value={tenant.civility ? CIVILITY_LABELS[tenant.civility] : null} />
+                <Field label="Prénom" value={tenant.first_name} />
+                <Field label="Nom" value={tenant.last_name} />
+                <Field label="Date de naissance" value={birthDate} />
+                <Field label="Lieu de naissance" value={tenant.birth_place} />
+                <Field label="Numéro de sécurité sociale" value={tenant.national_id ? formatNir(tenant.national_id) : tenant.national_id} />
+              </>
+            )}
           </div>
         </div>
 

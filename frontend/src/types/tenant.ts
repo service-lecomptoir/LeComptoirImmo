@@ -6,6 +6,7 @@ export interface Tenant {
   first_name: string
   last_name: string
   company_name: string | null
+  siret: string | null
   full_name: string
   birth_date: string | null
   birth_place: string | null
@@ -41,6 +42,7 @@ export interface TenantCreate {
   first_name?: string
   last_name?: string
   company_name?: string
+  siret?: string
   birth_date?: string
   birth_place?: string
   national_id?: string

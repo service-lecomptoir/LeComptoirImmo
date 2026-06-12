@@ -33,12 +33,13 @@ class Tenant(Base, TimestampMixin):
     )
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    # Personne morale (locataire « entreprise ») : raison sociale. Si renseignée,
-    # le locataire est une société (national_id = SIREN/SIRET au lieu du NIR).
+    # Personne morale (locataire « entreprise ») : raison sociale + SIREN/SIRET.
+    # `national_id` reste réservé au NIR (n° de sécurité sociale) d'une personne.
     company_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    siret: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # SIREN / SIRET (société)
     birth_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     birth_place: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
-    national_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    national_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # NIR (n° sécu, personne)
 
     # ── Contact ───────────────────────────────────────────────────────────────
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)

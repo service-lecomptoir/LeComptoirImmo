@@ -10,6 +10,7 @@ class TenantCreate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     company_name: Optional[str] = None
+    siret: Optional[str] = None
     birth_date: Optional[date] = None
     birth_place: Optional[str] = None
     national_id: Optional[str] = None
@@ -47,6 +48,7 @@ class TenantUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     company_name: Optional[str] = None
+    siret: Optional[str] = None
     birth_date: Optional[date] = None
     birth_place: Optional[str] = None
     national_id: Optional[str] = None
@@ -67,6 +69,7 @@ class TenantResponse(BaseModel):
     first_name: str
     last_name: str
     company_name: Optional[str] = None
+    siret: Optional[str] = None
     full_name: str
     birth_date: Optional[date]
     birth_place: Optional[str]

@@ -345,8 +345,12 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS proprio_visibility_default JSONB",
         # Signature numérique du gestionnaire (data-URL PNG) apposée sur les documents.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature TEXT",
-        # Locataire personne morale : raison sociale (national_id = SIREN/SIRET alors).
+        # Locataire personne morale : raison sociale + SIREN/SIRET (national_id reste le NIR).
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS siret VARCHAR(50)",
+        # Reprise des fiches société déjà saisies avant la séparation : le SIREN/SIRET
+        # avait été stocké dans national_id ; on le déplace vers siret et on vide le NIR.
+        "UPDATE tenants SET siret=national_id, national_id=NULL WHERE COALESCE(company_name,'')<>'' AND COALESCE(siret,'')='' AND COALESCE(national_id,'')<>''",
         "UPDATE users SET owner_kind='societe' WHERE owner_kind='personne' AND COALESCE(owner_company,'')<>'' AND COALESCE(owner_full_name,'')=''",
         # ── 018 : nettoyage des reliques de la fusion bien/logement ─────────────
         # Loyer/charges/dépôt sont portés par le contrat (leases), plus par le bien.

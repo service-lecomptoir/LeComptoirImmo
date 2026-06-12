@@ -19,6 +19,7 @@ const schema = z.object({
   first_name: z.string().optional(),
   last_name: z.string().optional(),
   company_name: z.string().optional(),
+  siret: z.string().optional(),
   email: z.string().min(1, 'Email requis').email('Email invalide'),
   phone: z.string().optional(),
   birth_date: z.string().optional(),
@@ -33,7 +34,7 @@ const schema = z.object({
 }).superRefine((d, ctx) => {
   if (d.tenant_type === 'company') {
     if (!d.company_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Société / SCI requise', path: ['company_name'] })
-    if (!d.national_id?.trim()) ctx.addIssue({ code: 'custom', message: 'SIREN / SIRET requis', path: ['national_id'] })
+    if (!d.siret?.trim()) ctx.addIssue({ code: 'custom', message: 'SIREN / SIRET requis', path: ['siret'] })
   } else {
     if (!d.first_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Prénom requis', path: ['first_name'] })
     if (!d.last_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Nom requis', path: ['last_name'] })
@@ -119,6 +120,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       first_name: tenant.first_name,
       last_name: tenant.last_name,
       company_name: tenant.company_name ?? '',
+      siret: tenant.siret ?? '',
       email: tenant.email ?? '',
       phone: tenant.phone ?? '',
       birth_date: tenant.birth_date ?? '',
@@ -196,9 +198,10 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       first_name: isCompany ? '' : (data.first_name || '').trim(),
       last_name: isCompany ? (data.company_name || '').trim() : (data.last_name || '').trim(),
       company_name: isCompany ? clean(data.company_name) : null,
+      siret: isCompany ? clean(data.siret) : null,
       birth_date: isCompany ? null : clean(data.birth_date),
       birth_place: isCompany ? null : clean(data.birth_place),
-      national_id: clean(data.national_id),
+      national_id: isCompany ? null : clean(data.national_id),
       email: clean(data.email),
       phone: clean(data.phone),
       employer: clean(data.employer),
@@ -332,11 +335,11 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
                   SIREN / SIRET<span className="text-red-500 ml-0.5">*</span>
                 </label>
                 <input
-                  {...register('national_id')}
+                  {...register('siret')}
                   placeholder="123 456 789 00012"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                {errors.national_id && <p className="mt-1 text-xs text-red-600">{errors.national_id.message as string}</p>}
+                {errors.siret && <p className="mt-1 text-xs text-red-600">{errors.siret.message as string}</p>}
               </div>
             </div>
           ) : (
