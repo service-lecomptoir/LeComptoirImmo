@@ -47,6 +47,7 @@ type VarGroup = 'common' | 'avis' | 'quittance' | 'regul' | 'revision' | 'taxe'
 const VARS: { k: string; l: string; g: VarGroup }[] = [
   { k: '{{tenant_name}}', l: 'Nom locataire', g: 'common' },
   { k: '{{tenant_civil_name}}', l: 'Civilité + nom', g: 'common' },
+  { k: '{{civility_greeting}}', l: 'Formule d’appel (Madame/Monsieur)', g: 'common' },
   { k: '{{tenant_email}}', l: 'Email locataire', g: 'common' },
   { k: '{{tenant_phone}}', l: 'Tél locataire', g: 'common' },
   { k: '{{tenant_login}}', l: 'Identifiant locataire', g: 'common' },

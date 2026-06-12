@@ -299,7 +299,7 @@ def default_blocks(template_type: str) -> Optional[list[dict]]:
                       "{{period_range}}, dont l'échéance était fixée au {{due_date}}, "
                       "demeure impayé à ce jour. Nous vous remercions de bien vouloir "
                       "régulariser le solde indiqué ci-dessous sous huitaine.",
-                      salutation="Madame, Monsieur,"),
+                      salutation="{{civility_greeting}},"),
             {"id": "amount_bar", "type": "amount_bar", "enabled": True, "props": {
                 "title": "Solde restant dû",
                 "label": "Échéance du {{due_date}} · période {{period_range}}",
@@ -316,7 +316,7 @@ def default_blocks(template_type: str) -> Optional[list[dict]]:
                 "text": "Sans réaction de votre part dans ce délai, nous nous verrons dans "
                         "l'obligation d'engager les procédures nécessaires au recouvrement "
                         "de cette créance.\n\nRestant à votre disposition pour tout "
-                        "renseignement, nous vous prions d'agréer, Madame, Monsieur, "
+                        "renseignement, nous vous prions d'agréer, {{civility_greeting}}, "
                         "l'expression de nos salutations distinguées.",
             }},
             _common_footer(),

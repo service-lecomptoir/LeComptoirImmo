@@ -227,9 +227,19 @@ async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
     def _eur(v):
         return f"{eur(v)} €"
 
+    # Formule d'appel selon la civilité connue ; repli neutre sinon.
+    _civ = ((getattr(tenant, "civility", "") or "").strip().lower()) if tenant else ""
+    if _civ in ("m", "m.", "monsieur"):
+        civility_greeting = "Monsieur"
+    elif _civ in ("mme", "madame"):
+        civility_greeting = "Madame"
+    else:
+        civility_greeting = "Madame, Monsieur"
+
     variables = {
         "tenant_name": tenant.full_name if tenant else "",
         "tenant_civil_name": _civil_name(tenant),
+        "civility_greeting": civility_greeting,
         "tenant_email": (getattr(tenant, "email", "") or "") if tenant else "",
         "tenant_phone": (getattr(tenant, "phone", "") or "") if tenant else "",
         "tenant_login": tenant_reference(tenant),
