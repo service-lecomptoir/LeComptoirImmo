@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import {
-  AlertTriangle, Download, MapPin, User, Clock, Filter, Building2,
+  AlertTriangle, Download, MapPin, User, Clock, Filter, Building2, Moon, Bell,
 } from 'lucide-react'
-import { signalementsApi, type Signalement, type ProblemProperty, type SignalementStatus } from '@/api/signalements'
+import { signalementsApi, type Signalement, type ProblemProperty, type SignalementStatus, type SignalementAlert } from '@/api/signalements'
 import { apiClient } from '@/api/client'
 import { Modal } from '@/components/common/Modal'
 import { getErrorMessage } from '@/utils/errors'
@@ -27,9 +27,10 @@ const CATEGORY_OPTIONS = [
 ]
 
 export default function SignalementList() {
-  const [tab, setTab] = useState<'liste' | 'logements'>('liste')
+  const [tab, setTab] = useState<'liste' | 'logements' | 'alertes'>('liste')
   const [items, setItems] = useState<Signalement[]>([])
   const [problems, setProblems] = useState<ProblemProperty[]>([])
+  const [alerts, setAlerts] = useState<SignalementAlert[]>([])
   const [loading, setLoading] = useState(true)
   const [fStatus, setFStatus] = useState('')
   const [fCategory, setFCategory] = useState('')
@@ -43,11 +44,12 @@ export default function SignalementList() {
       if (fStatus) params.status = fStatus
       if (fCategory) params.category = fCategory
       if (fUrgency) params.urgency = fUrgency
-      const [{ data: list }, { data: pb }] = await Promise.all([
+      const [{ data: list }, { data: pb }, { data: al }] = await Promise.all([
         signalementsApi.list(params),
         signalementsApi.problemProperties(),
+        signalementsApi.alerts(),
       ])
-      setItems(list.items); setProblems(pb)
+      setItems(list.items); setProblems(pb); setAlerts(al)
     } catch { /* silencieux */ }
     finally { setLoading(false) }
   }
@@ -85,7 +87,7 @@ export default function SignalementList() {
 
       {/* Onglets */}
       <div className="flex gap-1 mb-4 border-b border-gray-200">
-        {([['liste', 'Liste'], ['logements', 'Logements à problème']] as const).map(([k, l]) => (
+        {([['liste', 'Liste'], ['logements', 'Logements à problème'], ['alertes', 'Alertes bruit']] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${tab === k ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             {l}
@@ -127,6 +129,7 @@ export default function SignalementList() {
                         <span className="font-medium text-gray-900">{s.category_label}</span>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${URGENCY_BADGE[s.urgency]}`}>{s.urgency_label}</span>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[s.status]}`}>{s.status_label}</span>
+                        {s.night_noise && <span className="px-2 py-0.5 rounded-full text-xs bg-indigo-100 text-indigo-700 inline-flex items-center gap-1"><Moon size={10} /> Nuit</span>}
                         {s.source === 'telematique' && <span className="px-2 py-0.5 rounded-full text-xs bg-violet-100 text-violet-700">Capteur</span>}
                       </div>
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2 whitespace-pre-line">{s.description}</p>
@@ -143,7 +146,7 @@ export default function SignalementList() {
             </div>
           )}
         </>
-      ) : (
+      ) : tab === 'logements' ? (
         <>
           {loading ? (
             <p className="text-sm text-gray-400">Chargement…</p>
@@ -168,6 +171,39 @@ export default function SignalementList() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-gray-400 mb-3 flex items-center gap-1.5">
+            <Bell size={13} /> Alertes automatiques du moteur bruit : message nocturne (22h-7h) à l'appartement, escalade en cas de récurrence, rappels préventifs.
+          </p>
+          {loading ? (
+            <p className="text-sm text-gray-400">Chargement…</p>
+          ) : alerts.length === 0 ? (
+            <p className="text-sm text-gray-400">Aucune alerte pour le moment.</p>
+          ) : (
+            <div className="space-y-2">
+              {alerts.map(a => {
+                const cls = a.alert_type === 'escalade' ? 'bg-red-100 text-red-700'
+                  : a.alert_type === 'nocturne' ? 'bg-indigo-100 text-indigo-700'
+                  : 'bg-emerald-100 text-emerald-700'
+                const Icon = a.alert_type === 'escalade' ? AlertTriangle : a.alert_type === 'nocturne' ? Moon : Bell
+                return (
+                  <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-3 flex items-start gap-3">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium inline-flex items-center gap-1 shrink-0 ${cls}`}>
+                      <Icon size={11} /> {a.alert_label}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm text-gray-700">{a.message}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {a.property_name ? a.property_name + ' · ' : ''}{format(new Date(a.created_at), 'd MMM yyyy à HH:mm', { locale: fr })}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </>
@@ -207,6 +243,7 @@ function SignalementDetail({ s, onClose, onSaved, apiBase }: { s: Signalement; o
       }>
       <div className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap text-sm text-gray-500">
+          {s.night_noise && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 inline-flex items-center gap-1"><Moon size={11} /> Bruit nocturne</span>}
           {s.property_name && <span className="flex items-center gap-1"><MapPin size={13} /> {s.property_name}</span>}
           {s.tenant_name && <span className="flex items-center gap-1"><User size={13} /> {s.tenant_name}</span>}
           <span className="flex items-center gap-1"><Clock size={13} /> {s.occurred_at ? format(new Date(s.occurred_at), 'd MMM yyyy à HH:mm', { locale: fr }) : '—'}</span>

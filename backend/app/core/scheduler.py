@@ -196,6 +196,22 @@ async def _job_publish_scheduled_listings() -> None:
             logger.error(f"[Scheduler] publish_scheduled_listings error: {exc}")
 
 
+async def _job_signalement_noise_reminders() -> None:
+    """Chaque lundi à 10h : rappels préventifs de bon voisinage aux biens ayant un
+    historique de signalements de bruit (throttlé, voir SignalementAlertService)."""
+    from app.database import AsyncSessionLocal
+    from app.services.signalement_alert_service import SignalementAlertService
+
+    async with AsyncSessionLocal() as db:
+        try:
+            n = await SignalementAlertService.run_preventive_reminders(db)
+            await db.commit()
+            if n:
+                logger.info(f"[Scheduler] {n} rappel(s) préventif(s) bruit envoyé(s)")
+        except Exception as exc:
+            logger.error(f"[Scheduler] signalement_noise_reminders error: {exc}")
+
+
 def start_scheduler(
     avis_day: int = 1, avis_hour: int = 7, avis_minute: int = 30,
     reminder_hour: int = 8, reminder_minute: int = 0,
@@ -244,11 +260,19 @@ def start_scheduler(
         replace_existing=True,
         misfire_grace_time=3600,
     )
+    scheduler.add_job(
+        _job_signalement_noise_reminders,
+        CronTrigger(day_of_week="mon", hour=10, minute=0),
+        id="signalement_noise_reminders",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
 
     scheduler.start()
     logger.info(
-        "[Scheduler] Démarré : 6 tâches planifiées (avis: jour=%d %02d:%02d ; "
-        "rappels Telegram: %02d:%02d ; publication annonces: */10 min)",
+        "[Scheduler] Démarré : 7 tâches planifiées (avis: jour=%d %02d:%02d ; "
+        "rappels Telegram: %02d:%02d ; publication annonces: */10 min ; "
+        "rappels bruit: lundi 10:00)",
         avis_day, avis_hour, avis_minute, reminder_hour, reminder_minute,
     )
 

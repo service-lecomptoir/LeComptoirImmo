@@ -82,6 +82,14 @@ async def problem_properties(
     return await SignalementService.problem_properties(db, current_user)
 
 
+@router.get("/alerts", summary="Historique des alertes bruit")
+async def list_alerts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    return await SignalementService.list_alerts(db, current_user)
+
+
 @router.get("/export", summary="Export CSV des signalements")
 async def export_csv(
     status: Optional[str] = Query(None),

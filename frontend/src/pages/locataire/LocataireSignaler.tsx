@@ -72,7 +72,10 @@ export default function LocataireSignaler() {
     try {
       const { data } = await signalementsApi.create({
         category, urgency, description: description.trim(),
-        occurred_at: occurredAt ? new Date(occurredAt).toISOString() : null,
+        // On envoie l'heure « murale » locale telle que saisie (sans conversion UTC) :
+        // le créneau nuit (22h-7h) doit être évalué dans l'heure locale du locataire,
+        // y compris hors métropole (ex. Guyane UTC-3). Le backend la stocke en naïf.
+        occurred_at: occurredAt || null,
       })
       if (photo && data?.id) {
         try { await signalementsApi.uploadPhoto(data.id, photo) }

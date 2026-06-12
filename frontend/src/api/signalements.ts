@@ -18,6 +18,7 @@ export interface Signalement {
   title: string | null
   description: string
   occurred_at: string | null
+  night_noise: boolean
   photo_url: string | null
   property_id: string | null
   property_name: string | null
@@ -29,6 +30,16 @@ export interface Signalement {
   resolved_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface SignalementAlert {
+  id: string
+  alert_type: 'nocturne' | 'escalade' | 'preventif'
+  alert_label: string
+  property_id: string | null
+  property_name: string | null
+  message: string | null
+  created_at: string
 }
 
 export interface ProblemProperty {
@@ -83,5 +94,6 @@ export const signalementsApi = {
   get: (id: string) => apiClient.get<Signalement>(`/signalements/${id}`),
   update: (id: string, data: SignalementUpdatePayload) => apiClient.patch<Signalement>(`/signalements/${id}`, data),
   problemProperties: () => apiClient.get<ProblemProperty[]>('/signalements/problem-properties'),
+  alerts: () => apiClient.get<SignalementAlert[]>('/signalements/alerts'),
   exportUrl: '/signalements/export',
 }

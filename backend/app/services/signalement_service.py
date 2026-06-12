@@ -56,6 +56,10 @@ def enrich(s: Signalement) -> dict:
         "title": s.title,
         "description": s.description,
         "occurred_at": s.occurred_at,
+        "night_noise": bool(
+            s.category == "bruit" and s.occurred_at is not None
+            and (s.occurred_at.hour >= 22 or s.occurred_at.hour < 7)
+        ),
         "photo_url": ("/" + s.photo_path.replace("\\", "/").lstrip("/")) if s.photo_path else None,
         "property_id": s.property_id,
         "property_name": (prop.name if prop else None),
@@ -147,6 +151,8 @@ class SignalementService:
         db.add(s)
         await db.flush()
         await SignalementService._notify_manager(db, s)
+        from app.services.signalement_alert_service import SignalementAlertService
+        await SignalementAlertService.process_new(db, s)
         return s
 
     @staticmethod
@@ -171,6 +177,8 @@ class SignalementService:
         )
         db.add(s)
         await db.flush()
+        from app.services.signalement_alert_service import SignalementAlertService
+        await SignalementAlertService.process_new(db, s)
         return s
 
     @staticmethod
@@ -222,6 +230,34 @@ class SignalementService:
         if not s:
             raise NotFoundException("Signalement", str(sig_id))
         return s
+
+    @staticmethod
+    async def list_alerts(db: AsyncSession, user, *, limit: int = 100) -> list[dict]:
+        """Historique des alertes du moteur bruit, dans le périmètre du gestionnaire."""
+        from app.models.signalement_alert import SignalementAlert
+        labels = {"nocturne": "Alerte nocturne", "escalade": "Escalade gestionnaire",
+                  "preventif": "Rappel préventif"}
+        scope = await SignalementService._scope_property_ids(db, user)
+        q = select(SignalementAlert)
+        if scope is not None:
+            if not scope:
+                return []
+            q = q.where(SignalementAlert.property_id.in_(scope))
+        q = q.order_by(SignalementAlert.created_at.desc()).limit(limit)
+        rows = list((await db.execute(q)).scalars().all())
+        pids = {a.property_id for a in rows if a.property_id}
+        names: dict = {}
+        if pids:
+            for pid, pname in (await db.execute(
+                select(Property.id, Property.name).where(Property.id.in_(pids))
+            )).all():
+                names[pid] = pname
+        return [{
+            "id": a.id, "alert_type": a.alert_type,
+            "alert_label": labels.get(a.alert_type, a.alert_type),
+            "property_id": a.property_id, "property_name": names.get(a.property_id),
+            "message": a.message, "created_at": a.created_at,
+        } for a in rows]
 
     @staticmethod
     async def assert_manager_scope(db: AsyncSession, user, s: Signalement) -> None:
