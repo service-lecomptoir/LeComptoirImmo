@@ -356,13 +356,12 @@ export default function MonProfil() {
               </div>
             )}
             {(!isGP || ownerKind === 'societe') && (
-              <div className="space-y-3">
-                {/* Raison sociale = identité principale : pleine largeur, SIREN/SIRET en dessous. */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>{isGP ? 'Société / SCI' : 'Société'}</label>
                   <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder={isGP ? 'SCI Les Tilleuls' : 'Raison sociale'} />
                 </div>
-                <div className="sm:max-w-xs">
+                <div>
                   <label className={lbl}>SIREN / SIRET</label>
                   <input className={inp} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="123 456 789" />
                 </div>
