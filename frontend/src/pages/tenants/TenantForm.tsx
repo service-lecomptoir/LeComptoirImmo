@@ -328,9 +328,10 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
           </div>
 
           {tenantType === 'company' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-3">
+              {/* Raison sociale = identité principale (équivalent du « Nom ») : pleine largeur. */}
               <TenantField label="Société / SCI" name="company_name" required register={register} errors={errors} />
-              <div>
+              <div className="sm:max-w-xs">
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   SIREN / SIRET<span className="text-red-500 ml-0.5">*</span>
                 </label>
