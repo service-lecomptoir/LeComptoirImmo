@@ -111,4 +111,8 @@ class UserResponse(BaseModel):
 
 class UserMeResponse(UserResponse):
     """Réponse pour /auth/me — peut être étendue avec des données supplémentaires."""
-    pass
+    # Visibilité espace propriétaire : réglages bruts (pour les écrans gestionnaire)
+    proprio_visibility: Optional[list] = None
+    proprio_visibility_default: Optional[list] = None
+    # Rubriques effectivement visibles par CE propriétaire (calculé ∩ plan).
+    proprio_sections: Optional[list] = None

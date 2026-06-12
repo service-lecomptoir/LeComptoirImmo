@@ -13,6 +13,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import type { User, Role } from '@/types/auth'
 import { useAuthStore } from '@/store/authStore'
 import { getErrorMessage } from '@/utils/errors'
+import { ProprioVisibilityEditor } from '@/components/common/ProprioVisibilityEditor'
 
 /** Fiche (locataire ou propriétaire) candidate au rattachement d'un compte. */
 interface FicheOption {
@@ -291,6 +292,15 @@ export default function AdminUsers() {
           {error}
         </div>
       )}
+
+      {/* Espace propriétaire : visibilité par défaut de l'agence */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
+        <h2 className="text-sm font-semibold text-gray-900 mb-1">Espace propriétaire : visibilité par défaut</h2>
+        <p className="text-xs text-gray-400 mb-3">
+          Rubriques visibles (en lecture seule) par défaut pour tous vos propriétaires. Personnalisable ensuite par propriétaire sur sa fiche. Les rubriques hors abonnement sont grisées.
+        </p>
+        <ProprioVisibilityEditor mode="agency" />
+      </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

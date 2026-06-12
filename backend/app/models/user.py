@@ -69,6 +69,14 @@ class User(Base, TimestampMixin):
         UUID(as_uuid=True), nullable=True, index=True
     )
 
+    # ── Visibilité de l'espace propriétaire (lecture seule) ───────────────────
+    # Liste de clés de rubriques (cf. core.proprio_sections). Null = non défini.
+    # Sur un compte PROPRIÉTAIRE : surcharge individuelle (prioritaire).
+    proprio_visibility: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # Sur le compte GESTIONNAIRE (racine d'agence) : défaut appliqué à tous ses
+    # propriétaires qui n'ont pas de surcharge.
+    proprio_visibility_default: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+
     @property
     def full_address(self) -> Optional[str]:
         """Adresse postale recomposée sur une ligne : « rue, CP Ville [, Pays] ».

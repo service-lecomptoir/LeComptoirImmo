@@ -385,3 +385,105 @@ async def delete_my_email_domain(
         raise HTTPException(status_code=404, detail="Domaine introuvable")
     await db.delete(obj)
     return Response(status_code=204)
+
+
+# ── Visibilité de l'espace propriétaire (réglée par le gestionnaire) ──────────
+class VisibilityUpdate(BaseModel):
+    sections: List[str]
+
+
+async def _agency_root_for(db: AsyncSession, user: User) -> User:
+    rid = getattr(user, "agency_id", None) or user.id
+    root = await db.get(User, rid)
+    return root or user
+
+
+async def _accessible_proprio(db: AsyncSession, current_user: User, user_id: uuid.UUID) -> User:
+    target = await db.get(User, user_id)
+    if not target or str(target.role) != "proprietaire":
+        raise HTTPException(status_code=404, detail="Compte propriétaire introuvable")
+    if Role(current_user.role) == Role.ADMIN:
+        return target
+    from app.api.v1._isolation import agency_member_ids
+    if target.id in await agency_member_ids(db, current_user) or target.created_by == current_user.id:
+        return target
+    raise HTTPException(status_code=403, detail="Ce propriétaire n'est pas dans votre périmètre.")
+
+
+@router.get("/proprio-visibility/catalog", summary="Rubriques propriétaire disponibles + défaut d'agence")
+async def proprio_visibility_catalog(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    from app.core.proprio_sections import PROPRIO_SECTIONS, LABELS, plan_allowed_keys, ALL_KEYS
+    from app.core.features import get_plan_features
+    root = await _agency_root_for(db, current_user)
+    allowed = set(plan_allowed_keys(await get_plan_features(db, root.id)))
+    default = root.proprio_visibility_default
+    return {
+        "sections": [
+            {"key": k, "label": LABELS.get(k, k), "plan_allowed": k in allowed}
+            for k, _ in PROPRIO_SECTIONS
+        ],
+        "agency_default": default if default is not None else list(ALL_KEYS),
+    }
+
+
+@router.patch("/me/proprio-visibility-default", summary="Régler le défaut de visibilité de l'agence")
+async def set_agency_default(
+    data: VisibilityUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    from app.core.proprio_sections import sanitize, plan_allowed_keys
+    from app.core.features import get_plan_features
+    root = await _agency_root_for(db, current_user)
+    allowed = set(plan_allowed_keys(await get_plan_features(db, root.id)))
+    secs = [k for k in sanitize(data.sections) if k in allowed]
+    if not secs:
+        raise HTTPException(status_code=400, detail="Sélectionnez au moins une rubrique pour le défaut d'agence.")
+    root.proprio_visibility_default = secs
+    db.add(root)
+    await db.commit()
+    return {"agency_default": secs}
+
+
+@router.get("/{user_id}/proprio-visibility", summary="Visibilité d'un propriétaire")
+async def get_proprio_visibility(
+    user_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    target = await _accessible_proprio(db, current_user, user_id)
+    from app.services.proprio_visibility_service import effective_sections_for
+    return {
+        "override": target.proprio_visibility,
+        "effective": await effective_sections_for(db, target),
+        "is_active": target.is_active,
+    }
+
+
+@router.patch("/{user_id}/proprio-visibility", summary="Régler la visibilité d'un propriétaire (0 = compte désactivé)")
+async def set_proprio_visibility(
+    user_id: uuid.UUID,
+    data: VisibilityUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    target = await _accessible_proprio(db, current_user, user_id)
+    from app.core.proprio_sections import sanitize, plan_allowed_keys
+    from app.core.features import get_plan_features
+    from app.services.proprio_visibility_service import effective_sections_for
+    root = await _agency_root_for(db, current_user)
+    allowed = set(plan_allowed_keys(await get_plan_features(db, root.id)))
+    secs = [k for k in sanitize(data.sections) if k in allowed]
+    target.proprio_visibility = secs
+    # Règle « minimum » : 0 rubrique = compte désactivé ; ≥ 1 = (ré)activé.
+    target.is_active = len(secs) > 0
+    db.add(target)
+    await db.commit()
+    return {
+        "override": secs,
+        "is_active": target.is_active,
+        "effective": await effective_sections_for(db, target),
+    }

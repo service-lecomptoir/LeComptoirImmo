@@ -77,6 +77,24 @@ export const navProprietaire: NavItem[] = [
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
 ]
 
+// Route → clé de rubrique propriétaire (pour filtrer la nav selon la visibilité
+// réglée par le gestionnaire). Une route absente de la table est toujours visible.
+export const PROPRIO_SECTION_BY_PATH: Record<string, string> = {
+  '/proprietaire': 'dashboard',
+  '/proprietaire/biens': 'biens',
+  '/proprietaire/revenus': 'revenus',
+  '/proprietaire/locataires': 'locataires',
+  '/proprietaire/incidents': 'incidents',
+  '/proprietaire/entretiens': 'entretiens',
+  '/proprietaire/messages': 'messages',
+  '/proprietaire/fiscal': 'fiscal',
+  '/proprietaire/annonces': 'annonces',
+  '/candidatures': 'candidatures',
+}
+export function proprioSectionForPath(to?: string): string | undefined {
+  return to ? PROPRIO_SECTION_BY_PATH[to] : undefined
+}
+
 // Navigation Gestionnaire-Propriétaire : identique au mandataire SANS « Vue propriétaire »
 export const navGestionnairePropio: NavItem[] = [
   { label: 'Mise en location', isSeparator: true },

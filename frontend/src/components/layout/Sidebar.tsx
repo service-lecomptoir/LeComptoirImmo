@@ -3,7 +3,7 @@ import { MapPin, Hash, User, Building2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed } from '@/lib/features'
-import { navForRole, type NavItem } from '@/lib/navigation'
+import { navForRole, proprioSectionForPath, type NavItem } from '@/lib/navigation'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
 import type { Role } from '@/types/auth'
@@ -227,7 +227,16 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     const roleFiltered = items.filter(
       (item) => !item.roles || item.roles.includes(user?.role as Role)
     )
-    const featureFiltered = roleFiltered.filter(
+    // Propriétaire : visibilité réglée par le gestionnaire (rubriques autorisées).
+    const sections = user?.proprio_sections
+    const visFiltered = (user?.role === 'proprietaire' && Array.isArray(sections))
+      ? roleFiltered.filter((item) => {
+          if (item.isSeparator) return true
+          const key = proprioSectionForPath(item.to)
+          return !key || sections.includes(key)
+        })
+      : roleFiltered
+    const featureFiltered = visFiltered.filter(
       (item) => item.isSeparator || isFeatureAllowed(features, featureForPath(item.to ?? ''))
     )
     return featureFiltered.filter((item, idx) => {

@@ -341,6 +341,8 @@ async def _apply_column_migrations() -> None:
         # Type d'identité du bailleur : 'personne' / 'societe'. Backfill : 'societe'
         # si une société est déjà renseignée sans nom de personne, sinon 'personne'.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_kind VARCHAR(10) NOT NULL DEFAULT 'personne'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS proprio_visibility JSONB",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS proprio_visibility_default JSONB",
         "UPDATE users SET owner_kind='societe' WHERE owner_kind='personne' AND COALESCE(owner_company,'')<>'' AND COALESCE(owner_full_name,'')=''",
         # ── 018 : nettoyage des reliques de la fusion bien/logement ─────────────
         # Loyer/charges/dépôt sont portés par le contrat (leases), plus par le bien.

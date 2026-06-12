@@ -54,9 +54,14 @@ async def refresh_token(
 
 @router.get("/me", response_model=UserMeResponse, summary="Profil de l'utilisateur connecté")
 async def get_me(
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Retourne les informations de l'utilisateur actuellement authentifié."""
+    """Retourne les informations de l'utilisateur actuellement authentifié.
+    Pour un propriétaire : ajoute les rubriques visibles (visibilité effective ∩ plan)."""
+    if str(current_user.role) == "proprietaire":
+        from app.services.proprio_visibility_service import effective_sections_for
+        current_user.proprio_sections = await effective_sections_for(db, current_user)
     return current_user
 
 
