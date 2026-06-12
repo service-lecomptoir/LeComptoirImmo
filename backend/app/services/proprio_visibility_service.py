@@ -1,7 +1,8 @@
 """Calcul de la visibilité effective de l'espace propriétaire (lecture seule).
 
-Effective = surcharge du compte propriétaire, sinon défaut d'agence (réglé par le
-gestionnaire racine), sinon toutes les rubriques ; le tout ∩ plan du gestionnaire.
+Effective = surcharge réglée sur la fiche du propriétaire, sinon toutes les
+rubriques ; le tout ∩ plan du gestionnaire racine. (La visibilité se gère
+uniquement par propriétaire, sur sa fiche : pas de défaut d'agence global.)
 """
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,8 +21,8 @@ async def agency_root_user(db: AsyncSession, user: User):
 
 async def effective_sections_for(db: AsyncSession, proprio_user: User) -> list:
     root = await agency_root_user(db, proprio_user)
-    default = getattr(root, "proprio_visibility_default", None) if root else None
     feats = await get_plan_features(db, root.id) if root else None
+    # Pas de défaut d'agence : surcharge de la fiche, sinon toutes les rubriques du plan.
     return effective_keys(
-        getattr(proprio_user, "proprio_visibility", None), default, feats
+        getattr(proprio_user, "proprio_visibility", None), None, feats
     )

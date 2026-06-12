@@ -173,9 +173,9 @@ export default function OwnerDetail() {
           <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">
             <h2 className="text-sm font-semibold text-gray-900 mb-1">Visibilité de l'espace propriétaire</h2>
             <p className="text-xs text-gray-400 mb-3">
-              Choisissez ce que ce propriétaire voit (en lecture seule) dans son espace. Par défaut il suit le réglage de l'agence ; cochez ci-dessous pour personnaliser.
+              Choisissez ce que ce propriétaire voit (en lecture seule) dans son espace. Par défaut, toutes les rubriques autorisées par votre abonnement sont visibles ; décochez pour restreindre.
             </p>
-            <ProprioVisibilityEditor mode="owner" ownerUserId={owner.user_id} onSaved={fetchOwner} />
+            <ProprioVisibilityEditor ownerUserId={owner.user_id} onSaved={fetchOwner} />
           </div>
         )}
 

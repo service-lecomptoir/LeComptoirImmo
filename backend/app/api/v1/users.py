@@ -410,42 +410,21 @@ async def _accessible_proprio(db: AsyncSession, current_user: User, user_id: uui
     raise HTTPException(status_code=403, detail="Ce propriétaire n'est pas dans votre périmètre.")
 
 
-@router.get("/proprio-visibility/catalog", summary="Rubriques propriétaire disponibles + défaut d'agence")
+@router.get("/proprio-visibility/catalog", summary="Rubriques propriétaire disponibles (∩ plan)")
 async def proprio_visibility_catalog(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    from app.core.proprio_sections import PROPRIO_SECTIONS, LABELS, plan_allowed_keys, ALL_KEYS
+    from app.core.proprio_sections import PROPRIO_SECTIONS, LABELS, plan_allowed_keys
     from app.core.features import get_plan_features
     root = await _agency_root_for(db, current_user)
     allowed = set(plan_allowed_keys(await get_plan_features(db, root.id)))
-    default = root.proprio_visibility_default
     return {
         "sections": [
             {"key": k, "label": LABELS.get(k, k), "plan_allowed": k in allowed}
             for k, _ in PROPRIO_SECTIONS
         ],
-        "agency_default": default if default is not None else list(ALL_KEYS),
     }
-
-
-@router.patch("/me/proprio-visibility-default", summary="Régler le défaut de visibilité de l'agence")
-async def set_agency_default(
-    data: VisibilityUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_gestionnaire),
-):
-    from app.core.proprio_sections import sanitize, plan_allowed_keys
-    from app.core.features import get_plan_features
-    root = await _agency_root_for(db, current_user)
-    allowed = set(plan_allowed_keys(await get_plan_features(db, root.id)))
-    secs = [k for k in sanitize(data.sections) if k in allowed]
-    if not secs:
-        raise HTTPException(status_code=400, detail="Sélectionnez au moins une rubrique pour le défaut d'agence.")
-    root.proprio_visibility_default = secs
-    db.add(root)
-    await db.commit()
-    return {"agency_default": secs}
 
 
 @router.get("/{user_id}/proprio-visibility", summary="Visibilité d'un propriétaire")

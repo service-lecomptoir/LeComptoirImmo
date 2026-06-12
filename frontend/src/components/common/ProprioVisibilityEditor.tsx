@@ -7,14 +7,13 @@ import { toast } from '@/store/toast'
 interface CatalogSection { key: string; label: string; plan_allowed: boolean }
 
 /**
- * Réglage des rubriques visibles par un propriétaire (lecture seule).
- * mode 'agency' : défaut appliqué à tous les propriétaires de l'agence.
- * mode 'owner'  : surcharge pour un propriétaire précis (0 rubrique = compte désactivé).
+ * Réglage des rubriques visibles (en lecture seule) par un propriétaire donné,
+ * sur sa fiche. Par défaut (aucune surcharge), toutes les rubriques autorisées
+ * par l'abonnement sont visibles. 0 rubrique cochée = compte propriétaire désactivé.
  * Les rubriques hors plan sont grisées et non cochables.
  */
-export function ProprioVisibilityEditor({ mode, ownerUserId, onSaved }: {
-  mode: 'agency' | 'owner'
-  ownerUserId?: string
+export function ProprioVisibilityEditor({ ownerUserId, onSaved }: {
+  ownerUserId: string
   onSaved?: () => void
 }) {
   const [catalog, setCatalog] = useState<CatalogSection[]>([])
@@ -32,19 +31,16 @@ export function ProprioVisibilityEditor({ mode, ownerUserId, onSaved }: {
         const { data: cat } = await apiClient.get('/users/proprio-visibility/catalog')
         if (cancelled) return
         setCatalog(cat.sections)
-        if (mode === 'agency') {
-          setSelected(new Set(cat.agency_default))
-        } else if (ownerUserId) {
-          const { data: v } = await apiClient.get(`/users/${ownerUserId}/proprio-visibility`)
-          if (cancelled) return
-          setIsActive(v.is_active)
-          if (v.override) { setSelected(new Set(v.override)); setUsingDefault(false) }
-          else { setSelected(new Set(cat.agency_default)); setUsingDefault(true) }
-        }
+        const allAllowed = cat.sections.filter((s: CatalogSection) => s.plan_allowed).map((s: CatalogSection) => s.key)
+        const { data: v } = await apiClient.get(`/users/${ownerUserId}/proprio-visibility`)
+        if (cancelled) return
+        setIsActive(v.is_active)
+        if (v.override) { setSelected(new Set(v.override)); setUsingDefault(false) }
+        else { setSelected(new Set(allAllowed)); setUsingDefault(true) }
       } catch { /* silencieux */ } finally { if (!cancelled) setLoading(false) }
     })()
     return () => { cancelled = true }
-  }, [mode, ownerUserId])
+  }, [ownerUserId])
 
   const toggle = (key: string) =>
     setSelected(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
@@ -53,14 +49,9 @@ export function ProprioVisibilityEditor({ mode, ownerUserId, onSaved }: {
     setSaving(true)
     try {
       const sections = Array.from(selected)
-      if (mode === 'agency') {
-        await apiClient.patch('/users/me/proprio-visibility-default', { sections })
-        toast.success("Défaut d'agence enregistré")
-      } else if (ownerUserId) {
-        const { data } = await apiClient.patch(`/users/${ownerUserId}/proprio-visibility`, { sections })
-        setIsActive(data.is_active); setUsingDefault(false)
-        toast.success(data.is_active ? 'Visibilité enregistrée' : 'Aucune rubrique : compte propriétaire désactivé')
-      }
+      const { data } = await apiClient.patch(`/users/${ownerUserId}/proprio-visibility`, { sections })
+      setIsActive(data.is_active); setUsingDefault(false)
+      toast.success(data.is_active ? 'Visibilité enregistrée' : 'Aucune rubrique : compte propriétaire désactivé')
       onSaved?.()
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Enregistrement impossible'))
@@ -71,10 +62,10 @@ export function ProprioVisibilityEditor({ mode, ownerUserId, onSaved }: {
 
   return (
     <div>
-      {mode === 'owner' && usingDefault && (
-        <p className="text-xs text-gray-400 mb-2">Aucun réglage spécifique : ce propriétaire suit le défaut d'agence.</p>
+      {usingDefault && (
+        <p className="text-xs text-gray-400 mb-2">Aucun réglage spécifique : toutes les rubriques de votre abonnement sont visibles par défaut.</p>
       )}
-      {mode === 'owner' && !isActive && (
+      {!isActive && (
         <p className="text-xs text-red-600 mb-2 font-medium">Compte actuellement désactivé (aucune rubrique visible).</p>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -91,9 +82,7 @@ export function ProprioVisibilityEditor({ mode, ownerUserId, onSaved }: {
         ))}
       </div>
       <p className="text-xs text-gray-400 mt-2">
-        {mode === 'owner'
-          ? 'Aucune rubrique cochée = compte propriétaire désactivé (plus d\'accès).'
-          : 'Au moins une rubrique est requise. Les rubriques hors plan ne sont pas activables.'}
+        Aucune rubrique cochée = compte propriétaire désactivé (plus d'accès). Les rubriques hors plan ne sont pas activables.
       </p>
       <div className="flex justify-end mt-3">
         <button onClick={save} disabled={saving}
