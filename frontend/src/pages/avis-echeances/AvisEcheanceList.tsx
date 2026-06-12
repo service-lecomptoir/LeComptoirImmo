@@ -7,6 +7,9 @@ import {
   Trash2, RefreshCw, Filter, Pencil, X, RotateCcw,
 } from 'lucide-react'
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
+import { apurementApi, type ApurementPlan } from '@/api/apurement'
+import { toast } from '@/store/toast'
+import { CalendarClock } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import { docFilename } from '@/utils/filename'
 import { downloadBlob } from '@/utils/download'
@@ -456,6 +459,25 @@ export default function AvisEcheanceList() {
   const [errorMsg, setErrorMsg] = useState('')
   const [editAplAvis, setEditAplAvis] = useState<AvisEcheanceSummary | null>(null)
   const [editAvis, setEditAvis] = useState<AvisEcheanceSummary | null>(null)
+  const [plans, setPlans] = useState<ApurementPlan[]>([])
+  const [validating, setValidating] = useState<string | null>(null)
+
+  const loadPlans = useCallback(async () => {
+    if (!isManager) return
+    try { const { data } = await apurementApi.listActive(); setPlans(data) } catch { /* ignore */ }
+  }, [isManager])
+  useEffect(() => { loadPlans() }, [loadPlans])
+
+  const validateInst = async (planId: string, seq: number) => {
+    setValidating(`${planId}-${seq}`)
+    try {
+      await apurementApi.markInstallment(planId, seq, true)
+      toast.success('Échéance validée comme payée.')
+      await loadPlans()
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Validation impossible'))
+    } finally { setValidating(null) }
+  }
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -572,6 +594,58 @@ export default function AvisEcheanceList() {
       {errorMsg && (
         <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 text-red-800 text-sm border border-red-200">
           {errorMsg}
+        </div>
+      )}
+
+      {/* ── Plans d'apurement actifs (impayés échelonnés) ── */}
+      {isManager && plans.length > 0 && (
+        <div className="mb-5 bg-white rounded-xl border border-amber-200 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock size={16} className="text-amber-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Plans d'apurement en cours</h2>
+            <span className="text-xs text-gray-400">{plans.length}</span>
+          </div>
+          <div className="space-y-3">
+            {plans.map(p => {
+              const todayIso = new Date().toISOString().slice(0, 10)
+              return (
+                <div key={p.id} className="border border-gray-100 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                    <p className="text-sm font-medium text-gray-800">
+                      {p.tenant_name}{p.property_name ? ` · ${p.property_name}` : ''}
+                    </p>
+                    <p className="text-xs text-gray-500">Reste {fmtEuro(p.remaining)} / {fmtEuro(p.total_amount)} · {p.paid_count}/{p.count}</p>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {p.installments.map(inst => {
+                      const overdue = !inst.paid && inst.due_date < todayIso
+                      return (
+                        <div key={inst.seq} className="flex items-center justify-between gap-2 py-1.5 text-sm">
+                          <span className={overdue ? 'text-red-600' : 'text-gray-600'}>
+                            Éch. {inst.seq} · {format(new Date(inst.due_date), 'd MMM yyyy', { locale: fr })}{overdue ? ' · en retard' : ''}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{fmtEuro(inst.amount)}</span>
+                            {inst.paid ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Payé</span>
+                            ) : (
+                              <>
+                                {inst.declared && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Déclaré</span>}
+                                <button onClick={() => validateInst(p.id, inst.seq)} disabled={validating === `${p.id}-${inst.seq}`}
+                                  className="text-xs px-2.5 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                                  {validating === `${p.id}-${inst.seq}` ? '…' : 'Valider payé'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

@@ -7,6 +7,8 @@ export interface PlanInstallment {
   amount: number
   paid: boolean
   paid_date: string | null
+  declared?: boolean
+  declared_date?: string | null
 }
 
 export interface ApurementPlan {
@@ -32,6 +34,10 @@ export const apurementApi = {
     apiClient.post<ApurementPlan>('/apurement-plans', { payment_id, installments, first_date }),
   listForTenant: (tenant_id: string) =>
     apiClient.get<ApurementPlan[]>('/apurement-plans', { params: { tenant_id } }),
+  mine: () => apiClient.get<ApurementPlan[]>('/apurement-plans/mine'),
+  listActive: () => apiClient.get<ApurementPlan[]>('/apurement-plans/active'),
+  declareInstallment: (planId: string, seq: number) =>
+    apiClient.post<ApurementPlan>(`/apurement-plans/${planId}/installments/${seq}/declare`),
   markInstallment: (planId: string, seq: number, paid: boolean, paid_date?: string | null) =>
     apiClient.patch<ApurementPlan>(`/apurement-plans/${planId}/installments/${seq}`, { paid, paid_date: paid_date ?? null }),
   remove: (planId: string) => apiClient.delete(`/apurement-plans/${planId}`),

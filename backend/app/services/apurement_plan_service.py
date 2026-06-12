@@ -84,12 +84,45 @@ class ApurementPlanService:
                     paid_date.isoformat() if paid_date
                     else (date.today().isoformat() if paid else None)
                 )
+                if paid:
+                    # Validation par le gestionnaire → on retire le drapeau « déclaré ».
+                    i["declared"] = False
+                    i["declared_date"] = None
                 found = True
         plan.installments = insts  # réassignation pour que SQLAlchemy détecte le JSONB
         if plan.status != "cancelled":
             plan.status = "completed" if insts and all(i.get("paid") for i in insts) else "active"
         await db.flush()
         return plan, found
+
+    @staticmethod
+    async def declare_installment(db: AsyncSession, plan: ApurementPlan, seq: int,
+                                  declared_date=None) -> tuple[ApurementPlan, bool]:
+        """Le locataire déclare avoir réglé une échéance (en attente de validation
+        du gestionnaire). On pose un drapeau `declared` sans marquer `paid`."""
+        insts = [dict(i) for i in (plan.installments or [])]
+        found = False
+        for i in insts:
+            if int(i.get("seq", -1)) == int(seq):
+                if not i.get("paid"):
+                    i["declared"] = True
+                    i["declared_date"] = (declared_date or date.today()).isoformat()
+                found = True
+        plan.installments = insts
+        await db.flush()
+        return plan, found
+
+    @staticmethod
+    async def list_active_for_tenants(db: AsyncSession, tenant_ids) -> List[ApurementPlan]:
+        tenant_ids = list(tenant_ids or [])
+        if not tenant_ids:
+            return []
+        return list((await db.execute(
+            select(ApurementPlan)
+            .where(ApurementPlan.tenant_id.in_(tenant_ids),
+                   ApurementPlan.status == "active")
+            .order_by(ApurementPlan.created_at.desc())
+        )).scalars().all())
 
     @staticmethod
     async def delete(db: AsyncSession, plan: ApurementPlan) -> None:

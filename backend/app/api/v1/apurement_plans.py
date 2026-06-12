@@ -13,6 +13,7 @@ from app.models.user import User
 from app.models.lease import Lease
 from app.models.tenant import Tenant
 from app.models.property import Property
+from app.models.apurement_plan import ApurementPlan
 from app.services.payment_service import PaymentService
 from app.services.apurement_plan_service import ApurementPlanService, plan_to_dict
 from app.api.v1._isolation import (
@@ -71,6 +72,45 @@ async def create_plan(
     return plan_to_dict(plan, tn, pn)
 
 
+@router.get("/mine", summary="Mes plans d'apurement (locataire)")
+async def my_plans(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    t = (await db.execute(
+        select(Tenant).where(Tenant.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not t:
+        return []
+    plans = await ApurementPlanService.list_for_tenant(db, t.id)
+    out = []
+    for p in plans:
+        tn, pn = await _names(db, p)
+        out.append(plan_to_dict(p, tn, pn))
+    return out
+
+
+@router.get("/active", summary="Plans d'apurement actifs (gestionnaire)")
+async def active_plans(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    role = Role(current_user.role)
+    if role == Role.ADMIN:
+        plans = list((await db.execute(
+            select(ApurementPlan).where(ApurementPlan.status == "active")
+            .order_by(ApurementPlan.created_at.desc())
+        )).scalars().all())
+    else:
+        allowed = await agency_tenant_ids(db, current_user)
+        plans = await ApurementPlanService.list_active_for_tenants(db, allowed)
+    out = []
+    for p in plans:
+        tn, pn = await _names(db, p)
+        out.append(plan_to_dict(p, tn, pn))
+    return out
+
+
 @router.get("", summary="Plans d'apurement d'un locataire")
 async def list_plans(
     tenant_id: uuid.UUID = Query(...),
@@ -113,6 +153,46 @@ async def mark_installment(
         db, plan, seq, data.paid, data.paid_date)
     if not found:
         raise BadRequestException("Échéance introuvable")
+    tn, pn = await _names(db, plan)
+    return plan_to_dict(plan, tn, pn)
+
+
+@router.post("/{plan_id}/installments/{seq}/declare", summary="Locataire : déclarer le paiement d'une échéance")
+async def declare_installment(
+    plan_id: uuid.UUID,
+    seq: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    plan = await ApurementPlanService.get(db, plan_id)
+    if not plan:
+        raise NotFoundException("Plan d'apurement", str(plan_id))
+    # Le locataire ne peut déclarer que sur SON plan.
+    t = (await db.execute(
+        select(Tenant).where(Tenant.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not t or t.id != plan.tenant_id:
+        raise BadRequestException("Ce plan d'apurement ne vous concerne pas.")
+    plan, found = await ApurementPlanService.declare_installment(db, plan, seq)
+    if not found:
+        raise BadRequestException("Échéance introuvable")
+    # Notifie le gestionnaire pour validation (best-effort).
+    try:
+        from app.models.notification import Notification, NotificationType, NotificationPriority
+        manager_id = plan.created_by
+        if not manager_id:
+            manager_id = getattr(t, "created_by", None)
+        inst = next((i for i in (plan.installments or []) if int(i.get("seq", -1)) == int(seq)), None)
+        amt = float(inst.get("amount", 0)) if inst else 0
+        if manager_id:
+            db.add(Notification(
+                title="Échéance d'apurement déclarée payée",
+                message=f"{t.full_name} déclare avoir réglé une échéance de {amt:.2f} € de son plan d'apurement. À valider.",
+                notification_type=NotificationType.SYSTEME, priority=NotificationPriority.NORMAL,
+                entity_type="apurement_plan", entity_id=plan.id, user_id=manager_id,
+            ))
+    except Exception:  # noqa: BLE001
+        pass
     tn, pn = await _names(db, plan)
     return plan_to_dict(plan, tn, pn)
 
