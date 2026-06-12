@@ -19,11 +19,11 @@ const addressLines = (addr?: string | null): string[] =>
 
 const TEMPLATE_TYPES = [
   { value: 'avis_echeance',           label: "Avis d'échéance" },
+  { value: 'lettre_relance',          label: 'Lettre de relance' },
   { value: 'quittance',               label: 'Quittance de loyer' },
   { value: 'regularisation_charges',  label: 'Régularisation de charges locatives' },
   { value: 'revision_loyer',          label: 'Révision loyer' },
   { value: 'taxes_foncieres',         label: 'Décompte Taxes Foncières' },
-  { value: 'lettre_relance',          label: 'Lettre de relance' },
 ]
 
 const PRESET_COLORS = ['#1E3A5F', '#2563EB', '#059669', '#D97706', '#7C3AED', '#DC2626', '#374151']

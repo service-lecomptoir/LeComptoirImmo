@@ -25,11 +25,11 @@ class TemplateType(str, Enum):
 # Ordre d'affichage dans « Ma papeterie » + liste des types proposés.
 PAPETERIE_ORDER = [
     TemplateType.AVIS_ECHEANCE.value,
+    TemplateType.LETTRE_RELANCE.value,
     TemplateType.QUITTANCE.value,
     TemplateType.REGULARISATION_CHARGES.value,
     TemplateType.REVISION_LOYER.value,
     TemplateType.TAXES_FONCIERES.value,
-    TemplateType.LETTRE_RELANCE.value,
 ]
 
 
