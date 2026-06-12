@@ -18,7 +18,7 @@ from app.models.owner import Owner
 from app.core.features import require_feature
 from app.services.lease_service import LeaseService
 from app.services.payment_service import PaymentService
-from app.services.pdf_service import render_template, html_to_pdf
+from app.services.pdf_service import render_template, html_to_pdf, render_relance_html
 from app.core.exceptions import BadRequestException
 
 router = APIRouter(prefix="/letters", tags=["Letters"])
@@ -92,7 +92,10 @@ async def lettre_relance(
         "today": _today_str(),
     }
 
-    html = render_template("lettre_relance.html.j2", ctx)
+    # Modèle de la papeterie (blocs / thème Foncia) en priorité ; repli .j2 sinon.
+    html = await render_relance_html(db, payment)
+    if not html:
+        html = render_template("lettre_relance.html.j2", ctx)
     pdf = html_to_pdf(html)
 
     from app.utils.filename import doc_filename

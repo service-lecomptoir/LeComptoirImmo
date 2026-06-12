@@ -77,11 +77,22 @@ DEFAULT_TEMPLATES = {
         "blocks": default_blocks("taxes_foncieres"),
         "theme": DEFAULT_THEME,
     },
+    TemplateType.LETTRE_RELANCE: {
+        "name": "Lettre de relance",
+        "content_html": """<h2>Lettre de relance</h2>
+<p>Madame, Monsieur,</p>
+<p>Sauf erreur ou omission de notre part, le loyer de la période <strong>{{period_range}}</strong>, dont l'échéance était fixée au <strong>{{due_date}}</strong>, demeure impayé à ce jour.</p>
+<p>Le solde restant dû s'élève à <strong>{{amount_due}}</strong>. Nous vous remercions de bien vouloir le régulariser sous huitaine.</p>
+<p style="color:#6b7280;">Si votre règlement a croisé ce courrier, nous vous prions de ne pas en tenir compte.</p>""",
+        "footer_text": "Relance amiable établie conformément à l'article 7 de la loi n° 89-462 du 6 juillet 1989.",
+        "blocks": default_blocks("lettre_relance"),
+        "theme": DEFAULT_THEME,
+    },
 }
 
 # Types de documents retirés de la papeterie (désactivés au démarrage).
 _RETIRED_TYPES = [
-    TemplateType.LETTRE_RELANCE.value, TemplateType.LETTRE_RESILIATION.value,
+    TemplateType.LETTRE_RESILIATION.value,
     TemplateType.CONTRAT_BAIL.value, TemplateType.ETAT_DES_LIEUX.value,
 ]
 

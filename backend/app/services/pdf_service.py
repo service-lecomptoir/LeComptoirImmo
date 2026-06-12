@@ -3,7 +3,7 @@ Service de génération PDF via Jinja2 + WeasyPrint.
 """
 import io
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -180,6 +180,85 @@ def _civil_name(tenant) -> str:
     civ = _CIVILITY_SHORT.get(civ.lower(), civ)
     parts = [civ, getattr(tenant, "first_name", "") or "", getattr(tenant, "last_name", "") or ""]
     return " ".join(p for p in parts if p).upper()
+
+
+async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
+    """Rend la lettre de relance via le template « lettre_relance » de la papeterie
+    (modèle par blocs / thème Foncia) du gestionnaire, en réutilisant le moteur de
+    blocs commun à tous les documents. Retourne None si aucun template par blocs
+    n'est disponible (→ l'appelant retombe sur le modèle .j2 historique)."""
+    from datetime import date as _date
+    from sqlalchemy import select
+    from app.models.document_template import DocumentTemplate
+    from app.models.user import User
+    from app.services.document_render_service import eur, build_emitter_address
+    from app.services.avis_blocks_render_service import render_avis_blocks_html
+
+    lease = getattr(payment, "lease", None)
+    property_obj = getattr(lease, "parent_property", None) if lease else None
+    gid = getattr(lease, "created_by", None) if lease else None
+    if not gid:
+        return None
+
+    tmpl = (await db.execute(
+        select(DocumentTemplate).where(
+            DocumentTemplate.gestionnaire_id == gid,
+            DocumentTemplate.template_type == "lettre_relance",
+            DocumentTemplate.is_default.is_(True),
+            DocumentTemplate.is_active.is_(True),
+        )
+    )).scalar_one_or_none()
+    if tmpl is None or not getattr(tmpl, "blocks", None):
+        return None
+
+    tenant = getattr(payment, "tenant", None)
+    _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
+                  "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+    _d = _date.today()
+    today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
+
+    user = (await db.execute(select(User).where(User.id == gid))).scalar_one_or_none()
+    sender_name = ((user.full_name if user else "") or tmpl.company_name or "")
+    sender_addr = (((getattr(user, "full_address", None) or "") if user else "")
+                   or tmpl.company_address or "")
+    owner_company = (getattr(user, "owner_company", "") or "") if user else ""
+    owner_national_id = (getattr(user, "owner_national_id", "") or "") if user else ""
+
+    def _eur(v):
+        return f"{eur(v)} €"
+
+    variables = {
+        "tenant_name": tenant.full_name if tenant else "",
+        "tenant_civil_name": _civil_name(tenant),
+        "tenant_email": (getattr(tenant, "email", "") or "") if tenant else "",
+        "tenant_phone": (getattr(tenant, "phone", "") or "") if tenant else "",
+        "tenant_login": tenant_reference(tenant),
+        "tenant_reference": tenant_reference(tenant),
+        "property_name": property_obj.name if property_obj else "",
+        "property_address": property_obj.full_address_block if property_obj else "",
+        "property_street": (getattr(property_obj, "address", "") or "") if property_obj else "",
+        "property_city_line": (
+            " ".join(p for p in [getattr(property_obj, "zip_code", ""),
+                                 getattr(property_obj, "city", "")] if p)
+            if property_obj else ""),
+        "property_reference": (
+            (getattr(property_obj, "reference", "") or getattr(property_obj, "name", ""))
+            if property_obj else ""),
+        "company_name": sender_name,
+        "company_address": build_emitter_address(sender_addr, owner_company, owner_national_id),
+        "today_date": today_fr,
+        "date": today_fr,
+        "period_label": getattr(payment, "period_label", "") or "",
+        "period_range": getattr(payment, "period_range_label", "") or getattr(payment, "period_label", "") or "",
+        "due_date": payment.due_date.strftime("%d/%m/%Y") if getattr(payment, "due_date", None) else "",
+        "amount_due": _eur(getattr(payment, "balance", 0) or 0),
+        "apl_amount": _eur(payment.amount_apl) if getattr(payment, "amount_apl", None) else "",
+    }
+    _logo = getattr(user, "logo_path", None) if user else None
+    return render_avis_blocks_html(
+        tmpl.blocks, getattr(tmpl, "theme", None), variables,
+        line_items=[], logo_path=_logo,
+    )
 
 
 class AvisEcheancePDFService:

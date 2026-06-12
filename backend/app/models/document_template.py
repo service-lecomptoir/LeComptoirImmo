@@ -15,8 +15,8 @@ class TemplateType(str, Enum):
     REGULARISATION_CHARGES = "regularisation_charges"
     REVISION_LOYER = "revision_loyer"
     TAXES_FONCIERES = "taxes_foncieres"
-    # Types historiques (plus proposés dans la papeterie, conservés pour compat).
     LETTRE_RELANCE = "lettre_relance"
+    # Types historiques (plus proposés dans la papeterie, conservés pour compat).
     LETTRE_RESILIATION = "lettre_resiliation"
     CONTRAT_BAIL = "contrat_bail"
     ETAT_DES_LIEUX = "etat_des_lieux"
@@ -29,6 +29,7 @@ PAPETERIE_ORDER = [
     TemplateType.REGULARISATION_CHARGES.value,
     TemplateType.REVISION_LOYER.value,
     TemplateType.TAXES_FONCIERES.value,
+    TemplateType.LETTRE_RELANCE.value,
 ]
 
 

@@ -291,6 +291,28 @@ def default_blocks(template_type: str) -> Optional[list[dict]]:
             _common_footer(),
         ]
 
+    if template_type == "lettre_relance":
+        return [
+            _header("Lettre de relance", "{{period_range}}", "RAPPEL"),
+            _common_sidebar(), _common_recipient(), _common_reference(),
+            _greeting("Sauf erreur ou omission de notre part, le loyer de la période "
+                      "{{period_range}}, dont l'échéance était fixée au {{due_date}}, "
+                      "demeure impayé à ce jour. Nous vous remercions de bien vouloir "
+                      "régulariser le solde indiqué ci-dessous sous huitaine.",
+                      salutation="Madame, Monsieur,"),
+            {"id": "amount_bar", "type": "amount_bar", "enabled": True, "props": {
+                "title": "Solde restant dû",
+                "label": "Échéance du {{due_date}} · période {{period_range}}",
+                "amount": "{{amount_due}}",
+            }},
+            {"id": "relance_note", "type": "legal_footer", "enabled": True, "props": {
+                "text": "À défaut de régularisation sous huitaine, nous nous réservons le "
+                        "droit d'engager toute procédure de recouvrement. Si votre règlement "
+                        "a croisé ce courrier, nous vous prions de ne pas en tenir compte.",
+            }},
+            _common_footer(),
+        ]
+
     if template_type == "taxes_foncieres":
         return [
             _header("Décompte Taxes Foncières", "PÉRIODE {{period_range}}", ""),
