@@ -479,6 +479,17 @@ export default function AvisEcheanceList() {
     } finally { setValidating(null) }
   }
 
+  const deletePlan = async (planId: string) => {
+    if (!confirm("Supprimer ce plan d'apurement ?")) return
+    try {
+      await apurementApi.remove(planId)
+      toast.success("Plan d'apurement supprimé.")
+      await loadPlans()
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Suppression impossible'))
+    }
+  }
+
   const load = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -614,7 +625,11 @@ export default function AvisEcheanceList() {
                     <p className="text-sm font-medium text-gray-800">
                       {p.tenant_name}{p.property_name ? ` · ${p.property_name}` : ''}
                     </p>
-                    <p className="text-xs text-gray-500">Reste {fmtEuro(p.remaining)} / {fmtEuro(p.total_amount)} · {p.paid_count}/{p.count}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-500">Reste {fmtEuro(p.remaining)} / {fmtEuro(p.total_amount)} · {p.paid_count}/{p.count}</p>
+                      <button onClick={() => deletePlan(p.id)} title="Supprimer le plan"
+                        className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50"><Trash2 size={14} /></button>
+                    </div>
                   </div>
                   <div className="divide-y divide-gray-50">
                     {p.installments.map(inst => {

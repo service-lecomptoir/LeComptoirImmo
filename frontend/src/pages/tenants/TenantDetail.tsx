@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { getErrorMessage } from '@/utils/errors'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Edit, Trash2, ShieldCheck, FileText, Download, CheckCircle2, Circle } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, ShieldCheck, FileText, Download } from 'lucide-react'
 import { tenantsApi } from '@/api/tenants'
 import { apiClient } from '@/api/client'
-import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { downloadBlob } from '@/utils/download'
 import { TenantForm } from './TenantForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -76,28 +75,8 @@ export default function TenantDetail() {
     }
   }
 
-  // Plans d'apurement (échéanciers suivis)
-  const [plans, setPlans] = useState<ApurementPlan[]>([])
-  const loadPlans = async () => {
-    if (!id) return
-    try { const { data } = await apurementApi.listForTenant(id); setPlans(data) } catch { /* silencieux */ }
-  }
-  useEffect(() => { loadPlans() }, [id])
-  const fmtEur = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
-  const markPaid = async (planId: string, seq: number, paid: boolean) => {
-    try { await apurementApi.markInstallment(planId, seq, paid); loadPlans() }
-    catch (e: any) { alert(getErrorMessage(e, 'Mise à jour impossible')) }
-  }
-  const deletePlan = async (planId: string) => {
-    if (!confirm('Supprimer ce plan d\'apurement ?')) return
-    try { await apurementApi.remove(planId); loadPlans() }
-    catch (e: any) { alert(getErrorMessage(e, 'Suppression impossible')) }
-  }
-  const downloadPlanPdf = async (p: ApurementPlan) => {
-    try { await apurementApi.downloadPdf(p.id, `plan_apurement_${(tenant?.full_name || 'locataire').replace(/\s+/g, '_')}.pdf`) }
-    catch (e: any) { alert(getErrorMessage(e, 'Téléchargement impossible')) }
-  }
-  const todayIso = new Date().toISOString().slice(0, 10)
+  // Les plans d'apurement ne sont plus affichés ici : ils apparaissent dans les
+  // avis d'échéance et les paiements (côté locataire comme gestionnaire).
 
   const handleDelete = async () => {
     if (!id) return
@@ -252,62 +231,6 @@ export default function TenantDetail() {
           )}
         </div>
 
-        {/* Plans d'apurement (échéanciers suivis) */}
-        {plans.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Plans d'apurement</h2>
-            <div className="space-y-4">
-              {plans.map(p => (
-                <div key={p.id} className="border border-gray-100 rounded-lg p-4">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <span className="text-sm font-medium text-gray-900 truncate">{p.label || "Plan d'apurement"}</span>
-                      {p.status === 'completed'
-                        ? <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">Terminé</span>
-                        : p.overdue
-                          ? <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 shrink-0">En retard</span>
-                          : <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 shrink-0">En cours</span>}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => downloadPlanPdf(p)} title="Télécharger le PDF"
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600"><Download size={15} /></button>
-                      <button onClick={() => deletePlan(p.id)} title="Supprimer le plan"
-                        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="bg-gray-50 rounded-lg px-3 py-2"><p className="text-xs text-gray-500">Reste à apurer</p><p className="text-base font-semibold text-gray-900 whitespace-nowrap">{fmtEur(p.remaining)}</p></div>
-                    <div className="bg-gray-50 rounded-lg px-3 py-2"><p className="text-xs text-gray-500">Réglé</p><p className="text-base font-semibold text-gray-900 whitespace-nowrap">{fmtEur(p.paid_total)}</p></div>
-                    <div className="bg-gray-50 rounded-lg px-3 py-2"><p className="text-xs text-gray-500">Avancement</p><p className="text-base font-semibold text-gray-900">{p.paid_count} / {p.count}</p></div>
-                  </div>
-                  <ul className="divide-y divide-gray-50">
-                    {p.installments.map(inst => {
-                      const late = !inst.paid && inst.due_date < todayIso
-                      return (
-                        <li key={inst.seq} className="flex items-center gap-3 py-2">
-                          {inst.paid
-                            ? <CheckCircle2 size={18} className="text-green-600 shrink-0" />
-                            : <Circle size={18} className={`shrink-0 ${late ? 'text-red-500' : 'text-gray-300'}`} />}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900">Échéance {inst.seq} · {format(new Date(inst.due_date), 'd MMM yyyy', { locale: fr })}</p>
-                            {inst.paid && inst.paid_date
-                              ? <p className="text-xs text-gray-400">Réglée le {format(new Date(inst.paid_date), 'd MMM yyyy', { locale: fr })}</p>
-                              : late ? <p className="text-xs text-red-500">En retard</p> : null}
-                          </div>
-                          <span className="text-sm font-medium text-gray-900 whitespace-nowrap">{fmtEur(inst.amount)}</span>
-                          <button onClick={() => markPaid(p.id, inst.seq, !inst.paid)}
-                            className={`text-xs px-2 py-1 rounded whitespace-nowrap ${inst.paid ? 'text-gray-500 hover:bg-gray-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>
-                            {inst.paid ? 'Annuler' : 'Marquer payée'}
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {showEdit && (
