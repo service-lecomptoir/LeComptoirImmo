@@ -295,39 +295,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Top propriétés */}
-      {stats.top_properties.length > 0 && (
-        <div className="bg-white rounded-xl border p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Performance par bien</h2>
-          <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-            {stats.top_properties.map(p => {
-              const occupied = p.occupied_count > 0
-              return (
-                <div key={p.property_id} className="flex items-center gap-4">
-                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                    <Home size={14} className="text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{p.property_name}</p>
-                      <span className="text-sm font-semibold text-gray-900 ml-2 shrink-0">{fmtEur(p.monthly_revenue)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${occupied ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                        {occupied ? 'Occupé' : 'Disponible'}
-                      </span>
-                    </div>
-                    {p.outstanding > 0 && (
-                      <p className="text-xs text-red-500 mt-0.5">Impayés : {fmtEur(p.outstanding)}</p>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Maintenances importantes à venir */}
       {stats.upcoming_entretiens && stats.upcoming_entretiens.length > 0 && (
         <div className="bg-white rounded-xl border p-5">
