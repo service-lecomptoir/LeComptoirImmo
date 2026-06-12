@@ -4,6 +4,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -29,6 +30,15 @@ def _add_months(d: date, m: int) -> date:
     y = d.year + (d.month - 1 + m) // 12
     mo = (d.month - 1 + m) % 12 + 1
     return date(y, mo, min(d.day, calendar.monthrange(y, mo)[1]))
+
+
+async def _lease_for_access(db: AsyncSession, lease_id):
+    """Charge le bail AVEC parent_property et tenant : `assert_lease_access` lit ces
+    relations, qui doivent être eager-loadées (sinon lazy-load sync → MissingGreenlet)."""
+    return (await db.execute(
+        select(Lease).options(selectinload(Lease.parent_property), selectinload(Lease.tenant))
+        .where(Lease.id == lease_id)
+    )).scalar_one_or_none()
 
 
 async def _names(db: AsyncSession, plan) -> tuple:
@@ -147,7 +157,7 @@ async def mark_installment(
     plan = await ApurementPlanService.get(db, plan_id)
     if not plan:
         raise NotFoundException("Plan d'apurement", str(plan_id))
-    lease = await db.get(Lease, plan.lease_id)
+    lease = await _lease_for_access(db, plan.lease_id)
     await assert_lease_access(db, current_user, lease, write=True)
     plan, found = await ApurementPlanService.mark_installment(
         db, plan, seq, data.paid, data.paid_date)
@@ -206,7 +216,7 @@ async def delete_plan(
     plan = await ApurementPlanService.get(db, plan_id)
     if not plan:
         raise NotFoundException("Plan d'apurement", str(plan_id))
-    lease = await db.get(Lease, plan.lease_id)
+    lease = await _lease_for_access(db, plan.lease_id)
     await assert_lease_access(db, current_user, lease, write=True)
     await ApurementPlanService.delete(db, plan)
 
@@ -220,7 +230,7 @@ async def plan_pdf(
     plan = await ApurementPlanService.get(db, plan_id)
     if not plan:
         raise NotFoundException("Plan d'apurement", str(plan_id))
-    lease = await db.get(Lease, plan.lease_id)
+    lease = await _lease_for_access(db, plan.lease_id)
     await assert_lease_access(db, current_user, lease)
 
     payment = None
