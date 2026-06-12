@@ -7,7 +7,7 @@ const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
-import { SignaturePad } from '@/components/common/SignaturePad'
+import { TypedSignature } from '@/components/common/TypedSignature'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
 import { usersApi, type EmailDomain } from '@/api/users'
@@ -463,13 +463,14 @@ export default function MonProfil() {
         {isManager && (
           <div>
             <label className={lbl}>Signature</label>
-            <SignaturePad
+            <TypedSignature
               value={signature !== undefined ? signature : (user?.signature ?? null)}
               onChange={setSignature}
+              defaultText={(isManager ? (ownerKind === 'personne' ? joinName(ownerFirstName, ownerLastName) : ownerCompany) : '') || fullName || ''}
             />
             <p className="text-xs text-gray-400 mt-1">
-              Apposée en bas de vos courriers (lettre de relance, plan d'apurement…). Pensez à
-              cliquer sur « Enregistrer » ci-dessous pour la sauvegarder.
+              Tapez votre nom et choisissez un style d'écriture. Apposée en bas de vos courriers
+              (lettre de relance, plan d'apurement…). Pensez à cliquer sur « Enregistrer » ci-dessous pour la sauvegarder.
             </p>
           </div>
         )}
