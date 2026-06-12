@@ -109,7 +109,7 @@ export default function PaymentList() {
     setSendingQuittanceId(p.id)
     try {
       await paymentsApi.sendQuittance(p.id)
-      setSuccessMsg(`Quittance marquée comme envoyée — ${p.tenant_full_name} (${p.period_label})`)
+      setSuccessMsg(`Quittance marquée comme envoyée : ${p.tenant_full_name} (${p.period_label})`)
       setTimeout(() => setSuccessMsg(''), 4000)
       fetchPayments(search, filterStatus, filterYear, filterMonth)
     } finally {
@@ -121,7 +121,7 @@ export default function PaymentList() {
     setValidatingId(p.id)
     try {
       await paymentsApi.validateDeclaration(p.id)
-      setSuccessMsg(`Paiement validé — ${p.tenant_full_name} (${p.period_label})`)
+      setSuccessMsg(`Paiement validé : ${p.tenant_full_name} (${p.period_label})`)
       setTimeout(() => setSuccessMsg(''), 4000)
       fetchPayments(search, filterStatus, filterYear, filterMonth)
     } catch (e: any) {
@@ -132,11 +132,11 @@ export default function PaymentList() {
   }
 
   const handleRefuseDeclaration = async (p: PaymentListItem) => {
-    if (!confirm(`Refuser la déclaration de paiement de ${p.tenant_full_name} — ${p.period_label} ?\nLe locataire en sera informé.`)) return
+    if (!confirm(`Refuser la déclaration de paiement de ${p.tenant_full_name} : ${p.period_label} ?\nLe locataire en sera informé.`)) return
     setValidatingId(p.id)
     try {
       await paymentsApi.refuseDeclaration(p.id)
-      setSuccessMsg(`Déclaration refusée — ${p.tenant_full_name} (${p.period_label})`)
+      setSuccessMsg(`Déclaration refusée : ${p.tenant_full_name} (${p.period_label})`)
       setTimeout(() => setSuccessMsg(''), 4000)
       fetchPayments(search, filterStatus, filterYear, filterMonth)
     } catch (e: any) {
@@ -167,7 +167,7 @@ export default function PaymentList() {
     const rows: { label: string; date?: string | null; amount: number }[] = []
     if (apl > 0) rows.push({ label: 'Aide au logement (tiers-payant CAF)', amount: apl })
     if (credit > 0) rows.push({ label: 'Avance déduite (trop-perçu antérieur)', amount: credit })
-    if (versement > 0.009) rows.push({ label: `Versement — ${methodLabel(p.payment_method)}`, date: p.payment_date, amount: versement })
+    if (versement > 0.009) rows.push({ label: `Versement : ${methodLabel(p.payment_method)}`, date: p.payment_date, amount: versement })
     return rows
   }
 
@@ -267,7 +267,7 @@ export default function PaymentList() {
                 <td colSpan={9}>
                   <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                     <CreditCard size={32} className="text-gray-300 mb-2" />
-                    <p className="text-sm">Aucun paiement — cliquez sur "Générer" pour créer les loyers du mois</p>
+                    <p className="text-sm">Aucun paiement : cliquez sur "Générer" pour créer les loyers du mois</p>
                   </div>
                 </td>
               </tr>
@@ -326,7 +326,7 @@ export default function PaymentList() {
                     )}
                   </td>
 
-                  {/* Colonne quittance — uniquement si le mois est intégralement payé */}
+                  {/* Colonne quittance : uniquement si le mois est intégralement payé */}
                   <td className="px-4 py-3">
                     {p.status === 'paid' ? (
                       <div className="flex items-center gap-2">
@@ -420,7 +420,7 @@ export default function PaymentList() {
                       )}
                       <button
                         onClick={async () => {
-                          if (!confirm(`Supprimer le paiement de ${p.tenant_full_name} — ${p.period_label} ?\nCette action est irréversible.`)) return
+                          if (!confirm(`Supprimer le paiement de ${p.tenant_full_name} : ${p.period_label} ?\nCette action est irréversible.`)) return
                           try {
                             await paymentsApi.delete(p.id)
                             fetchPayments(search, filterStatus, filterYear, filterMonth)
@@ -513,7 +513,7 @@ export default function PaymentList() {
         >
           {recordingPayment && (
             <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-              <strong>{recordingPayment.tenant_full_name}</strong> — {recordingPayment.period_label}<br />
+              <strong>{recordingPayment.tenant_full_name}</strong> : {recordingPayment.period_label}<br />
               Solde restant : <strong>{fmtEuro(recordingPayment.balance)}</strong>
             </div>
           )}

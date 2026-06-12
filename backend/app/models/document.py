@@ -84,4 +84,4 @@ class Document(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<Document {self.document_type} — {self.file_name}>"
+        return f"<Document {self.document_type} : {self.file_name}>"

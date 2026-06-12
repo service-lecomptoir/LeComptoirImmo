@@ -279,7 +279,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
           )}
           {selectedUserId && !showCreateUser && (
             <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1">
-              <UserRound size={11} /> Compte lié — ce propriétaire peut se connecter à son espace
+              <UserRound size={11} /> Compte lié : ce propriétaire peut se connecter à son espace
             </p>
           )}
         </div>

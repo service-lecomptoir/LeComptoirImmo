@@ -1,8 +1,8 @@
 """
-Endpoints publics (sans authentification) — page d'accueil Le Comptoir Immo.
+Endpoints publics (sans authentification) : page d'accueil Le Comptoir Immo.
 
 Les plans et les demandes de souscription/démo proviennent d'Alice (source de
-vérité, base dédiée) via son API /internal (app.services.alice_client) — plus
+vérité, base dédiée) via son API /internal (app.services.alice_client) : plus
 aucune lecture/écriture directe des tables alice_*.
 """
 import logging

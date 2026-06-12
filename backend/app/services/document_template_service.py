@@ -58,7 +58,7 @@ DEFAULT_TEMPLATES = {
     },
     TemplateType.REGULARISATION_CHARGES: {
         "name": "Régularisation de charges locatives",
-        "content_html": "<p>Régularisation de charges locatives — {{period_range}}.</p>",
+        "content_html": "<p>Régularisation de charges locatives : {{period_range}}.</p>",
         "footer_text": "Document établi conformément à l'article 23 de la loi n° 89-462 du 6 juillet 1989.",
         "blocks": default_blocks("regularisation_charges"),
         "theme": DEFAULT_THEME,
@@ -72,7 +72,7 @@ DEFAULT_TEMPLATES = {
     },
     TemplateType.TAXES_FONCIERES: {
         "name": "Décompte Taxes Foncières",
-        "content_html": "<p>Décompte taxes foncières (TEOM) — {{period_range}}.</p>",
+        "content_html": "<p>Décompte taxes foncières (TEOM) : {{period_range}}.</p>",
         "footer_text": "Récupération conforme à l'article 23 de la loi n° 89-462 du 6 juillet 1989.",
         "blocks": default_blocks("taxes_foncieres"),
         "theme": DEFAULT_THEME,

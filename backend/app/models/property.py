@@ -119,11 +119,11 @@ class Property(Base, TimestampMixin):
     @property
     def full_address_block(self) -> str:
         """Adresse postale sur 2 lignes (format documents) :
-        rue (+ complément, ex. « APPART 11 ») puis « CP Ville » — sans virgules.
+        rue (+ complément, ex. « APPART 11 ») puis « CP Ville » : sans virgules.
         Le rendu PDF convertit le saut de ligne `\\n` en `<br/>`."""
         line1 = " ".join(p for p in (self.address, self.address2) if p and p.strip())
         line2 = " ".join(p for p in (self.zip_code, self.city) if p and p.strip())
         return "\n".join(p for p in (line1, line2) if p)
 
     def __repr__(self) -> str:
-        return f"<Property {self.name} — {self.city}>"
+        return f"<Property {self.name} : {self.city}>"

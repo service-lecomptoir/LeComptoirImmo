@@ -124,11 +124,11 @@ class Payment(Base, TimestampMixin):
     @property
     def period_range_label(self) -> str:
         """Période réellement couverte, ex. « du 01/02/2026 au 30/04/2026 »
-        (ou le mois si les dates ne sont pas renseignées — anciens paiements)."""
+        (ou le mois si les dates ne sont pas renseignées : anciens paiements)."""
         if self.period_start and self.period_end:
             return (f"du {self.period_start.strftime('%d/%m/%Y')} "
                     f"au {self.period_end.strftime('%d/%m/%Y')}")
         return self.period_label
 
     def __repr__(self) -> str:
-        return f"<Payment {self.period_label} — {self.status}>"
+        return f"<Payment {self.period_label} : {self.status}>"

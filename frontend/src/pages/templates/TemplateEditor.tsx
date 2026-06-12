@@ -117,7 +117,7 @@ const DEFAULT_CONTENT: Record<string, string> = {
     "pour le mois de {{month}} s'élève à {{total_due}} € (loyer {{rent_amount}} € + charges {{charges_amount}} €).\n" +
     "Merci de bien vouloir procéder au règlement avant le {{due_date}}.\n\nCordialement,\n{{company_name}}",
   quittance:
-    "Quittance de loyer — {{month}}\n\nJe soussigné(e) {{company_name}}, atteste que {{tenant_name}} s'est acquitté(e) " +
+    "Quittance de loyer : {{month}}\n\nJe soussigné(e) {{company_name}}, atteste que {{tenant_name}} s'est acquitté(e) " +
     "de la somme de {{amount_paid}} € pour le bien {{property_name}} ({{property_address}}).\n\n" +
     "Fait pour valoir ce que de droit.\nLe {{date}}",
   lettre_relance:
@@ -128,10 +128,10 @@ const DEFAULT_CONTENT: Record<string, string> = {
     "Cher(e) {{tenant_name}},\n\nLa présente fait suite au bail portant sur le bien {{property_name}} ({{property_address}}).\n\n" +
     "Le {{date}}\n{{company_name}}",
   contrat_bail:
-    "Contrat de bail — {{property_name}}\n\nEntre {{company_name}} (bailleur) et {{tenant_name}} (locataire), " +
+    "Contrat de bail : {{property_name}}\n\nEntre {{company_name}} (bailleur) et {{tenant_name}} (locataire), " +
     "pour le bien situé {{property_address}}.\nLoyer mensuel : {{rent_amount}} € + charges {{charges_amount}} €.\n\nLe {{date}}",
   etat_des_lieux:
-    "État des lieux — {{property_name}}\n\nBien : {{property_address}}\nLocataire : {{tenant_name}}\nDate : {{date}}\n\n" +
+    "État des lieux : {{property_name}}\n\nBien : {{property_address}}\nLocataire : {{tenant_name}}\nDate : {{date}}\n\n" +
     "(Décrivez l'état de chaque pièce.)",
 }
 

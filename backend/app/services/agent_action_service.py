@@ -231,7 +231,7 @@ async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
             "amount": amount, "method": method, "year": year, "month": month,
         }
         return {"reply": (f"💶 Je vais enregistrer un paiement de <b>{_eur(amount)}</b> "
-                          f"({method}) pour <b>{tenant.full_name}</b> — loyer {mois_lbl}.\n"
+                          f"({method}) pour <b>{tenant.full_name}</b> : loyer {mois_lbl}.\n"
                           f"Confirmez ? Répondez <b>OUI</b>."),
                 "pending": pending}
 
@@ -309,7 +309,7 @@ async def _exec_avis(db, user, p) -> str:
         except Exception:  # noqa: BLE001
             extra = " (e-mail non envoyé)"
     verbe = "existait déjà" if already else "généré"
-    return f"✅ Avis d'échéance {mois} {verbe} pour {tenant.full_name} — {_eur(avis.amount_total)}{extra}."
+    return f"✅ Avis d'échéance {mois} {verbe} pour {tenant.full_name} : {_eur(avis.amount_total)}{extra}."
 
 
 async def _exec_quittance(db, user, p) -> str:
@@ -350,7 +350,7 @@ async def _exec_paiement(db, user, p) -> str:
     balance = float(pay.amount_due) - float(pay.amount_paid)
     solde = "soldé ✅" if balance <= 0 else f"reste dû {_eur(balance)}"
     return (f"✅ Paiement de {_eur(p['amount'])} enregistré pour {tenant.full_name} "
-            f"(loyer {int(p['month']):02d}/{int(p['year'])}) — statut : {pay.status}, {solde}.")
+            f"(loyer {int(p['month']):02d}/{int(p['year'])}) : statut : {pay.status}, {solde}.")
 
 
 async def _exec_demarche(db, user, p) -> str:

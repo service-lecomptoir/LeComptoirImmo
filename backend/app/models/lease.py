@@ -174,4 +174,4 @@ class Lease(Base, TimestampMixin):
         return " & ".join(t.full_name for t in self.all_tenants)
 
     def __repr__(self) -> str:
-        return f"<Lease {self.id} — actif={self.is_active}>"
+        return f"<Lease {self.id} : actif={self.is_active}>"

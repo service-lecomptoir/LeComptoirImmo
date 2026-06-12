@@ -5,7 +5,7 @@ Le contenu (`content_html`) utilise une syntaxe type Handlebars :
   - {{variable}}                  → substitution (valeur échappée)
   - {{#if variable}}...{{/if}}    → bloc conditionnel (gardé si la variable est non vide)
 
-Mise en page (commune à tous les documents) — cadre « pro » sur fond blanc :
+Mise en page (commune à tous les documents) : cadre « pro » sur fond blanc :
   • En-tête GAUCHE  : logo (icône) du gestionnaire puis son adresse.
   • En-tête DROITE  : les locataires empilés, puis l'adresse du bien en dessous.
   • CORPS (centre)  : les données du document (montants, etc.).

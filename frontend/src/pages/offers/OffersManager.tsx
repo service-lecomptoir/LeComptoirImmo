@@ -47,7 +47,7 @@ function OfferForm({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Prix (€) — vide = sur demande</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Prix (€) : vide = sur demande</label>
           <input type="number" min={0} step={0.01} value={form.price ?? ''} onChange={e => set('price', e.target.value === '' ? undefined : Number(e.target.value))} className={inp} placeholder="0.00" />
         </div>
         <div className="col-span-2">

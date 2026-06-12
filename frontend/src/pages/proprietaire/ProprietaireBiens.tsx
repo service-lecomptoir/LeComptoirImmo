@@ -104,7 +104,7 @@ export default function ProprietaireBiens() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Performance de mes biens</h1>
           <p className="text-gray-500 text-sm mt-1">
-            Loyer théorique vs loyer encaissé — accumulation sur l'année
+            Loyer théorique vs loyer encaissé : accumulation sur l'année
           </p>
         </div>
         <select
@@ -233,7 +233,7 @@ export default function ProprietaireBiens() {
                   ) : (
                     <div className="pt-4 border-t border-gray-100">
                       <p className="text-xs text-gray-400">
-                        Aucun bail actif — aucune donnée de performance pour {year}
+                        Aucun bail actif : aucune donnée de performance pour {year}
                       </p>
                     </div>
                   )}
@@ -243,7 +243,7 @@ export default function ProprietaireBiens() {
                 {isOpen && perf && perf.monthly_breakdown.length > 0 && (
                   <div className="border-t border-gray-100 bg-gray-50/50 px-5 py-4">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                      Détail mensuel — {year}
+                      Détail mensuel : {year}
                     </p>
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[640px]">

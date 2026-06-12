@@ -73,11 +73,11 @@ function EditAplModal({
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <p className="text-xs text-gray-500 mb-3">
-          Avis : <span className="font-medium text-gray-700">{avis.period_label} — {avis.tenant_full_name}</span>
+          Avis : <span className="font-medium text-gray-700">{avis.period_label} : {avis.tenant_full_name}</span>
         </p>
         <div className="mb-3">
           <label className="block text-xs font-medium text-gray-700 mb-1">
-            Montant aide personnelle au logement pour ce mois (€) — laisser vide pour supprimer
+            Montant aide personnelle au logement pour ce mois (€) : laisser vide pour supprimer
           </label>
           <input
             type="number"
@@ -154,7 +154,7 @@ function EditAvisModal({
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <p className="text-xs text-gray-500 mb-4">
-          <span className="font-medium text-gray-700">{avis.period_label} — {avis.tenant_full_name}</span>
+          <span className="font-medium text-gray-700">{avis.period_label} : {avis.tenant_full_name}</span>
         </p>
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -233,7 +233,7 @@ function GenerateModal({
       setLeases(
         r.data.items.map((l: any) => ({
           id: l.id,
-          label: `${l.tenant_full_name} — ${l.property_name}`,
+          label: `${l.tenant_full_name} : ${l.property_name}`,
         }))
       )
     })
@@ -311,14 +311,14 @@ function GenerateModal({
             </div>
           </div>
 
-          {/* Aide personnelle au logement — affiché si bail avec tiers-payant OU saisie manuelle */}
+          {/* Aide personnelle au logement : affiché si bail avec tiers-payant OU saisie manuelle */}
           {leaseId && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <label className="block text-xs font-semibold text-blue-700 mb-1">
                 Aide personnelle au logement ce mois (€)
                 {defaultApl != null && (
                   <span className="ml-1 font-normal text-blue-500">
-                    — défaut du bail : {defaultApl.toFixed(2)} €
+                    : défaut du bail : {defaultApl.toFixed(2)} €
                   </span>
                 )}
               </label>
@@ -693,7 +693,7 @@ export default function AvisEcheanceList() {
                           >
                             <Pencil size={14} />
                           </button>
-                          {/* Relancer — remet en brouillon pour modification/renvoi */}
+                          {/* Relancer : remet en brouillon pour modification/renvoi */}
                           {a.status !== 'brouillon' && (
                             <button
                               onClick={() => handleRelancer(a.id)}

@@ -12,7 +12,7 @@ existantes (lecture seule), strictement dans le périmètre du gestionnaire
 
 Phase 2 : si un LLM est configuré (`AGENT_LLM_API_KEY`), `answer()` lui confie
 la COMPRÉHENSION du message et la RÉDACTION de la réponse, mais en l'ancrant sur
-un INSTANTANÉ chiffré des vraies données (scopé par rôle) — le modèle a interdiction
+un INSTANTANÉ chiffré des vraies données (scopé par rôle) : le modèle a interdiction
 d'inventer des chiffres. Sans clé (ou si l'appel échoue), repli automatique sur le
 routeur déterministe de la Phase 1. Le canal et le périmètre restent identiques.
 """
@@ -116,7 +116,7 @@ async def _comptable(db, user, t, mode, ids) -> str:
     for fn, ln, due, paid, py, pm in rows[:15]:
         bal = float(due) - float(paid)
         total += max(0.0, bal)
-        lines.append(f"• {fn} {ln} — {bal:,.2f} € ({pm:02d}/{py})".replace(",", " "))
+        lines.append(f"• {fn} {ln} : {bal:,.2f} € ({pm:02d}/{py})".replace(",", " "))
     lines.append(f"<b>Total dû : {total:,.2f} €</b>".replace(",", " "))
     return "\n".join(lines)
 
@@ -138,7 +138,7 @@ async def _securite(db, user, t, mode, ids) -> str:
         if key in seen:
             continue
         seen.add(key)
-        lines.append(f"• {title} — {fn} {ln} ({status})")
+        lines.append(f"• {title} : {fn} {ln} ({status})")
         if len(lines) > 15:
             break
     return "\n".join(lines)
@@ -163,7 +163,7 @@ async def _administratif(db, user, t, mode, ids) -> str:
 def _help() -> str:
     lines = ["👋 <b>Votre équipe d'agents Le Comptoir Immo :</b>"]
     for a in AGENTS.values():
-        lines.append(f"{a['emoji']} <b>{a['name']}</b> — {a['desc']}")
+        lines.append(f"{a['emoji']} <b>{a['name']}</b> : {a['desc']}")
     lines.append("")
     lines.append("💬 <b>Questions</b> : « impayés », « démarches en cours », « combien de biens », « résumé ».")
     lines.append("⚡ <b>Actions</b> (je demande confirmation avant) :")
@@ -271,7 +271,7 @@ async def answer(db: AsyncSession, user: User, text: str) -> str:
             ])
             if reply:
                 return reply
-        except Exception:  # noqa: BLE001 — ne jamais casser le canal
+        except Exception:  # noqa: BLE001 : ne jamais casser le canal
             pass
 
     # ── Phase 1 : repli déterministe (mots-clés) ──

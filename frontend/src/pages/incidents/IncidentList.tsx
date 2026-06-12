@@ -371,7 +371,7 @@ function TicketsTab({
                 <div className="px-5 py-3 border-t border-gray-100 bg-purple-50 flex items-center gap-2">
                   <CheckCheck size={14} style={{ color: '#7C3AED' }} />
                   <span className="text-xs text-purple-700">
-                    Clôture proposée — en attente de la validation du locataire.
+                    Clôture proposée : en attente de la validation du locataire.
                   </span>
                 </div>
               )}
@@ -615,7 +615,7 @@ export default function IncidentList({
         <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
       </div>
 
-      {/* Onglets — visibles uniquement si l'onglet proprio est pertinent */}
+      {/* Onglets : visibles uniquement si l'onglet proprio est pertinent */}
       {!readOnly && showProprietaireTab && (
         <div className="flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
           <button

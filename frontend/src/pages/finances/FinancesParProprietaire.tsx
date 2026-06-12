@@ -143,20 +143,20 @@ export default function FinancesParProprietaire({ view }: { view: View }) {
         </div>
 
         <div className="rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-gray-800 text-white px-3 py-1.5 text-xs font-semibold">SECTION A — REVENUS BRUTS</div>
-          {row('Loyers encaissés', 'Ligne 100 — Recettes brutes', f.gross_rent_revenue)}
-          {row('Provisions pour charges récupérées', 'Ligne 110 — Charges locatives', f.charges_received)}
+          <div className="bg-gray-800 text-white px-3 py-1.5 text-xs font-semibold">SECTION A : REVENUS BRUTS</div>
+          {row('Loyers encaissés', 'Ligne 100 : Recettes brutes', f.gross_rent_revenue)}
+          {row('Provisions pour charges récupérées', 'Ligne 110 : Charges locatives', f.charges_received)}
           {row('Total revenus bruts (A)', '', f.total_gross_revenue, true)}
         </div>
 
         <div className="rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-gray-800 text-white px-3 py-1.5 text-xs font-semibold">SECTION B — CHARGES DÉDUCTIBLES</div>
-          {row("Frais de gestion et d'administration", 'Ligne 120 — 8% des loyers bruts (estimation)', f.management_fees)}
+          <div className="bg-gray-800 text-white px-3 py-1.5 text-xs font-semibold">SECTION B : CHARGES DÉDUCTIBLES</div>
+          {row("Frais de gestion et d'administration", 'Ligne 120 : 8% des loyers bruts (estimation)', f.management_fees)}
           {row('Total charges déductibles (B)', '', f.total_deductible, true)}
         </div>
 
         <div className={`rounded-lg border overflow-hidden ${net >= 0 ? 'border-green-200' : 'border-red-200'}`}>
-          <div className={`px-3 py-1.5 text-xs font-semibold text-white ${net >= 0 ? 'bg-green-700' : 'bg-red-700'}`}>SECTION C — RÉSULTAT FISCAL</div>
+          <div className={`px-3 py-1.5 text-xs font-semibold text-white ${net >= 0 ? 'bg-green-700' : 'bg-red-700'}`}>SECTION C : RÉSULTAT FISCAL</div>
           <div className={`flex justify-between items-center gap-4 px-3 py-2 ${net >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
             <div><p className="text-sm font-bold text-gray-900">{net >= 0 ? 'Revenu foncier net imposable' : 'Déficit foncier'}</p><p className="text-[11px] text-gray-500">A − B = à reporter sur la déclaration 2042</p></div>
             <p className={`text-lg font-bold ${net >= 0 ? 'text-green-700' : 'text-red-700'}`}>{fmtEuro(Math.abs(net))}</p>

@@ -1,5 +1,5 @@
 """
-API Avis d'échéances — Génération manuelle, automatique, listing, PDF.
+API Avis d'échéances : Génération manuelle, automatique, listing, PDF.
 """
 import uuid
 import logging

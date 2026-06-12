@@ -115,7 +115,7 @@ async def _notify_resiliation(full_name: str, email: str, reason: str) -> None:
             f"<p><strong>Motif&nbsp;:</strong><br>{reason}</p>"
             "<p style='margin-top:16px'>À traiter dans Alice → <strong>Demandes</strong>.</p>"
         )
-        await send_email(to=recipient, subject="Demande de résiliation — Le Comptoir Immo", html_body=html)
+        await send_email(to=recipient, subject="Demande de résiliation : Le Comptoir Immo", html_body=html)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Notification de résiliation non envoyée : %s", exc)
 
@@ -128,7 +128,7 @@ async def request_resiliation(
     current_user: User = Depends(get_current_user),
 ):
     """Enregistre une demande de résiliation (vue par Alice dans « Demandes »)
-    et notifie l'équipe — même mécanisme que la demande de souscription."""
+    et notifie l'équipe : même mécanisme que la demande de souscription."""
     role = Role(current_user.role)
     if role not in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")

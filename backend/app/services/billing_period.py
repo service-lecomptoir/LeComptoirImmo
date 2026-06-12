@@ -5,7 +5,7 @@ Une « période de facturation » dépend de deux champs du bail :
   - `payment_frequency` : nombre de mois couverts par un appel.
 
 Ce module est PUR (aucun accès DB) afin d'être réutilisé par AvisEcheanceService
-et PaymentService — les deux chemins doivent produire des montants identiques.
+et PaymentService : les deux chemins doivent produire des montants identiques.
 
 Alignement des périodes :
   - calendrier   : aligné sur l'année civile (N ∈ {1,2,3,6,12} divise 12, donc une

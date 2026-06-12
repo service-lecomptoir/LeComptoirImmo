@@ -5,7 +5,7 @@ Alice est la source de vérité pour les plans, licences, entitlements et leads
 plus aucune lecture directe des tables alice_* (elles n'existent plus ici).
 
 Toutes les fonctions sont « fail-soft » : en cas d'indisponibilité d'Alice,
-elles renvoient une valeur neutre (None / [] / False) et journalisent — l'app
+elles renvoient une valeur neutre (None / [] / False) et journalisent : l'app
 ne casse jamais à cause d'Alice.
 """
 import logging

@@ -23,8 +23,8 @@ async def login(
     """
     Authentifie un utilisateur et retourne une paire de tokens JWT.
 
-    - **access_token** : valide 30 minutes — à envoyer dans le header `Authorization: Bearer <token>`
-    - **refresh_token** : valide 7 jours — à utiliser sur `/auth/refresh` uniquement
+    - **access_token** : valide 30 minutes : à envoyer dans le header `Authorization: Bearer <token>`
+    - **refresh_token** : valide 7 jours : à utiliser sur `/auth/refresh` uniquement
     """
     ip = request.client.host if request.client else None
     try:

@@ -94,7 +94,7 @@ async def create_ticket(
             db, manager_id, ticket.topic or "autre", body,
             cta="Ouvrez la démarche dans l'application pour répondre.",
         )
-    except Exception:  # noqa: BLE001 — la notification ne doit jamais bloquer la création
+    except Exception:  # noqa: BLE001 : la notification ne doit jamais bloquer la création
         pass
     return {"id": ticket.id, "status": ticket.status}
 

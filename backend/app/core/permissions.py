@@ -1,5 +1,5 @@
 """
-RBAC — Role Based Access Control
+RBAC : Role Based Access Control
 =================================
 Rôles disponibles (hiérarchie croissante) :
   lecture      → consultation uniquement
@@ -55,7 +55,7 @@ def role_has_permission(user_role: Role, required_role: Role) -> bool:
 
 def require_role(required_role: Role):
     """
-    Dependency FastAPI — vérifie que l'utilisateur courant a le rôle requis.
+    Dependency FastAPI : vérifie que l'utilisateur courant a le rôle requis.
 
     Usage:
         @router.get("/", dependencies=[Depends(require_role(Role.GESTIONNAIRE))])

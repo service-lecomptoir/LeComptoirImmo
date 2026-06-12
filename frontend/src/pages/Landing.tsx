@@ -20,7 +20,7 @@ const NAV = [
 ]
 
 const STEPS = [
-  { n: 1, title: 'Créez votre espace', text: "Votre agence ou votre patrimoine est prêt en quelques minutes — aucun logiciel à installer." },
+  { n: 1, title: 'Créez votre espace', text: "Votre agence ou votre patrimoine est prêt en quelques minutes : aucun logiciel à installer." },
   { n: 2, title: 'Ajoutez biens, locataires et contrats', text: "Centralisez propriétaires, locataires, baux et documents au même endroit." },
   { n: 3, title: 'Automatisez la gestion locative', text: "Avis d'échéances, quittances, relances et révisions de loyer générés automatiquement." },
 ]
@@ -134,7 +134,7 @@ function HeroPreview() {
           <span className="w-2.5 h-2.5 rounded-full bg-red-300" />
           <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-300" />
-          <span className="ml-3 text-[11px] text-gray-400">Tableau de bord — Le Comptoir Immo</span>
+          <span className="ml-3 text-[11px] text-gray-400">Tableau de bord : Le Comptoir Immo</span>
         </div>
         <div className="p-5">
           <div className="grid grid-cols-3 gap-3">
@@ -157,7 +157,7 @@ function HeroPreview() {
             </div>
           </div>
           <div className="mt-4 space-y-2">
-            {['Quittance — Appartement Rivoli', "Avis d'échéance — Studio Bastille"].map((t, i) => (
+            {['Quittance : Appartement Rivoli', "Avis d'échéance : Studio Bastille"].map((t, i) => (
               <div key={i} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2">
                 <span className="text-[11px] text-gray-600 truncate">{t}</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 shrink-0">Payé</span>
@@ -411,7 +411,7 @@ function Footer() {
           </div>
           <span className="font-semibold text-sm" style={{ color: NAVY }}>Le Comptoir Immo</span>
         </div>
-        <p className="text-xs text-gray-400">© {new Date().getFullYear()} Le Comptoir Immo — Gestion locative</p>
+        <p className="text-xs text-gray-400">© {new Date().getFullYear()} Le Comptoir Immo : Gestion locative</p>
         <Link to="/login" className="text-sm font-medium inline-flex items-center gap-1.5" style={{ color: NAVY }}>
           Vers le site <ArrowRight size={14} />
         </Link>

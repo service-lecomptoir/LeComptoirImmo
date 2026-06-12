@@ -115,7 +115,7 @@ export default function AddressAutocomplete({ value, onChange, onSelect, classNa
             >
               <span className="text-gray-900">{a.street}</span>
               {(a.postcode || a.city) && (
-                <span className="text-gray-400"> — {[a.postcode, a.city].filter(Boolean).join(' ')}</span>
+                <span className="text-gray-400"> : {[a.postcode, a.city].filter(Boolean).join(' ')}</span>
               )}
             </li>
           ))}

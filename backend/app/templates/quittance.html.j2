@@ -88,14 +88,14 @@
   </table>
 
   <div class="objet">
-    <strong>Objet :</strong> Quittance de loyer — {{ payment.period_label }}
+    <strong>Objet :</strong> Quittance de loyer : {{ payment.period_label }}
   </div>
 
   <hr>
 
   <h1>Quittance de loyer</h1>
   <p class="subtitle">{{ payment.period_label }}</p>
-  <p class="ref-line">Réf. {{ payment.id | string | truncate(8, end='') }} — {{ payment.updated_at.strftime('%d/%m/%Y') }}</p>
+  <p class="ref-line">Réf. {{ payment.id | string | truncate(8, end='') }} : {{ payment.updated_at.strftime('%d/%m/%Y') }}</p>
 
   {% if payment.period_start and payment.period_end %}
   <div class="sec">Période concernée</div>

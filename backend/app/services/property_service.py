@@ -15,7 +15,7 @@ class PropertyService:
         """Synchronise les champs dénormalisés du propriétaire depuis la fiche Owner.
 
         La fiche (`owner_id`) est la source de vérité : on en dérive `owner_user_id`
-        (compte de connexion), `owner_name`, `owner_email`, `owner_phone` — utilisés
+        (compte de connexion), `owner_name`, `owner_email`, `owner_phone` : utilisés
         pour l'isolation et les modèles PDF. À défaut de fiche, on retombe sur l'ancien
         comportement (compte lié `owner_user_id`)."""
         from sqlalchemy import select

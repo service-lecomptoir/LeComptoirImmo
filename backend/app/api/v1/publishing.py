@@ -156,13 +156,13 @@ async def delete_platform(
 
 
 # ── Vue d'ensemble des annonces (suivi des performances) ─────────────────────
-@router.get("/listings", summary="Mes annonces — statut et performances")
+@router.get("/listings", summary="Mes annonces : statut et performances")
 async def list_listings(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     """Statut + statistiques (vues) de chaque annonce du périmètre du gestionnaire,
-    indexés par bien — alimente la vue d'ensemble de la page Publication."""
+    indexés par bien : alimente la vue d'ensemble de la page Publication."""
     role = Role(user.role)
     if role == Role.ADMIN:
         prop_ids = None

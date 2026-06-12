@@ -86,8 +86,8 @@ export default function Dashboard() {
       .catch(e => {
         setStats(null)
         setError(e?.response?.status === 403
-          ? 'Accès refusé — rôle gestionnaire requis'
-          : getErrorMessage(e, 'Erreur — vérifiez que le serveur est démarré'))
+          ? 'Accès refusé : rôle gestionnaire requis'
+          : getErrorMessage(e, 'Erreur : vérifiez que le serveur est démarré'))
       })
       .finally(() => setLoading(false))
   }
@@ -165,7 +165,7 @@ export default function Dashboard() {
             )}
             {stats.alerts.overdue_payments > 0 && (
               <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-medium">
-                {stats.alerts.overdue_payments} paiement{stats.alerts.overdue_payments > 1 ? 's' : ''} en retard — {fmtEur(stats.alerts.overdue_amount)}
+                {stats.alerts.overdue_payments} paiement{stats.alerts.overdue_payments > 1 ? 's' : ''} en retard : {fmtEur(stats.alerts.overdue_amount)}
               </span>
             )}
           </div>
@@ -202,7 +202,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl border p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900">Revenus — 12 derniers mois</h2>
+            <h2 className="font-semibold text-gray-900">Revenus : 12 derniers mois</h2>
             <div className="flex gap-3 text-xs text-gray-500">
               <span className="flex items-center gap-1"><span className="w-3 h-2 bg-blue-500 inline-block rounded-sm" /> Encaissé</span>
               <span className="flex items-center gap-1"><span className="w-3 h-2 bg-blue-200 inline-block rounded-sm" /> Attendu</span>
@@ -253,7 +253,7 @@ export default function Dashboard() {
 
       {/* Comparaison bar chart */}
       <div className="bg-white rounded-xl border p-5">
-        <h2 className="font-semibold text-gray-900 mb-4">Encaissé vs Attendu — comparaison mensuelle</h2>
+        <h2 className="font-semibold text-gray-900 mb-4">Encaissé vs Attendu : comparaison mensuelle</h2>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={monthlyData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

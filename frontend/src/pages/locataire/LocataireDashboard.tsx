@@ -82,7 +82,7 @@ export default function LocataireDashboard() {
               )}
               <div>
                 <p className="text-sm font-semibold text-gray-900">
-                  Avis d'échéance — {nextAvis.period_label}
+                  Avis d'échéance : {nextAvis.period_label}
                 </p>
                 <p className="text-xs text-gray-600">
                   Échéance le {format(new Date(nextAvis.due_date), 'd MMMM yyyy', { locale: fr })}

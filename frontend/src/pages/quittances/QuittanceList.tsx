@@ -69,7 +69,7 @@ export default function QuittanceList() {
     setSendingId(p.id)
     try {
       await paymentsApi.sendQuittance(p.id)
-      setSuccessMsg(`Quittance marquée comme envoyée — ${p.tenant_full_name} (${p.period_label})`)
+      setSuccessMsg(`Quittance marquée comme envoyée : ${p.tenant_full_name} (${p.period_label})`)
       setTimeout(() => setSuccessMsg(''), 4000)
       fetchPayments(search, filterYear, filterMonth)
     } finally {
@@ -118,7 +118,7 @@ export default function QuittanceList() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Quittances de loyer</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {payments.length} quittance{payments.length > 1 ? 's' : ''} — {sentCount} envoyée{sentCount > 1 ? 's' : ''}, {unsentCount} en attente
+            {payments.length} quittance{payments.length > 1 ? 's' : ''} : {sentCount} envoyée{sentCount > 1 ? 's' : ''}, {unsentCount} en attente
           </p>
         </div>
         <button

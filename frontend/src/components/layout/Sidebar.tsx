@@ -101,9 +101,9 @@ function useProprietaireInfo(active: boolean, userName: string): ProprietaireInf
 // ── Bloc d'info affiché en haut de sidebar ────────────────────────────────────
 
 interface SidebarInfoBlockProps {
-  line1: string           // gras, blanc — titre principal
+  line1: string           // gras, blanc : titre principal
   address: string         // avec icône MapPin
-  personName?: string     // optionnel — nom personne sous séparateur (icône User)
+  personName?: string     // optionnel : nom personne sous séparateur (icône User)
   refCode: string         // référence avec icône #
 }
 

@@ -497,7 +497,7 @@ export default function AdminUsers() {
       <Modal
         isOpen={!!editTarget}
         onClose={() => setEditTarget(null)}
-        title={`Modifier — ${editTarget?.full_name}`}
+        title={`Modifier : ${editTarget?.full_name}`}
         size="md"
       >
         <form onSubmit={editForm.handleSubmit(handleEdit)} className="space-y-4">

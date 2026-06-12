@@ -422,7 +422,7 @@ export default function LeaseDetail() {
               <div className="space-y-1">
                 {lease.co_tenants.map(ct => (
                   <p key={ct.id} className="text-sm text-gray-800">
-                    {ct.full_name}{ct.email ? <span className="text-gray-400"> — {ct.email}</span> : null}
+                    {ct.full_name}{ct.email ? <span className="text-gray-400"> : {ct.email}</span> : null}
                   </p>
                 ))}
               </div>

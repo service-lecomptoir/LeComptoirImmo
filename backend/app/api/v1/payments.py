@@ -34,7 +34,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 def _stats_agency_only(current_user: User) -> None:
     """Stats globales (agence) : réservées admin + mandataire. Les GP/propriétaires
-    disposent de tableaux de bord scopés (dashboard.py) — ces totaux globaux leur
+    disposent de tableaux de bord scopés (dashboard.py) : ces totaux globaux leur
     sont interdits pour ne pas révéler de chiffres hors périmètre."""
     if Role(current_user.role) not in (Role.ADMIN, Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE):
         from app.core.exceptions import ForbiddenException
@@ -188,7 +188,7 @@ async def locataire_declare_payment(
     # Notifie le gestionnaire en charge du bail (created_by), liée au paiement
     manager_id = getattr(payment.lease, "created_by", None) if payment.lease else None
     notif = Notification(
-        title=f"Paiement à valider — {tenant.full_name}",
+        title=f"Paiement à valider : {tenant.full_name}",
         message=(
             f"{tenant.full_name} a déclaré avoir réglé le loyer de {payment.period_label} "
             f"({amount:.2f} € par {label}). Validez le règlement pour l'enregistrer."

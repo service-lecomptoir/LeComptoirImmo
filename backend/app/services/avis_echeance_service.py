@@ -1,5 +1,5 @@
 """
-Service AvisEcheance — Génération des avis d'échéances (manuelle et automatique).
+Service AvisEcheance : Génération des avis d'échéances (manuelle et automatique).
 """
 import uuid
 import calendar

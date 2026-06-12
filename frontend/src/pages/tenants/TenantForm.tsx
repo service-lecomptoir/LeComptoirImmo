@@ -278,7 +278,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
           )}
           {selectedUserId && !showCreateUser && (
             <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1">
-              <UserRound size={11} /> Compte lié — ce locataire peut se connecter à son espace
+              <UserRound size={11} /> Compte lié : ce locataire peut se connecter à son espace
             </p>
           )}
         </div>
@@ -322,7 +322,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         <div>
           <SectionTitle icon={Phone}>Contact</SectionTitle>
           <div className="space-y-3">
-            {/* Email en pleine largeur — une adresse longue reste entièrement visible */}
+            {/* Email en pleine largeur : une adresse longue reste entièrement visible */}
             <TenantField label="Email" name="email" type="email" required register={register} errors={errors} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />

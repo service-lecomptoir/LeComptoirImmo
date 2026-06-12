@@ -164,7 +164,7 @@ export default function LocatairePayer() {
         {payment.status === 'late' && (
           <div className="mt-3 flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
             <AlertCircle size={14} />
-            Paiement en retard — contactez votre gestionnaire si nécessaire.
+            Paiement en retard : contactez votre gestionnaire si nécessaire.
           </div>
         )}
       </div>
@@ -241,7 +241,7 @@ export default function LocatairePayer() {
             )
           )}
 
-          {/* Montant à régler — modifiable (partiel ou avance) */}
+          {/* Montant à régler : modifiable (partiel ou avance) */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 mb-5">
             <label className="text-sm font-medium text-gray-700">Montant que vous réglez</label>
             <div className="mt-2 flex items-center gap-2">
@@ -255,7 +255,7 @@ export default function LocatairePayer() {
             </div>
             <p className="text-xs text-gray-400 mt-2">
               Montant dû : <strong>{fmtEuro(due)}</strong>. Vous pouvez régler un
-              montant différent — partiel (le solde restera dû) ou supérieur (avance en votre faveur).
+              montant différent : partiel (le solde restera dû) ou supérieur (avance en votre faveur).
             </p>
             {amount > 0 && amount < due && (
               <p className="text-xs text-amber-600 mt-1">

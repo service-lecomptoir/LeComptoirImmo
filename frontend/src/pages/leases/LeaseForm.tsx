@@ -384,7 +384,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
             <div>
               <label className={lbl}>Jour de paiement</label>
               <input type="number" min="1" max="28" {...register('payment_day')} className={inp} />
-              <p className="text-xs text-gray-400 mt-1">Jour du mois où le loyer est exigible — c'est l'échéance affichée sur l'avis (ex. 6).</p>
+              <p className="text-xs text-gray-400 mt-1">Jour du mois où le loyer est exigible : c'est l'échéance affichée sur l'avis (ex. 6).</p>
             </div>
             <div>
               <label className={lbl}>Fréquence de paiement</label>
@@ -412,7 +412,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
             <input type="checkbox" id="apl_tiers_payant" {...register('apl_tiers_payant')}
               className="w-4 h-4 rounded border-gray-300 text-blue-600" />
             <label htmlFor="apl_tiers_payant" className="text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer">
-              Aide personnelle au logement — tiers payant CAF
+              Aide personnelle au logement : tiers payant CAF
             </label>
           </div>
           {aplTiersPayant && (

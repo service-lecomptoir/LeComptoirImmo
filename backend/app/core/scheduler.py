@@ -1,5 +1,5 @@
 """
-Scheduler APScheduler — tâches planifiées automatiques.
+Scheduler APScheduler : tâches planifiées automatiques.
 """
 import logging
 from datetime import date
@@ -45,7 +45,7 @@ async def _job_generate_alerts() -> None:
             await db.commit()
             if late or expiring:
                 logger.info(
-                    f"[Scheduler] Alertes générées — retard:{late} expiration:{expiring}"
+                    f"[Scheduler] Alertes générées : retard:{late} expiration:{expiring}"
                 )
         except Exception as exc:
             logger.error(f"[Scheduler] generate_alerts error: {exc}")
@@ -173,7 +173,7 @@ async def _job_send_telegram_reminders() -> None:
                     text = await agent_team_service.reminders(db, user)
                     if await send_message(link.chat_id, text):
                         sent += 1
-                except Exception as exc:  # noqa: BLE001 — un compte ne bloque pas les autres
+                except Exception as exc:  # noqa: BLE001 : un compte ne bloque pas les autres
                     logger.warning("[Scheduler] rappel Telegram échec user=%s: %r", user.id, exc)
             if sent:
                 logger.info("[Scheduler] %d rappel(s) Telegram envoyé(s)", sent)
@@ -247,7 +247,7 @@ def start_scheduler(
 
     scheduler.start()
     logger.info(
-        "[Scheduler] Démarré — 6 tâches planifiées (avis: jour=%d %02d:%02d ; "
+        "[Scheduler] Démarré : 6 tâches planifiées (avis: jour=%d %02d:%02d ; "
         "rappels Telegram: %02d:%02d ; publication annonces: */10 min)",
         avis_day, avis_hour, avis_minute, reminder_hour, reminder_minute,
     )

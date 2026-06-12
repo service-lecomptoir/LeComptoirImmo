@@ -77,6 +77,6 @@ async def generate_ticket_draft(topic: Optional[str], hint: Optional[str]) -> di
                 desc = (data.get("description") or "").strip()
                 if title and desc:
                     return {"title": title[:200], "description": desc, "source": "ia"}
-        except Exception:  # noqa: BLE001 — repli déterministe
+        except Exception:  # noqa: BLE001 : repli déterministe
             pass
     return _fallback(key, hint)

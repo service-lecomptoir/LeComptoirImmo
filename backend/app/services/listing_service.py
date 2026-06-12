@@ -81,7 +81,7 @@ def _fallback_draft(prop, facts: list[str]) -> dict:
         sentences.append("Il dispose de : " + ", ".join(equip) + ".")
     if getattr(prop, "energy_class", None):
         sentences.append(f"Classe énergétique (DPE) : {prop.energy_class}.")
-    sentences.append("Disponible à la location — contactez-nous pour organiser une visite.")
+    sentences.append("Disponible à la location : contactez-nous pour organiser une visite.")
     return {"title": title[:120], "description": " ".join(sentences)}
 
 
@@ -118,7 +118,7 @@ async def generate_listing_draft(prop, price=None) -> dict:
                 desc = (data.get("description") or "").strip()
                 if title and desc:
                     return {"title": title[:200], "description": desc, "source": "ia"}
-        except Exception:  # noqa: BLE001 — repli déterministe
+        except Exception:  # noqa: BLE001 : repli déterministe
             pass
     return {**_fallback_draft(prop, facts), "source": "modele"}
 
@@ -158,7 +158,7 @@ class ListingService:
     @staticmethod
     async def update(db: AsyncSession, listing: Listing, fields: dict) -> Listing:
         """Applique les champs RÉELLEMENT fournis (clé présente) ; une valeur `null`
-        EFFACE le champ (titre/description/loyer) — on ne confond plus « champ vidé »
+        EFFACE le champ (titre/description/loyer) : on ne confond plus « champ vidé »
         et « champ non transmis ». `fields` = data.model_dump(exclude_unset=True)."""
         if "title" in fields:
             v = fields["title"]

@@ -236,7 +236,7 @@ export default function AnnoncePublic() {
                 onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                 className="border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none sm:col-span-2" />
               {applyState === 'error' && (
-                <p className="text-sm text-red-600 sm:col-span-2">Échec de l'envoi — vérifiez vos informations puis réessayez.</p>
+                <p className="text-sm text-red-600 sm:col-span-2">Échec de l'envoi : vérifiez vos informations puis réessayez.</p>
               )}
               <div className="sm:col-span-2 flex justify-end">
                 <button type="submit" disabled={applyState === 'sending'}

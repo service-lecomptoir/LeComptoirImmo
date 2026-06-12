@@ -65,7 +65,7 @@ async def _require_gp_scope(db: AsyncSession, current_user: User, target_id: uui
     créé (`created_by`), ou un de ses locataires (lié à un de ses biens).
 
     NB : on s'aligne sur `list_users` (qui montre soi-même + les comptes créés) afin
-    qu'un GP puisse modifier/supprimer un compte qu'il vient d'ajouter — y compris
+    qu'un GP puisse modifier/supprimer un compte qu'il vient d'ajouter : y compris
     avant qu'il ne soit rattaché à un bail."""
     if str(target_id) == str(current_user.id):
         return
@@ -284,7 +284,7 @@ async def admin_reset_password(
     _feat: User = Depends(require_feature("admin")),
 ):
     """Permet à un gestionnaire/admin de définir un nouveau mot de passe pour un
-    utilisateur (ex. locataire), sans connaître l'ancien — comme le ferait le locataire
+    utilisateur (ex. locataire), sans connaître l'ancien : comme le ferait le locataire
     depuis son profil. Respecte l'isolation :
     - GP : uniquement les comptes qu'il gère (ses locataires / comptes créés) ;
     - mandataire : uniquement propriétaires et locataires ;

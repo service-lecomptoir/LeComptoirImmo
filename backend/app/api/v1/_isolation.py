@@ -362,7 +362,7 @@ async def assert_avis_access(db: AsyncSession, user: User, avis, *, write: bool 
 
 async def assert_document_access(db: AsyncSession, user: User, document, *, write: bool = False) -> None:
     """Isolation par rôle d'un document, selon son entité de rattachement
-    (`entity_type` ∈ tenant / lease / property / owner — autres types = gestion seule).
+    (`entity_type` ∈ tenant / lease / property / owner : autres types = gestion seule).
 
     On résout les clés d'appartenance depuis l'entité liée, puis on applique la
     même matrice que paiements/avis. Aligné sur l'isolation des LISTES de documents.

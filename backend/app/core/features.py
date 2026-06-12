@@ -2,12 +2,12 @@
 
 Le plan Alice porte une liste de fonctionnalités autorisées (`features`).
 Alice ayant sa propre base, LeComptoir Immo interroge son API /internal
-(via app.services.alice_client) — plus aucune lecture directe des tables alice_*.
+(via app.services.alice_client) : plus aucune lecture directe des tables alice_*.
 
 Convention : `features = NULL` (ou plan/licence absent) ⇒ AUCUNE restriction
 (toutes les fonctionnalités). Une liste explicite restreint aux clés présentes.
 Les rôles non-gestionnaire (admin, propriétaire, locataire) ne sont jamais
-restreints — l'abonnement concerne le compte gestionnaire.
+restreints : l'abonnement concerne le compte gestionnaire.
 """
 import logging
 from typing import Optional, List

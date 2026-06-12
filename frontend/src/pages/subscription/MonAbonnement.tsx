@@ -181,7 +181,7 @@ export default function MonAbonnement() {
         </div>
       )}
 
-      {/* Paiement de l'abonnement (Stripe — carte / prélèvement SEPA) */}
+      {/* Paiement de l'abonnement (Stripe : carte / prélèvement SEPA) */}
       {billing?.stripe_enabled && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -224,7 +224,7 @@ export default function MonAbonnement() {
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                       <option value="">Choisir un plan…</option>
                       {plans.filter(p => p.name !== billing.plan_name).map(p => (
-                        <option key={p.id} value={p.id}>{p.name} — {p.monthly_price} €/mois</option>
+                        <option key={p.id} value={p.id}>{p.name} : {p.monthly_price} €/mois</option>
                       ))}
                     </select>
                     <button onClick={changePlan} disabled={!newPlanId || changingPlan}
@@ -289,7 +289,7 @@ export default function MonAbonnement() {
         </div>
       )}
 
-      {/* Résiliation programmée — décompte */}
+      {/* Résiliation programmée : décompte */}
       {info?.access_until && !blocked && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center gap-3">
           <AlertTriangle className="text-amber-500 shrink-0" size={22} />
@@ -298,7 +298,7 @@ export default function MonAbonnement() {
             <p className="text-xs text-amber-700 mt-0.5">
               Votre accès est maintenu jusqu'au {new Date(info.access_until).toLocaleDateString('fr-FR')}
               {info.resiliation_days_remaining != null &&
-                ` — ${info.resiliation_days_remaining} jour${info.resiliation_days_remaining > 1 ? 's' : ''} restant${info.resiliation_days_remaining > 1 ? 's' : ''}`}.
+                ` : ${info.resiliation_days_remaining} jour${info.resiliation_days_remaining > 1 ? 's' : ''} restant${info.resiliation_days_remaining > 1 ? 's' : ''}`}.
             </p>
           </div>
         </div>
@@ -360,7 +360,7 @@ export default function MonAbonnement() {
         {!info?.can_create_property && !blocked && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
             <p className="text-xs text-orange-700 font-medium">
-              Limite atteinte — vous ne pouvez plus créer de nouveaux biens. Contactez votre administrateur pour upgrader votre plan.
+              Limite atteinte : vous ne pouvez plus créer de nouveaux biens. Contactez votre administrateur pour upgrader votre plan.
             </p>
           </div>
         )}
@@ -483,7 +483,7 @@ export default function MonAbonnement() {
       </div>
 
       <p className="text-xs text-gray-400 text-center">
-        Géré par Alice — pour toute modification, contactez votre administrateur.
+        Géré par Alice : pour toute modification, contactez votre administrateur.
       </p>
     </div>
   )

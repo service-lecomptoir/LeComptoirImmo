@@ -22,7 +22,7 @@ class AuthService:
     @staticmethod
     async def _check_alice_license(db: AsyncSession, user: User) -> None:
         """Vérifie que la licence Alice n'est pas bloquée pour les gestionnaires
-        (via l'API Alice — plus de lecture directe des tables alice_*)."""
+        (via l'API Alice : plus de lecture directe des tables alice_*)."""
         if user.role not in _MANAGED_ROLES:
             return
         try:

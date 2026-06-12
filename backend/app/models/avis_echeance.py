@@ -86,7 +86,7 @@ class AvisEcheance(Base, TimestampMixin):
     @property
     def period_range_label(self) -> str:
         """Période réellement couverte, ex. « du 15/01/2026 au 14/02/2026 »
-        (ou le mois si les dates ne sont pas renseignées — anciens avis)."""
+        (ou le mois si les dates ne sont pas renseignées : anciens avis)."""
         if self.period_start and self.period_end:
             return (f"du {self.period_start.strftime('%d/%m/%Y')} "
                     f"au {self.period_end.strftime('%d/%m/%Y')}")
@@ -97,4 +97,4 @@ class AvisEcheance(Base, TimestampMixin):
         return self.generated_by is None
 
     def __repr__(self) -> str:
-        return f"<AvisEcheance {self.period_label} — {self.status}>"
+        return f"<AvisEcheance {self.period_label} : {self.status}>"

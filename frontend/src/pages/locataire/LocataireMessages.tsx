@@ -215,7 +215,7 @@ export default function LocataireMessages() {
           <span>
             Préavis de départ transmis
             {preavis.notice_received_at ? ` le ${format(new Date(preavis.notice_received_at), 'd MMM yyyy', { locale: fr })}` : ''}
-            {preavis.departure_date ? ` — départ prévu le ${format(new Date(preavis.departure_date), 'd MMM yyyy', { locale: fr })}` : ''}.
+            {preavis.departure_date ? ` : départ prévu le ${format(new Date(preavis.departure_date), 'd MMM yyyy', { locale: fr })}` : ''}.
             Votre gestionnaire organisera l'état des lieux de sortie.
           </span>
         </div>

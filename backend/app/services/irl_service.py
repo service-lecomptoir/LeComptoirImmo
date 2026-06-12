@@ -96,7 +96,7 @@ class IrlService:
         key = getattr(get_settings(), "INSEE_API_KEY", "") or ""
         if not key:
             return {"fetched": 0, "configured": False,
-                    "message": "Récupération INSEE non configurée — saisie manuelle utilisée."}
+                    "message": "Récupération INSEE non configurée : saisie manuelle utilisée."}
         try:
             import httpx
             url = f"https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/{INSEE_IRL_SERIES}"
@@ -133,4 +133,4 @@ class IrlService:
         except Exception as exc:  # noqa
             logger.warning("Récupération IRL INSEE échouée : %r", exc)
             return {"fetched": 0, "configured": True,
-                    "message": "Échec de la récupération INSEE — saisie manuelle conservée."}
+                    "message": "Échec de la récupération INSEE : saisie manuelle conservée."}

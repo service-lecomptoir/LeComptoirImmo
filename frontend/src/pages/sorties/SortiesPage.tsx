@@ -100,7 +100,7 @@ export default function SortiesPage() {
     setBusy(true)
     try {
       refresh((await leaseExitsApi.close(selected.id)).data)
-      toast.success('Dossier clôturé — bail résilié.')
+      toast.success('Dossier clôturé : bail résilié.')
     } catch { /* */ } finally { setBusy(false) }
   }
 
@@ -283,7 +283,7 @@ export default function SortiesPage() {
                   <p className="text-xs mt-2 px-1 text-gray-500">
                     {selected.entry_inspection.overall_condition === selected.exit_inspection.overall_condition
                       ? '✅ État général identique entre l\'entrée et la sortie.'
-                      : '⚠️ État général différent entre l\'entrée et la sortie — vérifiez les dégradations et ajustez les retenues ci-dessous.'}
+                      : '⚠️ État général différent entre l\'entrée et la sortie : vérifiez les dégradations et ajustez les retenues ci-dessous.'}
                   </p>
                 )}
               </div>
@@ -363,7 +363,7 @@ export default function SortiesPage() {
                 </div>
               ) : (
                 <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-600">
-                  Dossier clôturé le {fmtDate(selected.closed_at)} — bail résilié, bien remis en location.
+                  Dossier clôturé le {fmtDate(selected.closed_at)} : bail résilié, bien remis en location.
                   Dépôt restitué : <b>{eur(selected.deposit_to_return)}</b>
                   {selected.total_deductions > 0 && <> (retenues : {eur(selected.total_deductions)})</>}.
                 </div>
@@ -389,7 +389,7 @@ export default function SortiesPage() {
                   <option value="">— Choisir un bail actif —</option>
                   {activeLeases.filter(l => !exitLeaseIds.has(l.id)).map(l => (
                     <option key={l.id} value={l.id}>
-                      {[l.tenant_full_name, l.property_name].filter(Boolean).join(' — ') || l.id.slice(0, 8)}
+                      {[l.tenant_full_name, l.property_name].filter(Boolean).join(' : ') || l.id.slice(0, 8)}
                     </option>
                   ))}
                 </select>

@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
 
     # ── Création des tables manquantes (idempotent) ───────────────────────────
     try:
-        import app.models  # noqa — importe tous les modèles pour que Base.metadata les connaisse
+        import app.models  # noqa : importe tous les modèles pour que Base.metadata les connaisse
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Tables vérifiées / créées ✓")
@@ -434,7 +434,7 @@ async def _apply_column_migrations() -> None:
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="API de gestion locative — LeComptoirImmo",
+    description="API de gestion locative : LeComptoirImmo",
     docs_url="/api/docs" if not settings.is_production else None,
     redoc_url="/api/redoc" if not settings.is_production else None,
     openapi_url="/api/openapi.json" if not settings.is_production else None,

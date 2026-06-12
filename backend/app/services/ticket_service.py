@@ -62,7 +62,7 @@ class TicketService:
         """Crée une démarche POUR un locataire (auteur = gestionnaire).
 
         Variante de `create` où le locataire est désigné par son id (et non déduit
-        du compte auteur) — utilisée par les agents IA côté gestionnaire."""
+        du compte auteur) : utilisée par les agents IA côté gestionnaire."""
         from app.models.ticket import TicketCategory, TicketPriority
         cat = category or TicketCategory.AUTRE.value
         prio = priority or TicketPriority.MEDIUM.value
@@ -152,7 +152,7 @@ class TicketService:
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(ticket, field, value)
         if data.status in (TicketStatus.CLOSED, TicketStatus.RESOLVED) and not ticket.closed_at:
-            ticket.closed_at = datetime.utcnow()  # naive datetime — colonne TIMESTAMP WITHOUT TIME ZONE
+            ticket.closed_at = datetime.utcnow()  # naive datetime : colonne TIMESTAMP WITHOUT TIME ZONE
         await db.flush()
         return ticket
 

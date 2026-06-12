@@ -31,7 +31,7 @@ async def alice_webhook(
     Reçoit une notification de Alice lors d'un blocage, déblocage ou
     changement de plan. Valide la clé interne et logue l'événement.
     Aucune synchronisation DB nécessaire : Alice et LeCI partagent la
-    même base de données — les changements sont déjà visibles.
+    même base de données : les changements sont déjà visibles.
     """
     cfg = get_settings()
     if x_internal_key != cfg.ALICE_INTERNAL_KEY:

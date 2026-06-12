@@ -7,7 +7,7 @@ Telegram au gestionnaire concerné. C'est le pendant « push » des agents, qui
 fonctionnaient jusqu'ici en « pull » (le gestionnaire interroge) + rappels
 planifiés.
 
-Best-effort : jamais bloquant pour le flux appelant — toute erreur est avalée.
+Best-effort : jamais bloquant pour le flux appelant : toute erreur est avalée.
 
 ➕ POUR ÉTENDRE À UN NOUVEAU CAS D'USAGE : ajouter une entrée dans EVENT_AGENT
 (sujet → clé d'agent) et son libellé dans TOPIC_LABEL. Rien d'autre à câbler :
@@ -65,7 +65,7 @@ async def notify_manager(
     """Pousse un message de l'agent compétent au gestionnaire (Telegram, best-effort).
 
     Retourne True si un message a été émis, False sinon (pas de lien Telegram,
-    opt-out, token absent, erreur réseau…) — sans jamais lever d'exception, afin
+    opt-out, token absent, erreur réseau…) : sans jamais lever d'exception, afin
     de ne pas casser le flux métier appelant (déclaration de paiement, démarche…).
     """
     try:
@@ -82,6 +82,6 @@ async def notify_manager(
         if cta:
             lines += ["", cta]
         return await telegram_service.send_message(link.chat_id, "\n".join(lines))
-    except Exception as exc:  # noqa: BLE001 — ne jamais casser le flux appelant
+    except Exception as exc:  # noqa: BLE001 : ne jamais casser le flux appelant
         logger.warning("agent_events.notify_manager échec: %r", exc)
         return False

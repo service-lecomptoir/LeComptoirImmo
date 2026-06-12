@@ -209,7 +209,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
           style={{ background: '#ECFDF5', borderColor: '#A7F3D0', color: '#0f766e' }}>
           <Wrench size={16} className="mt-0.5 shrink-0" />
           <div className="flex-1">
-            <b>Planification automatique</b> — {autoplanMsg} Les entretiens créés portent le badge « Auto ».
+            <b>Planification automatique</b> : {autoplanMsg} Les entretiens créés portent le badge « Auto ».
           </div>
           <button onClick={() => setAutoplanMsg(null)} className="text-teal-700 hover:text-teal-900">
             <X size={15} />

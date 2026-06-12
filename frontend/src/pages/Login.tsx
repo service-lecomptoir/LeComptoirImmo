@@ -105,7 +105,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
       <div className="absolute -bottom-24 -left-24 w-80 h-80 rounded-full opacity-10"
            style={{ background: 'radial-gradient(circle, #F07800, transparent)' }} />
 
-      {/* Header — Logo */}
+      {/* Header : Logo */}
       <div className="relative z-10 px-12 pt-12">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -116,7 +116,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
         </div>
       </div>
 
-      {/* Centre — Message principal */}
+      {/* Centre : Message principal */}
       <div className="relative z-10 px-12 py-8">
         {/* Illustration immeuble stylisée */}
         <div className="mb-10 flex items-end gap-1.5" aria-hidden="true">
@@ -221,7 +221,7 @@ export default function Login() {
         } else if (status === 429) {
           msg = 'Trop de tentatives. Réessayez dans quelques instants.'
         } else if (status === 502 || status === 503 || status === 504) {
-          msg = "Service momentanément indisponible — le serveur redémarre ou est en maintenance. Réessayez dans quelques instants."
+          msg = "Service momentanément indisponible : le serveur redémarre ou est en maintenance. Réessayez dans quelques instants."
         } else if (status && status >= 500) {
           msg = detail || "Une erreur est survenue côté serveur. Réessayez plus tard."
         } else if (!err?.response) {
@@ -238,10 +238,10 @@ export default function Login() {
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
 
-      {/* Panneau gauche — visible uniquement desktop */}
+      {/* Panneau gauche : visible uniquement desktop */}
       <BrandPanel accountType={accountType} />
 
-      {/* Panneau droit — formulaire */}
+      {/* Panneau droit : formulaire */}
       <div className="flex-1 flex flex-col justify-center items-center bg-white px-6 py-12 lg:px-16">
 
         {/* Logo mobile uniquement */}
@@ -477,7 +477,7 @@ export default function Login() {
             <span className="text-xs text-gray-400">Connexion sécurisée · Espace {activeType.label}</span>
           </div>
 
-          {/* CTA souscription — discret, sans dénaturer la page */}
+          {/* CTA souscription : discret, sans dénaturer la page */}
           <p className="mt-4 text-center text-xs text-gray-400">
             Pas encore client ?{' '}
             <button type="button" onClick={() => setShowSubscribe(true)}
@@ -497,7 +497,7 @@ export default function Login() {
 
       <SubscriptionModal open={showSubscribe} onClose={() => setShowSubscribe(false)} />
 
-      {/* Aide « Mot de passe oublié ? » — adaptée au profil sélectionné */}
+      {/* Aide « Mot de passe oublié ? » : adaptée au profil sélectionné */}
       {showForgot && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
              onClick={() => setShowForgot(false)}>

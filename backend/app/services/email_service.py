@@ -19,7 +19,7 @@ async def send_email(
     from app.config import get_settings
     cfg = get_settings()
     if not cfg.smtp_enabled:
-        logger.debug("SMTP désactivé — email simulé vers %s: %s", to, subject)
+        logger.debug("SMTP désactivé : email simulé vers %s: %s", to, subject)
         return False
 
     try:
@@ -81,7 +81,7 @@ def _base_template(title: str, content: str) -> str:
 </head>
 <body>
 <div class="wrapper">
-  <div class="header"><h1>Le Comptoir Immo — {title}</h1></div>
+  <div class="header"><h1>Le Comptoir Immo : {title}</h1></div>
   <div class="body">{content}</div>
   <div class="footer">Le Comptoir Immo · Gestion locative · Ce message est automatique, merci de ne pas y répondre.</div>
 </div>
@@ -112,7 +112,7 @@ async def send_avis_echeance(
 """
     return await send_email(
         to=to,
-        subject=f"Avis d'échéance — {period_label}",
+        subject=f"Avis d'échéance : {period_label}",
         html_body=_base_template(f"Avis d'échéance {period_label}", content),
         attachment_bytes=pdf_bytes,
         attachment_filename=f"avis-echeance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
@@ -134,7 +134,7 @@ async def send_quittance(
 """
     return await send_email(
         to=to,
-        subject=f"Quittance de loyer — {period_label}",
+        subject=f"Quittance de loyer : {period_label}",
         html_body=_base_template(f"Quittance {period_label}", content),
         attachment_bytes=pdf_bytes,
         attachment_filename=f"quittance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
@@ -258,7 +258,7 @@ async def send_subscription_lead_notification(
 """
     return await send_email(
         to=to,
-        subject=f"Nouvelle demande de souscription — {full_name}",
+        subject=f"Nouvelle demande de souscription : {full_name}",
         html_body=_base_template("Nouvelle demande de souscription", content),
     )
 

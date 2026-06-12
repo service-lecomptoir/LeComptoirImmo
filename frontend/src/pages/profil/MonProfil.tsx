@@ -291,7 +291,7 @@ export default function MonProfil() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Mes informations</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Vos informations et coordonnées — utilisées dans la barre latérale et sur vos documents.
+          Vos informations et coordonnées : utilisées dans la barre latérale et sur vos documents.
         </p>
       </div>
 
@@ -440,7 +440,7 @@ export default function MonProfil() {
           </div>
         )}
 
-        {/* ── Coordonnées bancaires (RIB) — propriétaire / GP ── */}
+        {/* ── Coordonnées bancaires (RIB) : propriétaire / GP ── */}
         {showRib && (
           <div className="pt-4 mt-2 border-t border-gray-100 space-y-4">
             <div className="flex items-center gap-2">
@@ -538,7 +538,7 @@ export default function MonProfil() {
           <p className="text-xs text-gray-500 -mt-2">
             Votre équipe d'agents répond à vos questions, vous envoie un point du jour, et peut
             <b> exécuter des actions</b> (générer un avis ou une quittance, enregistrer un paiement,
-            ouvrir une démarche) — avec confirmation — directement sur Telegram (gratuit).
+            ouvrir une démarche) : avec confirmation : directement sur Telegram (gratuit).
           </p>
 
           {/* Présentation des 3 agents */}

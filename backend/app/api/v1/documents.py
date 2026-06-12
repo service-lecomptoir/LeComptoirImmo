@@ -154,7 +154,7 @@ _LOCATAIRE_UPLOADABLE_TYPES = {
     "/upload-locataire",
     response_model=DocumentResponse,
     status_code=201,
-    summary="Locataire — uploader son propre document (assurance...)",
+    summary="Locataire : uploader son propre document (assurance...)",
 )
 async def upload_document_locataire(
     file: UploadFile = File(...),

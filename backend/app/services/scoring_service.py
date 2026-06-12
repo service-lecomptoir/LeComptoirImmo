@@ -126,7 +126,7 @@ def compute(tenant, lease, payments: list, today: Optional[date] = None) -> dict
     if overdue_count == 0:
         impayes_detail = "Aucun impayé en cours"
     else:
-        impayes_detail = f"{overdue_count} échéance(s) impayée(s) — {outstanding:.2f} € dus"
+        impayes_detail = f"{overdue_count} échéance(s) impayée(s) : {outstanding:.2f} € dus"
 
     # ── Taux d'effort ────────────────────────────────────────────────────────
     income = float(tenant.monthly_income) if getattr(tenant, "monthly_income", None) else None

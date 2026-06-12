@@ -143,7 +143,7 @@ async def list_exits(
         try:
             lease = await LeaseService.get_by_id(db, ex.lease_id, load_relations=True)
             await assert_lease_access(db, user, lease)
-        except Exception:  # noqa: BLE001 — hors périmètre / bail disparu → on masque
+        except Exception:  # noqa: BLE001 : hors périmètre / bail disparu → on masque
             continue
         out.append(await _out(db, ex, lease))
     return out
@@ -350,7 +350,7 @@ async def send_preavis(
     try:
         from app.models.notification import Notification, NotificationType, NotificationPriority
         db.add(Notification(
-            title=f"Préavis de départ — {tenant.full_name}",
+            title=f"Préavis de départ : {tenant.full_name}",
             message=f"{tenant.full_name} a transmis un préavis de départ.{dep} "
                     f"Ouvrez « Sortie du locataire » pour le traiter.",
             notification_type=NotificationType.SYSTEME, priority=NotificationPriority.HIGH,

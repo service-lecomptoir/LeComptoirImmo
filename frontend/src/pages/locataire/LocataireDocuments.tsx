@@ -276,7 +276,7 @@ export default function LocataireDocuments() {
     if (cat.key === 'bail') {
       const virtual = leases.map((l: any) => ({
         id: `lease-${l.id}`,
-        label: `Contrat de bail${l.property_name ? ' — ' + l.property_name : ''}`,
+        label: `Contrat de bail${l.property_name ? ' : ' + l.property_name : ''}`,
         typeLabel: 'Contrat de bail',
         date: l.start_date ?? l.created_at,
         onDownload: () => leasesApi.downloadPdf(
@@ -290,7 +290,7 @@ export default function LocataireDocuments() {
         .filter((p: any) => p.status === 'paid')
         .map((p: any) => ({
           id: `pay-${p.id}`,
-          label: `Quittance — ${p.period_label}`,
+          label: `Quittance : ${p.period_label}`,
           typeLabel: 'Quittance',
           date: p.payment_date,
           onDownload: () => paymentsApi.downloadQuittance(
@@ -302,7 +302,7 @@ export default function LocataireDocuments() {
     if (cat.key === 'avis') {
       return avis.map((a: any) => ({
         id: `avis-${a.id}`,
-        label: `Avis d'échéance — ${a.period_range_label || a.period_label}`,
+        label: `Avis d'échéance : ${a.period_range_label || a.period_label}`,
         typeLabel: "Avis d'échéance",
         date: a.created_at,
         onDownload: () => downloadAvis(a),

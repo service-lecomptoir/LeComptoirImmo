@@ -64,4 +64,4 @@ class Notification(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<Notification {self.notification_type} — {self.title[:40]}>"
+        return f"<Notification {self.notification_type} : {self.title[:40]}>"

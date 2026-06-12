@@ -23,19 +23,19 @@
   .footer { margin-top: 22px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 7.5pt; color: #9ca3af; }
 </style></head><body>
   <h1>Revenus fonciers</h1>
-  <p class="sub">Déclaration 2044 simplifiée — année {{ data.year }}</p>
+  <p class="sub">Déclaration 2044 simplifiée : année {{ data.year }}</p>
   <p class="owner">{{ data.owner_name }}</p>
 
-  <div class="sec-title">SECTION A — REVENUS BRUTS</div>
+  <div class="sec-title">SECTION A : REVENUS BRUTS</div>
   <table>
-    <tr><td>Loyers encaissés<div class="line">Ligne 100 — Recettes brutes</div></td><td class="r">{{ "%.2f"|format(f.gross_rent_revenue) }} €</td></tr>
-    <tr><td>Provisions pour charges récupérées<div class="line">Ligne 110 — Charges locatives</div></td><td class="r">{{ "%.2f"|format(f.charges_received) }} €</td></tr>
+    <tr><td>Loyers encaissés<div class="line">Ligne 100 : Recettes brutes</div></td><td class="r">{{ "%.2f"|format(f.gross_rent_revenue) }} €</td></tr>
+    <tr><td>Provisions pour charges récupérées<div class="line">Ligne 110 : Charges locatives</div></td><td class="r">{{ "%.2f"|format(f.charges_received) }} €</td></tr>
     <tr class="tot"><td>Total revenus bruts (A)</td><td class="r">{{ "%.2f"|format(f.total_gross_revenue) }} €</td></tr>
   </table>
 
-  <div class="sec-title">SECTION B — CHARGES DÉDUCTIBLES</div>
+  <div class="sec-title">SECTION B : CHARGES DÉDUCTIBLES</div>
   <table>
-    <tr><td>Frais de gestion et d'administration<div class="line">Ligne 120 — 8% des loyers bruts (estimation)</div></td><td class="r">{{ "%.2f"|format(f.management_fees) }} €</td></tr>
+    <tr><td>Frais de gestion et d'administration<div class="line">Ligne 120 : 8% des loyers bruts (estimation)</div></td><td class="r">{{ "%.2f"|format(f.management_fees) }} €</td></tr>
     <tr><td>Travaux et réparations<div class="line">Ligne 130</div></td><td class="r">__________ €</td></tr>
     <tr><td>Primes d'assurance<div class="line">Ligne 140</div></td><td class="r">__________ €</td></tr>
     <tr><td>Taxe foncière<div class="line">Ligne 150</div></td><td class="r">__________ €</td></tr>
@@ -44,7 +44,7 @@
   </table>
 
   <div class="result">
-    <div class="rh">SECTION C — RÉSULTAT FISCAL</div>
+    <div class="rh">SECTION C : RÉSULTAT FISCAL</div>
     <div class="rb">
       <table style="border:0;">
         <tr style="border:0;">

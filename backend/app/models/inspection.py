@@ -77,4 +77,4 @@ class Inspection(Base, TimestampMixin):
     parent_property: Mapped[Optional["Property"]] = relationship("Property", lazy="select")
 
     def __repr__(self) -> str:
-        return f"<Inspection {self.inspection_type} — {self.inspection_date}>"
+        return f"<Inspection {self.inspection_type} : {self.inspection_date}>"

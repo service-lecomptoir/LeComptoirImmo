@@ -72,7 +72,7 @@ export default function ProprietaireFiscal() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Liasse fiscale — Revenus fonciers</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Liasse fiscale : Revenus fonciers</h1>
           <p className="text-sm text-gray-500 mt-1">Déclaration 2044 simplifiée</p>
         </div>
         <div className="flex items-center gap-3 no-print">
@@ -136,23 +136,23 @@ export default function ProprietaireFiscal() {
             </div>
           </div>
 
-          {/* Section A — Revenus */}
+          {/* Section A : Revenus */}
           <div className="bg-white rounded-xl border overflow-hidden">
             <div className="bg-gray-800 text-white px-5 py-3">
-              <h3 className="font-semibold text-sm">SECTION A — REVENUS BRUTS</h3>
+              <h3 className="font-semibold text-sm">SECTION A : REVENUS BRUTS</h3>
             </div>
             <div className="p-5 space-y-3">
               <div className="flex justify-between items-center py-2 border-b">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Loyers encaissés</p>
-                  <p className="text-xs text-gray-400">Ligne 100 — Recettes brutes</p>
+                  <p className="text-xs text-gray-400">Ligne 100 : Recettes brutes</p>
                 </div>
                 <p className="font-bold text-gray-900">{fmtEur(data.gross_rent_revenue)}</p>
               </div>
               <div className="flex justify-between items-center py-2 border-b">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Provisions pour charges récupérées</p>
-                  <p className="text-xs text-gray-400">Ligne 110 — Charges locatives</p>
+                  <p className="text-xs text-gray-400">Ligne 110 : Charges locatives</p>
                 </div>
                 <p className="font-bold text-gray-900">{fmtEur(data.charges_received)}</p>
               </div>
@@ -163,17 +163,17 @@ export default function ProprietaireFiscal() {
             </div>
           </div>
 
-          {/* Section B — Charges */}
+          {/* Section B : Charges */}
           <div className="bg-white rounded-xl border overflow-hidden">
             <div className="bg-gray-800 text-white px-5 py-3">
-              <h3 className="font-semibold text-sm">SECTION B — CHARGES DÉDUCTIBLES</h3>
+              <h3 className="font-semibold text-sm">SECTION B : CHARGES DÉDUCTIBLES</h3>
             </div>
             <div className="p-5 space-y-3">
               {/* Frais de gestion automatiques */}
               <div className="flex justify-between items-center py-2 border-b">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Frais de gestion et d'administration</p>
-                  <p className="text-xs text-gray-400">Ligne 120 — 8% des loyers bruts (calculé automatiquement)</p>
+                  <p className="text-xs text-gray-400">Ligne 120 : 8% des loyers bruts (calculé automatiquement)</p>
                 </div>
                 <p className="font-bold text-gray-900">{fmtEur(data.management_fees)}</p>
               </div>
@@ -211,10 +211,10 @@ export default function ProprietaireFiscal() {
             </div>
           </div>
 
-          {/* Section C — Résultat */}
+          {/* Section C : Résultat */}
           <div className={`rounded-xl border overflow-hidden ${netRevenue >= 0 ? 'border-green-200' : 'border-red-200'}`}>
             <div className={`px-5 py-3 ${netRevenue >= 0 ? 'bg-green-700' : 'bg-red-700'} text-white`}>
-              <h3 className="font-semibold text-sm">SECTION C — RÉSULTAT FISCAL</h3>
+              <h3 className="font-semibold text-sm">SECTION C : RÉSULTAT FISCAL</h3>
             </div>
             <div className={`p-5 ${netRevenue >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
               <div className="flex justify-between items-center">
