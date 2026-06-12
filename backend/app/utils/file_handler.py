@@ -75,6 +75,17 @@ async def save_file(
     return relative_path, size
 
 
+def save_bytes(content: bytes, entity_type: str, entity_id: str, filename: str) -> tuple[str, int]:
+    """Sauvegarde des octets (ex. PDF généré) sous la même arborescence que les
+    uploads et retourne (file_path relatif, taille)."""
+    upload_path = _get_upload_path(entity_type, entity_id)
+    safe_name = f"{uuid.uuid4().hex}_{Path(filename or 'document.pdf').name}"
+    dest = upload_path / safe_name
+    with open(dest, "wb") as f:
+        f.write(content)
+    return str(dest).replace("\\", "/"), len(content)
+
+
 def delete_file(file_path: str) -> None:
     """Supprime un fichier du disque."""
     path = Path(file_path)

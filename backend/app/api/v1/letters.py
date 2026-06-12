@@ -19,9 +19,28 @@ from app.core.features import require_feature
 from app.services.lease_service import LeaseService
 from app.services.payment_service import PaymentService
 from app.services.pdf_service import render_template, html_to_pdf, render_relance_html
+from app.services.document_service import DocumentService
+from app.models.document import EntityType, DocumentType
 from app.core.exceptions import BadRequestException
 
 router = APIRouter(prefix="/letters", tags=["Letters"])
+
+
+async def _save_to_tenant_docs(db, payment, current_user, pdf: bytes, filename: str, label: str):
+    """Ajoute un courrier généré dans « Mes documents » du locataire (non bloquant :
+    une erreur de stockage ne doit jamais empêcher le téléchargement)."""
+    tenant_id = getattr(payment, "tenant_id", None)
+    if not tenant_id:
+        return
+    try:
+        await DocumentService.save_generated(
+            db, content=pdf, file_name=filename,
+            entity_type=EntityType.TENANT, entity_id=tenant_id,
+            document_type=DocumentType.AUTRE, label=label,
+            uploaded_by=current_user.id,
+        )
+    except Exception:
+        pass
 
 LEASE_TYPE_LABELS = {
     "vide": "Location vide (loi du 6 juillet 1989)",
@@ -106,6 +125,8 @@ async def lettre_relance(
         month=payment.period_month,
         year=payment.period_year,
     )
+    await _save_to_tenant_docs(db, payment, current_user, pdf, filename,
+                               f"Lettre de relance · {payment.period_label}")
     return Response(
         content=pdf,
         media_type="application/pdf",
@@ -152,6 +173,8 @@ async def plan_apurement(
         property_name=property_obj.name if property_obj else None,
         month=payment.period_month, year=payment.period_year,
     )
+    await _save_to_tenant_docs(db, payment, current_user, pdf, filename,
+                               f"Plan d'apurement · {payment.period_label}")
     return Response(
         content=pdf, media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},

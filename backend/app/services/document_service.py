@@ -42,6 +42,39 @@ class DocumentService:
         return doc
 
     @staticmethod
+    async def save_generated(
+        db: AsyncSession,
+        *,
+        content: bytes,
+        file_name: str,
+        entity_type: EntityType,
+        entity_id: uuid.UUID,
+        document_type: DocumentType,
+        label: str | None,
+        uploaded_by: uuid.UUID | None,
+        mime_type: str = "application/pdf",
+    ) -> Document:
+        """Persiste un document GÉNÉRÉ (octets PDF) et crée son enregistrement,
+        rattaché à une entité (ex. le locataire). Utilisé pour que les courriers
+        produits par le gestionnaire apparaissent dans « Mes documents »."""
+        from app.utils.file_handler import save_bytes
+        file_path, file_size = save_bytes(content, entity_type.value, str(entity_id), file_name)
+        doc = Document(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            document_type=document_type,
+            file_name=file_name,
+            file_path=file_path,
+            mime_type=mime_type,
+            file_size=file_size,
+            label=label,
+            uploaded_by=uploaded_by,
+        )
+        db.add(doc)
+        await db.flush()
+        return doc
+
+    @staticmethod
     async def list_for_entities(
         db: AsyncSession,
         entity_ids: List[uuid.UUID],
