@@ -387,12 +387,9 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         {/* Contact */}
         <div>
           <SectionTitle icon={Phone}>Contact</SectionTitle>
-          <div className="space-y-3">
-            {/* Email en pleine largeur : une adresse longue reste entièrement visible */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <TenantField label="Email" name="email" type="email" required register={register} errors={errors} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
-            </div>
+            <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
           </div>
         </div>
 
