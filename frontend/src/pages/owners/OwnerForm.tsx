@@ -15,31 +15,33 @@ import type { User } from '@/types/auth'
 import { getErrorMessage } from '@/utils/errors'
 
 const schema = z.object({
+  owner_type: z.enum(['person', 'company']),
   civility: z.enum(['M', 'Mme', 'Autre']).optional(),
   first_name: z.string().optional(),
   last_name: z.string().optional(),
   company_name: z.string().optional(),
   national_id: z.string().optional(),
   email: z.string().min(1, 'Email requis').email('Email invalide'),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  zip_code: z.string().optional(),
-  city: z.string().optional(),
+  phone: z.string().min(1, 'Téléphone requis'),
+  address: z.string().min(1, 'Adresse requise'),
+  zip_code: z.string().min(1, 'Code postal requis'),
+  city: z.string().min(1, 'Ville requise'),
   country: z.string().optional(),
   iban: z.string().optional(),
   bic: z.string().optional(),
   bank_holder: z.string().optional(),
   notes: z.string().optional(),
   user_id: z.string().uuid().optional().or(z.literal('')),
-}).refine(
-  // Identité valide = personne (prénom + nom) OU personne morale (société + SIREN).
-  (d) => (!!d.first_name?.trim() && !!d.last_name?.trim())
-      || (!!d.company_name?.trim() && !!d.national_id?.trim()),
-  {
-    message: 'Renseignez soit le prénom et le nom, soit la société et le SIREN/SIRET.',
-    path: ['last_name'],
-  },
-)
+}).superRefine((d, ctx) => {
+  // Identité valide selon le type : personne (civilité/prénom/nom) OU société (raison + SIREN/SIRET).
+  if (d.owner_type === 'company') {
+    if (!d.company_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Société / SCI requise', path: ['company_name'] })
+    if (!d.national_id?.trim()) ctx.addIssue({ code: 'custom', message: 'SIREN / SIRET requis', path: ['national_id'] })
+  } else {
+    if (!d.first_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Prénom requis', path: ['first_name'] })
+    if (!d.last_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Nom requis', path: ['last_name'] })
+  }
+})
 
 type FormData = z.infer<typeof schema>
 
@@ -70,11 +72,14 @@ function OwnerField({ label, name, type = 'text', required = false, placeholder,
   )
 }
 
-function PhoneField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function PhoneField({ label, value, onChange, required = false, error }: { label: string; value: string; onChange: (v: string) => void; required?: boolean; error?: string }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-xs font-medium text-gray-700 mb-1">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
       <PhoneInput value={value} onChange={onChange} />
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   )
 }
@@ -98,6 +103,8 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: owner ? {
+      // Société sans prénom de personne => personne morale ; sinon personne physique.
+      owner_type: (owner.company_name?.trim() && !owner.first_name?.trim()) ? 'company' : 'person',
       civility: owner.civility ?? undefined,
       first_name: owner.first_name ?? '',
       last_name: owner.last_name,
@@ -114,25 +121,29 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       bank_holder: owner.bank_holder ?? '',
       notes: owner.notes ?? '',
       user_id: owner.user_id ?? '',
-    } : {},
+    } : { owner_type: 'person' },
   })
 
+  const ownerType = watch('owner_type')
   const selectedUserId = watch('user_id')
   const firstNameValue = watch('first_name')
   const lastNameValue = watch('last_name')
   const companyValue = watch('company_name')
   const emailValue = watch('email')
 
-  // Comptes « propriétaire » disponibles. En création : seulement ceux non encore
-  // rattachés à une fiche. En édition : tous, pour garder le compte lié visible.
+  // Comptes « propriétaire » sélectionnables : ceux non encore rattachés à une
+  // fiche. En édition, `owner_id` garde le compte de CETTE fiche visible, tout en
+  // excluant les comptes déjà liés à d'AUTRES propriétaires (1 compte = 1 fiche).
   useEffect(() => {
-    usersApi.list({ role: 'proprietaire', unlinked_owner: !isEdit })
+    usersApi.list({ role: 'proprietaire', unlinked_owner: true, owner_id: owner?.id })
       .then(r => setProprioUsers(r.data))
       .catch(() => {})
-  }, [isEdit])
+  }, [owner?.id])
 
   const handleCreateUser = async () => {
-    const name = (companyValue?.trim() || `${firstNameValue ?? ''} ${lastNameValue ?? ''}`.trim())
+    const name = ownerType === 'company'
+      ? (companyValue?.trim() || '')
+      : `${firstNameValue ?? ''} ${lastNameValue ?? ''}`.trim()
     const email = emailValue?.trim()
     if (!name || !email || !newUserPassword.trim()) {
       setCreateUserError('Remplissez le nom/société, l\'email et le mot de passe ci-dessus')
@@ -169,12 +180,15 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       const t = (v ?? '').trim()
       return t === '' ? null : t
     }
+    const isCompany = data.owner_type === 'company'
+    // On ne persiste que l'identité du type choisi. Société : `last_name` recopie la
+    // raison sociale (colonne NOT NULL en base, sans incidence d'affichage).
     const payload: any = {
-      civility: data.civility || null,
-      first_name: clean(data.first_name),
-      last_name: clean(data.last_name),
-      company_name: clean(data.company_name),
-      national_id: clean(data.national_id),
+      civility: isCompany ? null : (data.civility || null),
+      first_name: isCompany ? null : clean(data.first_name),
+      last_name: isCompany ? clean(data.company_name) : clean(data.last_name),
+      company_name: isCompany ? clean(data.company_name) : null,
+      national_id: isCompany ? clean(data.national_id) : null,
       email: clean(data.email),
       phone: clean(data.phone),
       address: clean(data.address),
@@ -287,27 +301,42 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
         {/* Identité */}
         <div>
           <SectionTitle icon={Contact}>Identité</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
-              <select {...register('civility')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">— Sélectionner —</option>
-                <option value="M">M.</option>
-                <option value="Mme">Mme</option>
-                <option value="Autre">Autre</option>
-              </select>
+          {/* Type de propriétaire : personne physique ou personne morale (société / SCI) */}
+          <div className="inline-flex rounded-lg border border-gray-300 p-0.5 mb-3 bg-gray-50">
+            {([['person', 'Personne'], ['company', 'Société / SCI']] as const).map(([val, lbl]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setValue('owner_type', val, { shouldValidate: false })}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  ownerType === val ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+
+          {ownerType === 'company' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <OwnerField label="Société / SCI" name="company_name" placeholder="SCI Les Tilleuls" required register={register} errors={errors} />
+              <OwnerField label="SIREN / SIRET" name="national_id" placeholder="123 456 789" required register={register} errors={errors} />
             </div>
-            <OwnerField label="Prénom" name="first_name" register={register} errors={errors} />
-            <OwnerField label="Nom" name="last_name" register={register} errors={errors} />
-          </div>
-          <p className="text-xs text-gray-400 mt-2">
-            Renseignez <span className="font-medium">soit</span> le prénom et le nom (personne),
-            <span className="font-medium"> soit</span> la société et le SIREN/SIRET (personne morale).
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            <OwnerField label="Société / SCI" name="company_name" placeholder="SCI Les Tilleuls" register={register} errors={errors} />
-            <OwnerField label="SIREN / SIRET" name="national_id" register={register} errors={errors} />
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
+                <select {...register('civility')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">— Sélectionner —</option>
+                  <option value="M">M.</option>
+                  <option value="Mme">Mme</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+              <OwnerField label="Prénom" name="first_name" required register={register} errors={errors} />
+              <OwnerField label="Nom" name="last_name" required register={register} errors={errors} />
+            </div>
+          )}
         </div>
 
         {/* Contact */}
@@ -315,45 +344,48 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
           <SectionTitle icon={Phone}>Contact</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <OwnerField label="Email" name="email" type="email" required register={register} errors={errors} />
-            <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
+            <PhoneField label="Téléphone" required value={watch('phone') || ''} onChange={v => setValue('phone', v, { shouldValidate: true })} error={errors.phone?.message as string} />
           </div>
           <div className="mt-3 space-y-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Adresse</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Adresse<span className="text-red-500 ml-0.5">*</span></label>
               <AddressAutocomplete
                 value={watch('address') || ''}
-                onChange={v => setValue('address', v)}
+                onChange={v => setValue('address', v, { shouldValidate: true })}
                 onSelect={({ street, postcode, city }) => {
-                  setValue('address', street)
-                  if (postcode) setValue('zip_code', postcode)
-                  if (city) setValue('city', city)
+                  setValue('address', street, { shouldValidate: true })
+                  if (postcode) setValue('zip_code', postcode, { shouldValidate: true })
+                  if (city) setValue('city', city, { shouldValidate: true })
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="12 rue de la République"
               />
+              {errors.address && <p className="mt-1 text-xs text-red-600">{errors.address.message as string}</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Code postal</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Code postal<span className="text-red-500 ml-0.5">*</span></label>
                 <CommuneAutocomplete
                   value={watch('zip_code') || ''}
-                  onChange={v => setValue('zip_code', v)}
-                  onSelect={({ zip, city }) => { setValue('zip_code', zip); setValue('city', city) }}
+                  onChange={v => setValue('zip_code', v, { shouldValidate: true })}
+                  onSelect={({ zip, city }) => { setValue('zip_code', zip, { shouldValidate: true }); setValue('city', city, { shouldValidate: true }) }}
                   display="postcode"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ex. 75001"
                 />
+                {errors.zip_code && <p className="mt-1 text-xs text-red-600">{errors.zip_code.message as string}</p>}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Ville</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Ville<span className="text-red-500 ml-0.5">*</span></label>
                 <CommuneAutocomplete
                   value={watch('city') || ''}
-                  onChange={v => setValue('city', v)}
-                  onSelect={({ zip, city }) => { setValue('zip_code', zip); setValue('city', city) }}
+                  onChange={v => setValue('city', v, { shouldValidate: true })}
+                  onSelect={({ zip, city }) => { setValue('zip_code', zip, { shouldValidate: true }); setValue('city', city, { shouldValidate: true }) }}
                   display="city"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="ex. Paris"
                 />
+                {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city.message as string}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Pays</label>

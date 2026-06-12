@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { notificationsApi } from '@/api/notifications'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 const POLL_INTERVAL_MS = 30_000 // 30 secondes
 
@@ -18,6 +19,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const location = useLocation()
   const [unreadCount, setUnreadCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmLogout, setConfirmLogout] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // ── Notifications ─────────────────────────────────────────────────────────
@@ -58,8 +60,13 @@ export function Header({ onMenuClick }: HeaderProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [menuOpen])
 
-  const handleLogout = () => {
+  const askLogout = () => {
     setMenuOpen(false)
+    setConfirmLogout(true)
+  }
+
+  const handleLogout = () => {
+    setConfirmLogout(false)
     logout()
     navigate('/login')
   }
@@ -145,7 +152,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                 </button>
                 <div className="border-t border-gray-100 my-1" />
                 <button
-                  onClick={handleLogout}
+                  onClick={askLogout}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <LogOut size={15} className="text-red-400" />
@@ -156,6 +163,16 @@ export function Header({ onMenuClick }: HeaderProps) {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        onConfirm={handleLogout}
+        title="Déconnexion"
+        message="Voulez-vous vraiment vous déconnecter de votre espace ?"
+        confirmLabel="Se déconnecter"
+        confirmVariant="red"
+      />
     </header>
   )
 }

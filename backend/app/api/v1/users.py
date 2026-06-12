@@ -82,6 +82,7 @@ async def list_users(
     role: Optional[str] = Query(None, description="Filtrer par rôle (ex: proprietaire, locataire)"),
     unlinked_tenant: bool = Query(False, description="Exclure les comptes déjà liés à un locataire (pour la création d'un locataire)"),
     unlinked_owner: bool = Query(False, description="Exclure les comptes déjà liés à une fiche propriétaire (pour la création d'un propriétaire)"),
+    owner_id: Optional[uuid.UUID] = Query(None, description="Fiche propriétaire en cours d'édition : son compte lié reste sélectionnable (les comptes liés aux AUTRES fiches sont exclus)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
@@ -124,12 +125,15 @@ async def list_users(
         linked_ids = {str(uid) for uid in linked_rows}
         users = [u for u in users if str(u.id) not in linked_ids]
 
-    # Exclut les comptes déjà rattachés à une fiche propriétaire (un compte = une fiche)
+    # Exclut les comptes déjà rattachés à une fiche propriétaire (un compte = une fiche).
+    # En édition (owner_id fourni), le compte de CETTE fiche reste sélectionnable :
+    # on n'exclut que les comptes liés aux AUTRES fiches.
     if unlinked_owner:
         from app.models.owner import Owner
-        linked_rows = (await db.execute(
-            select(Owner.user_id).where(Owner.user_id.isnot(None))
-        )).scalars().all()
+        q = select(Owner.user_id).where(Owner.user_id.isnot(None))
+        if owner_id is not None:
+            q = q.where(Owner.id != owner_id)
+        linked_rows = (await db.execute(q)).scalars().all()
         linked_ids = {str(uid) for uid in linked_rows}
         users = [u for u in users if str(u.id) not in linked_ids]
 
