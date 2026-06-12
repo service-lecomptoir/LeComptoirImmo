@@ -333,10 +333,12 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         {/* Situation professionnelle */}
         <div>
           <SectionTitle icon={Briefcase}>Situation professionnelle</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="space-y-3">
             <TenantField label="Employeur" name="employer" register={register} errors={errors} />
-            <PhoneField label="Tél. employeur" value={watch('employer_phone') || ''} onChange={v => setValue('employer_phone', v)} />
-            <TenantField label="Revenu mensuel (€)" name="monthly_income" type="number" register={register} errors={errors} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <PhoneField label="Tél. employeur" value={watch('employer_phone') || ''} onChange={v => setValue('employer_phone', v)} />
+              <TenantField label="Revenu mensuel (€)" name="monthly_income" type="number" register={register} errors={errors} />
+            </div>
           </div>
           <div className="mt-3">
             <label className="block text-xs font-medium text-gray-700 mb-1">Source de revenus</label>

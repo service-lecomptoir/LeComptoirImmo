@@ -78,7 +78,7 @@ export function PhoneInput({ value, onChange, inputClassName, placeholder, disab
         value={groupPhoneDigits(local)}
         disabled={disabled}
         onChange={e => emit(dial, e.target.value)}
-        placeholder={placeholder || '06 94 12 34 56'}
+        placeholder={placeholder || '6 94 12 34 56'}
         className={inp}
       />
     </div>
