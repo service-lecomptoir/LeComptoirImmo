@@ -60,7 +60,6 @@ const LocataireDashboard = lazyPage(() => import('@/pages/locataire/LocataireDas
 const LocataireAvis = lazyPage(() => import('@/pages/locataire/LocataireAvis'))
 const LocatairePaiements = lazyPage(() => import('@/pages/locataire/LocatairePaiements'))
 const LocataireDocuments = lazyPage(() => import('@/pages/locataire/LocataireDocuments'))
-const LocataireMessages = lazyPage(() => import('@/pages/locataire/LocataireMessages'))
 const LocatairePayer = lazyPage(() => import('@/pages/locataire/LocatairePayer'))
 const IncidentList = lazyPage(() => import('@/pages/incidents/IncidentList'))
 const EntretienList = lazyPage(() => import('@/pages/entretien/EntretienList'))
@@ -216,7 +215,6 @@ export const router = createBrowserRouter([
       { path: 'locataire/avis-echeances', element: <LocataireAvis /> },
       { path: 'locataire/paiements', element: <LocatairePaiements /> },
       { path: 'locataire/payer', element: <LocatairePayer /> },
-      { path: 'locataire/messages', element: <LocataireMessages /> },
       { path: 'locataire/documents', element: <LocataireDocuments /> },
       { path: 'incidents', element: <IncidentList /> },
       { path: 'signalements', element: <SignalementList /> },
