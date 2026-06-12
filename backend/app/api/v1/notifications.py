@@ -8,7 +8,6 @@ from app.core.permissions import Role
 from app.models.user import User
 from app.models.message import ProprietaireMessage
 from app.models.ticket import Ticket
-from app.models.tenant import Tenant
 from app.models.lease import Lease
 from app.models.property import Property
 from app.schemas.notification import (
@@ -126,19 +125,8 @@ async def get_badge_count(
                     )
                 )
                 inc_count = res.scalar_one()
-    elif role == Role.LOCATAIRE:
-        tenant_res = await db.execute(
-            select(Tenant.id).where(Tenant.user_id == current_user.id)
-        )
-        tenant_id = tenant_res.scalar_one_or_none()
-        if tenant_id:
-            res = await db.execute(
-                select(func.count(Ticket.id)).where(
-                    Ticket.tenant_id == tenant_id,
-                    Ticket.status == "in_progress",
-                )
-            )
-            inc_count = res.scalar_one()
+    # Locataire : plus de « Mes démarches » → on ne compte plus de tickets pour lui
+    # (la cloche ne reflète que ses vraies notifications).
 
     notif_count = await NotificationService.get_unread_count(db, current_user.id)
     total = msg_count + inc_count + notif_count
