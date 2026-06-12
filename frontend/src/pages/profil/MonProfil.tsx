@@ -350,9 +350,10 @@ export default function MonProfil() {
               </div>
             )}
             {(!isGP || ownerKind === 'societe') && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-3">
+                {/* Raison sociale = identité principale : pleine largeur, SIREN/SIRET en dessous. */}
                 <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder={isGP ? 'Société / SCI' : 'Société'} />
-                <input className={inp} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="SIREN / SIRET" />
+                <input className={`${inp} sm:max-w-xs`} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="SIREN / SIRET" />
               </div>
             )}
             <p className="text-xs text-gray-400 mt-1">Utilisé comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
