@@ -1,14 +1,15 @@
 import uuid
 from datetime import date, datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from app.models.tenant import Civility
 
 
 class TenantCreate(BaseModel):
     civility: Optional[Civility] = None
-    first_name: str
-    last_name: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    company_name: Optional[str] = None
     birth_date: Optional[date] = None
     birth_place: Optional[str] = None
     national_id: Optional[str] = None
@@ -22,18 +23,30 @@ class TenantCreate(BaseModel):
     notes: Optional[str] = None
     user_id: Optional[uuid.UUID] = None  # Lien vers le compte utilisateur locataire
 
-    @field_validator("first_name", "last_name")
-    @classmethod
-    def not_empty(cls, v: str) -> str:
-        if not v.strip():
-            raise ValueError("Ce champ ne peut pas être vide")
-        return v.strip()
+    @model_validator(mode="after")
+    def check_identity(self):
+        # Locataire valide = PERSONNE (prénom + nom) OU PERSONNE MORALE (société).
+        # `first_name`/`last_name` sont NOT NULL en base : pour une société on recopie
+        # la raison sociale dans last_name (first_name = "") sans incidence d'affichage.
+        first = (self.first_name or "").strip()
+        last = (self.last_name or "").strip()
+        company = (self.company_name or "").strip()
+        if company:
+            self.first_name = first
+            self.last_name = last or company
+        elif first and last:
+            self.first_name = first
+            self.last_name = last
+        else:
+            raise ValueError("Renseignez soit le prénom et le nom, soit la société.")
+        return self
 
 
 class TenantUpdate(BaseModel):
     civility: Optional[Civility] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+    company_name: Optional[str] = None
     birth_date: Optional[date] = None
     birth_place: Optional[str] = None
     national_id: Optional[str] = None
@@ -53,6 +66,7 @@ class TenantResponse(BaseModel):
     civility: Optional[Civility]
     first_name: str
     last_name: str
+    company_name: Optional[str] = None
     full_name: str
     birth_date: Optional[date]
     birth_place: Optional[str]
@@ -79,6 +93,7 @@ class TenantListItem(BaseModel):
     civility: Optional[Civility]
     first_name: str
     last_name: str
+    company_name: Optional[str] = None
     email: Optional[str]
     phone: Optional[str]
     user_id: Optional[uuid.UUID] = None

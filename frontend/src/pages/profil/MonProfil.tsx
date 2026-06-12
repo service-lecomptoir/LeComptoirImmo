@@ -7,6 +7,7 @@ const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
+import { SignaturePad } from '@/components/common/SignaturePad'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
 import { usersApi, type EmailDomain } from '@/api/users'
@@ -72,6 +73,10 @@ export default function MonProfil() {
   // Logo du gestionnaire (en-tête des documents).
   const logoInputRef = useRef<HTMLInputElement>(null)
   const [logoBusy, setLogoBusy] = useState(false)
+
+  // Signature numérique (data-URL PNG) apposée en bas des courriers générés.
+  // undefined = inchangée ; null = à supprimer ; string = nouvelle signature.
+  const [signature, setSignature] = useState<string | null | undefined>(undefined)
 
   // ── Agents IA (Telegram) — option de plan « agents_ia » ──
   const { features } = useFeaturesStore()
@@ -241,6 +246,8 @@ export default function MonProfil() {
             ? (joinName(ownerFirstName, ownerLastName) || null) : null,
           owner_company: ownerCompany.trim() || null,
           owner_national_id: ownerNationalId.trim() || null,
+          // Signature : envoyée seulement si modifiée (string = nouvelle, null = supprimée).
+          ...(signature !== undefined ? { signature } : {}),
         } : {}),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
@@ -436,6 +443,21 @@ export default function MonProfil() {
             <p className="text-xs text-gray-400 mt-1">
               Apparaît en haut à gauche de vos documents (avis d'échéance…). Format conseillé : PNG/JPG, ~170×64 px.
               S'il n'y a pas de logo, l'emplacement reste vide.
+            </p>
+          </div>
+        )}
+
+        {/* ── Signature numérique (apposée au bas des courriers générés) ── */}
+        {isManager && (
+          <div>
+            <label className={lbl}>Signature</label>
+            <SignaturePad
+              value={signature !== undefined ? signature : (user?.signature ?? null)}
+              onChange={setSignature}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Apposée en bas de vos courriers (lettre de relance, plan d'apurement…). Pensez à
+              cliquer sur « Enregistrer » ci-dessous pour la sauvegarder.
             </p>
           </div>
         )}

@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from sqlalchemy import String, Boolean, Enum as SAEnum, ForeignKey
+from sqlalchemy import String, Boolean, Enum as SAEnum, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
@@ -51,6 +51,9 @@ class User(Base, TimestampMixin):
     # (avis d'échéance, mise en page moderne, à la place du logo).
     logo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # Signature numérique (data-URL PNG, fond blanc) apposée en bas des courriers
+    # générés (lettre de relance, plan d'apurement…). Réglée dans « Mes informations ».
+    signature: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # « Ma papeterie » : variables épinglées par l'utilisateur, par type de document.
     # Forme : { "<template_type>": ["{{var}}", …], … }. Null/absent = aucune épingle.
     template_pinned_vars: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)

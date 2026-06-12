@@ -1,22 +1,24 @@
-import { UserRound } from 'lucide-react'
+import { UserRound, Building2 } from 'lucide-react'
 import type { Civility } from '@/types/tenant'
 
 /**
- * Avatar genré selon la civilité : silhouette « homme » (M.) ou « femme » (Mme),
- * avec un fond coloré ; neutre (UserRound gris) si civilité inconnue/« Autre ».
- * Purement décoratif — n'affecte aucune donnée.
+ * Avatar selon le type : société (immeuble), ou personne genrée par la civilité :
+ * silhouette « homme » (M.) ou « femme » (Mme), fond coloré ; neutre (UserRound gris)
+ * si civilité inconnue/« Autre ». Purement décoratif : n'affecte aucune donnée.
  */
 export function GenderAvatar({
   civility,
+  isCompany = false,
   size = 40,
 }: {
   civility?: Civility | null
+  isCompany?: boolean
   size?: number
 }) {
-  const isF = civility === 'Mme'
-  const isM = civility === 'M'
-  const bg = isF ? 'bg-pink-100' : isM ? 'bg-blue-100' : 'bg-gray-100'
-  const fg = isF ? 'text-pink-600' : isM ? 'text-blue-700' : 'text-gray-500'
+  const isF = !isCompany && civility === 'Mme'
+  const isM = !isCompany && civility === 'M'
+  const bg = isCompany ? 'bg-amber-100' : isF ? 'bg-pink-100' : isM ? 'bg-blue-100' : 'bg-gray-100'
+  const fg = isCompany ? 'text-amber-700' : isF ? 'text-pink-600' : isM ? 'text-blue-700' : 'text-gray-500'
   const glyph = Math.round(size * 0.62)
 
   return (
@@ -25,7 +27,9 @@ export function GenderAvatar({
       style={{ width: size, height: size }}
       aria-hidden
     >
-      {isF ? (
+      {isCompany ? (
+        <Building2 size={glyph} className={fg} />
+      ) : isF ? (
         <svg viewBox="0 0 24 24" fill="currentColor" width={glyph} height={glyph} className={fg}>
           {/* cheveux : dôme sur la tête + deux mèches descendantes, ouverture pour le visage */}
           <path d="M6 12a6 6 0 0 1 12 0v4h-2.5v-5a3.5 3.5 0 0 0-7 0v5H6z" />

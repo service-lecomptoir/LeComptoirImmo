@@ -17,6 +17,7 @@ export interface User {
   owner_national_id?: string | null
   template_pinned_vars?: Record<string, string[]> | null
   logo_url?: string | null
+  signature?: string | null
   // Visibilité espace propriétaire : rubriques effectivement visibles (propriétaire),
   // et réglages bruts (gestionnaire).
   proprio_sections?: string[] | null

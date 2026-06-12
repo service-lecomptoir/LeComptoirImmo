@@ -33,6 +33,9 @@ class Tenant(Base, TimestampMixin):
     )
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    # Personne morale (locataire « entreprise ») : raison sociale. Si renseignée,
+    # le locataire est une société (national_id = SIREN/SIRET au lieu du NIR).
+    company_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     birth_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     birth_place: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
     national_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -77,7 +80,9 @@ class Tenant(Base, TimestampMixin):
 
     @property
     def full_name(self) -> str:
-        # « Prénom Nom » sans la civilité (cf. bail / documents / listes).
+        # Société : la raison sociale prime. Sinon « Prénom Nom » (sans la civilité).
+        if self.company_name:
+            return self.company_name.strip()
         parts = [self.first_name, self.last_name]
         return " ".join(p for p in parts if p).strip()
 

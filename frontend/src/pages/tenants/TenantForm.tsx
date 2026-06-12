@@ -14,20 +14,32 @@ import type { Tenant } from '@/types/tenant'
 import type { User } from '@/types/auth'
 
 const schema = z.object({
+  tenant_type: z.enum(['person', 'company']),
   civility: z.enum(['M', 'Mme', 'Autre']).optional(),
-  first_name: z.string().min(1, 'Prénom requis'),
-  last_name: z.string().min(1, 'Nom requis'),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  company_name: z.string().optional(),
   email: z.string().min(1, 'Email requis').email('Email invalide'),
   phone: z.string().optional(),
-  birth_date: z.string().min(1, 'Date de naissance requise'),
+  birth_date: z.string().optional(),
   birth_place: z.string().optional(),
-  national_id: z.string().min(1, 'Numéro de sécurité sociale requis'),
+  national_id: z.string().optional(),
   employer: z.string().optional(),
   employer_phone: z.string().optional(),
   monthly_income: z.number().positive().optional().or(z.literal('')),
   income_source: z.string().optional(),
   notes: z.string().optional(),
   user_id: z.string().uuid().optional().or(z.literal('')),
+}).superRefine((d, ctx) => {
+  if (d.tenant_type === 'company') {
+    if (!d.company_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Société / SCI requise', path: ['company_name'] })
+    if (!d.national_id?.trim()) ctx.addIssue({ code: 'custom', message: 'SIREN / SIRET requis', path: ['national_id'] })
+  } else {
+    if (!d.first_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Prénom requis', path: ['first_name'] })
+    if (!d.last_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Nom requis', path: ['last_name'] })
+    if (!d.birth_date?.trim()) ctx.addIssue({ code: 'custom', message: 'Date de naissance requise', path: ['birth_date'] })
+    if (!d.national_id?.trim()) ctx.addIssue({ code: 'custom', message: 'Numéro de sécurité sociale requis', path: ['national_id'] })
+  }
 })
 
 type FormData = z.infer<typeof schema>
@@ -102,9 +114,11 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: tenant ? {
+      tenant_type: (tenant.company_name?.trim() && !tenant.first_name?.trim()) ? 'company' : 'person',
       civility: tenant.civility ?? undefined,
       first_name: tenant.first_name,
       last_name: tenant.last_name,
+      company_name: tenant.company_name ?? '',
       email: tenant.email ?? '',
       phone: tenant.phone ?? '',
       birth_date: tenant.birth_date ?? '',
@@ -114,13 +128,15 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       employer_phone: tenant.employer_phone ?? '',
       notes: tenant.notes ?? '',
       user_id: tenant.user_id ?? '',
-    } : {},
+    } : { tenant_type: 'person' },
   })
 
+  const tenantType = watch('tenant_type')
   const selectedUserId = watch('user_id')
   const emailValue = watch('email')
   const firstNameValue = watch('first_name')
   const lastNameValue = watch('last_name')
+  const companyValue = watch('company_name')
 
   useEffect(() => {
     // En création : on masque les comptes déjà liés à un locataire.
@@ -131,10 +147,12 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
   }, [isEdit])
 
   const handleCreateUser = async () => {
-    const name = `${firstNameValue ?? ''} ${lastNameValue ?? ''}`.trim()
+    const name = tenantType === 'company'
+      ? (companyValue?.trim() || '')
+      : `${firstNameValue ?? ''} ${lastNameValue ?? ''}`.trim()
     const email = emailValue?.trim()
     if (!name || !email || !newUserPassword.trim()) {
-      setCreateUserError('Remplissez prénom, nom, email et mot de passe ci-dessus')
+      setCreateUserError('Remplissez le nom/société, l\'email et le mot de passe ci-dessus')
       return
     }
     if (newUserPassword.trim().length < 8) {
@@ -170,12 +188,16 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       const t = (v ?? '').trim()
       return t === '' ? null : t
     }
+    const isCompany = data.tenant_type === 'company'
+    // Société : on ne garde que l'identité morale ; first_name vide + last_name = raison
+    // sociale (colonnes NOT NULL en base, sans incidence d'affichage). national_id = SIREN/SIRET.
     const payload: any = {
-      civility: data.civility || null,
-      first_name: data.first_name.trim(),
-      last_name: data.last_name.trim(),
-      birth_date: clean(data.birth_date),
-      birth_place: clean(data.birth_place),
+      civility: isCompany ? null : (data.civility || null),
+      first_name: isCompany ? '' : (data.first_name || '').trim(),
+      last_name: isCompany ? (data.company_name || '').trim() : (data.last_name || '').trim(),
+      company_name: isCompany ? clean(data.company_name) : null,
+      birth_date: isCompany ? null : clean(data.birth_date),
+      birth_place: isCompany ? null : clean(data.birth_place),
       national_id: clean(data.national_id),
       email: clean(data.email),
       phone: clean(data.phone),
@@ -286,36 +308,71 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         {/* Identité */}
         <div>
           <SectionTitle icon={Contact}>Identité</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
-              <select {...register('civility')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">— Sélectionner —</option>
-                <option value="M">M.</option>
-                <option value="Mme">Mme</option>
-                <option value="Autre">Autre</option>
-              </select>
-            </div>
-            <TenantField label="Prénom" name="first_name" required register={register} errors={errors} />
-            <TenantField label="Nom" name="last_name" required register={register} errors={errors} />
+          {/* Type de locataire : personne physique ou personne morale (société / SCI) */}
+          <div className="inline-flex rounded-lg border border-gray-300 p-0.5 mb-3 bg-gray-50">
+            {([['person', 'Personne'], ['company', 'Société / SCI']] as const).map(([val, lbl]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => setValue('tenant_type', val, { shouldValidate: false })}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  tenantType === val ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-            <TenantField label="Date de naissance" name="birth_date" type="date" required register={register} errors={errors} />
-            <TenantField label="Lieu de naissance" name="birth_place" register={register} errors={errors} />
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Numéro de sécurité sociale<span className="text-red-500 ml-0.5">*</span>
-              </label>
-              <input
-                value={formatNir(watch('national_id') || '')}
-                onChange={e => setValue('national_id', digitsOnly(e.target.value), { shouldValidate: true })}
-                inputMode="numeric"
-                placeholder="1 99 11 33 123 456 78"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.national_id && <p className="mt-1 text-xs text-red-600">{errors.national_id.message as string}</p>}
+
+          {tenantType === 'company' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <TenantField label="Société / SCI" name="company_name" required register={register} errors={errors} />
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  SIREN / SIRET<span className="text-red-500 ml-0.5">*</span>
+                </label>
+                <input
+                  {...register('national_id')}
+                  placeholder="123 456 789 00012"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {errors.national_id && <p className="mt-1 text-xs text-red-600">{errors.national_id.message as string}</p>}
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Civilité</label>
+                  <select {...register('civility')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">— Sélectionner —</option>
+                    <option value="M">M.</option>
+                    <option value="Mme">Mme</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+                <TenantField label="Prénom" name="first_name" required register={register} errors={errors} />
+                <TenantField label="Nom" name="last_name" required register={register} errors={errors} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                <TenantField label="Date de naissance" name="birth_date" type="date" required register={register} errors={errors} />
+                <TenantField label="Lieu de naissance" name="birth_place" register={register} errors={errors} />
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Numéro de sécurité sociale<span className="text-red-500 ml-0.5">*</span>
+                  </label>
+                  <input
+                    value={formatNir(watch('national_id') || '')}
+                    onChange={e => setValue('national_id', digitsOnly(e.target.value), { shouldValidate: true })}
+                    inputMode="numeric"
+                    placeholder="1 99 11 33 123 456 78"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {errors.national_id && <p className="mt-1 text-xs text-red-600">{errors.national_id.message as string}</p>}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Contact */}

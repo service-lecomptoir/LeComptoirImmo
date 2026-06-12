@@ -5,6 +5,7 @@ export interface Tenant {
   civility: Civility | null
   first_name: string
   last_name: string
+  company_name: string | null
   full_name: string
   birth_date: string | null
   birth_place: string | null
@@ -28,6 +29,7 @@ export interface TenantListItem {
   civility: Civility | null
   first_name: string
   last_name: string
+  company_name: string | null
   email: string | null
   phone: string | null
   user_id: string | null
@@ -36,8 +38,9 @@ export interface TenantListItem {
 
 export interface TenantCreate {
   civility?: Civility
-  first_name: string
-  last_name: string
+  first_name?: string
+  last_name?: string
+  company_name?: string
   birth_date?: string
   birth_place?: string
   national_id?: string

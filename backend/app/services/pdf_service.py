@@ -267,6 +267,7 @@ async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
         "due_date": payment.due_date.strftime("%d/%m/%Y") if getattr(payment, "due_date", None) else "",
         "amount_due": _eur(getattr(payment, "balance", 0) or 0),
         "apl_amount": _eur(payment.amount_apl) if getattr(payment, "amount_apl", None) else "",
+        "signature_uri": (getattr(user, "signature", None) or "") if user else "",
     }
     _logo = getattr(user, "logo_path", None) if user else None
     return render_avis_blocks_html(
@@ -379,6 +380,7 @@ async def render_plan_apurement_html(db: AsyncSession, payment: Any,
         "due_date": payment.due_date.strftime("%d/%m/%Y") if getattr(payment, "due_date", None) else "",
         "amount_due": _eur(total),
         "first_due_date": first_due_str,
+        "signature_uri": (getattr(user, "signature", None) or "") if user else "",
     }
     _logo = getattr(user, "logo_path", None) if user else None
     return render_avis_blocks_html(

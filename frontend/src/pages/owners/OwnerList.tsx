@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { formatPhoneDisplay } from '@/utils/format'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Building2, ShieldCheck, Pencil, Trash2, Mail, Phone, Download } from 'lucide-react'
+import { GenderAvatar } from '@/components/common/GenderAvatar'
 import { ownersApi } from '@/api/owners'
 import { OwnerForm } from './OwnerForm'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -189,9 +190,7 @@ export default function OwnerList() {
               className="group relative flex flex-col gap-3 bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-300"
             >
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <span className="text-blue-700 text-sm font-semibold">{owner.full_name.charAt(0).toUpperCase()}</span>
-                </div>
+                <GenderAvatar civility={owner.civility} isCompany={!!owner.company_name && !owner.first_name} size={40} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-900 truncate">{owner.full_name}</p>

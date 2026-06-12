@@ -124,6 +124,8 @@ class UserService:
             user.owner_company = data.owner_company or None
         if getattr(data, "owner_national_id", None) is not None:
             user.owner_national_id = data.owner_national_id or None
+        if getattr(data, "signature", None) is not None:
+            user.signature = data.signature or None
 
         await db.flush()
         await db.refresh(user)
