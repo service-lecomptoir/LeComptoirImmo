@@ -305,10 +305,19 @@ def default_blocks(template_type: str) -> Optional[list[dict]]:
                 "label": "Échéance du {{due_date}} · période {{period_range}}",
                 "amount": "{{amount_due}}",
             }},
-            {"id": "relance_note", "type": "legal_footer", "enabled": True, "props": {
-                "text": "À défaut de régularisation sous huitaine, nous nous réservons le "
-                        "droit d'engager toute procédure de recouvrement. Si votre règlement "
-                        "a croisé ce courrier, nous vous prions de ne pas en tenir compte.",
+            # Note APL : affichée UNIQUEMENT si le locataire perçoit une aide (tiers payant).
+            {"id": "apl_note", "type": "free_text", "enabled": True, "props": {
+                "text": "{{#if apl_amount}}Rappel : une aide personnelle au logement de "
+                        "{{apl_amount}} est versée directement par la CAF. Le solde "
+                        "locataire à régler est donc de {{amount_due}}.{{/if}}",
+            }},
+            # Paragraphe de clôture : affiché systématiquement.
+            {"id": "closing", "type": "free_text", "enabled": True, "props": {
+                "text": "Sans réaction de votre part dans ce délai, nous nous verrons dans "
+                        "l'obligation d'engager les procédures nécessaires au recouvrement "
+                        "de cette créance.\n\nRestant à votre disposition pour tout "
+                        "renseignement, nous vous prions d'agréer, Madame, Monsieur, "
+                        "l'expression de nos salutations distinguées.",
             }},
             _common_footer(),
         ]
@@ -487,8 +496,13 @@ def _render_amount_bar(props: dict, t: dict, variables: dict) -> str:
 
 
 def _render_free_text(props: dict, t: dict, variables: dict) -> str:
+    body = _sub(props.get("text"), variables).strip()
+    # Texte vide (ex. bloc conditionnel {{#if}} non satisfait) → on n'affiche rien
+    # (pas de div vide qui laisserait un blanc dans la mise en page).
+    if not body or body.replace("<br/>", "").strip() == "":
+        return ""
     return (f'<div style="color:{t["navy"]}; font-size:9pt; line-height:1.5; margin-bottom:12px;">'
-            f'{_sub(props.get("text"), variables)}</div>')
+            f'{body}</div>')
 
 
 def _render_details_table(props: dict, t: dict, variables: dict, line_items: list) -> str:
