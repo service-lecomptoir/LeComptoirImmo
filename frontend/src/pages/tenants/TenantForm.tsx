@@ -69,10 +69,11 @@ interface FieldProps {
   name: keyof FormData
   type?: string
   required?: boolean
+  placeholder?: string
   register: UseFormRegister<FormData>
   errors: FieldErrors<FormData>
 }
-function TenantField({ label, name, type = 'text', required = false, register, errors }: FieldProps) {
+function TenantField({ label, name, type = 'text', required = false, placeholder, register, errors }: FieldProps) {
   return (
     <div>
       <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -81,6 +82,7 @@ function TenantField({ label, name, type = 'text', required = false, register, e
       <input
         {...register(name)}
         type={type}
+        placeholder={placeholder}
         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       {errors[name] && <p className="mt-1 text-xs text-red-600">{errors[name]?.message as string}</p>}
@@ -330,7 +332,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
           {tenantType === 'company' ? (
             <div className="space-y-3">
               {/* Raison sociale = identité principale (équivalent du « Nom ») : pleine largeur. */}
-              <TenantField label="Société / SCI" name="company_name" required register={register} errors={errors} />
+              <TenantField label="Raison sociale" name="company_name" placeholder="Raison sociale" required register={register} errors={errors} />
               <div className="sm:max-w-xs">
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   SIREN / SIRET<span className="text-red-500 ml-0.5">*</span>

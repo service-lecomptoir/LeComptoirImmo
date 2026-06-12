@@ -320,7 +320,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
           {ownerType === 'company' ? (
             <div className="space-y-3">
               {/* Raison sociale = identité principale (équivalent du « Nom ») : pleine largeur. */}
-              <OwnerField label="Société / SCI" name="company_name" placeholder="SCI Les Tilleuls" required register={register} errors={errors} />
+              <OwnerField label="Raison sociale" name="company_name" placeholder="Raison sociale" required register={register} errors={errors} />
               <div className="sm:max-w-xs">
                 <OwnerField label="SIREN / SIRET" name="national_id" placeholder="123 456 789" required register={register} errors={errors} />
               </div>
