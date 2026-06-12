@@ -358,8 +358,8 @@ export default function MonProfil() {
             {(!isGP || ownerKind === 'societe') && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className={lbl}>{isGP ? 'Société / SCI' : 'Société'}</label>
-                  <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder={isGP ? 'SCI Les Tilleuls' : 'Raison sociale'} />
+                  <label className={lbl}>Raison sociale</label>
+                  <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder="Raison sociale" />
                 </div>
                 <div>
                   <label className={lbl}>SIREN / SIRET</label>
