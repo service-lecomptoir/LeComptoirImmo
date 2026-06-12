@@ -45,4 +45,8 @@ export const apurementApi = {
     const res = await apiClient.get(`/apurement-plans/${planId}/pdf`, { responseType: 'blob' })
     downloadBlob(res.data, filename)
   },
+  downloadInstallmentQuittance: async (planId: string, seq: number, filename: string) => {
+    const res = await apiClient.get(`/apurement-plans/${planId}/installments/${seq}/quittance`, { responseType: 'blob' })
+    downloadBlob(res.data, filename)
+  },
 }

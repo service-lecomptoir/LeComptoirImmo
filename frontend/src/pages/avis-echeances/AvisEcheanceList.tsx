@@ -642,7 +642,11 @@ export default function AvisEcheanceList() {
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-900">{fmtEuro(inst.amount)}</span>
                             {inst.paid ? (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Payé</span>
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Payé</span>
+                                <button onClick={() => apurementApi.downloadInstallmentQuittance(p.id, inst.seq, `quittance_apurement_echeance_${inst.seq}.pdf`)}
+                                  title="Quittance de l'échéance" className="text-green-600 hover:text-green-800"><Download size={13} /></button>
+                              </span>
                             ) : (
                               <>
                                 {inst.declared && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Déclaré</span>}

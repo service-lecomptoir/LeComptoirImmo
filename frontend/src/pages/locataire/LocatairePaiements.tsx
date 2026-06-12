@@ -16,6 +16,8 @@ interface Entry {
   montant: number
   kind: 'appel' | 'paiement'
   payment?: any          // pour la quittance (règlement de loyer payé)
+  planId?: string        // pour la quittance d'échéance d'apurement
+  seq?: number
 }
 
 export default function LocatairePaiements() {
@@ -51,7 +53,7 @@ export default function LocatairePaiements() {
     for (const i of pl.installments) {
       entries.push({ key: `iap-${pl.id}-${i.seq}`, date: i.due_date, intitule: `Plan d'apurement · échéance ${i.seq}`, montant: i.amount, kind: 'appel' })
       if (i.paid)
-        entries.push({ key: `ipa-${pl.id}-${i.seq}`, date: i.paid_date || i.due_date, intitule: `Règlement apurement · échéance ${i.seq}`, montant: i.amount, kind: 'paiement' })
+        entries.push({ key: `ipa-${pl.id}-${i.seq}`, date: i.paid_date || i.due_date, intitule: `Règlement apurement · échéance ${i.seq}`, montant: i.amount, kind: 'paiement', planId: pl.id, seq: i.seq })
     }
   }
   entries.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
@@ -118,6 +120,12 @@ export default function LocatairePaiements() {
                             onClick={() => paymentsApi.downloadQuittance(e.payment.id,
                               docFilename('quittance', { tenant: e.payment.tenant_full_name, property: e.payment.property_name, month: e.payment.period_month, year: e.payment.period_year }))}
                             title="Quittance"
+                            className="text-green-600 hover:text-green-800"><Download size={13} /></button>
+                        )}
+                        {e.planId && e.seq != null && (
+                          <button
+                            onClick={() => apurementApi.downloadInstallmentQuittance(e.planId!, e.seq!, `quittance_apurement_echeance_${e.seq}.pdf`)}
+                            title="Quittance de l'échéance"
                             className="text-green-600 hover:text-green-800"><Download size={13} /></button>
                         )}
                       </span>

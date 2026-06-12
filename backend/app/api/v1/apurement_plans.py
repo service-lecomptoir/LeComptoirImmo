@@ -21,6 +21,7 @@ from app.api.v1._isolation import (
     assert_payment_access, assert_lease_access, agency_tenant_ids,
 )
 from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.features import require_feature
 from app.schemas.apurement_plan import ApurementPlanCreate, InstallmentMark
 
 router = APIRouter(prefix="/apurement-plans", tags=["Apurement"])
@@ -262,6 +263,63 @@ async def plan_pdf(
     tenant = await db.get(Tenant, plan.tenant_id)
     filename = doc_filename(
         "plan_apurement",
+        tenant=getattr(tenant, "full_name", None),
+        property_name=getattr(prop, "name", None),
+    )
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{plan_id}/installments/{seq}/quittance",
+            summary="Quittance dédiée d'une échéance réglée")
+async def installment_quittance(
+    plan_id: uuid.UUID,
+    seq: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _feat: User = Depends(require_feature("quittances")),
+):
+    plan = await ApurementPlanService.get(db, plan_id)
+    if not plan:
+        raise NotFoundException("Plan d'apurement", str(plan_id))
+    lease = await _lease_for_access(db, plan.lease_id)
+    await assert_lease_access(db, current_user, lease)  # lecture (locataire / gestionnaire)
+    inst = next((i for i in (plan.installments or []) if int(i.get("seq", -1)) == int(seq)), None)
+    if not inst:
+        raise BadRequestException("Échéance introuvable")
+    if not inst.get("paid"):
+        raise BadRequestException("La quittance n'est disponible qu'une fois l'échéance réglée.")
+
+    _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+                  "août", "septembre", "octobre", "novembre", "décembre"]
+    _d = date.today()
+    today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
+
+    prop = getattr(lease, "parent_property", None)
+    tenant = getattr(lease, "tenant", None)
+    gid = getattr(lease, "created_by", None)
+    amount = float(inst.get("amount", 0))
+    label = f"Plan d'apurement · échéance {seq}"
+
+    from app.services.document_blocks_pdf_service import (
+        render_blocks_document, _doc_common_vars, _eur_sym)
+    qv = _doc_common_vars(tenant, prop, today_fr)
+    qv.update({
+        "period_range": label, "month": label,
+        "total_due": _eur_sym(amount), "rent_amount": _eur_sym(amount),
+        "charges_amount": _eur_sym(0), "apl_amount": "",
+    })
+    line_items = [{
+        "label": f"RÈGLEMENT — PLAN D'APUREMENT, ÉCHÉANCE {seq}",
+        "appele": _eur_sym(amount), "regle": _eur_sym(amount),
+    }]
+    pdf = await render_blocks_document(db, gid, "quittance", qv, line_items=line_items)
+
+    from app.utils.filename import doc_filename
+    filename = doc_filename(
+        "quittance",
         tenant=getattr(tenant, "full_name", None),
         property_name=getattr(prop, "name", None),
     )
