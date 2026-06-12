@@ -65,11 +65,11 @@ def grade_for(score: float) -> str:
 
 
 _STRATEGY = {
-    "A": "Bon payeur — aucune action. Renouvellement recommandé.",
-    "B": "Payeur fiable — surveillance de routine.",
-    "C": "Vigilance — relancer rapidement à chaque retard ; sécuriser (garant / assurance).",
-    "D": "À risque — relances soutenues, prise de contact directe, proposer un plan d'apurement.",
-    "E": "Risque élevé — contact physique et mise en demeure ; envisager le non-renouvellement ou la résiliation.",
+    "A": "Bon payeur : aucune action. Renouvellement recommandé.",
+    "B": "Payeur fiable : surveillance de routine.",
+    "C": "Vigilance : relancer rapidement à chaque retard ; sécuriser (garant / assurance).",
+    "D": "À risque : relances soutenues, prise de contact directe, proposer un plan d'apurement.",
+    "E": "Risque élevé : contact physique et mise en demeure ; envisager le non-renouvellement ou la résiliation.",
 }
 
 

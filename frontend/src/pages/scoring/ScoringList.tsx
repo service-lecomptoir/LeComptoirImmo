@@ -15,7 +15,7 @@ const POLARITY_STYLE: Record<string, { color: string; bg: string }> = {
 function GradeBadge({ grade, score }: { grade: string; score: number }) {
   const c = GRADE_COLORS[grade] ?? GRADE_COLORS.C
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-bold"
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-bold whitespace-nowrap"
       style={{ color: c.color, background: c.bg }}>
       {grade} · {score}
     </span>
@@ -99,7 +99,7 @@ function DetailPanel({ tenantId, onClose, onChanged }: { tenantId: string; onClo
             <div className="bg-white rounded-xl border p-4">
               <h3 className="font-semibold text-gray-900 mb-3">Relation locataire</h3>
               {!detail.lease_id ? (
-                <p className="text-sm text-gray-400">Aucun contrat actif — la liste de relation se gère sur un contrat.</p>
+                <p className="text-sm text-gray-400">Aucun contrat actif. La liste de relation se gère sur un contrat.</p>
               ) : (
                 <>
                   <div className="flex flex-col sm:flex-row gap-2 mb-3">
@@ -207,13 +207,13 @@ export default function ScoringList() {
           {items.map(r => (
             <tr key={r.tenant_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelected(r.tenant_id)}>
               <td className="px-4 py-3"><GradeBadge grade={r.grade} score={r.score} /></td>
-              <td className="px-4 py-3"><p className="text-sm font-medium text-gray-900">{r.tenant_name}</p></td>
+              <td className="px-4 py-3"><p className="text-sm font-medium text-gray-900 whitespace-nowrap">{r.tenant_name}</p></td>
               <td className="px-4 py-3 text-sm text-gray-500 whitespace-pre-line">{r.property_label ?? '—'}</td>
-              <td className="px-4 py-3 text-sm text-gray-600">{r.effort_rate != null ? `${Math.round(r.effort_rate * 100)}%` : '—'}</td>
-              <td className="px-4 py-3 text-sm text-gray-600">{r.on_time_rate != null ? `${Math.round(r.on_time_rate * 100)}%` : '—'}</td>
+              <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{r.effort_rate != null ? `${Math.round(r.effort_rate * 100)}%` : '—'}</td>
+              <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{r.on_time_rate != null ? `${Math.round(r.on_time_rate * 100)}%` : '—'}</td>
               <td className="px-4 py-3 text-sm">
                 {r.overdue_count > 0
-                  ? <span className="text-red-600 font-medium">{r.overdue_count} · {r.outstanding.toLocaleString('fr-FR')} €</span>
+                  ? <span className="text-red-600 font-medium whitespace-nowrap">{r.overdue_count} · {r.outstanding.toLocaleString('fr-FR')} €</span>
                   : <span className="text-gray-400">—</span>}
               </td>
               <td className="px-4 py-3 text-xs text-gray-500 max-w-[240px]">{r.strategy}</td>
@@ -239,7 +239,7 @@ export default function ScoringList() {
         <div className="mb-4 flex items-center gap-2 rounded-xl border px-4 py-3 text-sm"
           style={{ background: '#FEF2F2', borderColor: '#FECACA', color: '#B91C1C' }}>
           <AlertTriangle size={16} />
-          <span><b>{atRisk}</b> locataire{atRisk > 1 ? 's' : ''} à risque (note D ou E) — action recommandée.</span>
+          <span><b>{atRisk}</b> locataire{atRisk > 1 ? 's' : ''} à risque (note D ou E) : action recommandée.</span>
         </div>
       )}
 
