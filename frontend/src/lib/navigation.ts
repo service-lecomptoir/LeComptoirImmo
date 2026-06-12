@@ -16,7 +16,7 @@ import {
   CreditCard, Settings, Calendar,
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
-  ShoppingBag, Package, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
+  ShoppingBag, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
   UserCheck, DoorOpen,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
@@ -59,8 +59,6 @@ export const navGestionnaire: NavItem[] = [
   { to: '/finances/revenus', icon: Wallet, label: 'Revenus' },
   { to: '/finances/biens', icon: BarChart3, label: 'Performance biens' },
   { to: '/finances/fiscal', icon: Calculator, label: 'Liasse fiscale' },
-  { label: 'Mon compte', isSeparator: true },
-  { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
 // Navigation Propriétaire
@@ -107,8 +105,6 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
   { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
-  { label: 'Mon compte', isSeparator: true },
-  { to: '/abonnement', icon: Package, label: 'Mon abonnement' },
 ]
 
 // Navigation Locataire
