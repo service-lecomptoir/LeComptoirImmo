@@ -26,14 +26,16 @@ const NEW_FICHE = '__new__'
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 const createUserSchema = z.object({
-  full_name: z.string().min(2, 'Nom requis (min 2 caractères)'),
+  first_name: z.string().min(1, 'Prénom requis'),
+  last_name: z.string().min(1, 'Nom requis'),
   email: z.string().email('Email invalide'),
   password: z.string().min(8, 'Mot de passe min 8 caractères'),
   role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'gestionnaire_proprio', 'admin', 'lecture', 'comptable']),
 })
 
 const editUserSchema = z.object({
-  full_name: z.string().min(2, 'Nom requis'),
+  first_name: z.string().min(1, 'Prénom requis'),
+  last_name: z.string().min(1, 'Nom requis'),
   email: z.string().email('Email invalide'),
   is_active: z.boolean(),
   role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'gestionnaire_proprio', 'admin', 'lecture', 'comptable']),
@@ -41,6 +43,14 @@ const editUserSchema = z.object({
 
 type CreateUserForm = z.infer<typeof createUserSchema>
 type EditUserForm = z.infer<typeof editUserSchema>
+
+// Le compte ne stocke qu'un full_name : on saisit Prénom + Nom et on recompose.
+const joinName = (first: string, last: string) => `${first.trim()} ${last.trim()}`.trim()
+function splitName(s?: string | null): { first: string; last: string } {
+  const parts = (s ?? '').trim().split(/\s+/).filter(Boolean)
+  const first = parts.shift() ?? ''
+  return { first, last: parts.join(' ') }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -166,15 +176,17 @@ export default function AdminUsers() {
         return
       }
 
-      // 1) Créer le compte utilisateur
-      const { data: newUser } = await apiClient.post<User>('/users', values)
+      // 1) Créer le compte utilisateur (le compte ne stocke qu'un full_name).
+      const { data: newUser } = await apiClient.post<User>('/users', {
+        full_name: joinName(values.first_name, values.last_name),
+        email: values.email, password: values.password, role: values.role,
+      })
 
       // 2) Rattacher / créer la fiche correspondante
       if (isLoc) {
         if (linkFicheId === NEW_FICHE) {
-          const [first, ...rest] = values.full_name.trim().split(/\s+/)
           await apiClient.post('/tenants', {
-            first_name: first, last_name: rest.join(' ') || first,
+            first_name: values.first_name.trim(), last_name: values.last_name.trim(),
             email: values.email, user_id: newUser.id,
           })
         } else {
@@ -183,7 +195,8 @@ export default function AdminUsers() {
       } else if (isProp) {
         if (linkFicheId === NEW_FICHE) {
           await apiClient.post('/owners', {
-            last_name: values.full_name.trim(), email: values.email, user_id: newUser.id,
+            first_name: values.first_name.trim(), last_name: values.last_name.trim(),
+            email: values.email, user_id: newUser.id,
           })
         } else {
           await apiClient.put(`/owners/${linkFicheId}`, { user_id: newUser.id })
@@ -208,8 +221,9 @@ export default function AdminUsers() {
 
   const openEdit = (u: User) => {
     setEditTarget(u)
+    const { first, last } = splitName(u.full_name)
     editForm.reset({
-      full_name: u.full_name, email: u.email, is_active: u.is_active, role: u.role,
+      first_name: first, last_name: last, email: u.email, is_active: u.is_active, role: u.role,
     })
     setResetPwd('')
     setFormError(null)
@@ -223,7 +237,7 @@ export default function AdminUsers() {
       // Coordonnées + RIB du propriétaire = sur la fiche (onglet Propriétaires),
       // plus sur le compte : ici on ne touche qu'aux infos de compte.
       await apiClient.put(`/users/${editTarget.id}`, {
-        full_name: values.full_name,
+        full_name: joinName(values.first_name, values.last_name),
         email: values.email,
         is_active: values.is_active,
       })
@@ -398,16 +412,29 @@ export default function AdminUsers() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet *</label>
-            <input
-              {...createForm.register('full_name')}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Jean Dupont"
-            />
-            {createForm.formState.errors.full_name && (
-              <p className="text-red-500 text-xs mt-1">{createForm.formState.errors.full_name.message}</p>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+              <input
+                {...createForm.register('first_name')}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Jean"
+              />
+              {createForm.formState.errors.first_name && (
+                <p className="text-red-500 text-xs mt-1">{createForm.formState.errors.first_name.message}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+              <input
+                {...createForm.register('last_name')}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Dupont"
+              />
+              {createForm.formState.errors.last_name && (
+                <p className="text-red-500 text-xs mt-1">{createForm.formState.errors.last_name.message}</p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -507,15 +534,27 @@ export default function AdminUsers() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom complet *</label>
-            <input
-              {...editForm.register('full_name')}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {editForm.formState.errors.full_name && (
-              <p className="text-red-500 text-xs mt-1">{editForm.formState.errors.full_name.message}</p>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+              <input
+                {...editForm.register('first_name')}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {editForm.formState.errors.first_name && (
+                <p className="text-red-500 text-xs mt-1">{editForm.formState.errors.first_name.message}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+              <input
+                {...editForm.register('last_name')}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {editForm.formState.errors.last_name && (
+                <p className="text-red-500 text-xs mt-1">{editForm.formState.errors.last_name.message}</p>
+              )}
+            </div>
           </div>
 
           <div>

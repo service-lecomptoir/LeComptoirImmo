@@ -101,6 +101,14 @@ class UserService:
         # désormais porté par la fiche propriétaire (table owners), pas le compte.
         if data.phone is not None:
             user.phone = data.phone or None
+            # Le téléphone du compte est lié à la fiche locataire rattachée : on
+            # propage la modif (« Mes informations » du locataire → fiche locataire).
+            from app.models.tenant import Tenant
+            linked = (await db.execute(
+                select(Tenant).where(Tenant.user_id == user.id)
+            )).scalar_one_or_none()
+            if linked is not None and (linked.phone or None) != (user.phone or None):
+                linked.phone = user.phone or None
         if data.address is not None:
             user.address = data.address or None
         if getattr(data, "zip_code", None) is not None:

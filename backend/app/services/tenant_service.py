@@ -12,11 +12,35 @@ from app.core.exceptions import NotFoundException, ConflictException
 class TenantService:
 
     @staticmethod
+    async def _sync_linked_user_phone(db: AsyncSession, tenant: Tenant) -> None:
+        """Aligne le téléphone du compte de connexion lié avec celui de la fiche.
+
+        Source de vérité du n° : la fiche si elle en a un (le gestionnaire le gère),
+        sinon on récupère celui du compte (« Mes informations » du locataire). Les
+        deux écrans affichent ainsi le même numéro."""
+        if not getattr(tenant, "user_id", None):
+            return
+        from app.models.user import User
+        user = await db.get(User, tenant.user_id)
+        if user is None:
+            return
+        t_phone = (tenant.phone or None)
+        u_phone = (user.phone or None)
+        if t_phone == u_phone:
+            return
+        if t_phone:
+            user.phone = t_phone
+        elif u_phone:
+            tenant.phone = u_phone
+
+    @staticmethod
     async def create(
         db: AsyncSession, data: TenantCreate, created_by: uuid.UUID
     ) -> Tenant:
         tenant = Tenant(**data.model_dump(), created_by=created_by)
         db.add(tenant)
+        await db.flush()
+        await TenantService._sync_linked_user_phone(db, tenant)
         await db.flush()
         return tenant
 
@@ -67,6 +91,10 @@ class TenantService:
         for field, value in update_data.items():
             setattr(tenant, field, value)
         await db.flush()
+        # Téléphone lié au compte de connexion (et inversement).
+        if "phone" in update_data or "user_id" in update_data:
+            await TenantService._sync_linked_user_phone(db, tenant)
+            await db.flush()
         # Recharge toutes les colonnes (dont updated_at, server-onupdate, qui est
         # expirée après le flush) dans le contexte async, pour éviter un lazy-load
         # pendant la sérialisation sync de la réponse (→ ResponseValidationError 500).
