@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react'
 import { getErrorMessage } from '@/utils/errors'
 import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw, ChevronRight, ChevronDown, CalendarClock } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
+import { apurementApi } from '@/api/apurement'
 import { docFilename } from '@/utils/filename'
 import { isMultiMonth } from '@/utils/period'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -52,14 +53,11 @@ export default function PaymentList() {
     if (!planPayment) return
     setPlanBusy(true)
     try {
-      await lettersApi.downloadPlanApurement(
-        planPayment.id,
-        { installments: planN, first_date: planDate },
-        docFilename('plan_apurement', { tenant: planPayment.tenant_full_name, property: planPayment.property_name, month: planPayment.period_month, year: planPayment.period_year }),
-      )
+      await apurementApi.create(planPayment.id, planN, planDate)
       setPlanPayment(null)
+      toast.success('Plan d\'apurement créé — suivi sur la fiche du locataire')
     } catch (e: any) {
-      alert(getErrorMessage(e, 'Génération du plan impossible'))
+      alert(getErrorMessage(e, 'Création du plan impossible'))
     } finally {
       setPlanBusy(false)
     }
@@ -543,7 +541,7 @@ export default function PaymentList() {
                 disabled={planBusy || planN < 1 || !planDate}
                 className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {planBusy ? 'Génération…' : 'Générer le PDF'}
+                {planBusy ? 'Création…' : 'Créer le plan'}
               </button>
             </>
           }

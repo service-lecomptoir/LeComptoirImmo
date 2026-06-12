@@ -1,0 +1,181 @@
+import uuid
+import calendar
+from datetime import date
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_db
+from app.api.deps import get_current_user, get_current_gestionnaire
+from app.core.permissions import Role
+from app.models.user import User
+from app.models.lease import Lease
+from app.models.tenant import Tenant
+from app.models.property import Property
+from app.services.payment_service import PaymentService
+from app.services.apurement_plan_service import ApurementPlanService, plan_to_dict
+from app.api.v1._isolation import (
+    assert_payment_access, assert_lease_access, agency_tenant_ids,
+)
+from app.core.exceptions import BadRequestException, NotFoundException
+from app.schemas.apurement_plan import ApurementPlanCreate, InstallmentMark
+
+router = APIRouter(prefix="/apurement-plans", tags=["Apurement"])
+
+
+def _add_months(d: date, m: int) -> date:
+    y = d.year + (d.month - 1 + m) // 12
+    mo = (d.month - 1 + m) % 12 + 1
+    return date(y, mo, min(d.day, calendar.monthrange(y, mo)[1]))
+
+
+async def _names(db: AsyncSession, plan) -> tuple:
+    tenant = await db.get(Tenant, plan.tenant_id)
+    lease = await db.get(Lease, plan.lease_id)
+    prop = None
+    if lease and getattr(lease, "property_id", None):
+        prop = await db.get(Property, lease.property_id)
+    return (getattr(tenant, "full_name", None), getattr(prop, "name", None))
+
+
+@router.post("", summary="Créer un plan d'apurement depuis un loyer impayé")
+async def create_plan(
+    data: ApurementPlanCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    payment = await PaymentService.get_by_id(db, data.payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment, write=True)
+    if payment.status not in ("pending", "partial", "late"):
+        raise BadRequestException("Ce loyer ne nécessite pas de plan d'apurement")
+
+    n = max(1, min(int(data.installments or 1), 36))
+    total = round(float(payment.balance or 0), 2)
+    base = round(total / n, 2)
+    insts = []
+    for i in range(n):
+        due = _add_months(data.first_date, i)
+        amount = base if i < n - 1 else round(total - base * (n - 1), 2)
+        insts.append({
+            "seq": i + 1, "due_date": due.isoformat(),
+            "amount": amount, "paid": False, "paid_date": None,
+        })
+
+    plan = await ApurementPlanService.create(
+        db, lease_id=payment.lease_id, tenant_id=payment.tenant_id,
+        origin_payment_id=payment.id, total=total, installments=insts,
+        created_by=current_user.id, label=f"Plan d'apurement · {payment.period_label}",
+    )
+    tn, pn = await _names(db, plan)
+    return plan_to_dict(plan, tn, pn)
+
+
+@router.get("", summary="Plans d'apurement d'un locataire")
+async def list_plans(
+    tenant_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    role = Role(current_user.role)
+    if role == Role.LOCATAIRE:
+        t = (await db.execute(
+            select(Tenant).where(Tenant.user_id == current_user.id)
+        )).scalar_one_or_none()
+        if not t or t.id != tenant_id:
+            return []
+    elif role in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
+        if tenant_id not in await agency_tenant_ids(db, current_user):
+            return []
+    # admin : accès complet
+    plans = await ApurementPlanService.list_for_tenant(db, tenant_id)
+    out = []
+    for p in plans:
+        tn, pn = await _names(db, p)
+        out.append(plan_to_dict(p, tn, pn))
+    return out
+
+
+@router.patch("/{plan_id}/installments/{seq}", summary="Pointer une échéance (payée/non)")
+async def mark_installment(
+    plan_id: uuid.UUID,
+    seq: int,
+    data: InstallmentMark,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    plan = await ApurementPlanService.get(db, plan_id)
+    if not plan:
+        raise NotFoundException("Plan d'apurement", str(plan_id))
+    lease = await db.get(Lease, plan.lease_id)
+    await assert_lease_access(db, current_user, lease, write=True)
+    plan, found = await ApurementPlanService.mark_installment(
+        db, plan, seq, data.paid, data.paid_date)
+    if not found:
+        raise BadRequestException("Échéance introuvable")
+    tn, pn = await _names(db, plan)
+    return plan_to_dict(plan, tn, pn)
+
+
+@router.delete("/{plan_id}", status_code=204, summary="Supprimer un plan d'apurement")
+async def delete_plan(
+    plan_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    plan = await ApurementPlanService.get(db, plan_id)
+    if not plan:
+        raise NotFoundException("Plan d'apurement", str(plan_id))
+    lease = await db.get(Lease, plan.lease_id)
+    await assert_lease_access(db, current_user, lease, write=True)
+    await ApurementPlanService.delete(db, plan)
+
+
+@router.get("/{plan_id}/pdf", summary="PDF du plan d'apurement")
+async def plan_pdf(
+    plan_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    plan = await ApurementPlanService.get(db, plan_id)
+    if not plan:
+        raise NotFoundException("Plan d'apurement", str(plan_id))
+    lease = await db.get(Lease, plan.lease_id)
+    await assert_lease_access(db, current_user, lease)
+
+    payment = None
+    if plan.origin_payment_id:
+        try:
+            payment = await PaymentService.get_by_id(db, plan.origin_payment_id, load_relations=True)
+        except Exception:
+            payment = None
+    if payment is None:
+        raise BadRequestException("Document indisponible (paiement d'origine introuvable)")
+
+    def _fr(iso: str) -> str:
+        try:
+            return date.fromisoformat(iso).strftime("%d/%m/%Y")
+        except Exception:
+            return iso
+
+    schedule = [{"due": _fr(i["due_date"]), "amount": float(i["amount"])}
+                for i in (plan.installments or [])]
+
+    from app.services.pdf_service import render_plan_apurement_html, html_to_pdf
+    html = await render_plan_apurement_html(db, payment, len(schedule), date.today(), schedule=schedule)
+    if not html:
+        raise BadRequestException("Modèle de plan d'apurement indisponible")
+    pdf = html_to_pdf(html)
+
+    from app.utils.filename import doc_filename
+    prop = await db.get(Property, lease.property_id) if lease and lease.property_id else None
+    tenant = await db.get(Tenant, plan.tenant_id)
+    filename = doc_filename(
+        "plan_apurement",
+        tenant=getattr(tenant, "full_name", None),
+        property_name=getattr(prop, "name", None),
+    )
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

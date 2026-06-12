@@ -285,7 +285,7 @@ def _add_months(d, m: int):
 
 
 async def render_plan_apurement_html(db: AsyncSession, payment: Any,
-                                     installments: int, first_date) -> Optional[str]:
+                                     installments: int, first_date, schedule=None) -> Optional[str]:
     """Rend le plan d'apurement via le template « plan_apurement » du gestionnaire,
     avec un échéancier calculé (solde réparti en `installments` mensualités égales
     à partir de `first_date`, la dernière absorbant l'arrondi). Retourne None si
@@ -313,9 +313,6 @@ async def render_plan_apurement_html(db: AsyncSession, payment: Any,
     if tmpl is None or not getattr(tmpl, "blocks", None):
         return None
 
-    n = max(1, min(int(installments or 1), 36))
-    total = round(float(getattr(payment, "balance", 0) or 0), 2)
-    base = round(total / n, 2)
     tenant = getattr(payment, "tenant", None)
     _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
                   "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
@@ -325,15 +322,28 @@ async def render_plan_apurement_html(db: AsyncSession, payment: Any,
     def _eur(v):
         return f"{eur(v)} €"
 
-    # Échéancier : mensualités égales, la dernière absorbe l'arrondi.
-    line_items = []
-    for i in range(n):
-        due = _add_months(first_date, i)
-        amount = base if i < n - 1 else round(total - base * (n - 1), 2)
-        line_items.append({
-            "label": f"Échéance {i + 1} du {due.strftime('%d/%m/%Y')}",
-            "appele": _eur(amount),
-        })
+    # Échéancier : soit fourni (plan enregistré), soit calculé (mensualités égales,
+    # la dernière absorbant l'arrondi).
+    if schedule is not None:
+        line_items = [
+            {"label": f"Échéance {idx + 1} du {s['due']}", "appele": _eur(float(s['amount']))}
+            for idx, s in enumerate(schedule)
+        ]
+        total = round(sum(float(s['amount']) for s in schedule), 2)
+        first_due_str = schedule[0]['due'] if schedule else first_date.strftime('%d/%m/%Y')
+    else:
+        n = max(1, min(int(installments or 1), 36))
+        total = round(float(getattr(payment, "balance", 0) or 0), 2)
+        base = round(total / n, 2)
+        line_items = []
+        for i in range(n):
+            due = _add_months(first_date, i)
+            amount = base if i < n - 1 else round(total - base * (n - 1), 2)
+            line_items.append({
+                "label": f"Échéance {i + 1} du {due.strftime('%d/%m/%Y')}",
+                "appele": _eur(amount),
+            })
+        first_due_str = first_date.strftime('%d/%m/%Y')
 
     user = (await db.execute(select(User).where(User.id == gid))).scalar_one_or_none()
     sender_name = ((user.full_name if user else "") or tmpl.company_name or "")
@@ -368,7 +378,7 @@ async def render_plan_apurement_html(db: AsyncSession, payment: Any,
         "period_range": getattr(payment, "period_range_label", "") or getattr(payment, "period_label", "") or "",
         "due_date": payment.due_date.strftime("%d/%m/%Y") if getattr(payment, "due_date", None) else "",
         "amount_due": _eur(total),
-        "first_due_date": first_date.strftime("%d/%m/%Y"),
+        "first_due_date": first_due_str,
     }
     _logo = getattr(user, "logo_path", None) if user else None
     return render_avis_blocks_html(

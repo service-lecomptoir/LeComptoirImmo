@@ -23,6 +23,7 @@ from app.models.telegram_link import TelegramLink
 from app.models.publishing import PublishPlatform, Listing
 from app.models.candidature import Candidature
 from app.models.lease_exit import LeaseExit
+from app.models.apurement_plan import ApurementPlan
 
 __all__ = [
     "User", "Tenant", "Owner", "Property", "Document",
@@ -31,5 +32,5 @@ __all__ = [
     "Ticket", "TicketMessage", "Prestataire", "Entretien",
     "ProprietaireMessage", "AuditLog", "IrlIndex", "ChargeRegularization",
     "EmailDomain", "TelegramLink", "PublishPlatform", "Listing",
-    "Candidature", "LeaseExit",
+    "Candidature", "LeaseExit", "ApurementPlan",
 ]

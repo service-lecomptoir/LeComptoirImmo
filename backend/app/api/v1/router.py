@@ -5,7 +5,7 @@ from app.api.v1 import (
     avis_echeances, contacts, automation, templates, dashboard,
     tickets, entretiens, messages, proprietaire_perf, offers, subscription,
     webhook, audit, settings, public, actualisation, scoring, telegram,
-    publishing, candidatures, lease_exits,
+    publishing, candidatures, lease_exits, apurement_plans,
 )
 from app.core.features import require_feature
 
@@ -30,6 +30,7 @@ api_router.include_router(leases.router, dependencies=_feat("leases"))
 api_router.include_router(inspections.router)
 api_router.include_router(payments.router, dependencies=_feat("payments"))
 api_router.include_router(letters.router)
+api_router.include_router(apurement_plans.router, dependencies=_feat("payments"))
 api_router.include_router(notifications.router)
 api_router.include_router(avis_echeances.router, dependencies=_feat("avis_echeances"))
 api_router.include_router(contacts.router, dependencies=_feat("contacts"))
