@@ -16,7 +16,9 @@ import { getErrorMessage } from '@/utils/errors'
 
 const schema = z.object({
   owner_type: z.enum(['person', 'company']),
-  civility: z.enum(['M', 'Mme', 'Autre']).optional(),
+  // Le <select> civilité a une option vide ('') : on l'accepte (= non renseigné),
+  // sinon la validation échoue silencieusement quand la civilité n'est pas choisie.
+  civility: z.enum(['M', 'Mme', 'Autre']).or(z.literal('')).optional(),
   first_name: z.string().optional(),
   last_name: z.string().optional(),
   company_name: z.string().optional(),
@@ -301,7 +303,9 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
         {/* Identité */}
         <div>
           <SectionTitle icon={Contact}>Identité</SectionTitle>
-          {/* Type de propriétaire : personne physique ou personne morale (société / SCI) */}
+          {/* Type de propriétaire : personne physique ou personne morale (société / SCI).
+              Champ enregistré (hidden) pour que setValue alimente bien la validation. */}
+          <input type="hidden" {...register('owner_type')} />
           <div className="inline-flex rounded-lg border border-gray-300 p-0.5 mb-3 bg-gray-50">
             {([['person', 'Personne'], ['company', 'Société / SCI']] as const).map(([val, lbl]) => (
               <button
