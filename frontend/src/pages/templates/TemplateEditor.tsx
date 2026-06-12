@@ -20,6 +20,7 @@ const addressLines = (addr?: string | null): string[] =>
 const TEMPLATE_TYPES = [
   { value: 'avis_echeance',           label: "Avis d'échéance",                    blurb: "avis d'échéance" },
   { value: 'lettre_relance',          label: 'Lettre de relance',                  blurb: 'lettre de relance' },
+  { value: 'plan_apurement',          label: "Plan d'apurement",                   blurb: "plans d'apurement" },
   { value: 'quittance',               label: 'Quittance de loyer',                 blurb: 'quittances' },
   { value: 'regularisation_charges',  label: 'Régularisation de charges locatives', blurb: 'régularisations de charges' },
   { value: 'revision_loyer',          label: 'Révision loyer',                     blurb: 'révisions de loyer' },

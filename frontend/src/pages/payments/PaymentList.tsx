@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { getErrorMessage } from '@/utils/errors'
-import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw, ChevronRight, ChevronDown } from 'lucide-react'
+import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw, ChevronRight, ChevronDown, CalendarClock } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { docFilename } from '@/utils/filename'
 import { isMultiMonth } from '@/utils/period'
@@ -36,6 +36,34 @@ export default function PaymentList() {
   const [validatingId, setValidatingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')
+
+  // Plan d'apurement (sur un loyer impayé)
+  const [planPayment, setPlanPayment] = useState<PaymentListItem | null>(null)
+  const [planN, setPlanN] = useState(3)
+  const [planDate, setPlanDate] = useState('')
+  const [planBusy, setPlanBusy] = useState(false)
+
+  const openPlan = (p: PaymentListItem) => {
+    setPlanPayment(p)
+    setPlanN(3)
+    setPlanDate(format(new Date(today.getFullYear(), today.getMonth() + 1, 1), 'yyyy-MM-dd'))
+  }
+  const generatePlan = async () => {
+    if (!planPayment) return
+    setPlanBusy(true)
+    try {
+      await lettersApi.downloadPlanApurement(
+        planPayment.id,
+        { installments: planN, first_date: planDate },
+        docFilename('plan_apurement', { tenant: planPayment.tenant_full_name, property: planPayment.property_name, month: planPayment.period_month, year: planPayment.period_year }),
+      )
+      setPlanPayment(null)
+    } catch (e: any) {
+      alert(getErrorMessage(e, 'Génération du plan impossible'))
+    } finally {
+      setPlanBusy(false)
+    }
+  }
 
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<RecordForm>({
     defaultValues: {
@@ -418,6 +446,15 @@ export default function PaymentList() {
                           <Send size={14} />
                         </button>
                       )}
+                      {['pending', 'partial', 'late'].includes(p.status) && p.balance > 0 && (
+                        <button
+                          onClick={() => openPlan(p)}
+                          className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-700"
+                          title="Plan d'apurement"
+                        >
+                          <CalendarClock size={14} />
+                        </button>
+                      )}
                       <button
                         onClick={async () => {
                           if (!confirm(`Supprimer le paiement de ${p.tenant_full_name} : ${p.period_label} ?\nCette action est irréversible.`)) return
@@ -485,6 +522,59 @@ export default function PaymentList() {
         </table>
         </div>
       </div>
+
+      {/* Modal plan d'apurement */}
+      {planPayment && (
+        <Modal
+          isOpen
+          onClose={() => setPlanPayment(null)}
+          title="Plan d'apurement"
+          size="sm"
+          footer={
+            <>
+              <button
+                onClick={() => setPlanPayment(null)}
+                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={generatePlan}
+                disabled={planBusy || planN < 1 || !planDate}
+                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {planBusy ? 'Génération…' : 'Générer le PDF'}
+              </button>
+            </>
+          }
+        >
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+            <strong>{planPayment.tenant_full_name}</strong> : {planPayment.period_label}<br />
+            Solde à apurer : <strong>{fmtEuro(planPayment.balance)}</strong>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nombre de mensualités *</label>
+              <input
+                type="number" min="1" max="36" value={planN}
+                onChange={e => setPlanN(Math.max(1, Math.min(36, Number(e.target.value) || 1)))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Première échéance *</label>
+              <input
+                type="date" value={planDate}
+                onChange={e => setPlanDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              Mensualité ≈ <strong>{fmtEuro(planPayment.balance / planN)}</strong> · {planN} versement{planN > 1 ? 's' : ''} mensuel{planN > 1 ? 's' : ''} (la dernière échéance ajuste l'arrondi).
+            </p>
+          </div>
+        </Modal>
+      )}
 
       {/* Modal saisie paiement */}
       {recordingId && (

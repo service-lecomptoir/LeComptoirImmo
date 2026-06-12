@@ -78,6 +78,18 @@ export const lettersApi = {
     downloadBlob(response.data, filename)
   },
 
+  downloadPlanApurement: async (
+    paymentId: string,
+    params: { installments: number; first_date: string },
+    filename: string,
+  ) => {
+    const response = await apiClient.get(`/letters/plan-apurement/${paymentId}`, {
+      params,
+      responseType: 'blob',
+    })
+    downloadBlob(response.data, filename)
+  },
+
   downloadAttestationCaf: async (leaseId: string, filename: string) => {
     const response = await apiClient.get(`/letters/attestation-caf/${leaseId}`, {
       responseType: 'blob',

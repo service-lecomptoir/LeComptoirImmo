@@ -88,6 +88,16 @@ DEFAULT_TEMPLATES = {
         "blocks": default_blocks("lettre_relance"),
         "theme": DEFAULT_THEME,
     },
+    TemplateType.PLAN_APUREMENT: {
+        "name": "Plan d'apurement",
+        "content_html": """<h2>Plan d'apurement</h2>
+<p>{{civility_greeting}},</p>
+<p>Suite au loyer impayé de la période <strong>{{period_range}}</strong> (échéance du <strong>{{due_date}}</strong>), nous convenons ensemble d'un plan d'apurement pour régler le solde restant dû de <strong>{{amount_due}}</strong> selon l'échéancier convenu.</p>
+<p style="color:#6b7280;">À défaut de paiement d'une seule échéance, la totalité du solde restant dû redeviendra immédiatement exigible.</p>""",
+        "footer_text": "Plan d'apurement amiable. Le présent plan ne vaut pas renonciation au recouvrement du solde.",
+        "blocks": default_blocks("plan_apurement"),
+        "theme": DEFAULT_THEME,
+    },
 }
 
 # Types de documents retirés de la papeterie (désactivés au démarrage).

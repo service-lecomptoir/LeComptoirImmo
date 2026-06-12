@@ -113,6 +113,51 @@ async def lettre_relance(
     )
 
 
+@router.get("/plan-apurement/{payment_id}")
+async def plan_apurement(
+    payment_id: uuid.UUID,
+    installments: int = 3,
+    first_date: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Génère un plan d'apurement (échéancier) pour un loyer impayé."""
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment, write=True)
+    if payment.status not in ("pending", "partial", "late"):
+        raise BadRequestException("Ce loyer ne nécessite pas de plan d'apurement")
+
+    # Première échéance : fournie (YYYY-MM-DD) ou 1er du mois prochain par défaut.
+    if first_date:
+        try:
+            fd = date.fromisoformat(first_date)
+        except ValueError:
+            raise BadRequestException("Date de première échéance invalide")
+    else:
+        d = date.today()
+        fd = date(d.year + (1 if d.month == 12 else 0),
+                  1 if d.month == 12 else d.month + 1, 1)
+
+    from app.services.pdf_service import render_plan_apurement_html
+    html = await render_plan_apurement_html(db, payment, installments, fd)
+    if not html:
+        raise BadRequestException("Modèle de plan d'apurement indisponible")
+    pdf = html_to_pdf(html)
+
+    from app.utils.filename import doc_filename
+    property_obj = payment.lease.parent_property if payment.lease else None
+    filename = doc_filename(
+        "plan_apurement",
+        tenant=payment.tenant.full_name if payment.tenant else None,
+        property_name=property_obj.name if property_obj else None,
+        month=payment.period_month, year=payment.period_year,
+    )
+    return Response(
+        content=pdf, media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/attestation-caf/{lease_id}")
 async def attestation_caf(
     lease_id: uuid.UUID,

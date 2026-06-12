@@ -65,6 +65,7 @@ const VARS: { k: string; l: string; g: VarGroup }[] = [
   { k: '{{charges_amount}}', l: 'Charges', g: 'avis' },
   { k: '{{apl_amount}}', l: 'APL (aide au logement)', g: 'avis' },
   { k: '{{amount_due}}', l: 'Solde restant dû (relance)', g: 'avis' },
+  { k: '{{first_due_date}}', l: 'Première échéance (plan d’apurement)', g: 'avis' },
   // Régularisation de charges
   { k: '{{regul_real}}', l: 'Régul : dépenses', g: 'regul' },
   { k: '{{regul_provisions}}', l: 'Régul : provisions', g: 'regul' },
@@ -91,6 +92,7 @@ const TYPE_GROUP: Record<string, VarGroup> = {
   revision_loyer: 'revision',
   taxes_foncieres: 'taxe',
   lettre_relance: 'avis',     // mêmes variables que l'avis (période/échéance/montant)
+  plan_apurement: 'avis',     // période/échéance/solde + première échéance
 }
 
 const THEME_FIELDS: { key: string; label: string }[] = [

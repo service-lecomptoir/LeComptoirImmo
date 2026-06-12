@@ -291,6 +291,35 @@ def default_blocks(template_type: str) -> Optional[list[dict]]:
             _common_footer(),
         ]
 
+    if template_type == "plan_apurement":
+        return [
+            _header("Plan d'apurement", "{{period_range}}", "ÉCHÉANCIER"),
+            _common_sidebar(), _common_recipient(), _common_reference(),
+            _greeting("Suite au loyer impayé de la période {{period_range}} (échéance du "
+                      "{{due_date}}), nous convenons ensemble d'un plan d'apurement permettant "
+                      "de régler le solde restant dû selon l'échéancier ci-dessous.",
+                      salutation="{{civility_greeting}},"),
+            {"id": "amount_bar", "type": "amount_bar", "enabled": True, "props": {
+                "title": "Solde restant dû",
+                "label": "Montant total à apurer",
+                "amount": "{{amount_due}}",
+            }},
+            {"id": "details", "type": "details_table", "enabled": True, "props": {
+                "heading": "Échéancier de remboursement convenu",
+                "section_label": "Versements échelonnés",
+                "col_appel": "MONTANT À VERSER", "col_regle": "",
+                "show_regle": False, "custom_rows": [],
+                "total_label": "Total à apurer : {{amount_due}}",
+                "pay_label": "Première échéance le {{first_due_date}}",
+            }},
+            {"id": "closing", "type": "free_text", "enabled": True, "props": {
+                "text": "À défaut de paiement d'une seule échéance ci-dessus, la totalité du "
+                        "solde restant dû redeviendra immédiatement exigible. Le présent plan "
+                        "ne vaut pas renonciation au recouvrement.\n\nFait le {{today_date}}.",
+            }},
+            _common_footer(),
+        ]
+
     if template_type == "lettre_relance":
         return [
             _header("Lettre de relance", "{{period_range}}", "RAPPEL"),

@@ -16,6 +16,7 @@ class TemplateType(str, Enum):
     REVISION_LOYER = "revision_loyer"
     TAXES_FONCIERES = "taxes_foncieres"
     LETTRE_RELANCE = "lettre_relance"
+    PLAN_APUREMENT = "plan_apurement"
     # Types historiques (plus proposés dans la papeterie, conservés pour compat).
     LETTRE_RESILIATION = "lettre_resiliation"
     CONTRAT_BAIL = "contrat_bail"
@@ -26,6 +27,7 @@ class TemplateType(str, Enum):
 PAPETERIE_ORDER = [
     TemplateType.AVIS_ECHEANCE.value,
     TemplateType.LETTRE_RELANCE.value,
+    TemplateType.PLAN_APUREMENT.value,
     TemplateType.QUITTANCE.value,
     TemplateType.REGULARISATION_CHARGES.value,
     TemplateType.REVISION_LOYER.value,
