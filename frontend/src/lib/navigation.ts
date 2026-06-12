@@ -17,7 +17,7 @@ import {
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
   ShoppingBag, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
-  UserCheck, DoorOpen,
+  UserCheck, DoorOpen, AlertTriangle,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -49,6 +49,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Atelier de modèles' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
+  { to: '/signalements', icon: AlertTriangle, label: 'Signalements' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
@@ -113,6 +114,7 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Atelier de modèles' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
+  { to: '/signalements', icon: AlertTriangle, label: 'Signalements' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
@@ -132,6 +134,7 @@ export const navLocataire: NavItem[] = [
   { to: '/locataire/payer', icon: Wallet, label: 'Payer mon loyer' },
   { to: '/locataire/paiements', icon: CreditCard, label: 'Mes paiements' },
   { to: '/locataire/messages', icon: MessageSquare, label: 'Mes démarches' },
+  { to: '/locataire/signaler', icon: AlertTriangle, label: 'Signaler un problème' },
   { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
   { to: '/locataire/offres', icon: ShoppingBag, label: 'Offres & Services' },
 ]
@@ -173,6 +176,8 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   '/locataire/payer': 'Le montant dû et les modalités de règlement de votre loyer.',
   '/locataire/paiements': "L'historique de vos règlements et le téléchargement de vos quittances.",
   '/locataire/messages': 'Faites une demande à tout moment et suivez son évolution : échanges, relance, validation ou refus de la clôture proposée.',
+  '/locataire/signaler': 'Signalez un problème (bruit, sécurité, propreté des parties communes, souci dans votre logement…) : catégorie, description, photo, urgence. Votre gestionnaire est alerté.',
+  '/signalements': 'Les signalements de vos locataires (bruit, sécurité, propreté…) : suivi par statut, logements à problème, historique et export.',
   '/locataire/documents': 'Votre bail, vos quittances et tous les documents liés à votre location.',
   '/locataire/offres': 'Les services proposés (assurance, box internet, etc.).',
 }

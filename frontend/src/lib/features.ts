@@ -23,6 +23,7 @@ export const PATH_FEATURES: [string, string][] = [
   ['/diffusion', 'diffusion'],
   ['/candidatures', 'candidatures'],
   ['/incidents', 'incidents'],
+  ['/signalements', 'incidents'],
   ['/entretiens', 'entretiens'],
   ['/contacts', 'contacts'],
   ['/offres', 'offres'],

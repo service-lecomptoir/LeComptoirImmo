@@ -82,6 +82,8 @@ const PropertyPublish = lazyPage(() => import('@/pages/publishing/PropertyPublis
 const AnnoncePublic = lazyPage(() => import('@/pages/public/AnnoncePublic'))
 const CandidaturesPage = lazyPage(() => import('@/pages/candidatures/CandidaturesPage'))
 const SortiesPage = lazyPage(() => import('@/pages/sorties/SortiesPage'))
+const SignalementList = lazyPage(() => import('@/pages/signalements/SignalementList'))
+const LocataireSignaler = lazyPage(() => import('@/pages/locataire/LocataireSignaler'))
 
 // Indicateur de chargement pendant le téléchargement d'une page différée (lazy).
 function PageLoader() {
@@ -217,6 +219,8 @@ export const router = createBrowserRouter([
       { path: 'locataire/messages', element: <LocataireMessages /> },
       { path: 'locataire/documents', element: <LocataireDocuments /> },
       { path: 'incidents', element: <IncidentList /> },
+      { path: 'signalements', element: <SignalementList /> },
+      { path: 'locataire/signaler', element: <LocataireSignaler /> },
       { path: 'entretiens', element: <EntretienList /> },
       { path: 'proprietaire/entretiens', element: <ProprietaireEntretien /> },
       { path: 'proprietaire/incidents', element: <ProprietaireIncidents /> },
