@@ -345,15 +345,27 @@ export default function MonProfil() {
             )}
             {isGP && ownerKind === 'personne' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input className={inp} value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)} placeholder="Prénom" />
-                <input className={inp} value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)} placeholder="Nom" />
+                <div>
+                  <label className={lbl}>Prénom</label>
+                  <input className={inp} value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)} />
+                </div>
+                <div>
+                  <label className={lbl}>Nom</label>
+                  <input className={inp} value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)} />
+                </div>
               </div>
             )}
             {(!isGP || ownerKind === 'societe') && (
               <div className="space-y-3">
                 {/* Raison sociale = identité principale : pleine largeur, SIREN/SIRET en dessous. */}
-                <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder={isGP ? 'Société / SCI' : 'Société'} />
-                <input className={`${inp} sm:max-w-xs`} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="SIREN / SIRET" />
+                <div>
+                  <label className={lbl}>{isGP ? 'Société / SCI' : 'Société'}</label>
+                  <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder={isGP ? 'SCI Les Tilleuls' : 'Raison sociale'} />
+                </div>
+                <div className="sm:max-w-xs">
+                  <label className={lbl}>SIREN / SIRET</label>
+                  <input className={inp} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="123 456 789" />
+                </div>
               </div>
             )}
             <p className="text-xs text-gray-400 mt-1">Utilisé comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
