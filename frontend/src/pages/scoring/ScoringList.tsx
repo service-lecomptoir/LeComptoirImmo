@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ShieldCheck, X, Plus, Trash2, TrendingUp, AlertTriangle, KeyRound, ChevronRight, ChevronDown } from 'lucide-react'
+import { ShieldCheck, X, Plus, Trash2, TrendingUp, AlertTriangle, KeyRound, ChevronRight, ChevronDown, Sparkles } from 'lucide-react'
+import { apiClient } from '@/api/client'
 import {
   scoringApi, GRADE_COLORS,
   type ScoringRow, type ScoringDetail, type EventKind, type RelationEvent,
@@ -37,6 +38,17 @@ function DetailPanel({ tenantId, onClose, onChanged }: { tenantId: string; onClo
   const [kinds, setKinds] = useState<EventKind[]>([])
   const [form, setForm] = useState({ kind: '', note: '', event_date: '' })
   const [saving, setSaving] = useState(false)
+  const [ai, setAi] = useState<{ loading: boolean; text: string | null; disabled: boolean }>({ loading: false, text: null, disabled: false })
+
+  const runAi = async () => {
+    setAi({ loading: true, text: null, disabled: false })
+    try {
+      const { data } = await apiClient.get(`/scoring/${tenantId}/analysis`)
+      setAi({ loading: false, text: data.analysis || null, disabled: data.enabled === false })
+    } catch {
+      setAi({ loading: false, text: null, disabled: false })
+    }
+  }
 
   const load = () => { scoringApi.detail(tenantId).then(r => setDetail(r.data)).catch(() => {}) }
   useEffect(() => { load(); scoringApi.eventKinds().then(r => setKinds(r.data)).catch(() => {}) }, [tenantId])
@@ -76,6 +88,22 @@ function DetailPanel({ tenantId, onClose, onChanged }: { tenantId: string; onClo
             <div className="bg-white rounded-xl border p-4 flex items-center gap-4">
               <GradeBadge grade={detail.grade} score={detail.score} />
               <p className="text-sm text-gray-700 flex-1">{detail.strategy}</p>
+            </div>
+
+            {/* Analyse IA (aide à la décision) */}
+            <div className="bg-white rounded-xl border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Sparkles size={15} className="text-violet-600" /> Analyse IA</h3>
+                <button onClick={runAi} disabled={ai.loading}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 disabled:opacity-50 whitespace-nowrap">
+                  {ai.loading ? 'Analyse…' : ai.text ? 'Réactualiser' : 'Analyser ce dossier'}
+                </button>
+              </div>
+              {ai.disabled
+                ? <p className="text-sm text-gray-400">L'assistant IA n'est pas activé sur la plateforme.</p>
+                : ai.text
+                  ? <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{ai.text}</p>
+                  : <p className="text-sm text-gray-400">Lecture contextuelle du dossier : forces, points de vigilance et recommandation d'action.</p>}
             </div>
 
             {/* Facteurs */}

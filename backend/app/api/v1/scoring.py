@@ -157,3 +157,58 @@ async def get_scoring_detail(
         **res,
         "relationship_events": events,
     }
+
+
+@router.get("/{tenant_id}/analysis", summary="Analyse IA d'aide à la décision (scoring)")
+async def scoring_ai_analysis(
+    tenant_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    tenant = await db.get(Tenant, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Locataire introuvable")
+    await assert_manager_scope(db, current_user, tenant.created_by, "ce locataire")
+
+    lease = (await db.execute(
+        select(Lease).options(selectinload(Lease.parent_property))
+        .where(Lease.tenant_id == tenant_id, Lease.is_active.is_(True))
+        .order_by(Lease.start_date.desc())
+    )).scalars().first()
+    payments = list((await db.execute(
+        select(Payment).where(Payment.tenant_id == tenant_id)
+    )).scalars().all())
+    res = compute(tenant, lease, payments)
+
+    from app.services import llm_service
+    if not llm_service.enabled():
+        return {"analysis": None, "enabled": False}
+
+    prop = getattr(lease, "parent_property", None) if lease else None
+    facts = [
+        f"Locataire : {tenant.full_name}",
+        f"Note de qualité de payeur : {res['grade']} ({res['score']}/100)",
+        f"Bien : {prop.name if prop else 'non renseigné'}",
+        f"Source de revenus : {getattr(tenant, 'income_source', None) or 'non renseignée'}",
+    ]
+    for f in res.get("factors", []):
+        facts.append(f"{f['label']} : {f['score']}/100 (poids {f['weight']} %) : {f['detail']}")
+    evs = (getattr(lease, "relationship_events", None) or []) if lease else []
+    if evs:
+        labels = [KIND_META.get(e.get("kind", ""), {}).get("label", e.get("kind")) for e in evs[-8:]]
+        facts.append("Événements de relation récents : " + ", ".join(str(x) for x in labels))
+
+    system = (
+        "Tu es un analyste expert en gestion locative en France, spécialiste de l'évaluation du "
+        "risque d'impayé. À partir des DONNÉES déjà calculées d'un locataire, tu aides le gestionnaire "
+        "à décider. Sois factuel, nuancé et concret ; ne juge pas la personne, base-toi uniquement sur "
+        "les données, n'invente rien. Réponds en français, en 4 à 6 lignes maximum, sous la forme :\n"
+        "• Forces : …\n• Points de vigilance : …\n• Recommandation : une action concrète et proportionnée.\n"
+        "Reste sobre et orienté décision."
+    )
+    text = await llm_service.chat(
+        [{"role": "system", "content": system},
+         {"role": "user", "content": "DONNÉES DU LOCATAIRE :\n- " + "\n- ".join(facts)}],
+        temperature=0.4, max_tokens=420,
+    )
+    return {"analysis": text, "enabled": True}

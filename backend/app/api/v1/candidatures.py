@@ -223,6 +223,63 @@ async def compare_candidatures(
     return {"rent_reference": rent, "candidates": out}
 
 
+@router.get("/compare/{property_id}/analysis", summary="Analyse IA d'aide à la décision (candidatures)")
+async def compare_ai_analysis(
+    property_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_manager_or_owner),
+):
+    ids = await _scope_property_ids(db, user)
+    if ids is not None and property_id not in ids:
+        raise ForbiddenException("Ce bien n'est pas dans votre périmètre.")
+
+    from app.services import llm_service
+    if not llm_service.enabled():
+        return {"analysis": None, "enabled": False}
+
+    rent = await _rent_ref(db, property_id)
+    rows = (await db.execute(
+        select(Candidature).where(
+            Candidature.property_id == property_id,
+            Candidature.status != "refusee",
+        )
+    )).scalars().all()
+    if not rows:
+        return {"analysis": None, "enabled": True, "empty": True}
+
+    cands = [_out(c, rent) for c in rows]
+    cands.sort(key=lambda x: x["metrics"]["score"], reverse=True)
+    lines = []
+    for i, c in enumerate(cands, 1):
+        m = c["metrics"]
+        eff = f"{m['effort_ratio'] * 100:.0f} %" if m.get("effort_ratio") else "non calculé"
+        inc = f"{c['monthly_income']:.0f} €" if c.get("monthly_income") is not None else "non renseignés"
+        lines.append(
+            f"Candidat {i} ({c['full_name']}) : score {m['score']}/100 ; taux d'effort {eff} ; "
+            f"dossier complet à {m['completeness_pct']} % ; revenus {inc} ; "
+            f"garant {'oui' if c['has_guarantor'] else 'non'} ; statut {c['status']}"
+        )
+    rent_line = f"Loyer de référence du bien : {rent:.0f} €" if rent else "Loyer de référence inconnu"
+
+    system = (
+        "Tu es un expert en sélection de locataires en France, neutre et rigoureux. À partir des "
+        "DONNÉES de candidatures (déjà analysées), aide le gestionnaire à choisir. IMPORTANT : "
+        "fonde-toi UNIQUEMENT sur la solvabilité et la complétude du dossier (taux d'effort, revenus, "
+        "garant, pièces justificatives). N'évoque jamais l'origine, le sexe, l'âge, la situation "
+        "familiale ou tout critère discriminatoire (interdits par la loi). N'invente aucune donnée.\n"
+        "Réponds en français, 5 lignes maximum :\n"
+        "• Recommandation : quel candidat retenir et pourquoi (1 phrase).\n"
+        "• Comparatif : 1 à 2 points qui départagent les profils.\n"
+        "• Réserves : pièces manquantes ou points à sécuriser avant signature."
+    )
+    text = await llm_service.chat(
+        [{"role": "system", "content": system},
+         {"role": "user", "content": rent_line + "\nCANDIDATS :\n- " + "\n- ".join(lines)}],
+        temperature=0.4, max_tokens=450,
+    )
+    return {"analysis": text, "enabled": True}
+
+
 @router.get("/{candidature_id}", summary="Détail d'une candidature")
 async def get_candidature(
     candidature_id: uuid.UUID,

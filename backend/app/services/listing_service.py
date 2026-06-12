@@ -99,17 +99,30 @@ async def generate_listing_draft(prop, price=None) -> dict:
     if llm_service.enabled():
         try:
             system = (
-                "Tu es un expert en rédaction d'annonces immobilières de location en France. "
-                "À partir des CARACTÉRISTIQUES fournies, rédige une annonce attractive, "
-                "honnête et concise, en français. N'invente AUCUNE information absente des "
-                "caractéristiques. Réponds STRICTEMENT en JSON valide, sans texte autour : "
-                '{"title": "<accroche max 80 caractères>", "description": "<120 à 220 mots, '
-                'phrases courtes>"}.'
+                "Tu es concepteur-rédacteur immobilier en France, spécialisé dans les annonces "
+                "de location au style vivant et premium (le ton des belles annonces d'agence). "
+                "Ta mission : à partir des SEULES caractéristiques fournies, écrire une annonce "
+                "qui donne envie de visiter.\n"
+                "Règles :\n"
+                "- N'invente JAMAIS un fait absent (surface, étage, pièces, équipement, atout, "
+                "proximité) : tu n'utilises que ce qui est listé.\n"
+                "- Transforme chaque caractéristique en BÉNÉFICE concret du quotidien "
+                "(ex. « cuisine équipée » → « on s'installe sans rien acheter » ; « fibre » → "
+                "« télétravail et streaming sans accroc »). Vocabulaire concret et varié, "
+                "zéro cliché creux, zéro superlatif gratuit, pas de MAJUSCULES criardes.\n"
+                "- Description structurée en 3 temps fluides (sans titres) : une accroche qui "
+                "plante le décor, les atouts du logement, puis une clôture qui invite à la visite. "
+                "Phrases courtes et rythmées, 150 à 230 mots.\n"
+                "- Titre accrocheur et spécifique : type + typologie + ville + 1 atout fort, "
+                "80 caractères max, sans point final.\n"
+                'Réponds STRICTEMENT en JSON valide, sans texte autour : '
+                '{"title": "...", "description": "..."}.'
             )
             reply = await llm_service.chat(
                 [{"role": "system", "content": system},
-                 {"role": "user", "content": "CARACTÉRISTIQUES :\n- " + "\n- ".join(facts)}],
-                temperature=0.6, max_tokens=600,
+                 {"role": "user", "content": "CARACTÉRISTIQUES DU BIEN :\n- " + "\n- ".join(facts)
+                  + "\n\nRédige maintenant le titre et la description."}],
+                temperature=0.8, max_tokens=800,
             )
             if reply:
                 txt = _re.sub(r"^```(?:json)?|```$", "", reply.strip(), flags=_re.MULTILINE).strip()

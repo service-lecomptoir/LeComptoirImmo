@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatPhoneDisplay } from '@/utils/format'
-import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2 } from 'lucide-react'
+import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2, Sparkles } from 'lucide-react'
+import { apiClient } from '@/api/client'
 import { candidaturesApi, type Candidature, type CandidatureStatus } from '@/api/candidatures'
 import { propertiesApi } from '@/api/properties'
 import { toast } from '@/store/toast'
@@ -79,12 +80,26 @@ export default function CandidaturesPage() {
     } catch { /* */ }
   }
 
+  const [comparePid, setComparePid] = useState('')
+  const [cAi, setCAi] = useState<{ loading: boolean; text: string | null; disabled: boolean }>({ loading: false, text: null, disabled: false })
   const openCompare = async (pid: string) => {
     try {
       const r = await candidaturesApi.compare(pid)
       setCompare(r.data)
+      setComparePid(pid)
+      setCAi({ loading: false, text: null, disabled: false })
       setShowCompare(true)
     } catch { /* */ }
+  }
+  const runCompareAi = async () => {
+    if (!comparePid) return
+    setCAi({ loading: true, text: null, disabled: false })
+    try {
+      const { data } = await apiClient.get(`/candidatures/compare/${comparePid}/analysis`)
+      setCAi({ loading: false, text: data.analysis || null, disabled: data.enabled === false })
+    } catch {
+      setCAi({ loading: false, text: null, disabled: false })
+    }
   }
 
   const createManual = async (e: React.FormEvent) => {
@@ -314,6 +329,19 @@ export default function CandidaturesPage() {
                 : "Renseignez le loyer dans l'annonce du bien pour calculer le taux d'effort."}
               {' '}Classement par score (effort, complétude du dossier, garant).
             </p>
+            {compare.candidates.length > 0 && (
+              <div className="mb-4 rounded-lg border border-violet-100 bg-violet-50/40 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-violet-800 flex items-center gap-1.5"><Sparkles size={15} /> Aide à la décision (IA)</span>
+                  <button onClick={runCompareAi} disabled={cAi.loading}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50 whitespace-nowrap">
+                    {cAi.loading ? 'Analyse…' : cAi.text ? 'Réactualiser' : 'Recommander un candidat'}
+                  </button>
+                </div>
+                {cAi.disabled && <p className="text-sm text-gray-500 mt-2">L'assistant IA n'est pas activé sur la plateforme.</p>}
+                {cAi.text && <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed mt-2">{cAi.text}</p>}
+              </div>
+            )}
             {compare.candidates.length === 0 ? (
               <p className="text-sm text-gray-400">Aucune candidature active pour ce bien.</p>
             ) : (
