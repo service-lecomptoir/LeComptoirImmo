@@ -55,7 +55,7 @@ export default function PaymentList() {
     try {
       await apurementApi.create(planPayment.id, planN, planDate)
       setPlanPayment(null)
-      toast.success('Plan d\'apurement créé — suivi sur la fiche du locataire')
+      toast.success('Plan d\'apurement créé. Suivi sur la fiche du locataire.')
     } catch (e: any) {
       alert(getErrorMessage(e, 'Création du plan impossible'))
     } finally {
