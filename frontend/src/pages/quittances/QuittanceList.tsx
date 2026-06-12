@@ -290,7 +290,7 @@ export default function QuittanceList() {
                         onClick={() => handleSend(p)}
                         disabled={sendingId === p.id}
                         title={p.quittance_sent_at ? 'Re-marquer comme envoyée' : 'Marquer comme envoyée'}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg disabled:opacity-50 transition-colors ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg disabled:opacity-50 transition-colors whitespace-nowrap ${
                           p.quittance_sent_at
                             ? 'bg-green-50 text-green-700 hover:bg-green-100'
                             : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
@@ -302,7 +302,7 @@ export default function QuittanceList() {
                             ? <CheckCircle2 size={12} />
                             : <Mail size={12} />
                         }
-                        {p.quittance_sent_at ? 'Envoyée' : 'Envoyer'}
+                        {p.quittance_sent_at ? 'Envoyée' : 'Marquer envoyée'}
                       </button>
                     </div>
                   </td>
