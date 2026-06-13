@@ -9,6 +9,13 @@ import { fr } from 'date-fns/locale'
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 
+// « 2026-05 » -> « Mai 2026 » (en-tête de regroupement du grand livre).
+const monthLabel = (period: string) => {
+  const [y, m] = period.split('-').map(Number)
+  const s = format(new Date(y, (m || 1) - 1, 1), 'MMMM yyyy', { locale: fr })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 // Grand livre vu côté locataire :
 //  • débit (rouge, signe −) = ce qui augmente sa dette : appel de loyer,
 //    échéance d'apurement, régularisation de charges défavorable…
@@ -135,7 +142,24 @@ export default function LocatairePaiements() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {entries.map(e => (
+                {(() => {
+                  // Les écritures sont déjà triées (mois récent en tête, puis appel
+                  // → APL → reste à charge). On insère un en-tête à chaque changement
+                  // de mois pour que le regroupement « par mois donné » soit explicite.
+                  const out: JSX.Element[] = []
+                  let lastPeriod: string | null = null
+                  for (const e of entries) {
+                    if (e.period !== lastPeriod) {
+                      lastPeriod = e.period
+                      out.push(
+                        <tr key={`hdr-${e.period}`} className="bg-gray-50/60">
+                          <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {monthLabel(e.period)}
+                          </td>
+                        </tr>
+                      )
+                    }
+                    out.push(
                   <tr key={e.key} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                       {e.date ? format(new Date(e.date), 'd MMM yyyy', { locale: fr }) : '·'}
@@ -162,7 +186,10 @@ export default function LocatairePaiements() {
                       {e.sign === 'credit' ? `+ ${fmtEuro(e.montant)}` : `− ${fmtEuro(e.montant)}`}
                     </td>
                   </tr>
-                ))}
+                    )
+                  }
+                  return out
+                })()}
               </tbody>
             </table>
           </div>
