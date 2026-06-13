@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Banknote, CheckCircle, Wallet, Clock, CreditCard } from 'lucide-react'
+import { Building2, Banknote, CheckCircle, Wallet, Clock, CreditCard, Download } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { docFilename } from '@/utils/filename'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -17,25 +18,14 @@ const METHODS = [
   { id: 'especes', icon: Banknote, label: 'Espèces', desc: 'En agence ou à l\'accueil', color: '#DC2626' },
 ]
 
-// Statut d'une écriture côté locataire (cycle de vie d'un règlement) :
-// à régler -> (je déclare) en attente -> (le gestionnaire confirme) validé.
-type StatutKey = 'valide' | 'attente' | 'a_regler' | 'retard' | 'partiel' | 'applique'
-const STATUT: Record<StatutKey, { label: string; variant: 'green' | 'blue' | 'yellow' | 'red' | 'gray' }> = {
-  valide:   { label: 'Validé',     variant: 'green' },
-  attente:  { label: 'En attente', variant: 'yellow' },
-  a_regler: { label: 'À régler',   variant: 'blue' },
-  retard:   { label: 'En retard',  variant: 'red' },
-  partiel:  { label: 'Partiel',    variant: 'yellow' },
-  applique: { label: 'Appliquée',  variant: 'green' },
-}
-
-// Statut du RESTE À CHARGE d'un mois (part réellement à la charge du locataire,
-// hors APL). `tenantPaid` = ce qui a été payé au-delà de l'APL ; `reste` = sa part due.
-function resteStatut(tenantPaid: number, reste: number, declared: boolean): StatutKey {
-  if (tenantPaid >= reste - 0.005) return 'valide'
-  if (declared) return 'attente'
-  if (tenantPaid > 0.005) return 'partiel'
-  return 'a_regler'
+// Côté locataire, un règlement n'a que deux états : « en attente » (déclaré, le
+// gestionnaire doit confirmer) ou « validé » (confirmé / reçu). Les notions de
+// partiel ou d'APL appliquée sont gérées côté gestionnaire ; ici, l'APL reçue et
+// tout paiement confirmé apparaissent comme « validé ».
+type StatutKey = 'valide' | 'attente'
+const STATUT: Record<StatutKey, { label: string; variant: 'green' | 'yellow' }> = {
+  valide:  { label: 'Validé',     variant: 'green' },
+  attente: { label: 'En attente', variant: 'yellow' },
 }
 
 export default function LocatairePayer() {
@@ -69,7 +59,7 @@ export default function LocatairePayer() {
   // Historique : uniquement les écritures DATÉES, c.-à-d. les paiements validés ou
   // en attente (et l'APL appliquée). Les sommes non réglées (à régler / en retard)
   // ne figurent pas ici : elles sont reflétées par le solde et le bouton de paiement.
-  type Row = { key: string; date: string; intitule: string; montant: number; statut: StatutKey; rank: number }
+  type Row = { key: string; date: string; intitule: string; montant: number; statut: StatutKey; rank: number; payment?: any; planId?: string; seq?: number }
   const history: Row[] = []
   for (const p of allPayments) {
     if (p.status === 'cancelled' || p.settled_by_plan) continue
@@ -77,29 +67,23 @@ export default function LocatairePayer() {
     const apl = Math.min(Number(p.amount_apl || 0), due)
     const reste = r2(due - apl)
     const tenantPaid = r2(Number(p.amount_paid || 0) - apl)
+    // APL : crédit reçu (tiers payant) -> validé.
     if (apl > 0.005)
-      history.push({ key: `apl-${p.id}`, date: p.due_date, intitule: `Aide personnelle au logement · ${p.period_label}`, montant: apl, statut: 'applique', rank: 1 })
+      history.push({ key: `apl-${p.id}`, date: p.due_date, intitule: `Aide personnelle au logement · ${p.period_label}`, montant: apl, statut: 'valide', rank: 1 })
+    // Règlement du locataire : déclaré (en attente, montant déclaré) ou confirmé
+    // (validé, montant réellement payé hors APL). La quittance n'est proposée que
+    // si TOUT le mois est payé.
     if (reste > 0.005) {
-      const statut = resteStatut(tenantPaid, reste, !!p.declared_at)
-      // Montant affiché = le règlement concerné : la somme DÉCLARÉE quand c'est en
-      // attente, la somme RÉELLEMENT payée (hors APL) quand c'est validé/partiel.
-      let montant = reste
-      let date: string | null = null
-      if (statut === 'attente') {
-        montant = Number(p.declared_amount ?? reste) || reste
-        date = p.declared_at || p.due_date
-      } else if (statut === 'valide' || statut === 'partiel') {
-        montant = tenantPaid > 0.005 ? tenantPaid : reste
-        date = p.payment_date || p.due_date
-      }
-      if (date)
-        history.push({ key: `reste-${p.id}`, date, intitule: `Règlement · ${p.period_label}`, montant, statut, rank: 2 })
+      if (p.declared_at)
+        history.push({ key: `reste-${p.id}`, date: p.declared_at, intitule: `Règlement · ${p.period_label}`, montant: Number(p.declared_amount ?? reste) || reste, statut: 'attente', rank: 2 })
+      else if (tenantPaid > 0.005)
+        history.push({ key: `reste-${p.id}`, date: p.payment_date || p.due_date, intitule: `Règlement · ${p.period_label}`, montant: tenantPaid, statut: 'valide', rank: 2, payment: p.status === 'paid' ? p : undefined })
     }
   }
   for (const pl of plans) {
     for (const i of pl.installments) {
       if (i.paid)
-        history.push({ key: `i-${pl.id}-${i.seq}`, date: i.paid_date || i.due_date, intitule: `Plan d'apurement · échéance ${i.seq}`, montant: i.amount, statut: 'valide', rank: 3 })
+        history.push({ key: `i-${pl.id}-${i.seq}`, date: i.paid_date || i.due_date, intitule: `Plan d'apurement · échéance ${i.seq}`, montant: i.amount, statut: 'valide', rank: 3, planId: pl.id, seq: i.seq })
       else if (i.declared)
         history.push({ key: `i-${pl.id}-${i.seq}`, date: i.declared_date || i.due_date, intitule: `Plan d'apurement · échéance ${i.seq}`, montant: i.amount, statut: 'attente', rank: 3 })
     }
@@ -203,7 +187,22 @@ export default function LocatairePayer() {
                   return (
                     <tr key={h.key} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{format(new Date(h.date), 'd MMM yyyy', { locale: fr })}</td>
-                      <td className="px-4 py-3 text-sm text-gray-800">{h.intitule}</td>
+                      <td className="px-4 py-3 text-sm text-gray-800">
+                        <span className="inline-flex items-center gap-2">
+                          {h.intitule}
+                          {h.payment && (
+                            <button
+                              onClick={() => paymentsApi.downloadQuittance(h.payment.id,
+                                docFilename('quittance', { tenant: h.payment.tenant_full_name, property: h.payment.property_name, month: h.payment.period_month, year: h.payment.period_year }))}
+                              title="Quittance" className="text-green-600 hover:text-green-800"><Download size={13} /></button>
+                          )}
+                          {h.planId && h.seq != null && (
+                            <button
+                              onClick={() => apurementApi.downloadInstallmentQuittance(h.planId!, h.seq!, `quittance_apurement_echeance_${h.seq}.pdf`)}
+                              title="Quittance de l'échéance" className="text-green-600 hover:text-green-800"><Download size={13} /></button>
+                          )}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-right text-sm font-medium text-gray-900 whitespace-nowrap">{fmtEuro(h.montant)}</td>
                       <td className="px-4 py-3"><StatusBadge label={st.label} variant={st.variant} dot /></td>
                     </tr>
