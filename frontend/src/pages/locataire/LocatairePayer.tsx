@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Building2, Banknote, CheckCircle, AlertCircle, Wallet } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Building2, Banknote, CheckCircle, AlertCircle, Wallet, Clock } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
@@ -9,33 +9,38 @@ import { fr } from 'date-fns/locale'
 
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+const r2 = (n: number) => Math.round(n * 100) / 100
 
 const METHODS = [
-  {
-    id: 'virement',
-    icon: Building2,
-    label: 'Virement bancaire',
-    desc: 'SEPA, délai 1-2 jours',
-    color: '#059669',
-  },
-  {
-    id: 'especes',
-    icon: Banknote,
-    label: 'Espèces',
-    desc: 'En agence ou à l\'accueil',
-    color: '#DC2626',
-  },
+  { id: 'virement', icon: Building2, label: 'Virement bancaire', desc: 'SEPA, délai 1-2 jours', color: '#059669' },
+  { id: 'especes', icon: Banknote, label: 'Espèces', desc: 'En agence ou à l\'accueil', color: '#DC2626' },
 ]
 
-const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: 'En attente',    color: '#D97706', bg: '#FEF3C7' },
-  partial: { label: 'Partiel',       color: '#2563EB', bg: '#DBEAFE' },
-  late:    { label: 'En retard',     color: '#DC2626', bg: '#FEE2E2' },
-  paid:    { label: 'Payé',          color: '#059669', bg: '#D1FAE5' },
+// Statut d'une écriture côté locataire (cycle de vie d'un règlement) :
+// à régler -> (je déclare) en attente de validation -> (le gestionnaire confirme) validé.
+type StatutKey = 'valide' | 'attente' | 'a_regler' | 'retard' | 'partiel' | 'applique'
+const STATUT: Record<StatutKey, { label: string; variant: 'green' | 'blue' | 'yellow' | 'red' | 'gray' }> = {
+  valide:   { label: 'Validé',     variant: 'green' },
+  attente:  { label: 'En attente', variant: 'yellow' },
+  a_regler: { label: 'À régler',   variant: 'blue' },
+  retard:   { label: 'En retard',  variant: 'red' },
+  partiel:  { label: 'Partiel',    variant: 'yellow' },
+  applique: { label: 'Appliquée',  variant: 'green' },
 }
 
 const MONTHS = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+
+// Statut du RESTE À CHARGE d'un mois (part réellement à la charge du locataire,
+// hors APL). Cycle : à régler -> en attente (déclaré) -> validé. `tenantPaid` est
+// ce que le locataire a payé au-delà de l'APL ; `reste` sa part totale due.
+function resteStatut(tenantPaid: number, reste: number, declared: boolean, dueDate: string | null, todayIso: string): StatutKey {
+  if (tenantPaid >= reste - 0.005) return 'valide'
+  if (declared) return 'attente'
+  if (tenantPaid > 0.005) return 'partiel'
+  if (dueDate && dueDate < todayIso) return 'retard'
+  return 'a_regler'
+}
 
 export default function LocatairePayer() {
   const [payment, setPayment] = useState<any>(null)
@@ -43,60 +48,81 @@ export default function LocatairePayer() {
   const [isLoading, setIsLoading] = useState(true)
   const [method, setMethod] = useState<string | null>(null)
   const [amount, setAmount] = useState<number>(0)
-  const [step, setStep] = useState<'select' | 'confirm' | 'success'>('select')
   const [isSending, setIsSending] = useState(false)
   const [allPayments, setAllPayments] = useState<any[]>([])
   const [plans, setPlans] = useState<ApurementPlan[]>([])
 
-  useEffect(() => {
-    Promise.allSettled([
+  const load = useCallback(async () => {
+    const [cur, lst, pl] = await Promise.allSettled([
       apiClient.get('/payments/locataire/current'),
       paymentsApi.list({ limit: 120 }),
       apurementApi.mine(),
-    ]).then(([cur, lst, pl]) => {
-      if (cur.status === 'fulfilled') {
-        setPayment(cur.value.data.payment)
-        setPayee(cur.value.data.payee ?? null)
-        if (cur.value.data.payment) {
-          const p = cur.value.data.payment
-          setAmount(Number(p.balance ?? p.amount_due) || 0)
-        }
+    ])
+    if (cur.status === 'fulfilled') {
+      setPayment(cur.value.data.payment)
+      setPayee(cur.value.data.payee ?? null)
+      if (cur.value.data.payment) {
+        const p = cur.value.data.payment
+        setAmount(Number(p.balance ?? p.amount_due) || 0)
       }
-      if (lst.status === 'fulfilled') setAllPayments(lst.value.data.items ?? lst.value.data)
-      if (pl.status === 'fulfilled') setPlans(pl.value.data)
-    }).finally(() => setIsLoading(false))
+    }
+    if (lst.status === 'fulfilled') setAllPayments(lst.value.data.items ?? lst.value.data)
+    if (pl.status === 'fulfilled') setPlans(pl.value.data)
   }, [])
+
+  useEffect(() => { load().finally(() => setIsLoading(false)) }, [load])
 
   // Solde actuel = cumul du reste à payer (loyers non soldés + échéances d'apurement
   // non réglées), tous mois confondus.
-  const soldeActuel = Math.round((
+  const soldeActuel = r2(
     allPayments.filter((p: any) => p.status !== 'cancelled')
       .reduce((s: number, p: any) => s + (Number(p.balance ?? 0) || 0), 0)
     + plans.flatMap(pl => pl.installments).filter(i => !i.paid).reduce((s, i) => s + i.amount, 0)
-  ) * 100) / 100
+  )
 
-  // Historique : loyers + échéances d'apurement.
-  const HIST_STATUS: Record<string, { label: string; variant: any }> = {
-    paid: { label: 'Payé', variant: 'green' }, partial: { label: 'Partiel', variant: 'yellow' },
-    pending: { label: 'En attente', variant: 'blue' }, late: { label: 'En retard', variant: 'red' },
-    declared: { label: 'Déclaré', variant: 'yellow' }, cancelled: { label: 'Annulé', variant: 'gray' },
-    reported: { label: 'Reporté (apurement)', variant: 'blue' },
-  }
+  // Historique des paiements (côté locataire) : aide au logement (prépaiement),
+  // reste à payer du mois, et échéances de plan d'apurement, avec leur statut.
   const todayIso = new Date().toISOString().slice(0, 10)
-  const history = [
-    ...allPayments.map((p: any) => ({
-      key: `p-${p.id}`, date: p.payment_date, intitule: `Loyer · ${p.period_label}`,
-      echeance: p.due_date, montant: p.amount_due ?? 0,
-      status: p.settled_by_plan ? 'reported' : p.status, sort: p.due_date || '',
-    })),
-    ...plans.flatMap(pl => pl.installments.map(i => ({
-      key: `i-${pl.id}-${i.seq}`, date: i.paid ? (i.paid_date || i.due_date) : null,
-      intitule: `Plan d'apurement · échéance ${i.seq}`, echeance: i.due_date, montant: i.amount,
-      status: i.paid ? 'paid' : i.declared ? 'declared' : (i.due_date < todayIso ? 'late' : 'pending'),
-      sort: i.due_date,
-    }))),
-  ].sort((a, b) => b.sort.localeCompare(a.sort))
+  type Row = { key: string; date: string | null; intitule: string; echeance: string | null; montant: number; statut: StatutKey; sort: string }
+  const history: Row[] = []
+  for (const p of allPayments) {
+    if (p.status === 'cancelled' || p.settled_by_plan) continue   // mois reporté : la dette vit dans le plan
+    const due = Number(p.amount_due || 0)
+    const apl = Math.min(Number(p.amount_apl || 0), due)
+    const reste = r2(due - apl)
+    const tenantPaid = r2(Number(p.amount_paid || 0) - apl)
+    if (apl > 0.005)
+      history.push({ key: `apl-${p.id}`, date: p.due_date, intitule: `Aide personnelle au logement · ${p.period_label}`,
+        echeance: p.due_date, montant: apl, statut: 'applique', sort: (p.due_date || '') + '-1' })
+    if (reste > 0.005)
+      history.push({ key: `reste-${p.id}`, date: tenantPaid > 0.005 ? (p.payment_date || null) : null,
+        intitule: `Reste à payer · ${p.period_label}`, echeance: p.due_date, montant: reste,
+        statut: resteStatut(tenantPaid, reste, !!p.declared_at, p.due_date || null, todayIso), sort: (p.due_date || '') + '-2' })
+  }
+  for (const pl of plans) {
+    for (const i of pl.installments) {
+      const statut: StatutKey = i.paid ? 'valide' : i.declared ? 'attente' : (i.due_date < todayIso ? 'retard' : 'a_regler')
+      history.push({ key: `i-${pl.id}-${i.seq}`, date: i.paid ? (i.paid_date || i.due_date) : null,
+        intitule: `Plan d'apurement · échéance ${i.seq}`, echeance: i.due_date, montant: i.amount, statut, sort: (i.due_date || '') + '-3' })
+    }
+  }
+  history.sort((a, b) => b.sort.localeCompare(a.sort))
 
+  const handleDeclare = async () => {
+    if (!method || !payment || amount <= 0) return
+    setIsSending(true)
+    try {
+      await apiClient.post('/payments/locataire/declare', { method, amount, payment_id: payment.id })
+      setMethod(null)
+      setIsLoading(true)
+      await load()
+      setIsLoading(false)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  // ── Cartes / blocs réutilisés ───────────────────────────────────────────────
   const soldeCard = (
     <div className={`rounded-xl border p-5 mb-5 ${soldeActuel > 0.005 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
       <div className="flex items-center gap-3">
@@ -133,12 +159,12 @@ export default function LocatairePayer() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {history.map(h => {
-                const st = HIST_STATUS[h.status] ?? { label: h.status, variant: 'gray' }
+                const st = STATUT[h.statut]
                 return (
                   <tr key={h.key} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{h.date ? format(new Date(h.date), 'd MMM yyyy', { locale: fr }) : '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{h.date ? format(new Date(h.date), 'd MMM yyyy', { locale: fr }) : '·'}</td>
                     <td className="px-4 py-3 text-sm text-gray-800">{h.intitule}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{h.echeance ? format(new Date(h.echeance), 'd MMM yyyy', { locale: fr }) : '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{h.echeance ? format(new Date(h.echeance), 'd MMM yyyy', { locale: fr }) : '·'}</td>
                     <td className="px-4 py-3 text-right text-sm font-medium text-gray-900 whitespace-nowrap">{fmtEuro(h.montant)}</td>
                     <td className="px-4 py-3"><StatusBadge label={st.label} variant={st.variant} dot /></td>
                   </tr>
@@ -151,21 +177,6 @@ export default function LocatairePayer() {
     </div>
   )
 
-  const handleDeclare = async () => {
-    if (!method || !payment || amount <= 0) return
-    setIsSending(true)
-    try {
-      await apiClient.post('/payments/locataire/declare', {
-        method,
-        amount,
-        payment_id: payment.id,
-      })
-      setStep('success')
-    } finally {
-      setIsSending(false)
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center h-48">
@@ -174,46 +185,143 @@ export default function LocatairePayer() {
     )
   }
 
-  if (!payment) {
-    return (
-      <div className="p-4 sm:p-6 max-w-2xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Payer mon loyer</h1>
-        </div>
-        {soldeCard}
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <CheckCircle size={36} className="mx-auto mb-2 text-green-400" />
-          <p className="text-gray-700 font-medium">Aucun paiement en attente</p>
-          <p className="text-sm text-gray-400 mt-1">Vous n'avez pas d'appel de loyer à régler actuellement.</p>
-        </div>
-        {historyTable}
+  const due = Number(payment?.balance ?? payment?.amount_due) || 0
+  const isDeclared = payment && payment.declared_at && payment.status !== 'paid'
+
+  // ── Bloc « régler mon loyer » (modes de paiement, en bas) ───────────────────
+  let payBlock: JSX.Element
+  if (!payment || due <= 0.005) {
+    payBlock = (
+      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <CheckCircle size={36} className="mx-auto mb-2 text-green-400" />
+        <p className="text-gray-700 font-medium">Aucun loyer à régler</p>
+        <p className="text-sm text-gray-400 mt-1">Vous êtes à jour dans vos paiements.</p>
       </div>
     )
-  }
-
-  const statusCfg = STATUS_LABELS[payment.status] ?? STATUS_LABELS.pending
-  // « Loyer dû » = ce qu'il reste à payer après déduction de l'aide au logement (et acomptes).
-  const due = Number(payment.balance ?? payment.amount_due) || 0
-
-  if (step === 'success') {
-    const selectedMethod = METHODS.find(m => m.id === method)
-    return (
-      <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Payer mon loyer</h1>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center max-w-md mx-auto">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle size={32} className="text-green-500" />
+  } else if (isDeclared) {
+    payBlock = (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+        <div className="flex items-start gap-3">
+          <Clock size={20} className="text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-semibold text-amber-800">Paiement en attente de validation</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Vous avez déclaré un règlement de <strong>{fmtEuro(Number(payment.declared_amount ?? amount))}</strong>
+              {payment.declared_method && <> par <strong>{METHODS.find(m => m.id === payment.declared_method)?.label ?? payment.declared_method}</strong></>}.
+              Votre gestionnaire le validera dès réception, le statut passera alors à « Validé ».
+            </p>
           </div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">Déclaration envoyée</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Votre déclaration de paiement par <strong>{selectedMethod?.label}</strong> a été transmise à votre gestionnaire.
-            Il la validera dès réception du règlement.
-          </p>
-          <p className="text-xs text-gray-400">Montant déclaré : <strong>{fmtEuro(amount)}</strong></p>
         </div>
       </div>
+    )
+  } else {
+    payBlock = (
+      <>
+        <div className="flex items-baseline justify-between mb-3">
+          <p className="text-sm font-medium text-gray-700">Régler mon loyer</p>
+          <p className="text-sm text-gray-500">
+            {MONTHS[payment.period_month]} {payment.period_year} : <strong className="text-gray-900">{fmtEuro(due)}</strong>
+          </p>
+        </div>
+        {payment.status === 'late' && (
+          <div className="mb-3 flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
+            <AlertCircle size={14} /> Paiement en retard : réglez dès que possible.
+          </div>
+        )}
+
+        {/* Modes de paiement */}
+        <div className="space-y-2">
+          {METHODS.map(m => {
+            const Icon = m.icon
+            const isSelected = method === m.id
+            return (
+              <button
+                key={m.id}
+                onClick={() => setMethod(isSelected ? null : m.id)}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all"
+                style={{ border: isSelected ? `2px solid ${m.color}` : '1.5px solid #E5E7EB', background: isSelected ? `${m.color}08` : '#FFFFFF' }}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${m.color}15` }}>
+                  <Icon size={18} style={{ color: m.color }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">{m.label}</p>
+                  <p className="text-xs text-gray-500">{m.desc}</p>
+                </div>
+                {isSelected && (
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: m.color }}>
+                    <CheckCircle size={12} className="text-white" />
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* À la sélection d'un mode : infos + montant modifiable + déclaration */}
+        {method && (
+          <div className="mt-4 space-y-4">
+            {method === 'virement' && (
+              payee?.iban ? (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm">
+                  <p className="font-semibold text-green-800 mb-2">Coordonnées bancaires pour le virement</p>
+                  <div className="space-y-1 text-green-700 font-mono text-xs">
+                    {payee.name && <p className="font-sans">Titulaire : {payee.name}</p>}
+                    <p>IBAN : {payee.iban}</p>
+                    {payee.bic && <p>BIC&nbsp;&nbsp;: {payee.bic}</p>}
+                    <p className="font-sans text-green-600 mt-2">Référence : LOYER-{payment.period_month?.toString().padStart(2, '0')}-{payment.period_year}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+                  <p className="font-semibold mb-1">Coordonnées bancaires non disponibles</p>
+                  <p>Le RIB de votre bailleur n'est pas encore renseigné. Contactez votre gestionnaire.</p>
+                </div>
+              )
+            )}
+            {method === 'especes' && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-800">
+                <p className="font-semibold mb-1">Règlement en espèces auprès de :</p>
+                <p className="font-mono text-xs">{payee?.name ?? 'votre gestionnaire'}</p>
+                {payee?.address && <p className="mt-1 font-mono text-xs">{payee.address}</p>}
+              </div>
+            )}
+
+            <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <label className="text-sm font-medium text-gray-700">Montant que vous réglez</label>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="number" min="0" step="0.01" value={amount}
+                  onChange={e => setAmount(Number(e.target.value))}
+                  className="w-44 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-500">€</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Montant dû : <strong>{fmtEuro(due)}</strong>. Vous pouvez régler un montant partiel (le solde restera dû) ou supérieur (avance en votre faveur).
+              </p>
+              {amount > 0 && amount < due && (
+                <p className="text-xs text-amber-600 mt-1">Paiement partiel : il restera {fmtEuro(due - amount)} à régler.</p>
+              )}
+              {amount > due && (
+                <p className="text-xs text-green-600 mt-1">Avance : {fmtEuro(amount - due)} en votre faveur.</p>
+              )}
+            </div>
+
+            <button
+              onClick={handleDeclare}
+              disabled={isSending || !amount || amount <= 0}
+              className="w-full py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
+              style={{ background: '#0D2F5C' }}
+            >
+              {isSending ? 'Envoi…' : `Déclarer le paiement de ${fmtEuro(amount)}`}
+            </button>
+            <p className="text-xs text-gray-400 text-center">
+              En déclarant, vous informez votre gestionnaire. Le règlement reste « en attente » jusqu'à sa validation.
+            </p>
+          </div>
+        )}
+      </>
     )
   }
 
@@ -221,203 +329,15 @@ export default function LocatairePayer() {
     <div className="p-4 sm:p-6 max-w-2xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Payer mon loyer</h1>
-        <p className="text-gray-500 text-sm mt-1">Choisissez votre mode de règlement</p>
+        <p className="text-gray-500 text-sm mt-1">Solde, historique et règlement de votre loyer</p>
       </div>
 
       {soldeCard}
-
-      {/* Récapitulatif */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Loyer dû</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{fmtEuro(due)}</p>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {MONTHS[payment.period_month]} {payment.period_year}
-              {payment.due_date && ` · Échéance le ${format(new Date(payment.due_date), 'd MMMM', { locale: fr })}`}
-            </p>
-          </div>
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-full"
-            style={{ color: statusCfg.color, background: statusCfg.bg }}>
-            {statusCfg.label}
-          </span>
-        </div>
-        {(payment.amount_charges > 0 || (payment.amount_apl ?? 0) > 0) && (
-          <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
-            <span>Loyer nu</span>
-            <span className="text-right font-medium">{fmtEuro(payment.amount_rent)}</span>
-            {payment.amount_charges > 0 && <>
-              <span>Charges</span>
-              <span className="text-right font-medium">{fmtEuro(payment.amount_charges)}</span>
-            </>}
-            {payment.amount_apl > 0 && <>
-              <span className="text-green-600">Aide personnelle au logement déduite</span>
-              <span className="text-right font-medium text-green-600">− {fmtEuro(payment.amount_apl)}</span>
-            </>}
-            <span className="font-semibold text-gray-700 pt-1 border-t border-gray-100">Reste à payer</span>
-            <span className="text-right font-bold text-gray-900 pt-1 border-t border-gray-100">{fmtEuro(due)}</span>
-          </div>
-        )}
-        {payment.status === 'late' && (
-          <div className="mt-3 flex items-center gap-2 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
-            <AlertCircle size={14} />
-            Paiement en retard : contactez votre gestionnaire si nécessaire.
-          </div>
-        )}
-      </div>
-
-      {step === 'select' && (
-        <>
-          <p className="text-sm font-medium text-gray-700 mb-3">Choisissez un mode de paiement</p>
-          <div className="space-y-2 mb-6">
-            {METHODS.map(m => {
-              const Icon = m.icon
-              const isSelected = method === m.id
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => setMethod(m.id)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all"
-                  style={{
-                    border: isSelected ? `2px solid ${m.color}` : '1.5px solid #E5E7EB',
-                    background: isSelected ? `${m.color}08` : '#FFFFFF',
-                  }}
-                >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: `${m.color}15` }}>
-                    <Icon size={18} style={{ color: m.color }} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">{m.label}</p>
-                    <p className="text-xs text-gray-500">{m.desc}</p>
-                  </div>
-                  {isSelected && (
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: m.color }}>
-                      <CheckCircle size={12} className="text-white" />
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Informations contextuelles selon méthode */}
-          {method === 'virement' && (
-            payee?.iban ? (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5 text-sm">
-                <p className="font-semibold text-green-800 mb-2">Coordonnées bancaires pour le virement</p>
-                <div className="space-y-1 text-green-700 font-mono text-xs">
-                  {payee.name && <p className="font-sans text-green-700">Titulaire : {payee.name}</p>}
-                  <p>IBAN : {payee.iban}</p>
-                  {payee.bic && <p>BIC&nbsp;&nbsp;: {payee.bic}</p>}
-                  <p className="font-sans text-xs text-green-600 mt-2">Référence : LOYER-{payment.period_month?.toString().padStart(2,'0')}-{payment.period_year}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
-                <p className="font-semibold mb-1">Coordonnées bancaires non disponibles</p>
-                <p>Le RIB de votre bailleur n'est pas encore renseigné. Contactez votre gestionnaire pour obtenir les coordonnées du virement.</p>
-              </div>
-            )
-          )}
-          {method === 'especes' && (
-            payee?.name ? (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-sm text-red-800">
-                <p className="font-semibold mb-1">Règlement en espèces auprès de :</p>
-                <p className="font-mono text-xs">{payee.name}</p>
-                {payee.address && (
-                  <p className="mt-1 font-mono text-xs">{payee.address}</p>
-                )}
-              </div>
-            ) : (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 text-sm text-red-800">
-                <p className="font-semibold mb-1">Coordonnées non disponibles</p>
-                <p>Les coordonnées de votre bailleur ne sont pas encore renseignées. Contactez votre gestionnaire.</p>
-              </div>
-            )
-          )}
-
-          {/* Montant à régler : modifiable (partiel ou avance) */}
-          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-5">
-            <label className="text-sm font-medium text-gray-700">Montant que vous réglez</label>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="number" min="0" step="0.01"
-                value={amount}
-                onChange={e => setAmount(Number(e.target.value))}
-                className="w-44 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-500">€</span>
-            </div>
-            <p className="text-xs text-gray-400 mt-2">
-              Montant dû : <strong>{fmtEuro(due)}</strong>. Vous pouvez régler un
-              montant différent : partiel (le solde restera dû) ou supérieur (avance en votre faveur).
-            </p>
-            {amount > 0 && amount < due && (
-              <p className="text-xs text-amber-600 mt-1">
-                Paiement partiel : il restera {fmtEuro(due - amount)} à régler.
-              </p>
-            )}
-            {amount > due && (
-              <p className="text-xs text-green-600 mt-1">
-                Avance : {fmtEuro(amount - due)} en votre faveur.
-              </p>
-            )}
-          </div>
-
-          <button
-            onClick={() => setStep('confirm')}
-            disabled={!method || !amount || amount <= 0}
-            className="w-full py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-            style={{ background: '#0D2F5C' }}
-          >
-            Continuer →
-          </button>
-        </>
-      )}
-
-      {step === 'confirm' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">Confirmer la déclaration</h3>
-          <div className="space-y-3 text-sm mb-6">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Montant déclaré</span>
-              <span className="font-semibold text-gray-900">{fmtEuro(amount)}</span>
-            </div>
-            {amount !== due && (
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-400">Montant dû</span>
-                <span className="text-gray-400">{fmtEuro(due)}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-gray-500">Période</span>
-              <span className="font-medium">{MONTHS[payment.period_month]} {payment.period_year}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Mode de paiement</span>
-              <span className="font-medium">{METHODS.find(m => m.id === method)?.label}</span>
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 mb-5">
-            En confirmant, vous déclarez avoir initié ce paiement. Votre gestionnaire recevra une notification et mettra à jour votre dossier à réception.
-          </p>
-          <div className="flex gap-3">
-            <button onClick={() => setStep('select')}
-              className="flex-1 py-3 rounded-xl text-sm border border-gray-200 text-gray-600 hover:bg-gray-50">
-              Modifier
-            </button>
-            <button onClick={handleDeclare} disabled={isSending}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-              style={{ background: '#0D2F5C' }}>
-              {isSending ? 'Envoi…' : 'Confirmer le paiement'}
-            </button>
-          </div>
-        </div>
-      )}
-
       {historyTable}
+
+      <div className="mt-8">
+        {payBlock}
+      </div>
     </div>
   )
 }
