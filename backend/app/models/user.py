@@ -58,6 +58,12 @@ class User(Base, TimestampMixin):
     # Signature numérique (data-URL PNG, fond blanc) apposée en bas des courriers
     # générés (lettre de relance, plan d'apurement…). Réglée dans « Mes informations ».
     signature: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Source de la signature pour pouvoir la rééditer (la case « texte » reflète
+    # ce qui a été saisi) : mode 'type' (frappe + police) ou 'draw' (tracé souris),
+    # avec le texte et la police choisis en mode frappe.
+    signature_mode: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    signature_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    signature_font: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     # « Ma papeterie » : variables épinglées par l'utilisateur, par type de document.
     # Forme : { "<template_type>": ["{{var}}", …], … }. Null/absent = aucune épingle.
     template_pinned_vars: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)

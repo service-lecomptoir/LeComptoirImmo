@@ -377,6 +377,10 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS proprio_visibility_default JSONB",
         # Signature numérique du gestionnaire (data-URL PNG) apposée sur les documents.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature TEXT",
+        # Source de la signature (rééditable) : mode + texte + police saisis.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_mode VARCHAR(16)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_text TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_font VARCHAR(64)",
         # Mois reporté sur un plan d'apurement (sort des impayés/revenus, restaurable).
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settled_by_plan BOOLEAN NOT NULL DEFAULT FALSE",
         # Apurement partiel : part du solde reportée sur un plan sans solder tout le mois

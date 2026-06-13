@@ -76,7 +76,9 @@ export default function MonProfil() {
 
   // Signature numérique (data-URL PNG) apposée en bas des courriers générés.
   // undefined = inchangée ; null = à supprimer ; string = nouvelle signature.
+  // `sigMeta` retient le mode/texte/police pour réédition (case texte synchronisée).
   const [signature, setSignature] = useState<string | null | undefined>(undefined)
+  const [sigMeta, setSigMeta] = useState<{ mode: string; text: string; font: string } | null>(null)
 
   // ── Agents IA (Telegram) — option de plan « agents_ia » ──
   const { features } = useFeaturesStore()
@@ -247,7 +249,13 @@ export default function MonProfil() {
           owner_company: ownerCompany.trim() || null,
           owner_national_id: ownerNationalId.trim() || null,
           // Signature : envoyée seulement si modifiée (string = nouvelle, null = supprimée).
-          ...(signature !== undefined ? { signature } : {}),
+          // On envoie aussi le mode/texte/police pour pouvoir la rééditer ensuite.
+          ...(signature !== undefined ? {
+            signature,
+            signature_mode: sigMeta?.mode || null,
+            signature_text: sigMeta?.text || null,
+            signature_font: sigMeta?.font || null,
+          } : {}),
         } : {}),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
@@ -465,12 +473,19 @@ export default function MonProfil() {
             <label className={lbl}>Signature</label>
             <TypedSignature
               value={signature !== undefined ? signature : (user?.signature ?? null)}
-              onChange={setSignature}
+              initialMode={(user?.signature_mode as 'type' | 'draw' | null) ?? 'type'}
+              initialText={user?.signature_text ?? null}
+              initialFont={user?.signature_font ?? null}
+              onChange={(sig) => {
+                setSignature(sig.dataUrl)
+                setSigMeta({ mode: sig.mode, text: sig.text, font: sig.font })
+              }}
               defaultText={(isManager ? (ownerKind === 'personne' ? joinName(ownerFirstName, ownerLastName) : ownerCompany) : '') || fullName || ''}
             />
             <p className="text-xs text-gray-400 mt-1">
-              Tapez votre nom et choisissez un style d'écriture. Apposée en bas de vos courriers
-              (lettre de relance, plan d'apurement…). Pensez à cliquer sur « Enregistrer » ci-dessous pour la sauvegarder.
+              Deux possibilités : tapez votre nom et choisissez un style d'écriture, ou dessinez votre
+              signature à la souris (onglet « Dessin »). Apposée en bas de vos documents générés
+              (quittance, avis d'échéance, relance…). Pensez à cliquer sur « Enregistrer » ci-dessous.
             </p>
           </div>
         )}

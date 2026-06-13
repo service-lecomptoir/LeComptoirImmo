@@ -39,6 +39,10 @@ class UserUpdate(BaseModel):
     template_pinned_vars: Optional[dict] = None
     # Signature numérique (data-URL PNG) apposée sur les documents générés.
     signature: Optional[str] = None
+    # Source de la signature (pour réédition) : mode 'type'|'draw', texte, police.
+    signature_mode: Optional[str] = None
+    signature_text: Optional[str] = None
+    signature_font: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
@@ -107,6 +111,9 @@ class UserResponse(BaseModel):
     template_pinned_vars: Optional[dict] = None
     logo_url: Optional[str] = None
     signature: Optional[str] = None
+    signature_mode: Optional[str] = None
+    signature_text: Optional[str] = None
+    signature_font: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

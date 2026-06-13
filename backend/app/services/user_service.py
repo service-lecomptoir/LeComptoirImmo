@@ -138,6 +138,12 @@ class UserService:
         # une valeur vide/null (suppression explicite). Absente => inchangée.
         if "signature" in data.model_fields_set:
             user.signature = data.signature or None
+        if "signature_mode" in data.model_fields_set:
+            user.signature_mode = data.signature_mode or None
+        if "signature_text" in data.model_fields_set:
+            user.signature_text = data.signature_text or None
+        if "signature_font" in data.model_fields_set:
+            user.signature_font = data.signature_font or None
 
         await db.flush()
         await db.refresh(user)

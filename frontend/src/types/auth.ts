@@ -19,6 +19,9 @@ export interface User {
   template_pinned_vars?: Record<string, string[]> | null
   logo_url?: string | null
   signature?: string | null
+  signature_mode?: 'type' | 'draw' | null
+  signature_text?: string | null
+  signature_font?: string | null
   // Visibilité espace propriétaire : rubriques effectivement visibles (propriétaire),
   // et réglages bruts (gestionnaire).
   proprio_sections?: string[] | null
