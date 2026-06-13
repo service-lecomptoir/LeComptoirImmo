@@ -9,13 +9,22 @@ import { fr } from 'date-fns/locale'
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 
+// Grand livre vu côté locataire :
+//  • débit (rouge, signe −) = ce qui augmente sa dette : appel de loyer,
+//    échéance d'apurement, régularisation de charges défavorable…
+//  • crédit (vert, signe +) = ce qui la réduit : APL (prépaiement), reste à
+//    charge réglé, règlement d'échéance, remboursement de charges favorable…
+// Tri : par mois (le plus récent en haut), puis dans le mois selon `rank`
+// (appel de loyer d'abord, puis APL, puis reste à charge, puis apurement).
 interface Entry {
   key: string
   date: string | null
+  period: string         // « AAAA-MM » : regroupe/ordonne les écritures par mois
+  rank: number           // ordre dans le mois (0 = appel de loyer, en premier)
   intitule: string
   montant: number
-  kind: 'appel' | 'paiement'
-  payment?: any          // pour la quittance (règlement de loyer payé)
+  sign: 'debit' | 'credit'
+  payment?: any          // pour la quittance (reste à charge / règlement payé)
   planId?: string        // pour la quittance d'échéance d'apurement
   seq?: number
 }
@@ -38,29 +47,48 @@ export default function LocatairePaiements() {
   }, [])
   useEffect(() => { load() }, [load])
 
-  // Grand livre : un appel (débit) et, le cas échéant, l'aide au logement + le
-  // règlement (crédits) par loyer ; idem pour chaque échéance de plan d'apurement.
+  const pad = (m: number) => String(m).padStart(2, '0')
+  const r2 = (n: number) => Math.round(n * 100) / 100
   const entries: Entry[] = []
   for (const p of payments) {
     if (p.status === 'cancelled') continue
-    entries.push({ key: `app-${p.id}`, date: p.due_date, intitule: `Appel de loyer · ${p.period_label}`, montant: p.amount_due ?? 0, kind: 'appel' })
-    if ((p.amount_apl ?? 0) > 0)
-      entries.push({ key: `apl-${p.id}`, date: p.due_date, intitule: `Aide au logement (APL) · ${p.period_label}`, montant: p.amount_apl, kind: 'paiement' })
-    if ((p.amount_paid ?? 0) > 0)
-      entries.push({ key: `pay-${p.id}`, date: p.payment_date || p.due_date, intitule: `Règlement · ${p.period_label}`, montant: p.amount_paid, kind: 'paiement', payment: p })
+    const period = `${p.period_year}-${pad(p.period_month)}`
+    const due = Number(p.amount_due ?? 0)
+    // amount_paid contient déjà l'APL (prépaiement tiers payant) : on isole donc
+    // la part APL réellement appliquée et le reste à charge effectivement réglé,
+    // pour ne pas compter l'APL deux fois.
+    const aplApplied = Math.min(Number(p.amount_apl ?? 0), due)
+    const reste = r2(Number(p.amount_paid ?? 0) - aplApplied)
+    // 1. Appel de loyer (débit, en premier dans le mois)
+    entries.push({ key: `app-${p.id}`, date: p.due_date, period, rank: 0,
+      intitule: `Appel de loyer · ${p.period_label}`, montant: due, sign: 'debit' })
+    // 2. APL : prépaiement (crédit)
+    if (aplApplied > 0.005)
+      entries.push({ key: `apl-${p.id}`, date: p.due_date, period, rank: 1,
+        intitule: `Aide au logement (APL) · ${p.period_label}`, montant: aplApplied, sign: 'credit' })
+    // 3. Reste à charge réglé par le locataire (crédit)
+    if (reste > 0.005)
+      entries.push({ key: `pay-${p.id}`, date: p.payment_date || p.due_date, period, rank: 2,
+        intitule: `${aplApplied > 0.005 ? 'Reste à charge' : 'Règlement'} · ${p.period_label}`,
+        montant: reste, sign: 'credit', payment: p })
   }
   for (const pl of plans) {
     for (const i of pl.installments) {
-      entries.push({ key: `iap-${pl.id}-${i.seq}`, date: i.due_date, intitule: `Plan d'apurement · échéance ${i.seq}`, montant: i.amount, kind: 'appel' })
+      const period = (i.due_date || '').slice(0, 7)
+      entries.push({ key: `iap-${pl.id}-${i.seq}`, date: i.due_date, period, rank: 5,
+        intitule: `Plan d'apurement · échéance ${i.seq}`, montant: i.amount, sign: 'debit' })
       if (i.paid)
-        entries.push({ key: `ipa-${pl.id}-${i.seq}`, date: i.paid_date || i.due_date, intitule: `Règlement apurement · échéance ${i.seq}`, montant: i.amount, kind: 'paiement', planId: pl.id, seq: i.seq })
+        entries.push({ key: `ipa-${pl.id}-${i.seq}`, date: i.paid_date || i.due_date, period, rank: 6,
+          intitule: `Règlement apurement · échéance ${i.seq}`, montant: i.amount, sign: 'credit', planId: pl.id, seq: i.seq })
     }
   }
-  entries.sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  // Mois le plus récent en haut ; dans le mois, ordre métier via `rank`.
+  entries.sort((a, b) =>
+    b.period.localeCompare(a.period) || a.rank - b.rank || (b.date || '').localeCompare(a.date || ''))
 
-  const totalAppels = entries.filter(e => e.kind === 'appel').reduce((s, e) => s + e.montant, 0)
-  const totalPaiements = entries.filter(e => e.kind === 'paiement').reduce((s, e) => s + e.montant, 0)
-  const solde = Math.round((totalAppels - totalPaiements) * 100) / 100
+  const totalDebits = entries.filter(e => e.sign === 'debit').reduce((s, e) => s + e.montant, 0)
+  const totalCredits = entries.filter(e => e.sign === 'credit').reduce((s, e) => s + e.montant, 0)
+  const solde = r2(totalDebits - totalCredits)
 
   return (
     <div className="p-4 sm:p-6">
@@ -110,7 +138,7 @@ export default function LocatairePaiements() {
                 {entries.map(e => (
                   <tr key={e.key} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                      {e.date ? format(new Date(e.date), 'd MMM yyyy', { locale: fr }) : '—'}
+                      {e.date ? format(new Date(e.date), 'd MMM yyyy', { locale: fr }) : '·'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-800">
                       <span className="inline-flex items-center gap-2">
@@ -130,8 +158,8 @@ export default function LocatairePaiements() {
                         )}
                       </span>
                     </td>
-                    <td className={`px-4 py-3 text-right text-sm font-medium whitespace-nowrap ${e.kind === 'paiement' ? 'text-green-600' : 'text-gray-900'}`}>
-                      {e.kind === 'paiement' ? `− ${fmtEuro(e.montant)}` : fmtEuro(e.montant)}
+                    <td className={`px-4 py-3 text-right text-sm font-medium whitespace-nowrap ${e.sign === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                      {e.sign === 'credit' ? `+ ${fmtEuro(e.montant)}` : `− ${fmtEuro(e.montant)}`}
                     </td>
                   </tr>
                 ))}
