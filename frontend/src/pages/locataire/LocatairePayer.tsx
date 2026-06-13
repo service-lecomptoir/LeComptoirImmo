@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Banknote, CheckCircle, Wallet, Clock, CreditCard, Download, CalendarClock } from 'lucide-react'
+import { Building2, Banknote, CheckCircle, Wallet, Clock, CreditCard, Download, CalendarClock, ChevronDown, ChevronRight } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
@@ -52,6 +52,8 @@ export default function LocatairePayer() {
   // Déclaration du règlement d'une échéance d'apurement (passe « en attente »,
   // le gestionnaire valide ensuite, comme un loyer).
   const [declaringInst, setDeclaringInst] = useState<string | null>(null)
+  // Bloc « Appels de loyer : apurement » replié par défaut.
+  const [apurOpen, setApurOpen] = useState(false)
   const declareInst = async (planId: string, seq: number) => {
     setDeclaringInst(`${planId}-${seq}`)
     try {
@@ -153,11 +155,19 @@ export default function LocatairePayer() {
       {/* Appels de loyer : apurement — échéances dues, à régler (déclaration). */}
       {dueInstallments.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
-          <div className="flex items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setApurOpen(o => !o)}
+            className="w-full flex items-center gap-2 text-left"
+          >
+            {apurOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
             <CalendarClock size={16} className="text-amber-600" />
             <p className="text-sm font-semibold text-gray-800">Appels de loyer : apurement</p>
-          </div>
-          <div className="divide-y divide-gray-100">
+            <span className="ml-auto text-xs text-gray-400">{dueInstallments.length}</span>
+          </button>
+          {apurOpen && (
+          <>
+          <div className="divide-y divide-gray-100 mt-3">
             {dueInstallments.map(({ pl, i }) => (
               <div key={`${pl.id}-${i.seq}`} className="flex items-center justify-between gap-3 py-2">
                 <div className="min-w-0">
@@ -185,6 +195,8 @@ export default function LocatairePayer() {
           <p className="text-xs text-gray-400 mt-2">
             Réglez le montant par votre moyen habituel (virement, espèces), puis cliquez sur « Régler » pour le déclarer. Votre gestionnaire confirmera la réception.
           </p>
+          </>
+          )}
         </div>
       )}
 
