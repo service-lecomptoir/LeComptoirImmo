@@ -225,6 +225,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS credit_applied NUMERIC(10,2) NOT NULL DEFAULT 0",
         # Sujet déclaré par le locataire sur une démarche → agent IA notifié (push)
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS topic VARCHAR(20)",
+        # Photo jointe à une démarche (locataire)
+        "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS photo_path VARCHAR(500)",
         # Publication des annonces : suivi de performance (vues de la page publique)
         "ALTER TABLE listings ADD COLUMN IF NOT EXISTS views_count INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE listings ADD COLUMN IF NOT EXISTS last_viewed_at TIMESTAMPTZ",

@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile, File
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +36,7 @@ def _enrich_ticket(ticket, include_messages: bool = False) -> dict:
         "assigned_to_id": ticket.assigned_to_id,
         "assigned_to_name": ticket.assigned_to.full_name if ticket.assigned_to else None,
         "closed_at": ticket.closed_at,
+        "photo_url": ("/" + ticket.photo_path.replace("\\", "/").lstrip("/")) if getattr(ticket, "photo_path", None) else None,
         "created_at": ticket.created_at,
         "updated_at": ticket.updated_at,
     }
@@ -65,6 +66,23 @@ async def my_tickets(
 ):
     tickets = await TicketService.list_for_locataire(db, current_user.id)
     return [_enrich_ticket(t) for t in tickets]
+
+
+@router.post("/{ticket_id}/photo", summary="Joindre une photo à une démarche")
+async def attach_ticket_photo(
+    ticket_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.utils.file_handler import save_file
+    ticket = await TicketService.get(db, ticket_id)
+    await assert_ticket_access(db, current_user, ticket)
+    path, _size = await save_file(file, "ticket", str(ticket.id))
+    ticket.photo_path = path
+    await db.commit()
+    await db.refresh(ticket)
+    return {"photo_url": ("/" + path.replace("\\", "/").lstrip("/"))}
 
 
 @router.post("", status_code=201, summary="Créer un ticket")

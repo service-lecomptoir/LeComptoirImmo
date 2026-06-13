@@ -74,6 +74,8 @@ class Ticket(Base, TimestampMixin):
     )
 
     closed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    # Photo optionnelle jointe par le locataire à la création de la démarche.
+    photo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     messages: Mapped[list["TicketMessage"]] = relationship(
         "TicketMessage", back_populates="ticket", lazy="select",

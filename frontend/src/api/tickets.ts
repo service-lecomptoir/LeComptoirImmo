@@ -14,6 +14,7 @@ export interface Ticket {
   assigned_to_id?: string
   assigned_to_name?: string
   closed_at?: string
+  photo_url?: string | null
   messages?: TicketMessage[]
   message_count?: number
   created_at: string
@@ -46,6 +47,14 @@ export const ticketsApi = {
 
   draft: (data: { topic?: string; hint?: string }) =>
     apiClient.post<{ title: string; description: string; source: string }>('/tickets/draft', data),
+
+  uploadPhoto: (id: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return apiClient.post<{ photo_url: string }>(`/tickets/${id}/photo`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 
   update: (id: string, data: Partial<Pick<Ticket, 'title' | 'description' | 'category' | 'priority' | 'status' | 'assigned_to_id'>>) =>
     apiClient.patch<Ticket>(`/tickets/${id}`, data),

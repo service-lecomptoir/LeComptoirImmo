@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { DoorOpen, X, Plus, Send, Sparkles, MessageSquare, ChevronDown, CheckCircle } from 'lucide-react'
+import { DoorOpen, X, Plus, Send, Sparkles, MessageSquare, ChevronDown, CheckCircle, Camera } from 'lucide-react'
 import { ticketsApi, type Ticket } from '@/api/tickets'
 import { leaseExitsApi } from '@/api/leaseExits'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -8,10 +8,15 @@ import { getErrorMessage } from '@/utils/errors'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
-const CATEGORIES: { v: Ticket['category']; label: string }[] = [
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+// La valeur « preavis » n'est pas une catégorie de ticket : elle déclenche
+// l'envoi d'un préavis de départ (flux dédié) au lieu de créer une démarche.
+const CATEGORIES: { v: string; label: string }[] = [
   { v: 'demande', label: 'Demande' },
   { v: 'question', label: 'Question' },
   { v: 'incident', label: 'Incident' },
+  { v: 'preavis', label: 'Préavis de départ' },
   { v: 'autre', label: 'Autre' },
 ]
 const PRIORITIES: { v: Ticket['priority']; label: string }[] = [
@@ -58,10 +63,12 @@ export default function LocataireDemarches() {
   const [detail, setDetail] = useState<Ticket | null>(null)
   const [reply, setReply] = useState('')
   const [showNew, setShowNew] = useState(false)
-  const [form, setForm] = useState<{ title: string; category: Ticket['category']; priority: Ticket['priority']; description: string }>(
+  const [form, setForm] = useState<{ title: string; category: string; priority: Ticket['priority']; description: string }>(
     { title: '', category: 'demande', priority: 'medium', description: '' })
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [drafting, setDrafting] = useState(false)
+  const resetNew = () => { setForm({ title: '', category: 'demande', priority: 'medium', description: '' }); setPhotoFile(null); setPreavisDate('') }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,11 +84,30 @@ export default function LocataireDemarches() {
   }
 
   const submitNew = async () => {
-    if (!form.title.trim() || !form.description.trim()) { toast.error('Titre et description requis.'); return }
+    // Cas « Préavis de départ » : flux dédié (pas une démarche/ticket).
+    if (form.category === 'preavis') {
+      setSubmitting(true)
+      try {
+        await leaseExitsApi.sendPreavis(preavisDate || null)
+        setShowNew(false); resetNew()
+        toast.success('Préavis de départ envoyé à votre gestionnaire.')
+        loadPreavis()
+      } catch (e) { toast.error(getErrorMessage(e, "Le préavis n'a pas pu être envoyé")) }
+      finally { setSubmitting(false) }
+      return
+    }
+    if (!form.title.trim() || !form.description.trim()) { toast.error('Objet et description requis.'); return }
     setSubmitting(true)
     try {
-      await ticketsApi.create({ ...form, title: form.title.trim(), description: form.description.trim() })
-      setShowNew(false); setForm({ title: '', category: 'demande', priority: 'medium', description: '' })
+      const { data } = await ticketsApi.create({
+        title: form.title.trim(), description: form.description.trim(),
+        category: form.category, priority: form.priority,
+      })
+      if (photoFile && data?.id) {
+        try { await ticketsApi.uploadPhoto(data.id, photoFile) }
+        catch (e) { toast.error(getErrorMessage(e, "La photo n'a pas pu être envoyée")) }
+      }
+      setShowNew(false); resetNew()
       toast.success('Démarche envoyée à votre gestionnaire.')
       await load()
     } catch (e) { toast.error(getErrorMessage(e, "La démarche n'a pas pu être envoyée")) }
@@ -208,6 +234,11 @@ export default function LocataireDemarches() {
                         </div>
                       </div>
                     )}
+                    {detail?.photo_url && (
+                      <a href={`${API_BASE}${detail.photo_url}`} target="_blank" rel="noreferrer" className="inline-block">
+                        <img src={`${API_BASE}${detail.photo_url}`} alt="photo de la démarche" className="max-h-40 rounded-lg border border-gray-200" />
+                      </a>
+                    )}
                     <div className="space-y-2">
                       {(detail?.messages ?? []).filter(m => !m.is_internal).map(m => {
                         const mine = m.author_role === 'locataire'
@@ -276,46 +307,73 @@ export default function LocataireDemarches() {
             </div>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Objet</label>
-                <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                  placeholder="Ex. Fuite sous l'évier de la cuisine"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                  {CATEGORIES.map(c => <option key={c.v} value={c.v}>{c.label}</option>)}
+                </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Catégorie</label>
-                  <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as Ticket['category'] })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    {CATEGORIES.map(c => <option key={c.v} value={c.v}>{c.label}</option>)}
-                  </select>
+
+              {form.category === 'preavis' ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm text-amber-800 mb-2">
+                    Vous informez votre gestionnaire de votre intention de quitter le logement. Il organisera l'état des lieux de sortie et le décompte du dépôt de garantie.
+                  </p>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Date de départ souhaitée (facultatif)</label>
+                  <input type="date" value={preavisDate} onChange={e => setPreavisDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Priorité</label>
-                  <select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value as Ticket['priority'] })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    {PRIORITIES.map(p => <option key={p.v} value={p.v}>{p.label}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-medium text-gray-700">Description</label>
-                  <button type="button" onClick={aiDraft} disabled={drafting}
-                    className="inline-flex items-center gap-1 text-xs text-[#0D2F5C] hover:underline disabled:opacity-50">
-                    <Sparkles size={12} /> {drafting ? 'Rédaction…' : 'Aide à la rédaction'}
-                  </button>
-                </div>
-                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={4}
-                  placeholder="Décrivez votre demande à votre gestionnaire."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Objet</label>
+                    <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+                      placeholder="Ex. Fuite sous l'évier de la cuisine"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Priorité</label>
+                    <select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value as Ticket['priority'] })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                      {PRIORITIES.map(p => <option key={p.v} value={p.v}>{p.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-medium text-gray-700">Description</label>
+                      <button type="button" onClick={aiDraft} disabled={drafting}
+                        className="inline-flex items-center gap-1 text-xs text-[#0D2F5C] hover:underline disabled:opacity-50">
+                        <Sparkles size={12} /> {drafting ? 'Rédaction…' : 'Aide à la rédaction'}
+                      </button>
+                    </div>
+                    <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={4}
+                      placeholder="Décrivez votre demande à votre gestionnaire."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Photo (facultatif)</label>
+                    {photoFile ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Camera size={15} className="text-gray-400" /> {photoFile.name}
+                        <button type="button" onClick={() => setPhotoFile(null)} className="text-gray-400 hover:text-red-600"><X size={15} /></button>
+                      </div>
+                    ) : (
+                      <label className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 cursor-pointer">
+                        <Camera size={15} /> Ajouter une photo
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={e => setPhotoFile(e.target.files?.[0] || null)} />
+                      </label>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex justify-end gap-2 mt-5">
-              <button type="button" onClick={() => setShowNew(false)}
+              <button type="button" onClick={() => { setShowNew(false); resetNew() }}
                 className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
               <button type="button" onClick={submitNew} disabled={submitting}
                 className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: '#0D2F5C' }}>
-                <CheckCircle size={15} /> {submitting ? 'Envoi…' : 'Envoyer la démarche'}
+                <CheckCircle size={15} /> {submitting ? 'Envoi…' : (form.category === 'preavis' ? 'Envoyer le préavis' : 'Envoyer la démarche')}
               </button>
             </div>
           </div>
