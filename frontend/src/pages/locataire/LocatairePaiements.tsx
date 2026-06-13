@@ -105,6 +105,12 @@ export default function LocatairePaiements() {
       entries.push({ key: `pay-${p.id}`, date: p.payment_date || p.due_date, period, rank: 2,
         intitule: reglementLabel(p),
         montant: reste, sign: 'credit', payment: p.status === 'paid' ? p : undefined })
+    // 4. Part reportée sur un plan d'apurement (apurement partiel) : crédit qui sort
+    //    cette part du solde du mois — la dette correspondante vit dans les échéances.
+    if (Number(p.amount_on_plan ?? 0) > 0.005)
+      entries.push({ key: `onplan-${p.id}`, date: p.payment_date || p.due_date, period, rank: 3,
+        intitule: `Report sur plan d'apurement · ${p.period_label}`.toUpperCase(),
+        montant: Number(p.amount_on_plan), sign: 'credit' })
   }
   // Régularisations annuelles de charges : créditrice (trop-perçu, crédit vert) ou
   // débitrice (complément dû, débit rouge). Non rattachée à un paiement -> aucun

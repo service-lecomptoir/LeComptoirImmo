@@ -424,6 +424,12 @@ async def comptabilite_ledger(
             pd = (p.payment_date or p.due_date)
             entries.append({**c, "date": pd.isoformat() if pd else None,
                             "intitule": f"Règlement · {p.period_label}", "montant": reste, "sign": "credit"})
+        # Part reportée sur un plan d'apurement (apurement partiel) : sort du solde
+        # du mois (la dette correspondante figure dans les échéances du plan).
+        on_plan = float(getattr(p, "amount_on_plan", 0) or 0)
+        if on_plan > 0.005:
+            entries.append({**c, "date": dd, "intitule": f"Report sur plan d'apurement · {p.period_label}",
+                            "montant": on_plan, "sign": "credit"})
 
     plans = (await db.execute(
         select(ApurementPlan).where(ApurementPlan.lease_id.in_(lease_ids))
