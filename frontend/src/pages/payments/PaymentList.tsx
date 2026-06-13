@@ -119,11 +119,6 @@ export default function PaymentList() {
     []
   )
 
-  // Auto-génère les paiements manquants à chaque changement de mois/année
-  useEffect(() => {
-    paymentsApi.generate(filterYear, filterMonth).catch(() => {})
-  }, [filterYear, filterMonth])
-
   useEffect(() => { loadPlans() }, [loadPlans])
 
   useEffect(() => {
@@ -384,7 +379,7 @@ export default function PaymentList() {
                 <td colSpan={9}>
                   <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                     <CreditCard size={32} className="text-gray-300 mb-2" />
-                    <p className="text-sm">Aucun paiement : cliquez sur "Générer" pour créer les loyers du mois</p>
+                    <p className="text-sm">Aucun paiement pour cette période. Les loyers sont créés lors de l'émission de l'avis d'échéance.</p>
                   </div>
                 </td>
               </tr>
