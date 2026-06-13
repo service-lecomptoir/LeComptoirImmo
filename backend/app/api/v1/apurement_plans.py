@@ -230,6 +230,27 @@ async def mark_installment(
         _av.status = AvisEcheanceStatus.ACQUITTE if data.paid else AvisEcheanceStatus.ENVOYE
         await db.flush()
 
+    # Aligner aussi l'avis de LOYER du mois d'origine si l'apurement vient de le
+    # solder (ou de le dé-solder).
+    if plan.origin_payment_id:
+        from app.models.payment import Payment as _Pay2, PaymentStatus as _PS2
+        _po = await db.get(_Pay2, plan.origin_payment_id)
+        if _po is not None:
+            _avl = (await db.execute(
+                select(AvisEcheance).where(
+                    AvisEcheance.lease_id == _po.lease_id,
+                    AvisEcheance.period_year == _po.period_year,
+                    AvisEcheance.period_month == _po.period_month,
+                    AvisEcheance.kind == "loyer",
+                )
+            )).scalar_one_or_none()
+            if _avl is not None:
+                _target = (AvisEcheanceStatus.ACQUITTE if _po.status == _PS2.PAID
+                           else AvisEcheanceStatus.ENVOYE)
+                if _avl.status != _target:
+                    _avl.status = _target
+                    await db.flush()
+
     tn, pn = await _names(db, plan)
     return plan_to_dict(plan, tn, pn)
 

@@ -206,11 +206,15 @@ class AvisEcheanceService:
 
     @classmethod
     async def sync_statuses(cls, db: AsyncSession) -> int:
-        """Backfill : aligne le statut des avis « brouillon » existants sur la réalité —
-        Envoyé (ils sont visibles côté locataire) ou Acquitté si le loyer lié est payé.
-        Ne touche que les avis encore en BROUILLON. Idempotent."""
+        """Backfill : aligne le statut des avis de LOYER sur la réalité du paiement —
+        Acquitté si le loyer lié est payé, sinon Envoyé. Couvre tous les avis de loyer
+        (pas seulement les brouillons), pour rattraper les mois soldés après coup
+        (ex. fin d'un plan d'apurement). Les avis d'apurement sont gérés à part
+        (sync_apurement_statuses). Idempotent."""
         avis_list = (await db.execute(
-            select(AvisEcheance).where(AvisEcheance.status == AvisEcheanceStatus.BROUILLON)
+            select(AvisEcheance).where(
+                (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None))
+            )
         )).scalars().all()
         n = 0
         for a in avis_list:
@@ -221,13 +225,14 @@ class AvisEcheanceService:
                     Payment.period_month == a.period_month,
                 )
             )).scalar_one_or_none()
-            if pay and pay.status == PaymentStatus.PAID:
-                a.status = AvisEcheanceStatus.ACQUITTE
-            else:
-                a.status = AvisEcheanceStatus.ENVOYE
-                if a.sent_at is None:
+            target = (AvisEcheanceStatus.ACQUITTE
+                      if (pay and pay.status == PaymentStatus.PAID)
+                      else AvisEcheanceStatus.ENVOYE)
+            if a.status != target:
+                a.status = target
+                if target == AvisEcheanceStatus.ENVOYE and a.sent_at is None:
                     a.sent_at = datetime.utcnow()
-            n += 1
+                n += 1
         if n:
             await db.flush()
         return n
