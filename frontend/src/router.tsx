@@ -25,6 +25,7 @@ import { Header } from '@/components/layout/Header'
 import { useAuthStore, roleHomePath } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed, firstAllowedPath } from '@/lib/features'
+import { titleForPath } from '@/lib/navigation'
 // Login & Landing restent en import direct : ils servent au tout premier rendu
 // (avant authentification) → pas de bénéfice à les différer.
 import Login from '@/pages/Login'
@@ -131,6 +132,12 @@ function AppLayout() {
     mainRef.current?.scrollTo({ top: 0, left: 0 })
     setNavOpen(false)
   }, [location.pathname])
+
+  // Titre de l'onglet : « Le Comptoir Immo | <page courante> » (selon la sidebar).
+  useEffect(() => {
+    const t = titleForPath(location.pathname, user?.role)
+    document.title = t ? `Le Comptoir Immo | ${t}` : 'Le Comptoir Immo'
+  }, [location.pathname, user?.role])
 
   // Vérification auth AVANT tout rendu de layout — élimine le flash de la sidebar
   if (!isAuthenticated || !user) {

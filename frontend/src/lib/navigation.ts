@@ -187,3 +187,37 @@ export function descriptionForRoute(to?: string): string {
   const key = featureForPath(to)
   return (key && FEATURE_DESCRIPTIONS[key]) || ''
 }
+
+// ── Titre d'onglet par route (« Le Comptoir Immo | <libellé> ») ────────────────
+// On réutilise les libellés du menu. L'ordre place les navs les plus spécifiques
+// d'abord pour le repli `_ALL_NAV`. Quelques pages hors menu ont un libellé dédié.
+const _ALL_NAV: NavItem[] = [
+  ...navLocataire, ...navProprietaire, ...navGestionnairePropio, ...navGestionnaire,
+]
+const EXTRA_TITLES: Record<string, string> = {
+  '/profil': 'Mon profil',
+  '/abonnement': 'Mon abonnement',
+  '/notifications': 'Notifications',
+  '/guide': 'Guide utilisateur',
+}
+
+/**
+ * Libellé d'onglet pour un chemin : correspondance exacte d'abord (priorité au
+ * menu du rôle courant), sinon plus long préfixe (pages de détail comme
+ * /properties/:id ou /locataire/payer/regler/…), sinon undefined.
+ */
+export function titleForPath(pathname: string, role?: string): string | undefined {
+  const norm = pathname.replace(/\/+$/, '') || '/'
+  if (EXTRA_TITLES[norm]) return EXTRA_TITLES[norm]
+  const find = (items: NavItem[]): string | undefined => {
+    const exact = items.find(i => i.to === norm)
+    if (exact) return exact.label
+    let best: string | undefined
+    let len = -1
+    for (const i of items) {
+      if (i.to && norm.startsWith(i.to + '/') && i.to.length > len) { best = i.label; len = i.to.length }
+    }
+    return best
+  }
+  return (role ? find(navForRole(role)) : undefined) || find(_ALL_NAV)
+}
