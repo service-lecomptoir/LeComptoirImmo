@@ -134,7 +134,9 @@ class UserService:
             user.owner_company = data.owner_company or None
         if getattr(data, "owner_national_id", None) is not None:
             user.owner_national_id = data.owner_national_id or None
-        if getattr(data, "signature", None) is not None:
+        # Signature : appliquée dès qu'elle est présente dans la requête, y compris
+        # une valeur vide/null (suppression explicite). Absente => inchangée.
+        if "signature" in data.model_fields_set:
             user.signature = data.signature or None
 
         await db.flush()

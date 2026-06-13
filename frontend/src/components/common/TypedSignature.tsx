@@ -32,12 +32,12 @@ export function TypedSignature({
 }) {
   const [text, setText] = useState(defaultText)
   const [font, setFont] = useState(FONTS[0].id)
+  // `edited` passe à true dès que l'utilisateur saisit, change de style ou efface.
+  // Tant qu'il est false et qu'une signature existe déjà, on l'affiche telle quelle
+  // (PNG enregistré) sans la réémettre, pour ne pas la perdre ni la remplacer.
+  const [edited, setEdited] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const firstRun = useRef(true)
 
-  // (Re)trace le canvas à chaque changement de texte ou de style, puis remonte le
-  // PNG. On n'émet PAS au montage initial pour ne pas écraser une signature
-  // existante tant que l'utilisateur n'a rien modifié.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -47,6 +47,19 @@ export function TypedSignature({
       if (!ctx) return
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, cv.width, cv.height)
+
+      // Avant toute modification : afficher la signature déjà enregistrée telle
+      // quelle (sans émettre), au lieu de prévisualiser le nom par défaut.
+      if (!edited && value) {
+        await new Promise<void>(resolve => {
+          const img = new Image()
+          img.onload = () => { if (!cancelled) ctx.drawImage(img, 0, 0, cv.width, cv.height); resolve() }
+          img.onerror = () => resolve()
+          img.src = value
+        })
+        return
+      }
+
       const t = text.trim()
       if (t) {
         try { await (document as any).fonts?.load(`72px '${font}'`) } catch { /* repli police système */ }
@@ -63,20 +76,21 @@ export function TypedSignature({
         }
         ctx.fillText(t, cv.width / 2, cv.height / 2 + 4)
       }
-      if (firstRun.current) { firstRun.current = false; return }
+      // Pas d'émission tant que l'utilisateur n'a rien modifié (préserve l'existant).
+      if (!edited) return
       onChange(t ? cv.toDataURL('image/png') : null)
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, font])
+  }, [text, font, edited, value])
 
-  const clear = () => { setText('') }
+  const clear = () => { setEdited(true); setText('') }
 
   return (
     <div>
       <input
         value={text}
-        onChange={e => setText(e.target.value)}
+        onChange={e => { setEdited(true); setText(e.target.value) }}
         placeholder="Tapez votre nom"
         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
       />
@@ -85,7 +99,7 @@ export function TypedSignature({
           <button
             key={f.id}
             type="button"
-            onClick={() => setFont(f.id)}
+            onClick={() => { setEdited(true); setFont(f.id) }}
             title={f.label}
             className={`px-3 py-1.5 rounded-lg border text-lg leading-none ${font === f.id ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}
             style={{ fontFamily: `'${f.id}', cursive` }}
@@ -103,7 +117,7 @@ export function TypedSignature({
           <Eraser size={14} /> Effacer
         </button>
         <span className="text-xs text-gray-400">
-          {value && firstRun.current ? 'Une signature est déjà enregistrée. Tapez votre nom pour la remplacer.' : 'Choisissez un style, puis enregistrez.'}
+          {value && !edited ? 'Une signature est déjà enregistrée. Tapez votre nom pour la remplacer.' : 'Choisissez un style, puis enregistrez.'}
         </span>
       </div>
     </div>
