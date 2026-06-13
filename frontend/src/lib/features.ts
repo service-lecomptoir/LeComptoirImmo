@@ -31,6 +31,7 @@ export const PATH_FEATURES: [string, string][] = [
   ['/sorties', 'sortie_locataire'],
   ['/admin', 'admin'],
   ['/finances/revenus', 'finances'],
+  ['/comptabilite', 'finances'],
   ['/finances/biens', 'performance_biens'],
   ['/finances/fiscal', 'liasse_fiscale'],
   ['/proprietaire/revenus', 'finances'],

@@ -76,6 +76,7 @@ const MonProfil = lazyPage(() => import('@/pages/profil/MonProfil'))
 const GuideUtilisateur = lazyPage(() => import('@/pages/guide/GuideUtilisateur'))
 const ScoringList = lazyPage(() => import('@/pages/scoring/ScoringList'))
 const FinancesParProprietaire = lazyPage(() => import('@/pages/finances/FinancesParProprietaire'))
+const ComptabiliteGestion = lazyPage(() => import('@/pages/finances/ComptabiliteGestion'))
 const Actualisation = lazyPage(() => import('@/pages/actualisation/Actualisation'))
 const DocumentsCaf = lazyPage(() => import('@/pages/documents-caf/DocumentsCaf'))
 const DiffusionPage = lazyPage(() => import('@/pages/publishing/DiffusionPage'))
@@ -208,6 +209,7 @@ export const router = createBrowserRouter([
       { path: 'guide', element: <GuideUtilisateur /> },
       { path: 'notifications', element: <NotificationList /> },
       { path: 'admin', element: <AdminUsers /> },
+      { path: 'comptabilite', element: <ComptabiliteGestion /> },
       { path: 'finances/revenus', element: <FinancesParProprietaire view="revenus" /> },
       { path: 'finances/biens', element: <FinancesParProprietaire view="biens" /> },
       { path: 'finances/fiscal', element: <FinancesParProprietaire view="fiscal" /> },

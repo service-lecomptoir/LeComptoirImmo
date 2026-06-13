@@ -341,6 +341,131 @@ async def list_payments(
     return PaymentListResponse(items=list_items, total=total, skip=skip, limit=limit)
 
 
+@router.get("/comptabilite", summary="Grand livre des transactions (gestionnaire)")
+async def comptabilite_ledger(
+    year: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Toutes les transactions du périmètre du gestionnaire : appels de loyer,
+    règlements, APL, échéances d'apurement, régularisations de charges.
+    GP / propriétaire : son parc. GM (mandataire) + lecture/comptable : les baux
+    de l'agence, avec le propriétaire en plus du logement."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.models.tenant import Tenant
+    from app.models.property import Property
+    from app.models.lease import Lease
+    from app.models.payment import Payment as P
+    from app.models.apurement_plan import ApurementPlan
+    from app.models.charge_regularization import ChargeRegularization
+    from app.core.exceptions import ForbiddenException
+
+    role = Role(current_user.role)
+    is_mandataire = role in (Role.GESTIONNAIRE, Role.LECTURE, Role.COMPTABLE)
+    if is_mandataire:
+        lease_ids = await agency_lease_ids(db, current_user)
+    elif role in (Role.GESTIONNAIRE_PROPRIO, Role.PROPRIETAIRE):
+        prop_ids = (await db.execute(
+            select(Property.id).where(Property.owner_user_id == current_user.id)
+        )).scalars().all()
+        lease_ids = set((await db.execute(
+            select(Lease.id).where(Lease.property_id.in_(prop_ids))
+        )).scalars().all()) if prop_ids else set()
+    else:
+        raise ForbiddenException("Accès réservé au gestionnaire")
+
+    if not lease_ids:
+        return {"is_mandataire": is_mandataire, "entries": []}
+    lease_ids = list(lease_ids)
+
+    # Contexte par bail : logement (+ réf), propriétaire (dénormalisé), locataire.
+    leases = (await db.execute(
+        select(Lease).options(selectinload(Lease.parent_property), selectinload(Lease.tenant))
+        .where(Lease.id.in_(lease_ids))
+    )).scalars().all()
+    ctx: dict = {}
+    for l in leases:
+        pr = getattr(l, "parent_property", None)
+        ctx[l.id] = {
+            "logement": (getattr(pr, "name", "") or "") if pr else "",
+            "logement_ref": (getattr(pr, "ref_code", "") or "") if pr else "",
+            "proprietaire": (getattr(pr, "owner_name", "") or "") if pr else "",
+            "locataire": (getattr(getattr(l, "tenant", None), "full_name", "") or ""),
+        }
+
+    def _c(lid):
+        return ctx.get(lid, {"logement": "", "logement_ref": "", "proprietaire": "", "locataire": ""})
+
+    def _r2(n):
+        return round(n * 100) / 100
+
+    entries: list = []
+
+    payments = (await db.execute(
+        select(P).options(selectinload(P.tenant)).where(P.lease_id.in_(lease_ids))
+    )).scalars().all()
+    for p in payments:
+        if p.status == "cancelled" or getattr(p, "settled_by_plan", False):
+            continue  # annulé / mois reporté (la dette vit dans le plan)
+        c = dict(_c(p.lease_id))
+        if getattr(p, "tenant", None):
+            c["locataire"] = p.tenant.full_name or c["locataire"]
+        due = float(p.amount_due or 0)
+        apl = min(float(p.amount_apl or 0), due)
+        reste = _r2(float(p.amount_paid or 0) - apl)
+        dd = p.due_date.isoformat() if p.due_date else None
+        entries.append({**c, "date": dd, "intitule": f"Appel de loyer · {p.period_label}",
+                        "montant": due, "sign": "debit"})
+        if apl > 0.005:
+            entries.append({**c, "date": dd, "intitule": f"Aide au logement (APL) · {p.period_label}",
+                            "montant": apl, "sign": "credit"})
+        if reste > 0.005:
+            pd = (p.payment_date or p.due_date)
+            entries.append({**c, "date": pd.isoformat() if pd else None,
+                            "intitule": f"Règlement · {p.period_label}", "montant": reste, "sign": "credit"})
+
+    plans = (await db.execute(
+        select(ApurementPlan).where(ApurementPlan.lease_id.in_(lease_ids))
+    )).scalars().all()
+    for pl in plans:
+        c = dict(_c(pl.lease_id))
+        ten = await db.get(Tenant, pl.tenant_id)
+        if ten:
+            c["locataire"] = ten.full_name or c["locataire"]
+        for i in (pl.installments or []):
+            seq = i.get("seq")
+            entries.append({**c, "date": i.get("due_date"),
+                            "intitule": f"Plan d'apurement · échéance {seq}",
+                            "montant": float(i.get("amount", 0)), "sign": "debit"})
+            if i.get("paid"):
+                entries.append({**c, "date": i.get("paid_date") or i.get("due_date"),
+                                "intitule": f"Règlement apurement · échéance {seq}",
+                                "montant": float(i.get("amount", 0)), "sign": "credit"})
+
+    regs = (await db.execute(
+        select(ChargeRegularization).where(ChargeRegularization.lease_id.in_(lease_ids))
+    )).scalars().all()
+    for rg in regs:
+        c = dict(_c(rg.lease_id))
+        ten = await db.get(Tenant, rg.tenant_id)
+        if ten:
+            c["locataire"] = ten.full_name or c["locataire"]
+        bal = float(rg.balance or 0)
+        yr = (rg.period_start.year if rg.period_start else
+              (rg.period_end.year if rg.period_end else ""))
+        ds = (rg.applied_at.date().isoformat() if rg.applied_at else
+              (rg.period_end.isoformat() if rg.period_end else None))
+        entries.append({**c, "date": ds,
+                        "intitule": f"Régularisation charges {yr}".strip(),
+                        "montant": abs(bal), "sign": "credit" if bal >= 0 else "debit"})
+
+    if year:
+        entries = [e for e in entries if (e.get("date") or "")[:4] == str(year)]
+    entries.sort(key=lambda e: (e.get("date") or ""), reverse=True)
+    return {"is_mandataire": is_mandataire, "entries": entries}
+
+
 @router.post("", response_model=PaymentResponse, status_code=201)
 async def create_payment(
     data: PaymentCreate,

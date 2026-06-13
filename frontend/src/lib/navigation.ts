@@ -17,7 +17,7 @@ import {
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
   ShoppingBag, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
-  UserCheck, DoorOpen, AlertTriangle,
+  UserCheck, DoorOpen, AlertTriangle, BookText,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -56,8 +56,9 @@ export const navGestionnaire: NavItem[] = [
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
-  { label: 'Finances', isSeparator: true },
-  { to: '/finances/revenus', icon: Wallet, label: 'Revenus' },
+  { label: 'Finance et Comptabilité', isSeparator: true },
+  { to: '/finances/revenus', icon: Wallet, label: 'Paiements' },
+  { to: '/comptabilite', icon: BookText, label: 'Comptabilité' },
   { to: '/finances/biens', icon: BarChart3, label: 'Performance biens' },
   { to: '/finances/fiscal', icon: Calculator, label: 'Liasse fiscale' },
 ]
@@ -121,8 +122,9 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
-  { label: 'Mes finances', isSeparator: true },
-  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Mes revenus' },
+  { label: 'Finance et Comptabilité', isSeparator: true },
+  { to: '/proprietaire/revenus', icon: CreditCard, label: 'Paiements' },
+  { to: '/comptabilite', icon: BookText, label: 'Comptabilité' },
   { to: '/proprietaire/biens', icon: Building2, label: 'Performance biens' },
   { to: '/proprietaire/fiscal', icon: Calculator, label: 'Liasse fiscale' },
 ]
@@ -153,6 +155,7 @@ export function navForRole(role?: string): NavItem[] {
  */
 export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   // Gestionnaire / admin
+  '/comptabilite': "Grand livre de toutes les transactions (appels de loyer, règlements, apurement, régularisations de charges), avec le logement concerné (et le propriétaire pour le mandataire).",
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
   '/diffusion': 'Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes et suivez leurs performances (vues).',
