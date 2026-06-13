@@ -112,8 +112,8 @@ export default function LocatairePayer() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-wide font-medium text-gray-500">Solde actuel</p>
-            <p className={`text-2xl font-bold ${soldeActuel > 0.005 ? 'text-amber-700' : 'text-green-700'}`}>
-              {soldeActuel > 0.005 ? fmtEuro(soldeActuel) : '0,00 €'}
+            <p className={`text-2xl font-bold ${soldeActuel > 0.005 ? 'text-red-600' : soldeActuel < -0.005 ? 'text-green-600' : 'text-gray-700'}`}>
+              {soldeActuel > 0.005 ? `− ${fmtEuro(soldeActuel)}` : soldeActuel < -0.005 ? `+ ${fmtEuro(-soldeActuel)}` : '0,00 €'}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
               {soldeActuel > 0.005 ? 'Reste à payer, cumul de tous les mois et plans d\'apurement' : 'Vous êtes à jour'}
