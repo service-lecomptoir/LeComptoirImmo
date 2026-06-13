@@ -379,6 +379,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature TEXT",
         # Mois reporté sur un plan d'apurement (sort des impayés/revenus, restaurable).
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settled_by_plan BOOLEAN NOT NULL DEFAULT FALSE",
+        # Apurement partiel : part du solde reportée sur un plan sans solder tout le mois
+        "ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_on_plan NUMERIC(10,2) NOT NULL DEFAULT 0",
         # Locataire personne morale : raison sociale + SIREN/SIRET (national_id reste le NIR).
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS siret VARCHAR(50)",

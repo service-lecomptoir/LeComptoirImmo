@@ -42,18 +42,20 @@ export default function PaymentList() {
   const [planPayment, setPlanPayment] = useState<PaymentListItem | null>(null)
   const [planN, setPlanN] = useState(3)
   const [planDate, setPlanDate] = useState('')
+  const [planAmount, setPlanAmount] = useState(0)
   const [planBusy, setPlanBusy] = useState(false)
 
   const openPlan = (p: PaymentListItem) => {
     setPlanPayment(p)
     setPlanN(3)
+    setPlanAmount(Math.round((p.balance || 0) * 100) / 100)
     setPlanDate(format(new Date(today.getFullYear(), today.getMonth() + 1, 1), 'yyyy-MM-dd'))
   }
   const generatePlan = async () => {
     if (!planPayment) return
     setPlanBusy(true)
     try {
-      await apurementApi.create(planPayment.id, planN, planDate)
+      await apurementApi.create(planPayment.id, planN, planDate, planAmount)
       setPlanPayment(null)
       toast.success('Plan d\'apurement créé. Suivi sur la fiche du locataire.')
     } catch (e: any) {
@@ -538,7 +540,7 @@ export default function PaymentList() {
               </button>
               <button
                 onClick={generatePlan}
-                disabled={planBusy || planN < 1 || !planDate}
+                disabled={planBusy || planN < 1 || !planDate || planAmount <= 0}
                 className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {planBusy ? 'Création…' : 'Créer le plan'}
@@ -551,6 +553,24 @@ export default function PaymentList() {
             Solde à apurer : <strong>{fmtEuro(planPayment.balance)}</strong>
           </div>
           <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Montant à étaler *</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number" min="0" step="0.01" max={planPayment.balance} value={planAmount}
+                  onChange={e => setPlanAmount(Math.max(0, Math.min(planPayment.balance, Number(e.target.value) || 0)))}
+                  className="w-40 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-500">€</span>
+                <button type="button" onClick={() => setPlanAmount(Math.round((planPayment.balance) * 100) / 100)}
+                  className="text-xs text-blue-600 hover:underline">Tout le solde</button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {planAmount >= planPayment.balance - 0.005
+                  ? 'Apurement total : le mois sort entièrement du solde (reporté sur le plan).'
+                  : `Apurement partiel : ${fmtEuro(planPayment.balance - planAmount)} resteront dus sur ce mois.`}
+              </p>
+            </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Nombre de mensualités *</label>
               <input
@@ -568,7 +588,7 @@ export default function PaymentList() {
               />
             </div>
             <p className="text-xs text-gray-500">
-              Mensualité ≈ <strong>{fmtEuro(planPayment.balance / planN)}</strong> · {planN} versement{planN > 1 ? 's' : ''} mensuel{planN > 1 ? 's' : ''} (la dernière échéance ajuste l'arrondi).
+              Mensualité ≈ <strong>{fmtEuro((planAmount || 0) / planN)}</strong> · {planN} versement{planN > 1 ? 's' : ''} mensuel{planN > 1 ? 's' : ''} (la dernière échéance ajuste l'arrondi).
             </p>
           </div>
         </Modal>

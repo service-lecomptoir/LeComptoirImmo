@@ -98,6 +98,12 @@ class Payment(Base, TimestampMixin):
     settled_by_plan: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false",
     )
+    # Part du solde de CE loyer reportée sur un plan d'apurement sans solder tout le
+    # mois (apurement PARTIEL) : déduite du solde restant dû. L'apurement TOTAL passe
+    # plutôt par `settled_by_plan` (+ statut cancelled). Remis à 0 si le plan est supprimé.
+    amount_on_plan: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, default=0, server_default="0",
+    )
 
     # ── Quittance ─────────────────────────────────────────────────────────────
     quittance_generated_at: Mapped[Optional[datetime]] = mapped_column(
@@ -118,8 +124,8 @@ class Payment(Base, TimestampMixin):
 
     @property
     def balance(self) -> float:
-        """Solde restant dû."""
-        return max(0.0, float(self.amount_due) - float(self.amount_paid))
+        """Solde restant dû (déduction faite de la part reportée sur un plan d'apurement partiel)."""
+        return max(0.0, float(self.amount_due) - float(self.amount_paid) - float(self.amount_on_plan or 0))
 
     @property
     def period_label(self) -> str:

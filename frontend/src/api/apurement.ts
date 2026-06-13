@@ -30,8 +30,8 @@ export interface ApurementPlan {
 }
 
 export const apurementApi = {
-  create: (payment_id: string, installments: number, first_date: string) =>
-    apiClient.post<ApurementPlan>('/apurement-plans', { payment_id, installments, first_date }),
+  create: (payment_id: string, installments: number, first_date: string, total_amount?: number) =>
+    apiClient.post<ApurementPlan>('/apurement-plans', { payment_id, installments, first_date, total_amount }),
   listForTenant: (tenant_id: string) =>
     apiClient.get<ApurementPlan[]>('/apurement-plans', { params: { tenant_id } }),
   mine: () => apiClient.get<ApurementPlan[]>('/apurement-plans/mine'),
