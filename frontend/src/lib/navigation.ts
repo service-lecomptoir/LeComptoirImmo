@@ -132,7 +132,6 @@ export const navGestionnairePropio: NavItem[] = [
 // Navigation Locataire
 export const navLocataire: NavItem[] = [
   { to: '/locataire', icon: Home, label: 'Mon espace' },
-  { to: '/locataire/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/locataire/payer', icon: Wallet, label: 'Payer mon loyer' },
   { to: '/locataire/paiements', icon: CreditCard, label: 'Ma comptabilité' },
   { to: '/locataire/demarches', icon: MessageSquare, label: 'Mes démarches' },

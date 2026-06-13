@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Home, CreditCard, Calendar, FileText,
-  ArrowRight, CheckCircle, AlertCircle, Download, DoorOpen, X,
+  Home, CreditCard, FileText,
+  ArrowRight, Download, DoorOpen, X,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { leasesApi } from '@/api/leases'
 import { paymentsApi } from '@/api/payments'
-import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { leaseExitsApi } from '@/api/leaseExits'
 import { toast } from '@/store/toast'
 import { format } from 'date-fns'
@@ -23,7 +22,6 @@ export default function LocataireDashboard() {
   const navigate = useNavigate()
   const [lease, setLease] = useState<any>(null)
   const [lastPayment, setLastPayment] = useState<any>(null)
-  const [nextAvis, setNextAvis] = useState<AvisEcheanceSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const today = new Date()
 
@@ -51,10 +49,9 @@ export default function LocataireDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [leasesRes, paymentsRes, avisRes] = await Promise.allSettled([
+        const [leasesRes, paymentsRes] = await Promise.allSettled([
           leasesApi.list({ is_active: true, limit: 1 }),
           paymentsApi.list({ limit: 3 }),
-          avisEcheancesApi.list({ limit: 3 }),
         ])
 
         if (leasesRes.status === 'fulfilled') {
@@ -64,10 +61,6 @@ export default function LocataireDashboard() {
         if (paymentsRes.status === 'fulfilled') {
           const items = paymentsRes.value.data.items ?? paymentsRes.value.data
           setLastPayment(items?.[0] ?? null)
-        }
-        if (avisRes.status === 'fulfilled') {
-          const items = avisRes.value.data
-          setNextAvis(items?.[0] ?? null)
         }
       } finally {
         setIsLoading(false)
@@ -104,38 +97,6 @@ export default function LocataireDashboard() {
             {preavis.departure_date ? ` : départ prévu le ${format(new Date(preavis.departure_date), 'd MMM yyyy', { locale: fr })}` : ''}.
             Votre gestionnaire organisera l'état des lieux de sortie.
           </span>
-        </div>
-      )}
-
-      {/* Prochain avis d'échéance */}
-      {nextAvis && (
-        <div
-          onClick={() => navigate('/locataire/avis-echeances')}
-          className={`mb-5 p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md ${
-            nextAvis.status === 'acquitte'
-              ? 'border-green-200 bg-green-50'
-              : 'border-orange-200 bg-orange-50'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {nextAvis.status === 'acquitte' ? (
-                <CheckCircle size={20} className="text-green-600" />
-              ) : (
-                <AlertCircle size={20} className="text-orange-600" />
-              )}
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  Avis d'échéance : {nextAvis.period_label}
-                </p>
-                <p className="text-xs text-gray-600">
-                  Échéance le {format(new Date(nextAvis.due_date), 'd MMMM yyyy', { locale: fr })}
-                  {' '}· {fmtEuro(nextAvis.amount_total)}
-                </p>
-              </div>
-            </div>
-            <ArrowRight size={16} className="text-gray-400" />
-          </div>
         </div>
       )}
 
@@ -264,7 +225,6 @@ export default function LocataireDashboard() {
       {/* Liens rapides */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-5">
         {[
-          { icon: Calendar, label: 'Avis d\'échéances', to: '/locataire/avis-echeances', color: 'bg-blue-50 text-blue-600' },
           { icon: CreditCard, label: 'Ma comptabilité', to: '/locataire/paiements', color: 'bg-green-50 text-green-600' },
           { icon: FileText, label: 'Mes documents', to: '/locataire/documents', color: 'bg-purple-50 text-purple-600' },
         ].map(item => (
