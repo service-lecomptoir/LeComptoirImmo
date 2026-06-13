@@ -146,7 +146,9 @@ export default function LocatairePaiements() {
       esc(e.intitule),
       (e.sign === 'credit' ? '' : '-') + e.montant.toFixed(2).replace('.', ','),
     ].join(sep))
-    const csv = '﻿' + ['Date;Intitulé;Montant', ...lines].join('\r\n')
+    // BOM UTF-8 (﻿) en tête pour qu'Excel reconnaisse l'encodage et affiche
+    // correctement les accents (séquence d'échappement, fiable au build).
+    const csv = String.fromCharCode(0xFEFF) + ['Date;Intitulé;Montant', ...lines].join('\r\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
     const a = document.createElement('a')
     a.href = url
