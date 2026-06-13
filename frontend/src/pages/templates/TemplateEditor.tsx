@@ -696,8 +696,9 @@ export default function TemplateEditor() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {templates.map(t => (
             <div key={t.id} className="bg-white rounded-xl border overflow-hidden hover:shadow-md transition-shadow">
-              {/* Bande couleur (le logo vient du profil « Mes informations », pas du modèle) */}
-              <div style={{ backgroundColor: t.header_color ?? '#1E3A5F' }}
+              {/* Bande d'entête : couleur de marque uniforme sur toutes les cartes
+                  (l'avis d'échéance est ainsi aligné sur les autres modèles). */}
+              <div style={{ backgroundColor: '#1E3A5F' }}
                 className="h-12 flex items-center px-4 gap-3">
                 <span className="text-white text-sm font-semibold truncate">
                   {t.company_name || t.name}
