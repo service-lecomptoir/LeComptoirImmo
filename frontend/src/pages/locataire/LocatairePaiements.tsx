@@ -9,6 +9,11 @@ import { fr } from 'date-fns/locale'
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 
+// Libellé du type de paiement (sert d'intitulé pour la ligne de règlement).
+const METHOD_LABELS: Record<string, string> = {
+  virement: 'Virement', cheque: 'Chèque', prelevement: 'Prélèvement', especes: 'Espèces',
+}
+
 // Grand livre vu côté locataire :
 //  • débit (rouge, signe −) = ce qui augmente sa dette : appel de loyer,
 //    échéance d'apurement, régularisation de charges défavorable…
@@ -66,11 +71,12 @@ export default function LocatairePaiements() {
     if (aplApplied > 0.005)
       entries.push({ key: `apl-${p.id}`, date: p.due_date, period, rank: 1,
         intitule: `Aide au logement (APL) · ${p.period_label}`, montant: aplApplied, sign: 'credit' })
-    // 3. Reste à charge réglé par le locataire (crédit)
+    // 3. Règlement du locataire (crédit) : intitulé = type de paiement. La quittance
+    //    n'est proposée que si le mois est entièrement payé.
     if (reste > 0.005)
       entries.push({ key: `pay-${p.id}`, date: p.payment_date || p.due_date, period, rank: 2,
-        intitule: `${aplApplied > 0.005 ? 'Reste à charge' : 'Règlement'} · ${p.period_label}`,
-        montant: reste, sign: 'credit', payment: p })
+        intitule: `${METHOD_LABELS[p.payment_method] ?? 'Règlement'} · ${p.period_label}`,
+        montant: reste, sign: 'credit', payment: p.status === 'paid' ? p : undefined })
   }
   for (const pl of plans) {
     for (const i of pl.installments) {
@@ -91,11 +97,40 @@ export default function LocatairePaiements() {
   const totalCredits = entries.filter(e => e.sign === 'credit').reduce((s, e) => s + e.montant, 0)
   const solde = r2(totalDebits - totalCredits)
 
+  // Export CSV du grand livre (séparateur « ; » + BOM pour Excel FR).
+  const handleExport = () => {
+    const sep = ';'
+    const esc = (s: string) => `"${(s || '').replace(/"/g, '""')}"`
+    const lines = entries.map(e => [
+      e.date ? format(new Date(e.date), 'dd/MM/yyyy') : '',
+      esc(e.intitule),
+      (e.sign === 'credit' ? '' : '-') + e.montant.toFixed(2).replace('.', ','),
+    ].join(sep))
+    const csv = '﻿' + ['Date;Intitulé;Montant', ...lines].join('\r\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'ma_comptabilite.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Ma comptabilité</h1>
-        <p className="text-gray-500 text-sm mt-1">Solde et grand livre de vos appels de loyer et règlements</p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Ma comptabilité</h1>
+          <p className="text-gray-500 text-sm mt-1">Solde et grand livre de vos appels de loyer et règlements</p>
+        </div>
+        {entries.length > 0 && (
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
+            style={{ background: '#0D2F5C' }}
+          >
+            <Download size={15} /> Exporter
+          </button>
+        )}
       </div>
 
       {/* Solde actuel */}
@@ -148,14 +183,16 @@ export default function LocatairePaiements() {
                           <button
                             onClick={() => paymentsApi.downloadQuittance(e.payment.id,
                               docFilename('quittance', { tenant: e.payment.tenant_full_name, property: e.payment.property_name, month: e.payment.period_month, year: e.payment.period_year }))}
-                            title="Quittance"
-                            className="text-green-600 hover:text-green-800"><Download size={13} /></button>
+                            className="inline-flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-800 hover:underline">
+                            <Download size={12} /> Quittance
+                          </button>
                         )}
                         {e.planId && e.seq != null && (
                           <button
                             onClick={() => apurementApi.downloadInstallmentQuittance(e.planId!, e.seq!, `quittance_apurement_echeance_${e.seq}.pdf`)}
-                            title="Quittance de l'échéance"
-                            className="text-green-600 hover:text-green-800"><Download size={13} /></button>
+                            className="inline-flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-800 hover:underline">
+                            <Download size={12} /> Quittance
+                          </button>
                         )}
                       </span>
                     </td>
