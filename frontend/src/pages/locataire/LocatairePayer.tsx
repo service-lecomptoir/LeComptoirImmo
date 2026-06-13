@@ -81,11 +81,19 @@ export default function LocatairePayer() {
       history.push({ key: `apl-${p.id}`, date: p.due_date, intitule: `Aide personnelle au logement · ${p.period_label}`, montant: apl, statut: 'applique', rank: 1 })
     if (reste > 0.005) {
       const statut = resteStatut(tenantPaid, reste, !!p.declared_at)
-      const date = statut === 'attente' ? (p.declared_at || p.due_date)
-        : (statut === 'valide' || statut === 'partiel') ? (p.payment_date || p.due_date)
-        : null
+      // Montant affiché = le règlement concerné : la somme DÉCLARÉE quand c'est en
+      // attente, la somme RÉELLEMENT payée (hors APL) quand c'est validé/partiel.
+      let montant = reste
+      let date: string | null = null
+      if (statut === 'attente') {
+        montant = Number(p.declared_amount ?? reste) || reste
+        date = p.declared_at || p.due_date
+      } else if (statut === 'valide' || statut === 'partiel') {
+        montant = tenantPaid > 0.005 ? tenantPaid : reste
+        date = p.payment_date || p.due_date
+      }
       if (date)
-        history.push({ key: `reste-${p.id}`, date, intitule: `Reste à payer · ${p.period_label}`, montant: reste, statut, rank: 2 })
+        history.push({ key: `reste-${p.id}`, date, intitule: `Règlement · ${p.period_label}`, montant, statut, rank: 2 })
     }
   }
   for (const pl of plans) {
