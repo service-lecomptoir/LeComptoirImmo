@@ -21,47 +21,12 @@ from app.schemas.dashboard import (
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
-
-def _received_status():
-    """Statuts comptés comme « encaissé » : payé / partiel, ET les mois reportés
-    sur un plan d'apurement (leur part déjà payée doit toujours compter, même si
-    le mois est « reporté » donc techniquement annulé)."""
-    return or_(
-        Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
-        Payment.settled_by_plan.is_(True),
-    )
-
-
-async def _apurement_received(db, prop_ids, *, year=None, month=None) -> float:
-    """Échéances d'apurement réellement encaissées sur la période (revenu reconnu
-    au fil des règlements, modèle A). `prop_ids=None` => tout le périmètre."""
-    from app.models.apurement_plan import ApurementPlan
-    q = select(ApurementPlan)
-    if prop_ids is not None:
-        if not prop_ids:
-            return 0.0
-        q = q.join(Lease, ApurementPlan.lease_id == Lease.id).where(
-            Lease.property_id.in_(prop_ids)
-        )
-    plans = (await db.execute(q)).scalars().all()
-    total = 0.0
-    for pl in plans:
-        for it in (pl.installments or []):
-            if not it.get("paid"):
-                continue
-            raw = it.get("paid_date") or it.get("due_date")
-            try:
-                d = date.fromisoformat(raw) if raw else None
-            except Exception:
-                d = None
-            if not d:
-                continue
-            if year is not None and d.year != year:
-                continue
-            if month is not None and d.month != month:
-                continue
-            total += float(it.get("amount", 0) or 0)
-    return total
+# Règles de revenu d'apurement (mois reportés + échéances) centralisées.
+from app.services.apurement_revenue import (  # noqa: E402
+    received_status as _received_status,
+    apurement_received as _apurement_received,
+    apurement_installments as _apurement_installments,
+)
 
 
 @router.get("/stats", response_model=DashboardStats)
@@ -505,6 +470,43 @@ async def get_proprietaire_stats(
     }
 
 
+@router.get("/proprietaire-apurement")
+async def get_proprietaire_apurement(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Échéances d'apurement encaissées sur les biens du propriétaire, sous forme
+    de lignes de revenu (à fusionner avec « Mes revenus »)."""
+    props_res = await db.execute(
+        select(Property).where(Property.owner_user_id == current_user.id)
+    )
+    properties = list(props_res.scalars().all())
+    prop_ids = [p.id for p in properties]
+    if not prop_ids:
+        return {"items": []}
+
+    prop_by_id = {p.id: p for p in properties}
+    rows = await _apurement_installments(db, prop_ids)
+    items = []
+    for r in rows:
+        pl = r["plan"]
+        ten = await db.get(Tenant, pl.tenant_id)
+        lease = await db.get(Lease, pl.lease_id)
+        prop = prop_by_id.get(lease.property_id) if lease else None
+        items.append({
+            "id": f"apur-{pl.id}-{r['seq']}",
+            "period_label": f"Apurement · échéance {r['seq']}",
+            "tenant_full_name": ten.full_name if ten else "",
+            "property_name": prop.name if prop else "",
+            "amount_due": r["amount"],
+            "amount_paid": r["amount"],
+            "status": "apurement",
+            "settled_by_plan": False,
+            "payment_date": r["date"].isoformat(),
+        })
+    return {"items": items}
+
+
 @router.get("/fiscal/{year}", response_model=FiscalRevenueFoncier)
 async def get_fiscal_revenues(
     year: int,
@@ -560,7 +562,7 @@ async def get_fiscal_revenues(
     # sur le montant réellement encaissé (amount_paid).
     _base_filter = [
         Lease.property_id.in_(prop_ids),
-        Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+        _received_status(),
         Payment.period_year == year,
     ]
 
@@ -579,6 +581,8 @@ async def get_fiscal_revenues(
         .where(*_base_filter)
     )
     gross_rent = float(rent_res.scalar_one() or 0)
+    # Revenu reconnu via les échéances d'apurement encaissées dans l'année.
+    gross_rent += await _apurement_received(db, prop_ids, year=year)
 
     # Part charges réellement perçue = amount_paid × (amount_charges / amount_due)
     charges_res = await db.execute(
@@ -615,11 +619,12 @@ async def get_fiscal_revenues(
             .join(Lease, Payment.lease_id == Lease.id)
             .where(
                 Lease.property_id == prop.id,
-                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                _received_status(),
                 Payment.period_year == year,
             )
         )
         prop_rent = float(prop_rent_res.scalar_one() or 0)
+        prop_rent += await _apurement_received(db, [prop.id], year=year)
 
         leases_res = await db.execute(
             select(func.count(Lease.id))

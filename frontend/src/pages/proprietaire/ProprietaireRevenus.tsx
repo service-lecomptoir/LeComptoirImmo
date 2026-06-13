@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CreditCard, TrendingUp } from 'lucide-react'
 import { paymentsApi } from '@/api/payments'
+import { apiClient } from '@/api/client'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -10,13 +11,13 @@ const fmtEuro = (n: number) =>
 
 function paymentStatusVariant(s: string): any {
   const map: Record<string, string> = {
-    paid: 'green', partial: 'yellow', pending: 'blue', late: 'red', cancelled: 'gray',
+    paid: 'green', partial: 'yellow', pending: 'blue', late: 'red', cancelled: 'gray', apurement: 'green',
   }
   return map[s] ?? 'gray'
 }
 function paymentStatusLabel(s: string): string {
   const map: Record<string, string> = {
-    paid: 'Payé', partial: 'Partiel', pending: 'En attente', late: 'En retard', cancelled: 'Annulé',
+    paid: 'Payé', partial: 'Partiel', pending: 'En attente', late: 'En retard', cancelled: 'Annulé', apurement: 'Apurement',
   }
   return map[s] ?? s
 }
@@ -26,9 +27,22 @@ export default function ProprietaireRevenus() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    paymentsApi.list({ limit: 50 })
-      .then(r => setPayments(r.data.items ?? r.data))
-      .catch(() => { })
+    // Loyers/charges (paiements) + échéances d'apurement encaissées, fusionnés et
+    // triés par date (plus récent en haut). Les revenus = loyer, charges, apurement.
+    Promise.allSettled([
+      paymentsApi.list({ limit: 50 }),
+      apiClient.get('/dashboard/proprietaire-apurement'),
+    ])
+      .then(([pr, ap]) => {
+        const base = pr.status === 'fulfilled' ? (pr.value.data.items ?? pr.value.data) : []
+        const apur = ap.status === 'fulfilled' ? (ap.value.data.items ?? []) : []
+        const merged = [...base, ...apur].sort((a, b) => {
+          const da = a.payment_date ? new Date(a.payment_date).getTime() : 0
+          const db = b.payment_date ? new Date(b.payment_date).getTime() : 0
+          return db - da
+        })
+        setPayments(merged)
+      })
       .finally(() => setIsLoading(false))
   }, [])
 
@@ -36,7 +50,7 @@ export default function ProprietaireRevenus() {
   // sur un plan d'apurement (leur part déjà payée compte, même si le statut est
   // « reporté »). Le reste reporté est encaissé via les échéances du plan.
   const totalPercu = payments
-    .filter(p => p.status === 'paid' || p.status === 'partial' || p.settled_by_plan)
+    .filter(p => p.status === 'paid' || p.status === 'partial' || p.status === 'apurement' || p.settled_by_plan)
     .reduce((s, p) => s + (p.amount_paid ?? 0), 0)
 
   return (

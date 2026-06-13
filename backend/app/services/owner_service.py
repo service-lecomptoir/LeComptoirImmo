@@ -91,7 +91,11 @@ class OwnerService:
         charges_received = 0.0
         per_prop_rent: dict = {}
         for p in payments:
-            if p.status in (PaymentStatus.PAID, PaymentStatus.PARTIAL) and float(p.amount_due) > 0:
+            # Mois payés/partiels ET mois reportés sur un plan (leur part déjà payée
+            # compte ; le reste reporté est reconnu via les échéances ci-dessous).
+            _counts = (p.status in (PaymentStatus.PAID, PaymentStatus.PARTIAL)
+                       or getattr(p, "settled_by_plan", False))
+            if _counts and float(p.amount_due) > 0:
                 rent_part = float(p.amount_paid) * float(p.amount_rent) / float(p.amount_due)
                 ch_part = float(p.amount_paid) * float(p.amount_charges) / float(p.amount_due)
                 gross_rent += rent_part

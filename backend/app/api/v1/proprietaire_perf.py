@@ -10,6 +10,7 @@ from app.core.features import require_any_feature
 from app.models.property import Property
 from app.models.lease import Lease
 from app.models.payment import Payment, PaymentStatus
+from app.services.apurement_revenue import received_status, apurement_received
 
 router = APIRouter(prefix="/proprietaire-performance", tags=["Propriétaire Performance"])
 
@@ -55,17 +56,19 @@ async def get_proprietaire_performance(
         monthly_expected = float(leases_res.scalar_one() or 0)
         ytd_theoretical = monthly_expected * months_elapsed
 
-        # Encaissé YTD (period_year == year, PAID ou PARTIAL)
+        # Encaissé YTD : payé/partiel + mois reportés (part déjà payée) + échéances
+        # d'apurement encaissées dans l'année.
         ytd_res = await db.execute(
             select(func.coalesce(func.sum(Payment.amount_paid), 0.0))
             .join(Lease, Payment.lease_id == Lease.id)
             .where(
                 Lease.property_id == prop_id,
-                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                received_status(),
                 Payment.period_year == year,
             )
         )
         ytd_received = float(ytd_res.scalar_one() or 0)
+        ytd_received += await apurement_received(db, [prop_id], year=year)
 
         # Détail mensuel
         monthly_breakdown = []
@@ -75,15 +78,17 @@ async def get_proprietaire_performance(
                 .join(Lease, Payment.lease_id == Lease.id)
                 .where(
                     Lease.property_id == prop_id,
-                    Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                    received_status(),
                     Payment.period_year == year,
                     Payment.period_month == month,
                 )
             )
+            m_received = float(m_res.scalar_one() or 0)
+            m_received += await apurement_received(db, [prop_id], year=year, month=month)
             monthly_breakdown.append({
                 "month": month,
                 "expected": round(monthly_expected, 2),
-                "received": round(float(m_res.scalar_one() or 0), 2),
+                "received": round(m_received, 2),
             })
 
         collection_rate = round(
