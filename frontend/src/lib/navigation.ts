@@ -133,7 +133,7 @@ export const navLocataire: NavItem[] = [
   { to: '/locataire/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/locataire/payer', icon: Wallet, label: 'Payer mon loyer' },
   { to: '/locataire/paiements', icon: CreditCard, label: 'Ma comptabilité' },
-  { to: '/locataire/signaler', icon: AlertTriangle, label: 'Signaler un problème' },
+  { to: '/locataire/signaler', icon: AlertTriangle, label: 'Signaler (résidence)' },
   { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
   { to: '/locataire/offres', icon: ShoppingBag, label: 'Offres & Services' },
 ]
@@ -174,7 +174,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   '/locataire/avis-echeances': "Vos appels de loyer (selon la fréquence du bail), téléchargeables en PDF.",
   '/locataire/payer': 'Le montant dû et les modalités de règlement de votre loyer.',
   '/locataire/paiements': "Votre comptabilité : solde actuel (reste à payer cumulé) et grand livre des appels de loyer et de vos règlements ; téléchargement de vos quittances.",
-  '/locataire/signaler': 'Signalez un problème (bruit, sécurité, propreté des parties communes, souci dans votre logement…) : catégorie, description, photo, urgence. Votre gestionnaire est alerté.',
+  '/locataire/signaler': "Signalez un problème lié à la résidence ou à l'immeuble (parties communes, ascenseur, sécurité des accès, propreté, espaces extérieurs, nuisances de voisinage…) : catégorie, description, photo, urgence. Votre gestionnaire est alerté.",
   '/signalements': 'Les signalements de vos locataires (bruit, sécurité, propreté…) : suivi par statut, logements à problème, historique et export.',
   '/locataire/documents': 'Votre bail, vos quittances et tous les documents liés à votre location.',
   '/locataire/offres': 'Les services proposés (assurance, box internet, etc.).',

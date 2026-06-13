@@ -19,10 +19,12 @@ from app.api.v1._isolation import agency_property_ids
 
 CATEGORY_LABELS = {
     "bruit": "Bruit / nuisance sonore",
-    "securite": "Sécurité",
-    "proprete": "Propreté (parties communes)",
-    "logement": "Problème dans le logement",
-    "degradation": "Dégradation",
+    "securite": "Sécurité (accès, interphone, éclairage)",
+    "proprete": "Propreté des parties communes",
+    "ascenseur": "Ascenseur",
+    "exterieur": "Espaces extérieurs / parking",
+    "degradation": "Dégradation / vandalisme",
+    "logement": "Problème dans le logement",  # héritage (anciens signalements)
     "autre": "Autre",
 }
 URGENCY_LABELS = {"faible": "Faible", "moyen": "Moyen", "urgent": "Urgent"}

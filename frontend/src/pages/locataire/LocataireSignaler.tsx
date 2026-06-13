@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import {
-  AlertTriangle, Volume2, ShieldAlert, Trash2, Home, Hammer, HelpCircle,
+  AlertTriangle, Volume2, ShieldAlert, Trash2, ArrowUpDown, Trees, Hammer, HelpCircle,
   Camera, Clock, Send, X, MapPin,
 } from 'lucide-react'
 import { signalementsApi, type Signalement, type SignalementCategory, type SignalementUrgency } from '@/api/signalements'
@@ -11,12 +11,15 @@ import { fr } from 'date-fns/locale'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// Signalements liés à la résidence / l'immeuble (parties communes, équipements
+// collectifs, voisinage). Pas les problèmes du logement privatif.
 const CATEGORIES: { key: SignalementCategory; label: string; icon: typeof Volume2 }[] = [
   { key: 'bruit', label: 'Bruit / nuisance sonore', icon: Volume2 },
-  { key: 'securite', label: 'Sécurité', icon: ShieldAlert },
-  { key: 'proprete', label: 'Propreté (parties communes)', icon: Trash2 },
-  { key: 'logement', label: 'Problème dans mon logement', icon: Home },
-  { key: 'degradation', label: 'Dégradation', icon: Hammer },
+  { key: 'securite', label: 'Sécurité (accès, interphone, éclairage)', icon: ShieldAlert },
+  { key: 'proprete', label: 'Propreté des parties communes', icon: Trash2 },
+  { key: 'ascenseur', label: 'Ascenseur', icon: ArrowUpDown },
+  { key: 'exterieur', label: 'Espaces extérieurs / parking', icon: Trees },
+  { key: 'degradation', label: 'Dégradation / vandalisme', icon: Hammer },
   { key: 'autre', label: 'Autre', icon: HelpCircle },
 ]
 
@@ -92,10 +95,12 @@ export default function LocataireSignaler() {
     <div className="max-w-3xl p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <AlertTriangle size={22} className="text-amber-500" /> Signaler un problème
+          <AlertTriangle size={22} className="text-amber-500" /> Signaler dans la résidence
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Remontez un problème à votre gestionnaire (bruit, sécurité, propreté, logement…). Il est alerté immédiatement.
+          Signalez un problème lié à la résidence ou à l'immeuble : parties communes, ascenseur,
+          sécurité des accès, propreté, espaces extérieurs, nuisances de voisinage… Votre gestionnaire est alerté immédiatement.
+          Pour un souci dans votre logement, passez par une demande d'intervention.
         </p>
       </div>
 
@@ -140,7 +145,7 @@ export default function LocataireSignaler() {
         <div>
           <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
-            placeholder="Ex. Musique très forte depuis 1h dans l'appartement voisin."
+            placeholder="Ex. Ascenseur en panne depuis ce matin / hall non nettoyé / porte d'entrée qui ne ferme plus."
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
 

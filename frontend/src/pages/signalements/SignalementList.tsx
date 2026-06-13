@@ -22,8 +22,9 @@ const STATUS_OPTIONS: { value: SignalementStatus; label: string }[] = [
   { value: 'resolu', label: 'Résolu' }, { value: 'clos', label: 'Clos' },
 ]
 const CATEGORY_OPTIONS = [
-  ['bruit', 'Bruit'], ['securite', 'Sécurité'], ['proprete', 'Propreté'],
-  ['logement', 'Logement'], ['degradation', 'Dégradation'], ['autre', 'Autre'],
+  ['bruit', 'Bruit'], ['securite', 'Sécurité'], ['proprete', 'Propreté (communs)'],
+  ['ascenseur', 'Ascenseur'], ['exterieur', 'Espaces extérieurs'], ['degradation', 'Dégradation'],
+  ['logement', 'Logement (ancien)'], ['autre', 'Autre'],
 ]
 
 export default function SignalementList() {

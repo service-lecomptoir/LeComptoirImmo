@@ -18,11 +18,16 @@ if TYPE_CHECKING:
 # catégories / sources (ex. capteurs télématiques) sans migration ALTER TYPE.
 
 class SignalementCategory(str, Enum):
-    BRUIT = "bruit"
-    SECURITE = "securite"
-    PROPRETE = "proprete"            # propreté des parties communes
-    LOGEMENT = "logement"            # problème dans mon logement
-    DEGRADATION = "degradation"      # dégradation / vandalisme
+    # Signalements liés à la RÉSIDENCE / l'IMMEUBLE (parties communes, équipements
+    # collectifs, voisinage). Les problèmes dans le logement privatif relèvent d'un
+    # autre canal (démarche / demande d'intervention), pas de ce signalement.
+    BRUIT = "bruit"                  # nuisance sonore / voisinage
+    SECURITE = "securite"           # accès, interphone, serrure, éclairage des communs
+    PROPRETE = "proprete"           # propreté des parties communes (hall, local poubelles…)
+    ASCENSEUR = "ascenseur"         # panne / dysfonctionnement de l'ascenseur
+    EXTERIEUR = "exterieur"         # espaces extérieurs, parking, espaces verts
+    DEGRADATION = "degradation"     # dégradation / vandalisme des communs
+    LOGEMENT = "logement"           # (héritage) ancien motif « mon logement »
     AUTRE = "autre"
 
 

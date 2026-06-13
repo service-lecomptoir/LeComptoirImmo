@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 
-export type SignalementCategory = 'bruit' | 'securite' | 'proprete' | 'logement' | 'degradation' | 'autre'
+export type SignalementCategory = 'bruit' | 'securite' | 'proprete' | 'ascenseur' | 'exterieur' | 'degradation' | 'logement' | 'autre'
 export type SignalementUrgency = 'faible' | 'moyen' | 'urgent'
 export type SignalementStatus = 'nouveau' | 'en_cours' | 'resolu' | 'clos'
 export type SignalementSource = 'locataire' | 'gestionnaire' | 'telematique'
