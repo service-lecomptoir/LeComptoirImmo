@@ -44,6 +44,7 @@ export interface Payment {
   payment_date?: string
   payment_method?: string
   status: PaymentStatus
+  settled_by_plan?: boolean
   notes?: string
   tenant?: TenantInPayment
   created_at: string
@@ -69,6 +70,7 @@ export interface PaymentListItem {
   payment_method?: string | null
   payment_date?: string | null
   status: PaymentStatus
+  settled_by_plan?: boolean
   quittance_generated_at?: string | null
   quittance_sent_at?: string | null
   declared_at?: string | null

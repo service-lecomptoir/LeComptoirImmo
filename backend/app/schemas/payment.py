@@ -53,6 +53,7 @@ class PaymentResponse(BaseModel):
     payment_date: Optional[date] = None
     payment_method: Optional[str] = None
     status: PaymentStatus
+    settled_by_plan: bool = False
     notes: Optional[str] = None
     quittance_generated_at: Optional[datetime] = None
     quittance_sent_at: Optional[datetime] = None
@@ -84,6 +85,7 @@ class PaymentListItem(BaseModel):
     payment_method: Optional[str] = None
     payment_date: Optional[date] = None
     status: PaymentStatus
+    settled_by_plan: bool = False
     quittance_generated_at: Optional[datetime] = None
     quittance_sent_at: Optional[datetime] = None
     declared_at: Optional[datetime] = None

@@ -340,8 +340,8 @@ export default function PaymentList() {
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge
-                      label={PAYMENT_STATUS_LABELS[p.status]}
-                      variant={PAYMENT_STATUS_VARIANTS[p.status]}
+                      label={p.settled_by_plan ? 'Reporté (apurement)' : PAYMENT_STATUS_LABELS[p.status]}
+                      variant={p.settled_by_plan ? 'blue' : PAYMENT_STATUS_VARIANTS[p.status]}
                       dot
                     />
                     {p.declared_at && p.status !== 'paid' && (

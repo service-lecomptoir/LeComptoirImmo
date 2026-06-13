@@ -345,6 +345,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS proprio_visibility_default JSONB",
         # Signature numérique du gestionnaire (data-URL PNG) apposée sur les documents.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature TEXT",
+        # Mois reporté sur un plan d'apurement (sort des impayés/revenus, restaurable).
+        "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settled_by_plan BOOLEAN NOT NULL DEFAULT FALSE",
         # Locataire personne morale : raison sociale + SIREN/SIRET (national_id reste le NIR).
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS siret VARCHAR(50)",

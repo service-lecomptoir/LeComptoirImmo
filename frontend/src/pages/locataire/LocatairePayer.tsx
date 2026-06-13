@@ -80,12 +80,14 @@ export default function LocatairePayer() {
     paid: { label: 'Payé', variant: 'green' }, partial: { label: 'Partiel', variant: 'yellow' },
     pending: { label: 'En attente', variant: 'blue' }, late: { label: 'En retard', variant: 'red' },
     declared: { label: 'Déclaré', variant: 'yellow' }, cancelled: { label: 'Annulé', variant: 'gray' },
+    reported: { label: 'Reporté (apurement)', variant: 'blue' },
   }
   const todayIso = new Date().toISOString().slice(0, 10)
   const history = [
     ...allPayments.map((p: any) => ({
       key: `p-${p.id}`, date: p.payment_date, intitule: `Loyer · ${p.period_label}`,
-      echeance: p.due_date, montant: p.amount_due ?? 0, status: p.status, sort: p.due_date || '',
+      echeance: p.due_date, montant: p.amount_due ?? 0,
+      status: p.settled_by_plan ? 'reported' : p.status, sort: p.due_date || '',
     })),
     ...plans.flatMap(pl => pl.installments.map(i => ({
       key: `i-${pl.id}-${i.seq}`, date: i.paid ? (i.paid_date || i.due_date) : null,

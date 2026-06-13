@@ -384,6 +384,7 @@ class PaymentService:
             payment_method=p.payment_method,
             payment_date=p.payment_date,
             status=p.status,
+            settled_by_plan=bool(getattr(p, "settled_by_plan", False)),
             quittance_generated_at=p.quittance_generated_at,
             quittance_sent_at=p.quittance_sent_at,
             declared_at=p.declared_at,

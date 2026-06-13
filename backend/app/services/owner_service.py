@@ -97,6 +97,45 @@ class OwnerService:
                 pid = p.lease.property_id if p.lease else None
                 if pid is not None:
                     per_prop_rent[pid] = per_prop_rent.get(pid, 0.0) + rent_part
+
+        # ── Encaissements de plans d'apurement (revenu reconnu au fil des règlements) ──
+        # Le mois reporté (cancelled) ne compte pas ; chaque échéance PAYÉE de l'année
+        # devient une ligne « Apurement » comptée dans le perçu et le fiscal.
+        if lease_ids:
+            from datetime import date
+            from app.models.apurement_plan import ApurementPlan
+            from app.models.tenant import Tenant as _Tenant
+            _prop_by_lease = {l.id: next((pr for pr in props if pr.id == l.property_id), None) for l in leases}
+            _plans = (await db.execute(
+                select(ApurementPlan).where(ApurementPlan.lease_id.in_(lease_ids))
+            )).scalars().all()
+            for _pl in _plans:
+                _prop = _prop_by_lease.get(_pl.lease_id)
+                _ten = await db.get(_Tenant, _pl.tenant_id)
+                for _i in (_pl.installments or []):
+                    if not _i.get("paid"):
+                        continue
+                    _pd = _i.get("paid_date") or _i.get("due_date")
+                    try:
+                        _pdate = date.fromisoformat(_pd) if _pd else None
+                    except Exception:
+                        _pdate = None
+                    if not _pdate or _pdate.year != year:
+                        continue
+                    _amt = float(_i.get("amount", 0))
+                    total_percu += _amt
+                    gross_rent += _amt
+                    if _prop is not None:
+                        per_prop_rent[_prop.id] = per_prop_rent.get(_prop.id, 0.0) + _amt
+                    lignes.append({
+                        "period_label": f"Apurement · échéance {_i.get('seq')}",
+                        "period_month": _pdate.month,
+                        "property_name": _prop.name if _prop else "",
+                        "tenant_full_name": _ten.full_name if _ten else "",
+                        "amount_due": _amt, "amount_paid": _amt,
+                        "status": "apurement", "payment_date": _pdate,
+                    })
+
         management_fees = round(gross_rent * 0.08, 2)
         total_gross = gross_rent + charges_received
         total_deductible = management_fees

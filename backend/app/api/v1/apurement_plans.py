@@ -79,6 +79,18 @@ async def create_plan(
         origin_payment_id=payment.id, total=total, installments=insts,
         created_by=current_user.id, label=f"Plan d'apurement · {payment.period_label}",
     )
+
+    # Le mois d'origine est REPORTÉ sur le plan : il sort des impayés et des revenus
+    # (statut « cancelled »), sa dette vit désormais dans les échéances. Le drapeau
+    # permet d'afficher « Reporté » et de restaurer la dette si le plan est supprimé.
+    from app.models.payment import PaymentStatus
+    payment.status = PaymentStatus.CANCELLED
+    payment.settled_by_plan = True
+    _note = (payment.notes or "").strip()
+    if "plan d'apurement" not in _note.lower():
+        payment.notes = (f"{_note} · Reporté sur plan d'apurement").strip(" ·")
+    await db.flush()
+
     tn, pn = await _names(db, plan)
     return plan_to_dict(plan, tn, pn)
 
@@ -219,6 +231,27 @@ async def delete_plan(
         raise NotFoundException("Plan d'apurement", str(plan_id))
     lease = await _lease_for_access(db, plan.lease_id)
     await assert_lease_access(db, current_user, lease, write=True)
+
+    # Suppression du plan → la dette revient sur le mois d'origine (statut restauré).
+    if plan.origin_payment_id:
+        from app.models.payment import Payment, PaymentStatus
+        pay = await db.get(Payment, plan.origin_payment_id)
+        if pay is not None and getattr(pay, "settled_by_plan", False):
+            pay.settled_by_plan = False
+            paid = float(pay.amount_paid or 0)
+            due = float(pay.amount_due or 0)
+            if due > 0 and paid >= due:
+                pay.status = PaymentStatus.PAID
+            elif paid > 0:
+                pay.status = PaymentStatus.PARTIAL
+            else:
+                pay.status = (PaymentStatus.LATE
+                              if pay.due_date and pay.due_date < date.today()
+                              else PaymentStatus.PENDING)
+            if pay.notes:
+                pay.notes = pay.notes.replace("· Reporté sur plan d'apurement", "").strip(" ·") or None
+            await db.flush()
+
     await ApurementPlanService.delete(db, plan)
 
 

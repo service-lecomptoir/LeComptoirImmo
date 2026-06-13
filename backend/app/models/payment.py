@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Date, DateTime, Numeric, Integer, Enum as SAEnum, ForeignKey, UniqueConstraint
+from sqlalchemy import String, Date, DateTime, Numeric, Integer, Boolean, Enum as SAEnum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
@@ -90,6 +90,14 @@ class Payment(Base, TimestampMixin):
 
     # Crédit (trop-perçu d'échéances précédentes) déjà consommé par CE paiement.
     credit_applied: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0, server_default="0")
+
+    # Mois reporté sur un plan d'apurement : le statut passe à « cancelled » (sort des
+    # impayés et des revenus), la dette vit désormais dans le plan. Le drapeau permet
+    # d'afficher « Reporté » (et non « Annulé ») et de restaurer la dette si le plan
+    # est supprimé.
+    settled_by_plan: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false",
+    )
 
     # ── Quittance ─────────────────────────────────────────────────────────────
     quittance_generated_at: Mapped[Optional[datetime]] = mapped_column(
