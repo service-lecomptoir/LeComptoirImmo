@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, case
+from sqlalchemy import select, func, case, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -20,6 +20,48 @@ from app.schemas.dashboard import (
 )
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+
+
+def _received_status():
+    """Statuts comptés comme « encaissé » : payé / partiel, ET les mois reportés
+    sur un plan d'apurement (leur part déjà payée doit toujours compter, même si
+    le mois est « reporté » donc techniquement annulé)."""
+    return or_(
+        Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+        Payment.settled_by_plan.is_(True),
+    )
+
+
+async def _apurement_received(db, prop_ids, *, year=None, month=None) -> float:
+    """Échéances d'apurement réellement encaissées sur la période (revenu reconnu
+    au fil des règlements, modèle A). `prop_ids=None` => tout le périmètre."""
+    from app.models.apurement_plan import ApurementPlan
+    q = select(ApurementPlan)
+    if prop_ids is not None:
+        if not prop_ids:
+            return 0.0
+        q = q.join(Lease, ApurementPlan.lease_id == Lease.id).where(
+            Lease.property_id.in_(prop_ids)
+        )
+    plans = (await db.execute(q)).scalars().all()
+    total = 0.0
+    for pl in plans:
+        for it in (pl.installments or []):
+            if not it.get("paid"):
+                continue
+            raw = it.get("paid_date") or it.get("due_date")
+            try:
+                d = date.fromisoformat(raw) if raw else None
+            except Exception:
+                d = None
+            if not d:
+                continue
+            if year is not None and d.year != year:
+                continue
+            if month is not None and d.month != month:
+                continue
+            total += float(it.get("amount", 0) or 0)
+    return total
 
 
 @router.get("/stats", response_model=DashboardStats)
@@ -109,13 +151,16 @@ async def get_dashboard_stats(
     rent_received_res = await db.execute(
         _payment_scope(
             select(func.coalesce(func.sum(Payment.amount_paid), 0.0)).where(
-                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                _received_status(),
                 Payment.period_year == today.year,
                 Payment.period_month == today.month,
             )
         )
     )
     total_rent_received = float(rent_received_res.scalar_one() or 0)
+    total_rent_received += await _apurement_received(
+        db, whitelist, year=today.year, month=today.month
+    )
 
     outstanding_res = await db.execute(
         _payment_scope(
@@ -158,13 +203,16 @@ async def get_dashboard_stats(
         rec_res = await db.execute(
             _payment_scope(
                 select(func.coalesce(func.sum(Payment.amount_paid), 0.0)).where(
-                    Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                    _received_status(),
                     Payment.period_year == month_date.year,
                     Payment.period_month == month_date.month,
                 )
             )
         )
         received = float(rec_res.scalar_one() or 0)
+        received += await _apurement_received(
+            db, whitelist, year=month_date.year, month=month_date.month
+        )
 
         out_res = await db.execute(
             _payment_scope(
@@ -433,12 +481,15 @@ async def get_proprietaire_stats(
         .join(Lease, Payment.lease_id == Lease.id)
         .where(
             Lease.property_id.in_(prop_ids),
-            Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+            _received_status(),
             Payment.period_year == today.year,
             Payment.period_month == today.month,
         )
     )
     monthly_received = float(received_res.scalar_one() or 0)
+    monthly_received += await _apurement_received(
+        db, prop_ids, year=today.year, month=today.month
+    )
 
     active_leases_res = await db.execute(
         select(func.count(Lease.id))
@@ -646,17 +697,19 @@ async def get_proprietaire_performance(
         monthly_expected = float(leases_res.scalar_one() or 0)
         ytd_theoretical = monthly_expected * months_elapsed
 
-        # Encaissé YTD (period_year == year, PAID ou PARTIAL)
+        # Encaissé YTD (period_year == year) : payé/partiel + mois reportés (part
+        # déjà payée) + échéances d'apurement encaissées dans l'année.
         ytd_res = await db.execute(
             select(func.coalesce(func.sum(Payment.amount_paid), 0.0))
             .join(Lease, Payment.lease_id == Lease.id)
             .where(
                 Lease.property_id == prop_id,
-                Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                _received_status(),
                 Payment.period_year == year,
             )
         )
         ytd_received = float(ytd_res.scalar_one() or 0)
+        ytd_received += await _apurement_received(db, [prop_id], year=year)
 
         # Détail mensuel
         monthly_breakdown = []
@@ -666,7 +719,7 @@ async def get_proprietaire_performance(
                 .join(Lease, Payment.lease_id == Lease.id)
                 .where(
                     Lease.property_id == prop_id,
-                    Payment.status.in_([PaymentStatus.PAID, PaymentStatus.PARTIAL]),
+                    _received_status(),
                     Payment.period_year == year,
                     Payment.period_month == month,
                 )

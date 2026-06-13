@@ -32,8 +32,11 @@ export default function ProprietaireRevenus() {
       .finally(() => setIsLoading(false))
   }, [])
 
+  // Total perçu = part réellement encaissée : payé / partiel, ET les mois reportés
+  // sur un plan d'apurement (leur part déjà payée compte, même si le statut est
+  // « reporté »). Le reste reporté est encaissé via les échéances du plan.
   const totalPercu = payments
-    .filter(p => p.status === 'paid' || p.status === 'partial')
+    .filter(p => p.status === 'paid' || p.status === 'partial' || p.settled_by_plan)
     .reduce((s, p) => s + (p.amount_paid ?? 0), 0)
 
   return (
