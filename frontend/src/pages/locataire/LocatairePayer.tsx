@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Banknote, CheckCircle, Wallet, Clock, ChevronRight } from 'lucide-react'
+import { Building2, Banknote, CheckCircle, Wallet, Clock, CreditCard } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
@@ -156,24 +156,26 @@ export default function LocatairePayer() {
               </p>
             </div>
           )}
-          <p className="text-sm font-medium text-gray-700 mb-2">Régler mon loyer : choisissez un moyen de paiement</p>
-          <div className="space-y-2 mb-2">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#0D2F5C15' }}>
+              <CreditCard size={18} style={{ color: '#0D2F5C' }} />
+            </div>
+            <p className="text-sm font-semibold text-gray-800">Choisissez votre moyen de paiement</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-2">
             {METHODS.map(m => {
               const Icon = m.icon
               return (
                 <button
                   key={m.id}
                   onClick={() => navigate(`/locataire/payer/regler/${m.id}`)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 text-left transition-all hover:border-gray-300 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 text-center transition-all hover:border-gray-300 hover:bg-gray-50"
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${m.color}15` }}>
-                    <Icon size={18} style={{ color: m.color }} />
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${m.color}15` }}>
+                    <Icon size={20} style={{ color: m.color }} />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">{m.label}</p>
-                    <p className="text-xs text-gray-500">{m.desc}</p>
-                  </div>
-                  <ChevronRight size={18} className="text-gray-300 flex-shrink-0" />
+                  <p className="text-sm font-semibold text-gray-900">{m.label}</p>
+                  <p className="text-xs text-gray-500">{m.desc}</p>
                 </button>
               )
             })}
