@@ -72,8 +72,9 @@ async def lifespan(app: FastAPI):
         from app.services.avis_echeance_service import AvisEcheanceService
         async with AsyncSessionLocal() as _db:
             n = await AvisEcheanceService.sync_statuses(_db)
+            n2 = await AvisEcheanceService.sync_apurement_statuses(_db)
             await _db.commit()
-        logger.info(f"Statuts avis synchronisés : {n}")
+        logger.info(f"Statuts avis synchronisés : {n} (loyer) + {n2} (apurement)")
     except Exception as _exc:
         logger.warning(f"Sync statuts avis ignoré : {_exc!r}")
 

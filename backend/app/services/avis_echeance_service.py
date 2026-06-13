@@ -233,6 +233,37 @@ class AvisEcheanceService:
         return n
 
     @classmethod
+    async def sync_apurement_statuses(cls, db: AsyncSession) -> int:
+        """Aligne le statut des avis d'APUREMENT sur l'état de leur échéance :
+        Acquitté si l'échéance est payée, sinon Envoyé. Idempotent. Corrige les
+        avis générés avant le pointage de l'échéance."""
+        from app.models.apurement_plan import ApurementPlan
+        avis_list = (await db.execute(
+            select(AvisEcheance).where(AvisEcheance.kind == "apurement")
+        )).scalars().all()
+        n = 0
+        for a in avis_list:
+            if not a.plan_id:
+                continue
+            plan = await db.get(ApurementPlan, a.plan_id)
+            if plan is None:
+                continue
+            inst = next((i for i in (plan.installments or [])
+                         if i.get("seq") == a.installment_seq), None)
+            if inst is None:
+                continue
+            target = (AvisEcheanceStatus.ACQUITTE if inst.get("paid")
+                      else AvisEcheanceStatus.ENVOYE)
+            if a.status != target:
+                a.status = target
+                if a.sent_at is None:
+                    a.sent_at = datetime.utcnow()
+                n += 1
+        if n:
+            await db.flush()
+        return n
+
+    @classmethod
     async def _ensure_payment(
         cls,
         db: AsyncSession,

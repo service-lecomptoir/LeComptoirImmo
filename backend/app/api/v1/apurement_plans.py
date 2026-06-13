@@ -217,6 +217,19 @@ async def mark_installment(
                                    else (_PS.LATE if _pay.due_date and _pay.due_date < date.today() else _PS.PENDING))
                 await db.flush()
 
+    # Aligner l'avis d'échéance d'apurement (le cas échéant) : Acquitté si payé,
+    # sinon Envoyé.
+    from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
+    _av = (await db.execute(
+        select(AvisEcheance).where(
+            AvisEcheance.plan_id == plan.id,
+            AvisEcheance.installment_seq == seq,
+        )
+    )).scalar_one_or_none()
+    if _av is not None:
+        _av.status = AvisEcheanceStatus.ACQUITTE if data.paid else AvisEcheanceStatus.ENVOYE
+        await db.flush()
+
     tn, pn = await _names(db, plan)
     return plan_to_dict(plan, tn, pn)
 
