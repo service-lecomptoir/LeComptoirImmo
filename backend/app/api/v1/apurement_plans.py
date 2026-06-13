@@ -192,6 +192,31 @@ async def mark_installment(
         db, plan, seq, data.paid, data.paid_date)
     if not found:
         raise BadRequestException("Échéance introuvable")
+
+    # Fin de l'apurement : si le plan est soldé ET le mois entièrement couvert
+    # (plus aucun reste à payer direct), le mois d'origine devient « payé » → sa
+    # quittance devient générable. On NE touche PAS au montant payé réel : le
+    # revenu reste reconnu au fil des échéances (choix A), donc pas de double-revenu.
+    if plan.origin_payment_id:
+        from app.models.payment import Payment as _Pay, PaymentStatus as _PS
+        _pay = await db.get(_Pay, plan.origin_payment_id)
+        if _pay is not None:
+            completed = plan.status == "completed"
+            if completed and _pay.balance <= 0.005 and _pay.status != _PS.PAID:
+                _pay.status = _PS.PAID
+                await db.flush()
+            elif (not completed) and _pay.status == _PS.PAID and (
+                getattr(_pay, "settled_by_plan", False) or float(getattr(_pay, "amount_on_plan", 0) or 0) > 0
+            ):
+                # Échéance dépointée : le mois n'est plus totalement réglé.
+                if getattr(_pay, "settled_by_plan", False):
+                    _pay.status = _PS.CANCELLED
+                else:
+                    _paid = float(_pay.amount_paid or 0)
+                    _pay.status = (_PS.PARTIAL if _paid > 0
+                                   else (_PS.LATE if _pay.due_date and _pay.due_date < date.today() else _PS.PENDING))
+                await db.flush()
+
     tn, pn = await _names(db, plan)
     return plan_to_dict(plan, tn, pn)
 

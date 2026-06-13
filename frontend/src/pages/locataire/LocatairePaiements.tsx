@@ -83,7 +83,9 @@ export default function LocatairePaiements() {
   const r2 = (n: number) => Math.round(n * 100) / 100
   const entries: Entry[] = []
   for (const p of payments) {
-    if (p.status === 'cancelled') continue
+    // Mois entièrement reporté sur un plan d'apurement (annulé ou « soldé apurement »
+    // une fois le plan terminé) : exclu, la dette/les règlements vivent dans les échéances.
+    if (p.status === 'cancelled' || p.settled_by_plan) continue
     const period = `${p.period_year}-${pad(p.period_month)}`
     const due = Number(p.amount_due ?? 0)
     // amount_paid contient déjà l'APL (prépaiement tiers payant) : on isole donc

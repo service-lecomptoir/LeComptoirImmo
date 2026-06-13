@@ -734,9 +734,11 @@ async def download_quittance(
             else:
                 _per0 = payment.period_label
             _qv = _doc_common_vars(_ten0, _pobj0, today_fr)
+            # Montant réglé du mois = paiements directs + part soldée par apurement.
+            _paid_eff0 = float(payment.amount_paid or 0) + float(getattr(payment, "amount_on_plan", 0) or 0)
             _qv.update({
                 "period_range": _per0, "month": payment.period_label,
-                "total_due": _eur_sym(payment.amount_paid),
+                "total_due": _eur_sym(_paid_eff0),
                 "rent_amount": _eur_sym(payment.amount_rent),
                 "charges_amount": _eur_sym(payment.amount_charges),
                 "apl_amount": _eur_sym(payment.amount_apl) if payment.amount_apl else "",
