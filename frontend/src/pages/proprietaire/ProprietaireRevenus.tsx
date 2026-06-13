@@ -103,7 +103,10 @@ export default function ProprietaireRevenus() {
                   <td className="px-4 py-3 text-right text-sm text-gray-700">{fmtEuro(p.amount_due)}</td>
                   <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">{fmtEuro(p.amount_paid ?? 0)}</td>
                   <td className="px-4 py-3">
-                    <StatusBadge label={paymentStatusLabel(p.status)} variant={paymentStatusVariant(p.status)} dot />
+                    <StatusBadge
+                      label={p.settled_by_plan ? 'Reporté (apurement)' : paymentStatusLabel(p.status)}
+                      variant={p.settled_by_plan ? 'blue' : paymentStatusVariant(p.status)}
+                      dot />
                   </td>
                 </tr>
               ))}

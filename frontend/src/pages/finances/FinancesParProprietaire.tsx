@@ -12,6 +12,14 @@ type View = 'revenus' | 'biens' | 'fiscal'
 const fmtEuro = (n: number) =>
   (n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 
+// Statuts spécifiques aux lignes d'apurement (hors énumération paiement standard).
+const EXTRA_STATUS: Record<string, { label: string; variant: any }> = {
+  reporte: { label: 'Reporté (apurement)', variant: 'blue' },
+  apurement: { label: 'Apurement', variant: 'green' },
+}
+const statusLabel = (s: string) => EXTRA_STATUS[s]?.label ?? PAYMENT_STATUS_LABELS[s as PaymentStatus] ?? s
+const statusVariant = (s: string) => EXTRA_STATUS[s]?.variant ?? PAYMENT_STATUS_VARIANTS[s as PaymentStatus] ?? 'gray'
+
 const META: Record<View, { title: string; subtitle: string }> = {
   revenus: { title: 'Revenus par propriétaire', subtitle: 'Loyers appelés et encaissés, par bailleur' },
   biens: { title: 'Performance des biens', subtitle: 'Rendement et encaissements par bien, par bailleur' },
@@ -87,7 +95,7 @@ export default function FinancesParProprietaire({ view }: { view: View }) {
                       <td className="px-3 py-2">{l.tenant_full_name}</td>
                       <td className="px-3 py-2 text-right">{fmtEuro(l.amount_due)}</td>
                       <td className="px-3 py-2 text-right text-green-700">{fmtEuro(l.amount_paid)}</td>
-                      <td className="px-3 py-2"><StatusBadge label={PAYMENT_STATUS_LABELS[l.status as PaymentStatus] ?? l.status} variant={PAYMENT_STATUS_VARIANTS[l.status as PaymentStatus] ?? 'gray'} dot /></td>
+                      <td className="px-3 py-2"><StatusBadge label={statusLabel(l.status)} variant={statusVariant(l.status)} dot /></td>
                     </tr>
                   ))}
                 </tbody>

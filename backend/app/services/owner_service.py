@@ -79,7 +79,9 @@ class OwnerService:
                 "tenant_full_name": p.tenant.full_name if p.tenant else "",
                 "amount_due": float(p.amount_due),
                 "amount_paid": float(p.amount_paid),
-                "status": p.status,
+                # Un mois reporté sur un plan d'apurement n'est pas « annulé » : il est
+                # « reporté » (le revenu sera reconnu au fil des échéances du plan).
+                "status": "reporte" if getattr(p, "settled_by_plan", False) else p.status,
                 "payment_date": p.payment_date,
             })
 
