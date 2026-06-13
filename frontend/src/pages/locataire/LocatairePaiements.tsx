@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Wallet, Download } from 'lucide-react'
+import { LogoMark } from '@/components/common/Logo'
 import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
@@ -58,7 +60,16 @@ interface Entry {
   seq?: number
 }
 
+function SectionAvatar() {
+  return (
+    <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#0D2F5C' }}>
+      <LogoMark size={18} className="text-white" />
+    </span>
+  )
+}
+
 export default function LocatairePaiements() {
+  const navigate = useNavigate()
   const [payments, setPayments] = useState<any[]>([])
   const [plans, setPlans] = useState<ApurementPlan[]>([])
   const [regularizations, setRegularizations] = useState<any[]>([])
@@ -165,44 +176,58 @@ export default function LocatairePaiements() {
     URL.revokeObjectURL(url)
   }
 
+  // Solde signé (+/-) : négatif rouge si reste à payer, positif vert si en faveur.
+  const soldeDisplay = solde > 0.005
+    ? { text: `− ${fmtEuro(solde)}`, cls: 'text-red-600' }
+    : solde < -0.005
+      ? { text: `+ ${fmtEuro(-solde)}`, cls: 'text-green-600' }
+      : { text: '0,00 €', cls: 'text-gray-700' }
+
   return (
-    <div className="p-4 sm:p-6">
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ma comptabilité</h1>
-          <p className="text-gray-500 text-sm mt-1">Solde et grand livre de vos appels de loyer et règlements</p>
-        </div>
-        {entries.length > 0 && (
+    <div className="p-4 sm:p-6 space-y-5">
+      {/* Mon compte */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <SectionAvatar />
+            <h2 className="text-lg font-bold" style={{ color: '#0E9F8E' }}>Mon compte</h2>
+          </div>
           <button
-            onClick={handleExport}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
+            onClick={() => navigate('/locataire/payer')}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
             style={{ background: '#0D2F5C' }}
           >
-            <Download size={15} /> Exporter
+            <Wallet size={15} /> Payer
           </button>
-        )}
-      </div>
-
-      {/* Solde actuel */}
-      <div className={`rounded-xl border p-5 mb-5 ${solde > 0.005 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
-        <div className="flex flex-col items-center text-center gap-2">
-          <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${solde > 0.005 ? 'bg-amber-100' : 'bg-green-100'}`}>
-            <Wallet size={20} className={solde > 0.005 ? 'text-amber-600' : 'text-green-600'} />
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide font-medium text-gray-500">Solde actuel</p>
-            <p className={`text-2xl font-bold ${solde > 0.005 ? 'text-amber-700' : 'text-green-700'}`}>
-              {solde > 0.005 ? fmtEuro(solde) : solde < -0.005 ? `${fmtEuro(-solde)} en votre faveur` : '0,00 €'}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {solde > 0.005 ? 'Reste à payer (cumul de tous les mois et plans d\'apurement)' : 'Vous êtes à jour dans vos règlements'}
-            </p>
-          </div>
         </div>
+        <div className="px-5 py-10 flex items-center justify-center text-center" style={{ background: '#F0F9FA' }}>
+          <p className="text-base">
+            <span className="text-gray-600 font-medium">Solde actuel : </span>
+            <span className={`text-xl font-bold ${soldeDisplay.cls}`}>{soldeDisplay.text}</span>
+          </p>
+        </div>
+        <p className="px-5 pb-4 -mt-1 text-center text-xs text-gray-500">
+          {solde > 0.005 ? 'Reste à payer (cumul de tous les mois et plans d\'apurement)' : solde < -0.005 ? 'En votre faveur' : 'Vous êtes à jour dans vos règlements'}
+        </p>
       </div>
 
-      {/* Grand livre */}
+      {/* Ma comptabilité */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <SectionAvatar />
+            <h2 className="text-lg font-bold" style={{ color: '#0E9F8E' }}>Ma comptabilité</h2>
+          </div>
+          {entries.length > 0 && (
+            <button
+              onClick={handleExport}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
+              style={{ background: '#0D2F5C' }}
+            >
+              <Download size={15} /> Exporter
+            </button>
+          )}
+        </div>
         {isLoading ? (
           <div className="py-12 text-center text-gray-400 text-sm">Chargement…</div>
         ) : entries.length === 0 ? (
