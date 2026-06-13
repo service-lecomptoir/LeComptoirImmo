@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { DoorOpen, X, Plus, Send, Sparkles, MessageSquare, ChevronDown, CheckCircle, Camera } from 'lucide-react'
+import { X, Plus, Send, Sparkles, MessageSquare, ChevronDown, CheckCircle, Camera } from 'lucide-react'
 import { ticketsApi, type Ticket } from '@/api/tickets'
 import { leaseExitsApi } from '@/api/leaseExits'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -35,26 +35,9 @@ const STATUT: Record<string, { label: string; variant: 'green' | 'blue' | 'yello
 }
 
 export default function LocataireDemarches() {
-  // ── Préavis de départ ──────────────────────────────────────────────────────
-  const [preavis, setPreavis] = useState<{ sent: boolean; status: string | null; departure_date: string | null; notice_received_at: string | null } | null>(null)
-  const [showPreavis, setShowPreavis] = useState(false)
+  // Date de départ saisie quand le type « Préavis de départ » est choisi dans
+  // la modale « Nouvelle démarche » (le préavis n'a plus de carte dédiée en haut).
   const [preavisDate, setPreavisDate] = useState('')
-  const [sendingPreavis, setSendingPreavis] = useState(false)
-
-  const loadPreavis = useCallback(() => {
-    leaseExitsApi.myPreavis().then(r => setPreavis(r.data as any)).catch(() => {})
-  }, [])
-
-  const sendPreavis = async () => {
-    setSendingPreavis(true)
-    try {
-      await leaseExitsApi.sendPreavis(preavisDate || null)
-      setShowPreavis(false); setPreavisDate('')
-      loadPreavis()
-      toast.success('Préavis de départ envoyé à votre gestionnaire.')
-    } catch (e) { toast.error(getErrorMessage(e, "Le préavis n'a pas pu être envoyé")) }
-    finally { setSendingPreavis(false) }
-  }
 
   // ── Démarches (tickets) ─────────────────────────────────────────────────────
   const [items, setItems] = useState<Ticket[]>([])
@@ -75,7 +58,7 @@ export default function LocataireDemarches() {
     try { const { data } = await ticketsApi.mine(); setItems(data) }
     catch { /* intercepteur */ } finally { setLoading(false) }
   }, [])
-  useEffect(() => { loadPreavis(); load() }, [loadPreavis, load])
+  useEffect(() => { load() }, [load])
 
   const toggle = async (id: string) => {
     if (openId === id) { setOpenId(null); setDetail(null); return }
@@ -91,7 +74,6 @@ export default function LocataireDemarches() {
         await leaseExitsApi.sendPreavis(preavisDate || null)
         setShowNew(false); resetNew()
         toast.success('Préavis de départ envoyé à votre gestionnaire.')
-        loadPreavis()
       } catch (e) { toast.error(getErrorMessage(e, "Le préavis n'a pas pu être envoyé")) }
       finally { setSubmitting(false) }
       return
@@ -151,39 +133,6 @@ export default function LocataireDemarches() {
           Vos échanges avec votre gestionnaire au sujet de votre logement : demandes, questions, incidents,
           et envoi de votre préavis de départ.
         </p>
-      </div>
-
-      {/* Préavis de départ */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center">
-              <DoorOpen size={18} className="text-amber-600" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">Préavis de départ</p>
-              <p className="text-xs text-gray-500">Informez votre gestionnaire de votre intention de quitter le logement.</p>
-            </div>
-          </div>
-          {!preavis?.sent && (
-            <button onClick={() => setShowPreavis(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg shrink-0"
-              style={{ background: '#0D2F5C' }}>
-              <DoorOpen size={15} /> Envoyer un préavis
-            </button>
-          )}
-        </div>
-        {preavis?.sent && preavis.status !== 'cloture' && (
-          <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-            <DoorOpen size={14} className="shrink-0" />
-            <span>
-              Préavis transmis
-              {preavis.notice_received_at ? ` le ${format(new Date(preavis.notice_received_at), 'd MMM yyyy', { locale: fr })}` : ''}
-              {preavis.departure_date ? ` : départ prévu le ${format(new Date(preavis.departure_date), 'd MMM yyyy', { locale: fr })}` : ''}.
-              Votre gestionnaire organisera l'état des lieux de sortie.
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Démarches */}
@@ -268,32 +217,6 @@ export default function LocataireDemarches() {
               </div>
             )
           })}
-        </div>
-      )}
-
-      {/* ── Modale : préavis ── */}
-      {showPreavis && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2"><DoorOpen size={17} /> Préavis de départ</h3>
-              <button onClick={() => setShowPreavis(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
-            </div>
-            <p className="text-sm text-gray-500 mb-4">
-              Votre gestionnaire organisera l'état des lieux de sortie et le décompte du dépôt de garantie.
-            </p>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date de départ souhaitée (facultatif)</label>
-            <input type="date" value={preavisDate} onChange={e => setPreavisDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-            <div className="flex justify-end gap-2 mt-5">
-              <button type="button" onClick={() => setShowPreavis(false)}
-                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
-              <button type="button" onClick={sendPreavis} disabled={sendingPreavis}
-                className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: '#0D2F5C' }}>
-                {sendingPreavis ? 'Envoi…' : 'Envoyer le préavis'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
