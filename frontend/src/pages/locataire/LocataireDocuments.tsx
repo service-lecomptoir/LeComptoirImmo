@@ -170,7 +170,10 @@ export default function LocataireDocuments() {
   const [payments, setPayments] = useState<any[]>([])
   const [avis, setAvis] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [collapsed, setCollapsed] = useState<Set<CategoryKey>>(new Set())
+  // Toutes les catégories repliées par défaut (l'utilisateur déplie au besoin).
+  const [collapsed, setCollapsed] = useState<Set<CategoryKey>>(
+    () => new Set(CATEGORIES.map(c => c.key))
+  )
   const [uploadingFor, setUploadingFor] = useState<CategoryKey | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
