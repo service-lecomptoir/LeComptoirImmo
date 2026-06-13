@@ -125,6 +125,12 @@ async def backfill_all_managers(db: AsyncSession) -> int:
     return seeded
 
 
+# Couleur d'entête de marque, commune à tous les modèles par défaut (la carte de
+# l'atelier affiche cette bande) : garantit que l'avis d'échéance a la même couleur
+# que les autres modèles.
+CANON_HEADER_COLOR = "#1E3A5F"
+
+
 async def refresh_default_bodies(db: AsyncSession) -> int:
     """Met à jour le contenu des templates PAR DÉFAUT vers le modèle canonique
     courant, pour propager les refontes de contenu aux comptes existants.
@@ -157,6 +163,11 @@ async def refresh_default_bodies(db: AsyncSession) -> int:
                 # Réassignation (objet neuf) pour que SQLAlchemy détecte le changement JSONB.
                 t.blocks = [dict(b) for b in d["blocks"]]
                 t.theme = dict(d["theme"]) if d.get("theme") else None
+                updated += 1
+            # Couleur d'entête uniforme sur les modèles par défaut (aligne l'avis
+            # d'échéance sur les autres cartes de l'atelier).
+            if (getattr(t, "header_color", None) or "") != CANON_HEADER_COLOR:
+                t.header_color = CANON_HEADER_COLOR
                 updated += 1
     if updated:
         await db.flush()
