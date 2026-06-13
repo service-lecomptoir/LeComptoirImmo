@@ -40,9 +40,15 @@ def _avis_to_summary(avis: AvisEcheance) -> dict:
               "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
     return {
         "id": avis.id,
+        "kind": getattr(avis, "kind", "loyer") or "loyer",
+        "installment_seq": getattr(avis, "installment_seq", None),
         "period_year": avis.period_year,
         "period_month": avis.period_month,
-        "period_label": f"{months[avis.period_month]} {avis.period_year}",
+        "period_label": (
+            f"Apurement · échéance {avis.installment_seq} · {months[avis.period_month]} {avis.period_year}"
+            if getattr(avis, "kind", "loyer") == "apurement"
+            else f"{months[avis.period_month]} {avis.period_year}"
+        ),
         "period_start": avis.period_start,
         "period_end": avis.period_end,
         "period_range_label": avis.period_range_label,
@@ -186,6 +192,11 @@ async def generate_one(
             db, lease, body.period_year, body.period_month,
             generated_by=current_user.id,
             apl_override=body.apl_amount_override,
+        )
+        # Avis d'échéance d'apurement de ce bail pour la même période (le cas échéant).
+        await AvisEcheanceService.generate_apurement_avis_for_period(
+            db, body.period_year, body.period_month,
+            lease_id=lease.id, generated_by=current_user.id,
         )
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)

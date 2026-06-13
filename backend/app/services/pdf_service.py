@@ -474,6 +474,11 @@ class AvisEcheancePDFService:
         _total = getattr(avis_full, "amount_total", None)
         if _total is None:
             _total = float(avis_full.amount_rent) + float(avis_full.amount_charges)
+        # Avis d'échéance d'apurement : libellé dédié (« échéance N »).
+        _is_apur = getattr(avis_full, "kind", "loyer") == "apurement"
+        _apur_seq = getattr(avis_full, "installment_seq", None)
+        if _is_apur:
+            _month_label = f"Apurement · échéance {_apur_seq}"
         variables = {
             "tenant_name": names[0] if names else "",
             "month": _month_label,
@@ -562,13 +567,18 @@ class AvisEcheancePDFService:
             variables["total_due"] = _eur(_total)
             variables["rent_amount"] = _eur(avis_full.amount_rent)
             variables["charges_amount"] = _eur(avis_full.amount_charges)
-            line_items = [
-                {"label": "LOYER PRINCIPAL", "appele": _eur(avis_full.amount_rent)},
-                {"label": "PROVISION CHARGES", "appele": _eur(avis_full.amount_charges)},
-            ]
-            if avis_full.amount_apl:
-                line_items.append({"label": "AIDE PERSONNELLE AU LOGEMENT",
-                                   "appele": "-" + _eur(avis_full.amount_apl)})
+            if _is_apur:
+                line_items = [
+                    {"label": f"ÉCHÉANCE D'APUREMENT N° {_apur_seq}", "appele": _eur(avis_full.amount_total)},
+                ]
+            else:
+                line_items = [
+                    {"label": "LOYER PRINCIPAL", "appele": _eur(avis_full.amount_rent)},
+                    {"label": "PROVISION CHARGES", "appele": _eur(avis_full.amount_charges)},
+                ]
+                if avis_full.amount_apl:
+                    line_items.append({"label": "AIDE PERSONNELLE AU LOGEMENT",
+                                       "appele": "-" + _eur(avis_full.amount_apl)})
             # Logo : UNIQUEMENT celui du profil gestionnaire (« Mes informations »).
             # On n'utilise PAS le logo_path résiduel du modèle (ancien upload par
             # template) → par défaut, pas de logo (emplacement vide réservé).
@@ -617,6 +627,8 @@ class AvisEcheancePDFService:
             "tenant_names_list": names,
             "layout": layout,
             "signature_uri": _sig_uri,
+            "is_apurement": _is_apur,
+            "apur_seq": _apur_seq,
         })
         if notice:
             from app.services.irl_notice import inject_notice

@@ -342,6 +342,80 @@ class AvisEcheanceService:
             except Exception as exc:
                 logger.error(f"Erreur génération avis bail {lease.id}: {exc}")
 
+        # Avis d'échéance des plans d'apurement dont une échéance tombe ce mois-ci.
+        count += await cls.generate_apurement_avis_for_period(
+            db, year, month, property_ids=property_ids, generated_by=None
+        )
+        return count
+
+    @classmethod
+    async def generate_apurement_avis_for_period(
+        cls,
+        db: AsyncSession,
+        year: int,
+        month: int,
+        property_ids: list | None = None,
+        lease_id: Optional[uuid.UUID] = None,
+        generated_by: Optional[uuid.UUID] = None,
+    ) -> int:
+        """Crée un avis d'échéance pour chaque échéance de plan d'apurement dont la
+        date d'échéance tombe sur (year, month), comme un appel de loyer. Idempotent
+        (dédup par plan + n° d'échéance)."""
+        from app.models.apurement_plan import ApurementPlan
+
+        plans = (await db.execute(select(ApurementPlan))).scalars().all()
+        count = 0
+        for pl in plans:
+            lease = await db.get(Lease, pl.lease_id)
+            if lease is None:
+                continue
+            if lease_id is not None and lease.id != lease_id:
+                continue
+            if property_ids is not None and lease.property_id not in property_ids:
+                continue
+            for inst in (pl.installments or []):
+                raw = inst.get("due_date")
+                try:
+                    due = date.fromisoformat(raw) if raw else None
+                except Exception:
+                    due = None
+                if not due or due.year != year or due.month != month:
+                    continue
+                seq = inst.get("seq")
+                existing = (await db.execute(
+                    select(AvisEcheance).where(
+                        AvisEcheance.plan_id == pl.id,
+                        AvisEcheance.installment_seq == seq,
+                    )
+                )).scalar_one_or_none()
+                if existing:
+                    continue
+                amount = round(float(inst.get("amount", 0) or 0), 2)
+                paid = bool(inst.get("paid"))
+                avis = AvisEcheance(
+                    id=uuid.uuid4(),
+                    lease_id=pl.lease_id,
+                    tenant_id=pl.tenant_id,
+                    period_year=year,
+                    period_month=month,
+                    period_start=due,
+                    period_end=due,
+                    due_date=due,
+                    amount_rent=amount,
+                    amount_charges=0,
+                    amount_apl=None,
+                    amount_total=amount,
+                    status=AvisEcheanceStatus.ACQUITTE if paid else AvisEcheanceStatus.ENVOYE,
+                    sent_at=datetime.utcnow(),
+                    generated_by=generated_by,
+                    kind="apurement",
+                    plan_id=pl.id,
+                    installment_seq=seq,
+                    notes=f"Apurement : échéance {seq}",
+                )
+                db.add(avis)
+                count += 1
+        await db.flush()
         return count
 
     # ── Lecture ───────────────────────────────────────────────────────────────

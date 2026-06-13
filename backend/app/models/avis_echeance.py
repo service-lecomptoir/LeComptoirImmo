@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Date, Numeric, Integer, Enum as SAEnum, ForeignKey, UniqueConstraint
+from sqlalchemy import String, Date, Numeric, Integer, Enum as SAEnum, ForeignKey, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
@@ -22,8 +22,11 @@ class AvisEcheanceStatus(str, Enum):
 class AvisEcheance(Base, TimestampMixin):
     __tablename__ = "avis_echeances"
     __table_args__ = (
-        UniqueConstraint("lease_id", "period_year", "period_month",
-                         name="uq_avis_lease_period"),
+        # Unicité d'un avis de LOYER par bail/période (index partiel : les avis
+        # d'apurement, kind='apurement', ne sont pas concernés et peuvent coexister
+        # sur la même période ; ils sont dédupliqués par (plan_id, installment_seq)).
+        Index("uq_avis_loyer_period", "lease_id", "period_year", "period_month",
+              unique=True, postgresql_where=text("kind = 'loyer'")),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -56,6 +59,13 @@ class AvisEcheance(Base, TimestampMixin):
     amount_charges: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
     amount_apl: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     amount_total: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+
+    # ── Type d'avis ───────────────────────────────────────────────────────────
+    # 'loyer' (appel de loyer classique) ou 'apurement' (échéance d'un plan).
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="loyer")
+    # Pour un avis d'apurement : plan + n° d'échéance (sinon NULL).
+    plan_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    installment_seq: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # ── Statut & envoi ────────────────────────────────────────────────────────
     status: Mapped[str] = mapped_column(

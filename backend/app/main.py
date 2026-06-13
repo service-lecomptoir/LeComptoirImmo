@@ -385,6 +385,14 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settled_by_plan BOOLEAN NOT NULL DEFAULT FALSE",
         # Apurement partiel : part du solde reportée sur un plan sans solder tout le mois
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_on_plan NUMERIC(10,2) NOT NULL DEFAULT 0",
+        # Avis d'échéance d'apurement : type + lien plan/échéance. L'unicité loyer
+        # devient un index partiel (kind='loyer') pour laisser coexister les avis
+        # d'apurement sur une même période.
+        "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS kind VARCHAR(16) NOT NULL DEFAULT 'loyer'",
+        "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS plan_id UUID",
+        "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS installment_seq INTEGER",
+        "ALTER TABLE avis_echeances DROP CONSTRAINT IF EXISTS uq_avis_lease_period",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_avis_loyer_period ON avis_echeances (lease_id, period_year, period_month) WHERE kind = 'loyer'",
         # Locataire personne morale : raison sociale + SIREN/SIRET (national_id reste le NIR).
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS siret VARCHAR(50)",

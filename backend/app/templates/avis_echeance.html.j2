@@ -92,12 +92,16 @@
   </table>
   {% endif %}
 
-  <div class="sec">Détail du loyer</div>
+  <div class="sec">{% if is_apurement %}Détail de l'échéance d'apurement{% else %}Détail du loyer{% endif %}</div>
   <table class="amt">
+    {% if is_apurement %}
+    <tr><td>Échéance d'apurement n° {{ apur_seq }}</td><td class="r">{{ "%.2f" | format(avis.amount_total | float) }} €</td></tr>
+    {% else %}
     <tr><td>Loyer hors charges</td><td class="r">{{ "%.2f" | format(avis.amount_rent | float) }} €</td></tr>
     <tr><td>Charges récupérables</td><td class="r">{{ "%.2f" | format(avis.amount_charges | float) }} €</td></tr>
     {% if avis.amount_apl and avis.amount_apl | float > 0 %}
     <tr><td>Déduction aide personnelle au logement</td><td class="r">- {{ "%.2f" | format(avis.amount_apl | float) }} €</td></tr>
+    {% endif %}
     {% endif %}
     <tr class="tot"><td>Total à régler</td><td class="r">{{ "%.2f" | format(avis.amount_total | float) }} €</td></tr>
   </table>
