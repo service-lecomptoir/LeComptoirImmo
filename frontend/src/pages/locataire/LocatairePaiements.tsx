@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Wallet, Download } from 'lucide-react'
-import { LogoMark } from '@/components/common/Logo'
 import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
@@ -63,7 +62,7 @@ interface Entry {
 function SectionAvatar() {
   return (
     <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#0D2F5C' }}>
-      <LogoMark size={18} className="text-white" />
+      <Wallet size={18} className="text-white" />
     </span>
   )
 }
