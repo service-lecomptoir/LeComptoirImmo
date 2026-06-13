@@ -109,6 +109,7 @@ async def lettre_relance(
         "apl_info": apl_info,
         "apl_amount": f"{float(payment.amount_apl):.2f}" if payment.amount_apl else "0.00",
         "today": _today_str(),
+        "signature_uri": (getattr(current_user, "signature", None) or ""),
     }
 
     # Modèle de la papeterie (blocs / thème Foncia) en priorité ; repli .j2 sinon.
@@ -243,6 +244,7 @@ async def attestation_caf(
         # Mandataire (gestionnaire) signataire « pour le compte du bailleur ».
         "mandataire_company": getattr(current_user, "owner_company", "") or "",
         "mandataire_national_id": getattr(current_user, "owner_national_id", "") or "",
+        "signature_uri": (getattr(current_user, "signature", None) or ""),
     }
 
     html = render_template("attestation_caf.html.j2", ctx)
@@ -316,6 +318,7 @@ async def versement_direct_caf(
         "alloc_secu": (tenant.national_id if tenant else "") or "",
         "ville": prop.city if prop and prop.city else "",
         "today": _today_str(),
+        "signature_uri": (getattr(current_user, "signature", None) or ""),
     }
 
     html = render_template("versement_direct_caf.html.j2", ctx)

@@ -209,9 +209,10 @@ async def update_template_layout(
 @router.get("/template-preview")
 async def preview_template(
     template: str = Query("avis", pattern="^(avis|quittance)$"),
-    _: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_gestionnaire),
 ):
     """Génère un PDF d'aperçu avec données fictives selon la mise en page courante."""
+    _sig_uri = getattr(current_user, "signature", None) or ""
     from types import SimpleNamespace
     from app.services.pdf_service import render_template, html_to_pdf
 
@@ -253,6 +254,7 @@ async def preview_template(
             "property": mock_property,
             "today": today_fr,
             "layout": layout,
+            "signature_uri": _sig_uri,
         })
     else:
         import uuid as _uuid
@@ -281,6 +283,7 @@ async def preview_template(
             "payment": mock_payment,
             "today": today_fr,
             "layout": layout,
+            "signature_uri": _sig_uri,
         })
 
     pdf_bytes = html_to_pdf(html)

@@ -114,6 +114,18 @@
     Pour toute question, n'hésitez pas à nous contacter.
   </p>
 
+  {% if signature_uri %}
+  <table style="margin-top:18px;">
+    <tr>
+      <td style="width:55%;"></td>
+      <td style="width:45%; text-align:center;">
+        <div style="font-size:9pt; color:#1e3a5f;">Le gestionnaire</div>
+        <img src="{{ signature_uri }}" alt="Signature" style="height:58px;max-width:200px;margin-top:4px;">
+      </td>
+    </tr>
+  </table>
+  {% endif %}
+
   <div class="legal">
     Document généré par Le Comptoir Immo : Gestion locative.
     Cet avis d'échéance est établi conformément aux dispositions du bail en vigueur.

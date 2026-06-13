@@ -167,7 +167,10 @@ async def owner_fiscal_pdf(
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
     data = await OwnerService.get_finances(db, owner_id, year)
-    html = render_template("liasse_fiscale.html.j2", {"data": data, "layout": get_layout()})
+    html = render_template("liasse_fiscale.html.j2", {
+        "data": data, "layout": get_layout(),
+        "signature_uri": (getattr(current_user, "signature", None) or ""),
+    })
     pdf = html_to_pdf(html)
     filename = doc_filename("liasse_fiscale", tenant=data["owner_name"], year=year)
     return Response(

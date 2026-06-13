@@ -46,6 +46,17 @@ def html_to_pdf(html_content: str) -> bytes:
     return pdf_buffer.getvalue()
 
 
+async def user_signature_uri(db, gestionnaire_id) -> str:
+    """Signature numérique (data-URL PNG) du gestionnaire, ou '' si aucune.
+    Sert à apposer la même signature sur tous les documents générés."""
+    if not gestionnaire_id:
+        return ""
+    from sqlalchemy import select as _select
+    from app.models.user import User as _User
+    u = (await db.execute(_select(_User).where(_User.id == gestionnaire_id))).scalar_one_or_none()
+    return (getattr(u, "signature", None) or "") if u else ""
+
+
 def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_mandataire: bool = False) -> bytes:
     """Génère le PDF d'un contrat de bail — logement non meublé (loi 89-462).
 
@@ -145,6 +156,8 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
         "irl_quarter": getattr(lease, "irl_quarter", None),
         "tenant_names": tenant_names,
         "today": _fr(_date.today()),
+        # Signature du bailleur / mandataire (apposée dans le bloc « Le bailleur »).
+        "signature_uri": (getattr(manager, "signature", None) or "") if manager else "",
     }
     html = render_template("lease_bail.html.j2", ctx)
     return html_to_pdf(html)
@@ -502,6 +515,9 @@ class AvisEcheancePDFService:
             ),
         }
         _gid = getattr(_lease_rel, "created_by", None)
+        # Signature du gestionnaire : apposée que le rendu passe par les blocs ou le .j2.
+        _sig_uri = await user_signature_uri(db, _gid)
+        variables["signature_uri"] = _sig_uri
 
         # 1a) Éditeur par blocs (mise en page moderne) : si le template par défaut de
         # l'avis en possède, on rend via le moteur de blocs (prioritaire).
@@ -600,6 +616,7 @@ class AvisEcheancePDFService:
             "tenant_names": tenant_names,
             "tenant_names_list": names,
             "layout": layout,
+            "signature_uri": _sig_uri,
         })
         if notice:
             from app.services.irl_notice import inject_notice
