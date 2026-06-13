@@ -88,8 +88,8 @@ export default function ComptabiliteGestion() {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
         <div className="rounded-xl border border-gray-200 bg-white px-4 py-2.5">
           <span className="text-xs uppercase tracking-wide font-medium text-gray-500">Solde net</span>
-          <span className={`ml-2 text-lg font-bold ${solde > 0.005 ? 'text-amber-700' : 'text-green-700'}`}>
-            {solde > 0.005 ? fmtEuro(solde) : solde < -0.005 ? `${fmtEuro(-solde)} en faveur` : '0,00 €'}
+          <span className={`ml-2 text-lg font-bold ${solde > 0.005 ? 'text-red-600' : solde < -0.005 ? 'text-green-600' : 'text-gray-700'}`}>
+            {solde > 0.005 ? `− ${fmtEuro(solde)}` : solde < -0.005 ? `+ ${fmtEuro(-solde)}` : '0,00 €'}
           </span>
         </div>
         <div className="relative flex-1 max-w-sm">
