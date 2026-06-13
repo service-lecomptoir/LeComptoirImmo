@@ -190,7 +190,7 @@ export default function LocatairePaiements() {
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
             <SectionAvatar />
-            <h2 className="text-lg font-bold" style={{ color: '#0E9F8E' }}>Mon compte</h2>
+            <h2 className="text-lg font-bold text-gray-900">Mon compte</h2>
           </div>
           <button
             onClick={() => navigate('/locataire/payer')}
@@ -216,7 +216,7 @@ export default function LocatairePaiements() {
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
             <SectionAvatar />
-            <h2 className="text-lg font-bold" style={{ color: '#0E9F8E' }}>Ma comptabilité</h2>
+            <h2 className="text-lg font-bold text-gray-900">Ma comptabilité</h2>
           </div>
           {entries.length > 0 && (
             <button
