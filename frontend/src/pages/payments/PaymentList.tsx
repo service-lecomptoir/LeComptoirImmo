@@ -415,9 +415,12 @@ export default function PaymentList() {
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(p.amount_due)}</td>
                   <td className="px-4 py-3 text-sm text-right text-green-700">
-                    {fmtEuro(p.amount_paid)}
+                    {fmtEuro(p.amount_paid + (p.amount_on_plan || 0))}
                     {p.credit_applied != null && p.credit_applied > 0 && (
                       <div className="text-[11px] text-blue-500">dont avance {fmtEuro(p.credit_applied)}</div>
+                    )}
+                    {(p.amount_on_plan || 0) > 0 && (
+                      <div className="text-[11px] text-amber-600">dont {fmtEuro(p.amount_on_plan!)} par apurement</div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-sm text-right font-semibold">
@@ -431,8 +434,8 @@ export default function PaymentList() {
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge
-                      label={p.settled_by_plan ? 'Reporté (apurement)' : PAYMENT_STATUS_LABELS[p.status]}
-                      variant={p.settled_by_plan ? 'blue' : PAYMENT_STATUS_VARIANTS[p.status]}
+                      label={p.settled_by_plan ? 'Soldé (apurement)' : PAYMENT_STATUS_LABELS[p.status]}
+                      variant={p.settled_by_plan ? 'green' : PAYMENT_STATUS_VARIANTS[p.status]}
                       dot
                     />
                     {p.declared_at && p.status !== 'paid' && (

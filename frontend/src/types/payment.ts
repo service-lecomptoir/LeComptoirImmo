@@ -67,6 +67,7 @@ export interface PaymentListItem {
   amount_paid: number
   balance: number
   credit_applied?: number
+  amount_on_plan?: number
   payment_method?: string | null
   payment_date?: string | null
   status: PaymentStatus

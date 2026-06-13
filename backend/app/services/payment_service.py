@@ -381,6 +381,7 @@ class PaymentService:
             amount_paid=float(p.amount_paid),
             balance=p.balance,
             credit_applied=float(p.credit_applied or 0),
+            amount_on_plan=float(getattr(p, "amount_on_plan", 0) or 0),
             payment_method=p.payment_method,
             payment_date=p.payment_date,
             status=p.status,
