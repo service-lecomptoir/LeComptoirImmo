@@ -47,6 +47,8 @@ export default function PaymentList() {
 
   // Plans d'apurement en cours (affichés dans cet onglet Paiements)
   const [plans, setPlans] = useState<ApurementPlan[]>([])
+  // Bloc « Plans d'apurement en cours » replié par défaut.
+  const [plansOpen, setPlansOpen] = useState(false)
   const [validating, setValidating] = useState<string | null>(null)
   const loadPlans = useCallback(async () => {
     try { const { data } = await apurementApi.listActive(); setPlans(data) } catch { /* ignore */ }
@@ -308,12 +310,18 @@ export default function PaymentList() {
       {/* ── Plans d'apurement en cours ── */}
       {plans.length > 0 && (
         <div className="mb-5 bg-white rounded-xl border border-amber-200 p-4">
-          <div className="flex items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setPlansOpen(o => !o)}
+            className="w-full flex items-center gap-2 text-left"
+          >
+            {plansOpen ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
             <CalendarClock size={16} className="text-amber-600" />
             <h2 className="text-sm font-semibold text-gray-900">Plans d'apurement en cours</h2>
-            <span className="text-xs text-gray-400">{plans.length}</span>
-          </div>
-          <div className="space-y-3">
+            <span className="ml-auto text-xs text-gray-400">{plans.length}</span>
+          </button>
+          {plansOpen && (
+          <div className="space-y-3 mt-3">
             {plans.map(p => {
               const todayIso = new Date().toISOString().slice(0, 10)
               return (
@@ -362,6 +370,7 @@ export default function PaymentList() {
               )
             })}
           </div>
+          )}
         </div>
       )}
 
