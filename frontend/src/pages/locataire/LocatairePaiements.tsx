@@ -185,7 +185,7 @@ export default function LocatairePaiements() {
 
       {/* Solde actuel */}
       <div className={`rounded-xl border p-5 mb-5 ${solde > 0.005 ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col items-center text-center gap-2">
           <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${solde > 0.005 ? 'bg-amber-100' : 'bg-green-100'}`}>
             <Wallet size={20} className={solde > 0.005 ? 'text-amber-600' : 'text-green-600'} />
           </div>
