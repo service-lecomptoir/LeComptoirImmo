@@ -140,6 +140,36 @@ async def locataire_current_payment(
     }
 
 
+@router.get("/locataire/regularizations", summary="Régularisations de charges (locataire)")
+async def locataire_regularizations(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Régularisations annuelles de charges du locataire (solde créditeur/débiteur),
+    pour affichage dans son grand livre « Ma comptabilité »."""
+    from sqlalchemy import select
+    from app.models.tenant import Tenant
+    from app.models.charge_regularization import ChargeRegularization
+
+    tenant = (await db.execute(
+        select(Tenant).where(Tenant.user_id == current_user.id)
+    )).scalar_one_or_none()
+    if not tenant:
+        return []
+    regs = (await db.execute(
+        select(ChargeRegularization)
+        .where(ChargeRegularization.tenant_id == tenant.id)
+        .order_by(ChargeRegularization.period_end.desc())
+    )).scalars().all()
+    return [{
+        "id": str(r.id),
+        "period_start": r.period_start.isoformat() if r.period_start else None,
+        "period_end": r.period_end.isoformat() if r.period_end else None,
+        "balance": float(r.balance or 0),
+        "applied_at": r.applied_at.isoformat() if r.applied_at else None,
+    } for r in regs]
+
+
 @router.post("/locataire/declare", status_code=201, summary="Déclarer un paiement (locataire)")
 async def locataire_declare_payment(
     data: dict,

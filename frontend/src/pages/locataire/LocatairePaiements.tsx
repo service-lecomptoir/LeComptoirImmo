@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Wallet, Download } from 'lucide-react'
+import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { docFilename } from '@/utils/filename'
@@ -12,6 +13,29 @@ const fmtEuro = (n: number) =>
 // Libellé du type de paiement (sert d'intitulé pour la ligne de règlement).
 const METHOD_LABELS: Record<string, string> = {
   virement: 'Virement', cheque: 'Chèque', prelevement: 'Prélèvement', especes: 'Espèces',
+}
+
+// Référence d'opération stable (déterministe) dérivée de l'id du paiement, façon
+// relevé bancaire (ex. « 7BPWH4F »). Pas une vraie référence banque (pas d'import
+// bancaire) : identifiant interne d'affichage, constant pour un paiement donné.
+const payRef = (id: string) => {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) >>> 0
+  return h.toString(36).toUpperCase().padStart(7, '0').slice(-7)
+}
+
+// Intitulés façon relevé de compte (majuscules).
+const appelLabel = (p: any) => {
+  const start = p.period_start ? new Date(p.period_start) : new Date(p.period_year, p.period_month - 1, 1)
+  const end = p.period_end ? new Date(p.period_end) : new Date(p.period_year, p.period_month, 0)
+  return `Appel pour la période du ${format(start, 'dd MMMM', { locale: fr })} au ${format(end, 'dd MMMM', { locale: fr })}`.toUpperCase()
+}
+const reglementLabel = (p: any) => {
+  const label = METHOD_LABELS[p.payment_method] ?? 'Règlement'
+  const ref = (p.payment_method === 'virement' || p.payment_method === 'cheque') ? ` N° ${payRef(p.id)}` : ''
+  const d = p.payment_date ? ` du ${format(new Date(p.payment_date), 'dd/MM/yyyy')}` : ''
+  const nom = p.tenant_full_name ? ` ${p.tenant_full_name}` : ''
+  return `${label}${ref}${d}${nom}`.toUpperCase()
 }
 
 // Grand livre vu côté locataire :
@@ -37,17 +61,20 @@ interface Entry {
 export default function LocatairePaiements() {
   const [payments, setPayments] = useState<any[]>([])
   const [plans, setPlans] = useState<ApurementPlan[]>([])
+  const [regularizations, setRegularizations] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const load = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [pr, pl] = await Promise.allSettled([
+      const [pr, pl, rg] = await Promise.allSettled([
         paymentsApi.list({ limit: 120 }),
         apurementApi.mine(),
+        apiClient.get('/payments/locataire/regularizations'),
       ])
       if (pr.status === 'fulfilled') setPayments(pr.value.data.items ?? pr.value.data)
       if (pl.status === 'fulfilled') setPlans(pl.value.data)
+      if (rg.status === 'fulfilled') setRegularizations(rg.value.data ?? [])
     } catch { /* ignore */ } finally { setIsLoading(false) }
   }, [])
   useEffect(() => { load() }, [load])
@@ -66,26 +93,39 @@ export default function LocatairePaiements() {
     const reste = r2(Number(p.amount_paid ?? 0) - aplApplied)
     // 1. Appel de loyer (débit, en premier dans le mois)
     entries.push({ key: `app-${p.id}`, date: p.due_date, period, rank: 0,
-      intitule: `Appel de loyer · ${p.period_label}`, montant: due, sign: 'debit' })
+      intitule: appelLabel(p), montant: due, sign: 'debit' })
     // 2. APL : prépaiement (crédit)
     if (aplApplied > 0.005)
       entries.push({ key: `apl-${p.id}`, date: p.due_date, period, rank: 1,
-        intitule: `Aide au logement (APL) · ${p.period_label}`, montant: aplApplied, sign: 'credit' })
-    // 3. Règlement du locataire (crédit) : intitulé = type de paiement. La quittance
-    //    n'est proposée que si le mois est entièrement payé.
+        intitule: `Aide personnelle au logement · ${p.period_label}`.toUpperCase(), montant: aplApplied, sign: 'credit' })
+    // 3. Règlement du locataire (crédit) : intitulé façon relevé de compte
+    //    (type de paiement, n° d'opération, date, payeur). La quittance n'est
+    //    proposée que si le mois est entièrement payé.
     if (reste > 0.005)
       entries.push({ key: `pay-${p.id}`, date: p.payment_date || p.due_date, period, rank: 2,
-        intitule: `${METHOD_LABELS[p.payment_method] ?? 'Règlement'} · ${p.period_label}`,
+        intitule: reglementLabel(p),
         montant: reste, sign: 'credit', payment: p.status === 'paid' ? p : undefined })
+  }
+  // Régularisations annuelles de charges : créditrice (trop-perçu, crédit vert) ou
+  // débitrice (complément dû, débit rouge). Non rattachée à un paiement -> aucun
+  // double-comptage (l'application n'ajuste que la provision mensuelle future).
+  for (const reg of regularizations) {
+    const credit = Number(reg.balance) >= 0
+    const ds = (reg.applied_at || reg.period_end || '').slice(0, 10) || null
+    const year = reg.period_start ? new Date(reg.period_start).getFullYear()
+      : reg.period_end ? new Date(reg.period_end).getFullYear() : ''
+    entries.push({ key: `reg-${reg.id}`, date: ds, period: (ds || '').slice(0, 7), rank: 3,
+      intitule: `Variable ${credit ? 'créditrice' : 'débitrice'} régularisation charges ${year}`.toUpperCase(),
+      montant: Math.abs(Number(reg.balance) || 0), sign: credit ? 'credit' : 'debit' })
   }
   for (const pl of plans) {
     for (const i of pl.installments) {
       const period = (i.due_date || '').slice(0, 7)
       entries.push({ key: `iap-${pl.id}-${i.seq}`, date: i.due_date, period, rank: 5,
-        intitule: `Plan d'apurement · échéance ${i.seq}`, montant: i.amount, sign: 'debit' })
+        intitule: `Plan d'apurement · échéance ${i.seq}`.toUpperCase(), montant: i.amount, sign: 'debit' })
       if (i.paid)
         entries.push({ key: `ipa-${pl.id}-${i.seq}`, date: i.paid_date || i.due_date, period, rank: 6,
-          intitule: `Règlement apurement · échéance ${i.seq}`, montant: i.amount, sign: 'credit', planId: pl.id, seq: i.seq })
+          intitule: `Règlement apurement · échéance ${i.seq}`.toUpperCase(), montant: i.amount, sign: 'credit', planId: pl.id, seq: i.seq })
     }
   }
   // Tri chronologique : date la plus récente en haut ; à date égale, ordre métier
