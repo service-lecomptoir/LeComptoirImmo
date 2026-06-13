@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Banknote, CheckCircle, Wallet, Clock, CreditCard, Download } from 'lucide-react'
+import { Building2, Banknote, CheckCircle, Wallet, Clock, CreditCard, Download, CalendarClock } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
+import { toast } from '@/store/toast'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { docFilename } from '@/utils/filename'
 import { format } from 'date-fns'
@@ -47,6 +48,26 @@ export default function LocatairePayer() {
   }, [])
 
   useEffect(() => { load().finally(() => setIsLoading(false)) }, [load])
+
+  // Déclaration du règlement d'une échéance d'apurement (passe « en attente »,
+  // le gestionnaire valide ensuite, comme un loyer).
+  const [declaringInst, setDeclaringInst] = useState<string | null>(null)
+  const declareInst = async (planId: string, seq: number) => {
+    setDeclaringInst(`${planId}-${seq}`)
+    try {
+      await apurementApi.declareInstallment(planId, seq)
+      toast.success('Règlement de l\'échéance déclaré. En attente de validation.')
+      await load()
+    } catch {
+      toast.error('Impossible de déclarer le règlement.')
+    } finally {
+      setDeclaringInst(null)
+    }
+  }
+  // Échéances d'apurement encore dues (appels de loyer apurement à régler).
+  const dueInstallments = plans.flatMap(pl =>
+    (pl.installments || []).filter(i => !i.paid).map(i => ({ pl, i }))
+  )
 
   // Solde actuel = cumul du reste à payer (loyers non soldés + échéances d'apurement
   // non réglées), tous mois confondus.
@@ -128,6 +149,44 @@ export default function LocatairePayer() {
           </div>
         </div>
       </div>
+
+      {/* Appels de loyer : apurement — échéances dues, à régler (déclaration). */}
+      {dueInstallments.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock size={16} className="text-amber-600" />
+            <p className="text-sm font-semibold text-gray-800">Appels de loyer : apurement</p>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {dueInstallments.map(({ pl, i }) => (
+              <div key={`${pl.id}-${i.seq}`} className="flex items-center justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-800">Apurement : échéance {i.seq}</p>
+                  <p className="text-xs text-gray-400">Échéance du {format(new Date(i.due_date), 'd MMM yyyy', { locale: fr })}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-sm font-semibold text-gray-900">{fmtEuro(i.amount)}</span>
+                  {i.declared ? (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">En attente</span>
+                  ) : (
+                    <button
+                      onClick={() => declareInst(pl.id, i.seq)}
+                      disabled={declaringInst === `${pl.id}-${i.seq}`}
+                      className="text-xs px-3 py-1.5 rounded-lg text-white font-medium disabled:opacity-50"
+                      style={{ background: '#0D2F5C' }}
+                    >
+                      {declaringInst === `${pl.id}-${i.seq}` ? '…' : 'Régler'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Réglez le montant par votre moyen habituel (virement, espèces), puis cliquez sur « Régler » pour le déclarer. Votre gestionnaire confirmera la réception.
+          </p>
+        </div>
+      )}
 
       {/* Moyens de paiement (au-dessus de l'historique). Un clic ouvre la page de règlement. */}
       {!payment || due <= 0.005 ? (

@@ -233,6 +233,17 @@ export default function PaymentList() {
 
   const recordingPayment = payments.find(p => p.id === recordingId)
 
+  // Échéances d'apurement de la période filtrée : affichées comme des appels
+  // (lignes) dans le tableau, payables via « Valider payé ».
+  const apurRows = plans.flatMap(pl =>
+    (pl.installments || [])
+      .filter(inst => {
+        const d = new Date(inst.due_date)
+        return d.getFullYear() === filterYear && (d.getMonth() + 1) === filterMonth
+      })
+      .map(inst => ({ pl, inst }))
+  )
+
   return (
     <div className="p-4 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -323,7 +334,7 @@ export default function PaymentList() {
                       return (
                         <div key={inst.seq} className="flex items-center justify-between gap-2 py-1.5 text-sm">
                           <span className={overdue ? 'text-red-600' : 'text-gray-600'}>
-                            Pré-appel éch. {inst.seq} · {format(new Date(inst.due_date), 'd MMM yyyy', { locale: fr })}{overdue ? ' · en retard' : ''}
+                            Appel d'apurement · éch. {inst.seq} · {format(new Date(inst.due_date), 'd MMM yyyy', { locale: fr })}{overdue ? ' · en retard' : ''}
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-900">{fmtEuro(inst.amount)}</span>
@@ -374,7 +385,7 @@ export default function PaymentList() {
           <tbody>
             {isLoading ? (
               <tr><td colSpan={9} className="text-center py-12 text-sm text-gray-500">Chargement...</td></tr>
-            ) : payments.length === 0 ? (
+            ) : (payments.length === 0 && apurRows.length === 0) ? (
               <tr>
                 <td colSpan={9}>
                   <div className="flex flex-col items-center justify-center py-12 text-gray-500">
@@ -384,7 +395,8 @@ export default function PaymentList() {
                 </td>
               </tr>
             ) : (
-              payments.map(p => (
+              <>
+              {payments.map(p => (
                 <Fragment key={p.id}>
                 <tr className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
@@ -603,7 +615,54 @@ export default function PaymentList() {
                   </tr>
                 )}
                 </Fragment>
-              ))
+              ))}
+              {apurRows.map(({ pl, inst }) => {
+                const k = `${pl.id}-${inst.seq}`
+                return (
+                  <tr key={`apur-${k}`} className="border-b border-gray-50 hover:bg-amber-50/40">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{pl.tenant_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{pl.property_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      Apurement · éch. {inst.seq}
+                      <div className="text-xs text-gray-500">{format(new Date(inst.due_date), 'd MMM yyyy', { locale: fr })}</div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(inst.amount)}</td>
+                    <td className="px-4 py-3 text-sm text-right text-green-700">{inst.paid ? fmtEuro(inst.amount) : fmtEuro(0)}</td>
+                    <td className="px-4 py-3 text-sm text-right font-semibold">
+                      {inst.paid ? <span className="text-gray-400"></span> : <span className="text-red-600">{fmtEuro(inst.amount)}</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge label={inst.paid ? 'Payé' : "Appel d'apurement"} variant={inst.paid ? 'green' : 'yellow'} dot />
+                      {inst.declared && !inst.paid && (
+                        <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">Déclaré</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {inst.paid && (
+                        <button
+                          onClick={() => apurementApi.downloadInstallmentQuittance(pl.id, inst.seq, `quittance_apurement_echeance_${inst.seq}.pdf`)}
+                          className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-blue-600"
+                          title="Quittance de l'échéance"
+                        ><FileDown size={14} /></button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1 justify-end">
+                        {!inst.paid && (
+                          <button
+                            onClick={() => validateInst(pl.id, inst.seq)}
+                            disabled={validating === k}
+                            className="px-2 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {validating === k ? '…' : 'Valider payé'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+              </>
             )}
           </tbody>
         </table>
