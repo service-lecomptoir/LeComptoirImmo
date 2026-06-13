@@ -56,6 +56,13 @@ export default function LocatairePayer() {
     + plans.flatMap(pl => pl.installments).filter(i => !i.paid).reduce((s, i) => s + i.amount, 0)
   )
 
+  // Solde restant couvert par un (des) plan(s) d'apurement en cours (échéances non
+  // encore réglées). Sert à expliquer un solde négatif quand aucun loyer courant
+  // n'est à régler : ce n'est pas « à jour », c'est un apurement en cours.
+  const planDue = r2(
+    plans.flatMap(pl => pl.installments).filter(i => !i.paid).reduce((s, i) => s + i.amount, 0)
+  )
+
   // Historique : uniquement les écritures DATÉES, c.-à-d. les paiements validés ou
   // en attente (et l'APL appliquée). Les sommes non réglées (à régler / en retard)
   // ne figurent pas ici : elles sont reflétées par le solde et le bouton de paiement.
@@ -124,11 +131,24 @@ export default function LocatairePayer() {
 
       {/* Moyens de paiement (au-dessus de l'historique). Un clic ouvre la page de règlement. */}
       {!payment || due <= 0.005 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <CheckCircle size={36} className="mx-auto mb-2 text-green-400" />
-          <p className="text-gray-700 font-medium">Aucun loyer à régler</p>
-          <p className="text-sm text-gray-400 mt-1">Vous êtes à jour dans vos paiements.</p>
-        </div>
+        planDue > 0.005 ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 flex items-start gap-3">
+            <Clock size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-gray-800 font-medium">Aucun loyer courant à régler</p>
+              <p className="text-sm text-gray-600 mt-1">
+                Votre solde restant (<strong>{fmtEuro(planDue)}</strong>) est couvert par un <strong>plan d'apurement</strong>.
+                Vous ne recevez pas de rappels d'impayés et vous le réglez en plusieurs fois selon l'échéancier convenu.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+            <CheckCircle size={36} className="mx-auto mb-2 text-green-400" />
+            <p className="text-gray-700 font-medium">Aucun loyer à régler</p>
+            <p className="text-sm text-gray-400 mt-1">Vous êtes à jour dans vos paiements.</p>
+          </div>
+        )
       ) : (
         <>
           {isDeclared && (
