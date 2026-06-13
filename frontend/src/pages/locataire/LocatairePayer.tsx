@@ -137,7 +137,7 @@ export default function LocatairePayer() {
             <div>
               <p className="text-gray-800 font-medium">Aucun loyer courant à régler</p>
               <p className="text-sm text-gray-600 mt-1">
-                Votre solde restant (<strong>{fmtEuro(planDue)}</strong>) est couvert par un <strong>plan d'apurement</strong>.
+                Votre solde restant (<strong>− {fmtEuro(planDue)}</strong>) est couvert par un <strong>plan d'apurement</strong>.
                 Vous ne recevez pas de rappels d'impayés et vous le réglez en plusieurs fois selon l'échéancier convenu.
               </p>
             </div>
