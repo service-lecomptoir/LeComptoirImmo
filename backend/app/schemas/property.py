@@ -79,6 +79,7 @@ class PropertyUpdate(BaseModel):
 
 class PropertyResponse(BaseModel):
     id: uuid.UUID
+    ref_code: Optional[str] = None
     name: str
     reference: Optional[str]
     address: str
@@ -124,6 +125,7 @@ class PropertyResponse(BaseModel):
 
 class PropertyListItem(BaseModel):
     id: uuid.UUID
+    ref_code: Optional[str] = None
     name: str
     city: str
     property_type: PropertyType

@@ -59,8 +59,10 @@ class PropertyService:
     async def create(
         db: AsyncSession, data: PropertyCreate, created_by: uuid.UUID
     ) -> Property:
+        from app.services.reference_service import make_ref
         data_dict = await PropertyService._enrich_owner(db, data.model_dump())
         prop = Property(**data_dict, created_by=created_by)
+        prop.ref_code = await make_ref(db, Property.ref_code, "BN")
         db.add(prop)
         await db.flush()
         await db.refresh(prop)

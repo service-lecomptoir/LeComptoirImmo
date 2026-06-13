@@ -81,6 +81,25 @@ async def lifespan(app: FastAPI):
     logger.info("Vérification des comptes par défaut...")
     await _seed_default_users()
 
+    # ── Reprise historique des identifiants lisibles (ref_code) ────────────────
+    # Attribue un ref_code aux comptes / propriétaires / biens / locataires qui
+    # n'en ont pas encore (idempotent). Voir reference_service.
+    try:
+        from app.services.reference_service import backfill_table, user_prefix
+        from app.models.user import User as _U
+        from app.models.owner import Owner as _O
+        from app.models.tenant import Tenant as _T
+        from app.models.property import Property as _P
+        async with AsyncSessionLocal() as _db:
+            nu = await backfill_table(_db, _U, lambda r: user_prefix(getattr(r, "role", None)))
+            no = await backfill_table(_db, _O, lambda r: "PR")
+            nb = await backfill_table(_db, _P, lambda r: "BN")
+            nt = await backfill_table(_db, _T, lambda r: "LO")
+            await _db.commit()
+        logger.info(f"Identifiants ref_code (reprise) : {nu} comptes, {no} propriétaires, {nb} biens, {nt} locataires")
+    except Exception as _exc:
+        logger.warning(f"Reprise ref_code ignorée : {_exc!r}")
+
     # Démarre le scheduler de tâches automatiques (lit la config depuis la DB)
     logger.info("Démarrage du scheduler...")
     avis_day, avis_hour, avis_minute = 1, 7, 30
@@ -225,6 +244,17 @@ async def _apply_column_migrations() -> None:
         # Période réellement couverte par un loyer (multi-mois selon la fréquence)
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_start DATE",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_end DATE",
+        # Identifiant lisible unique (ref_code) : comptes, propriétaires, biens, locataires.
+        # Préfixe selon le type/rôle (GM/GP/UP/UL/AD/CB/LE, PR, BN, LO). Reprise
+        # historique des lignes existantes au démarrage (voir _backfill_references).
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code VARCHAR(20)",
+        "ALTER TABLE owners ADD COLUMN IF NOT EXISTS ref_code VARCHAR(20)",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS ref_code VARCHAR(20)",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS ref_code VARCHAR(20)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_ref_code ON users (ref_code)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_owners_ref_code ON owners (ref_code)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_tenants_ref_code ON tenants (ref_code)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_properties_ref_code ON properties (ref_code)",
         # Coordonnées profil utilisateur (gestionnaire/agence)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300)",

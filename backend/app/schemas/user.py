@@ -90,6 +90,7 @@ class AdminPasswordReset(BaseModel):
 
 class UserResponse(BaseModel):
     id: uuid.UUID
+    ref_code: Optional[str] = None
     email: str
     full_name: str
     role: Role

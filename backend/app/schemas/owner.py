@@ -65,6 +65,7 @@ class OwnerUpdate(BaseModel):
 
 class OwnerResponse(BaseModel):
     id: uuid.UUID
+    ref_code: Optional[str] = None
     civility: Optional[Civility]
     first_name: Optional[str]
     last_name: str
@@ -91,6 +92,7 @@ class OwnerResponse(BaseModel):
 class OwnerListItem(BaseModel):
     """Version allégée pour les listes."""
     id: uuid.UUID
+    ref_code: Optional[str] = None
     full_name: str
     civility: Optional[Civility]
     first_name: Optional[str]

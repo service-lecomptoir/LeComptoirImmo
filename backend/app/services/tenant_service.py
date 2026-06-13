@@ -37,7 +37,9 @@ class TenantService:
     async def create(
         db: AsyncSession, data: TenantCreate, created_by: uuid.UUID
     ) -> Tenant:
+        from app.services.reference_service import make_ref
         tenant = Tenant(**data.model_dump(), created_by=created_by)
+        tenant.ref_code = await make_ref(db, Tenant.ref_code, "LO")
         db.add(tenant)
         await db.flush()
         await TenantService._sync_linked_user_phone(db, tenant)

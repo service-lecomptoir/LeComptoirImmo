@@ -65,6 +65,7 @@ class TenantUpdate(BaseModel):
 
 class TenantResponse(BaseModel):
     id: uuid.UUID
+    ref_code: Optional[str] = None
     civility: Optional[Civility]
     first_name: str
     last_name: str
@@ -92,6 +93,7 @@ class TenantResponse(BaseModel):
 class TenantListItem(BaseModel):
     """Version allégée pour les listes."""
     id: uuid.UUID
+    ref_code: Optional[str] = None
     full_name: str
     civility: Optional[Civility]
     first_name: str

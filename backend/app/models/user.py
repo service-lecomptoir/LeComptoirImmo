@@ -14,6 +14,10 @@ class User(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # Identifiant lisible unique attribué à la création (ex. « GM-00001 »). Le
+    # préfixe dépend du rôle (GM/GP/UP/UL/AD/CB/LE). Sert de « numéro associé »
+    # affiché dans l'app (avatar) et les documents.
+    ref_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     email: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )

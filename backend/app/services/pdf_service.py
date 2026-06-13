@@ -158,10 +158,13 @@ _CIVILITY_SHORT = {
 
 
 def tenant_reference(tenant) -> str:
-    """Identifiant locataire stable et lisible (ex. « 2B12C23A »), dérivé de
-    l'identifiant unique du locataire en base (UUID). Vide si pas de locataire."""
+    """Identifiant locataire lisible. Privilégie le ref_code « LO-XXXXX » attribué
+    à la création ; à défaut (anciennes données), dérive 8 caractères de l'UUID."""
     if not tenant:
         return ""
+    rc = getattr(tenant, "ref_code", None)
+    if rc:
+        return str(rc)
     tid = getattr(tenant, "id", None)
     if not tid:
         return ""
@@ -256,7 +259,8 @@ async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
                                  getattr(property_obj, "city", "")] if p)
             if property_obj else ""),
         "property_reference": (
-            (getattr(property_obj, "reference", "") or getattr(property_obj, "name", ""))
+            (getattr(property_obj, "ref_code", "") or getattr(property_obj, "reference", "")
+             or getattr(property_obj, "name", ""))
             if property_obj else ""),
         "company_name": sender_name,
         "company_address": build_emitter_address(sender_addr, owner_company, owner_national_id),
@@ -369,7 +373,8 @@ async def render_plan_apurement_html(db: AsyncSession, payment: Any,
                                  getattr(property_obj, "city", "")] if p)
             if property_obj else ""),
         "property_reference": (
-            (getattr(property_obj, "reference", "") or getattr(property_obj, "name", ""))
+            (getattr(property_obj, "ref_code", "") or getattr(property_obj, "reference", "")
+             or getattr(property_obj, "name", ""))
             if property_obj else ""),
         "company_name": sender_name,
         "company_address": build_emitter_address(sender_addr, owner_company, owner_national_id),
@@ -477,7 +482,8 @@ class AvisEcheancePDFService:
             # tenant_login conservé comme alias rétro-compatible des templates enregistrés.
             "tenant_login": tenant_reference(getattr(avis_full, "tenant", None)),
             "tenant_reference": tenant_reference(getattr(avis_full, "tenant", None)),
-            "property_reference": (getattr(property_obj, "reference", "") or
+            "property_reference": (getattr(property_obj, "ref_code", "") or
+                                   getattr(property_obj, "reference", "") or
                                    getattr(property_obj, "name", "")) if property_obj else "",
             # Nom du destinataire : civilité + prénom + NOM (majuscules).
             "tenant_civil_name": _civil_name(getattr(avis_full, "tenant", None)),

@@ -35,7 +35,8 @@ def _doc_common_vars(tenant, property_obj, today_fr: str) -> dict:
         "tenant_login": tenant_reference(tenant),
         "tenant_reference": tenant_reference(tenant),
         "property_name": (getattr(property_obj, "name", "") or "") if property_obj else "",
-        "property_reference": ((getattr(property_obj, "reference", "") or
+        "property_reference": ((getattr(property_obj, "ref_code", "") or
+                                getattr(property_obj, "reference", "") or
                                 getattr(property_obj, "name", "")) if property_obj else ""),
         "property_address": property_obj.full_address_block if property_obj else "",
         "property_address2": (getattr(property_obj, "address2", "") or "") if property_obj else "",

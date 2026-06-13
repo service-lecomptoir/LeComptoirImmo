@@ -28,7 +28,9 @@ class Property(Base, TimestampMixin):
 
     # ── Identification ────────────────────────────────────────────────────────
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
-    reference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    reference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # libre (saisi par le gestionnaire)
+    # Identifiant système lisible unique du bien (ex. « BN-00001 »), attribué à la création.
+    ref_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # ── Adresse ───────────────────────────────────────────────────────────────
     address: Mapped[str] = mapped_column(String(300), nullable=False)

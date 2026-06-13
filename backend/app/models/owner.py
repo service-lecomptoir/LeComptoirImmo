@@ -22,6 +22,8 @@ class Owner(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # Identifiant lisible unique de la fiche propriétaire (ex. « PR-00001 »).
+    ref_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # ── Identité ──────────────────────────────────────────────────────────────
     civility: Mapped[Optional[str]] = mapped_column(

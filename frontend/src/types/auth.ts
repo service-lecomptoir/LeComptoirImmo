@@ -2,6 +2,7 @@ export type Role = 'admin' | 'gestionnaire' | 'gestionnaire_proprio' | 'propriet
 
 export interface User {
   id: string
+  ref_code?: string | null
   email: string
   full_name: string
   role: Role

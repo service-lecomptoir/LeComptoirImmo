@@ -136,7 +136,7 @@ function SidebarInfoBlock({ line1, address, personName, refCode }: SidebarInfoBl
 }
 
 // ── Carte d'en-tête gestionnaire (dégradé + icône immo) ──────────────────────
-function ManagerHeaderCard({ roleLabel, name, address }: { roleLabel: string; name: string; address?: string }) {
+function ManagerHeaderCard({ roleLabel, name, address, refCode }: { roleLabel: string; name: string; address?: string; refCode?: string | null }) {
   // Rôle affiché sur deux lignes : « Gestionnaire » puis le qualificatif
   // (mandataire / propriétaire), de façon identique pour les deux types.
   const _parts = roleLabel.trim().split(/\s+/)
@@ -164,6 +164,12 @@ function ManagerHeaderCard({ roleLabel, name, address }: { roleLabel: string; na
         <div className="flex items-start gap-1.5 mt-2 px-0.5">
           <MapPin size={11} className="text-gray-400 mt-0.5 shrink-0" />
           <p className="text-gray-400 text-xs leading-snug line-clamp-2 whitespace-pre-line">{address}</p>
+        </div>
+      )}
+      {refCode && (
+        <div className="flex items-center gap-1.5 mt-1.5 px-0.5">
+          <Hash size={10} className="text-gray-500 shrink-0" />
+          <p className="text-gray-500 text-xs font-mono tracking-wide">{refCode}</p>
         </div>
       )}
     </div>
@@ -256,7 +262,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
                 line1={leaseInfo.propertyName}
                 address={leaseInfo.propertyAddress}
                 personName={leaseInfo.tenantName}
-                refCode={leaseInfo.leaseRef}
+                refCode={user?.ref_code || leaseInfo.leaseRef}
               />
             : <SidebarSkeleton />
           }
@@ -271,7 +277,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             ? <SidebarInfoBlock
                 line1={proprietaireInfo.fullName}
                 address={proprietaireInfo.propertyAddress}
-                refCode={proprietaireInfo.contractRef}
+                refCode={user?.ref_code || proprietaireInfo.contractRef}
               />
             : <SidebarSkeleton />
           }
@@ -286,6 +292,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           roleLabel="Gestionnaire propriétaire"
           name={user.full_name ?? ''}
           address={agencyAddress}
+          refCode={user.ref_code}
         />
       )
     }
@@ -297,6 +304,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           roleLabel="Gestionnaire mandataire"
           name={user.full_name ?? ''}
           address={agencyAddress}
+          refCode={user.ref_code}
         />
       )
     }

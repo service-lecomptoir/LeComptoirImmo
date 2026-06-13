@@ -185,10 +185,12 @@ class OwnerService:
     async def create(
         db: AsyncSession, data: OwnerCreate, created_by: uuid.UUID
     ) -> Owner:
+        from app.services.reference_service import make_ref
         owner = Owner(**data.model_dump(), created_by=created_by)
         owner.address, owner.zip_code, owner.city = normalize_address_fields(
             owner.address, owner.zip_code, owner.city
         )
+        owner.ref_code = await make_ref(db, Owner.ref_code, "PR")
         db.add(owner)
         await db.flush()
         return owner

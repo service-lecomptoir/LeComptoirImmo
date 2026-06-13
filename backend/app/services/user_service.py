@@ -33,6 +33,7 @@ class UserService:
             if creator is not None:
                 agency_id = creator.agency_id or creator.id
 
+        from app.services.reference_service import make_ref, user_prefix
         user = User(
             email=data.email,
             hashed_password=hash_password(data.password),
@@ -40,6 +41,7 @@ class UserService:
             role=data.role,
             created_by=created_by,
             agency_id=agency_id,
+            ref_code=await make_ref(db, User.ref_code, user_prefix(data.role)),
         )
         db.add(user)
         await db.flush()
