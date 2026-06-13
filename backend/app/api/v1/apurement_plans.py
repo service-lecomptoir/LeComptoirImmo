@@ -89,18 +89,20 @@ async def create_plan(
 
     from app.models.payment import PaymentStatus
     _note = (payment.notes or "").strip()
+    # Dans TOUS les cas, le montant reporté sort du solde du mois d'origine
+    # (`amount_on_plan` déduit du solde) : la nouvelle dette, c'est le plan.
+    payment.amount_on_plan = round(float(payment.amount_on_plan or 0) + total, 2)
     if total >= balance - 0.005:
-        # Apurement TOTAL : le mois est reporté (statut « cancelled »), il sort des
-        # impayés et des revenus ; sa dette vit dans les échéances. Drapeau pour
-        # l'affichage « Reporté » et la restauration si le plan est supprimé.
+        # Apurement TOTAL : le mois est entièrement reporté (statut « cancelled »),
+        # il sort des impayés et des revenus. Drapeau pour l'affichage « Reporté »
+        # et la restauration si le plan est supprimé.
         payment.status = PaymentStatus.CANCELLED
         payment.settled_by_plan = True
         if "plan d'apurement" not in _note.lower():
             payment.notes = (f"{_note} · Reporté sur plan d'apurement").strip(" ·")
     else:
         # Apurement PARTIEL : seul `total` sort du solde ; le reste demeure dû sur le
-        # mois (statut inchangé). On mémorise la part reportée pour la restaurer.
-        payment.amount_on_plan = round(float(payment.amount_on_plan or 0) + total, 2)
+        # mois (statut inchangé).
         if "apurement partiel" not in _note.lower():
             payment.notes = (f"{_note} · Apurement partiel").strip(" ·")
     await db.flush()
@@ -251,8 +253,10 @@ async def delete_plan(
         from app.models.payment import Payment, PaymentStatus
         pay = await db.get(Payment, plan.origin_payment_id)
         if pay is not None:
+            # La part reportée revient toujours dans le solde du mois d'origine.
+            pay.amount_on_plan = round(max(0.0, float(pay.amount_on_plan or 0) - float(plan.total_amount or 0)), 2)
             if getattr(pay, "settled_by_plan", False):
-                # Apurement total : restaure le statut.
+                # Apurement total : restaure aussi le statut.
                 pay.settled_by_plan = False
                 paid = float(pay.amount_paid or 0)
                 due = float(pay.amount_due or 0)
@@ -266,11 +270,8 @@ async def delete_plan(
                                   else PaymentStatus.PENDING)
                 if pay.notes:
                     pay.notes = pay.notes.replace("· Reporté sur plan d'apurement", "").strip(" ·") or None
-            elif float(getattr(pay, "amount_on_plan", 0) or 0) > 0:
-                # Apurement partiel : on remet la part reportée dans le solde.
-                pay.amount_on_plan = round(max(0.0, float(pay.amount_on_plan or 0) - float(plan.total_amount or 0)), 2)
-                if pay.notes:
-                    pay.notes = pay.notes.replace("· Apurement partiel", "").strip(" ·") or None
+            elif pay.notes:
+                pay.notes = pay.notes.replace("· Apurement partiel", "").strip(" ·") or None
             await db.flush()
 
     await ApurementPlanService.delete(db, plan)

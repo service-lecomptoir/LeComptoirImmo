@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { getErrorMessage } from '@/utils/errors'
-import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw, ChevronRight, ChevronDown, CalendarClock } from 'lucide-react'
+import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw, ChevronRight, ChevronDown, CalendarClock, Download } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
-import { apurementApi } from '@/api/apurement'
+import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { docFilename } from '@/utils/filename'
 import { isMultiMonth } from '@/utils/period'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -45,6 +45,31 @@ export default function PaymentList() {
   const [planAmount, setPlanAmount] = useState(0)
   const [planBusy, setPlanBusy] = useState(false)
 
+  // Plans d'apurement en cours (affichés dans cet onglet Paiements)
+  const [plans, setPlans] = useState<ApurementPlan[]>([])
+  const [validating, setValidating] = useState<string | null>(null)
+  const loadPlans = useCallback(async () => {
+    try { const { data } = await apurementApi.listActive(); setPlans(data) } catch { /* ignore */ }
+  }, [])
+  const validateInst = async (planId: string, seq: number) => {
+    setValidating(`${planId}-${seq}`)
+    try {
+      await apurementApi.markInstallment(planId, seq, true)
+      toast.success('Échéance validée payée.')
+      await loadPlans()
+    } catch (e: any) { toast.error(getErrorMessage(e, 'Validation impossible')) }
+    finally { setValidating(null) }
+  }
+  const deletePlan = async (planId: string) => {
+    if (!confirm("Supprimer ce plan d'apurement ? La dette reviendra sur le mois d'origine.")) return
+    try {
+      await apurementApi.remove(planId)
+      toast.success("Plan d'apurement supprimé.")
+      await loadPlans()
+      fetchPayments(search, filterStatus, filterYear, filterMonth)
+    } catch (e: any) { toast.error(getErrorMessage(e, 'Suppression impossible')) }
+  }
+
   const openPlan = (p: PaymentListItem) => {
     setPlanPayment(p)
     setPlanN(3)
@@ -57,7 +82,9 @@ export default function PaymentList() {
     try {
       await apurementApi.create(planPayment.id, planN, planDate, planAmount)
       setPlanPayment(null)
-      toast.success('Plan d\'apurement créé. Suivi sur la fiche du locataire.')
+      toast.success('Plan d\'apurement créé.')
+      await loadPlans()
+      fetchPayments(search, filterStatus, filterYear, filterMonth)
     } catch (e: any) {
       alert(getErrorMessage(e, 'Création du plan impossible'))
     } finally {
@@ -96,6 +123,8 @@ export default function PaymentList() {
   useEffect(() => {
     paymentsApi.generate(filterYear, filterMonth).catch(() => {})
   }, [filterYear, filterMonth])
+
+  useEffect(() => { loadPlans() }, [loadPlans])
 
   useEffect(() => {
     const t = setTimeout(
@@ -269,6 +298,66 @@ export default function PaymentList() {
           </select>
         </div>
       </div>
+
+      {/* ── Plans d'apurement en cours ── */}
+      {plans.length > 0 && (
+        <div className="mb-5 bg-white rounded-xl border border-amber-200 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock size={16} className="text-amber-600" />
+            <h2 className="text-sm font-semibold text-gray-900">Plans d'apurement en cours</h2>
+            <span className="text-xs text-gray-400">{plans.length}</span>
+          </div>
+          <div className="space-y-3">
+            {plans.map(p => {
+              const todayIso = new Date().toISOString().slice(0, 10)
+              return (
+                <div key={p.id} className="border border-gray-100 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                    <p className="text-sm font-medium text-gray-800">
+                      {p.tenant_name}{p.property_name ? ` · ${p.property_name}` : ''}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-gray-500">Reste {fmtEuro(p.remaining)} / {fmtEuro(p.total_amount)} · {p.paid_count}/{p.count}</p>
+                      <button onClick={() => deletePlan(p.id)} title="Supprimer le plan"
+                        className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {p.installments.map(inst => {
+                      const overdue = !inst.paid && inst.due_date < todayIso
+                      return (
+                        <div key={inst.seq} className="flex items-center justify-between gap-2 py-1.5 text-sm">
+                          <span className={overdue ? 'text-red-600' : 'text-gray-600'}>
+                            Pré-appel éch. {inst.seq} · {format(new Date(inst.due_date), 'd MMM yyyy', { locale: fr })}{overdue ? ' · en retard' : ''}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{fmtEuro(inst.amount)}</span>
+                            {inst.paid ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">Payé</span>
+                                <button onClick={() => apurementApi.downloadInstallmentQuittance(p.id, inst.seq, `quittance_apurement_echeance_${inst.seq}.pdf`)}
+                                  title="Quittance de l'échéance" className="text-green-600 hover:text-green-800"><Download size={13} /></button>
+                              </span>
+                            ) : (
+                              <>
+                                {inst.declared && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Déclaré</span>}
+                                <button onClick={() => validateInst(p.id, inst.seq)} disabled={validating === `${p.id}-${inst.seq}`}
+                                  className="text-xs px-2.5 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                                  {validating === `${p.id}-${inst.seq}` ? '…' : 'Valider payé'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
