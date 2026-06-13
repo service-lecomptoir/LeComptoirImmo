@@ -95,7 +95,7 @@ export default function LocataireSignaler() {
     <div className="max-w-3xl p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <AlertTriangle size={22} className="text-amber-500" /> Signaler dans la résidence
+          <AlertTriangle size={22} className="text-amber-500" /> Vie de la résidence
         </h1>
         <p className="text-gray-500 text-sm mt-1">
           Signalez un problème lié à la résidence ou à l'immeuble : parties communes, ascenseur,

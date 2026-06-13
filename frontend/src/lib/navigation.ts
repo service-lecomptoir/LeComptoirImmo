@@ -133,7 +133,7 @@ export const navLocataire: NavItem[] = [
   { to: '/locataire/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/locataire/payer', icon: Wallet, label: 'Payer mon loyer' },
   { to: '/locataire/paiements', icon: CreditCard, label: 'Ma comptabilité' },
-  { to: '/locataire/signaler', icon: AlertTriangle, label: 'Signaler (résidence)' },
+  { to: '/locataire/signaler', icon: AlertTriangle, label: 'Vie de la résidence' },
   { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
   { to: '/locataire/offres', icon: ShoppingBag, label: 'Offres & Services' },
 ]
