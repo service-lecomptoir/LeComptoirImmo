@@ -89,13 +89,16 @@ async def _manager_lease_ids(db: AsyncSession, manager_id) -> list:
 # ── Règles par défaut (no-régression : les envois actuels continuent) ─────────
 
 # Jeu de règles standard créé pour chaque gestionnaire. (rule_type, name, channel,
-# trigger_days). Les délais : avis 7 j avant l'échéance ; rappels/relances après.
+# trigger_days, signature). Délais : avis 7 j avant l'échéance ; rappels/relances après.
+# Signature : « Service contentieux » pour les impayés, « Service Gestion Locative » sinon.
+_GL = "Service Gestion Locative"
+_CTX = "Service contentieux"
 _DEFAULT_RULES = [
-    ("avis_echeance", "Avis d'échéance", "email", 7),
-    ("quittance", "Quittance", "email", 0),
-    ("rappel_impaye", "Rappel impayé", "email", 3),
-    ("relance_1", "Relance 1", "email", 8),
-    ("relance_2", "Relance 2 (mise en demeure)", "email_sms", 15),
+    ("avis_echeance", "Avis d'échéance", "email", 7, _GL),
+    ("quittance", "Quittance", "email", 0, _GL),
+    ("rappel_impaye", "Rappel impayé", "email", 3, _CTX),
+    ("relance_1", "Relance 1", "email", 8, _CTX),
+    ("relance_2", "Relance 2 (mise en demeure)", "email_sms", 15, _CTX),
 ]
 
 
@@ -113,13 +116,13 @@ async def ensure_default_rules(db: AsyncSession, gestionnaire_id) -> int:
     mgr = await db.get(User, gestionnaire_id)
     cc_default = (getattr(mgr, "email", None) or "").strip() or None
     created = 0
-    for rule_type, name, channel, days in _DEFAULT_RULES:
+    for rule_type, name, channel, days, signature in _DEFAULT_RULES:
         if rule_type in existing:
             continue
         db.add(AutomationRule(
             name=name, rule_type=rule_type, channel=channel,
             trigger_days=days, is_active=True, created_by=gestionnaire_id,
-            cc_emails=cc_default,
+            cc_emails=cc_default, signature=signature,
         ))
         created += 1
     if created:
@@ -185,11 +188,14 @@ async def _send_avis(db, rule, avis, today: date) -> bool:
         try:
             from app.services.pdf_service import AvisEcheancePDFService
             from app.services.email_service import send_avis_echeance
+            from app.services import mail_signature
+            sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, rule.created_by, rule.signature)
             pdf = await AvisEcheancePDFService.generate(db, avis)
             ok = await send_avis_echeance(
                 to=tenant.email, tenant_name=tenant.full_name or tenant.email,
                 period_label=period, amount_total=float(avis.amount_total or 0),
                 due_date=ctx["due_date"], pdf_bytes=pdf, cc=cc, subject=subject,
+                signature_html=sig_html, inline_logo=logo, inline_logo_subtype=logo_sub,
             )
             any_sent = any_sent or ok
         except Exception as exc:  # noqa: BLE001
@@ -275,21 +281,23 @@ async def _send_reminder(db, rule, payment, today: date) -> bool:
         f"<p>Sauf erreur de notre part, le loyer de la période "
         f"<strong>{ctx['period']}</strong> reste impayé (solde dû : "
         f"<strong>{ctx['balance']}</strong>).</p>"
-        f"<p>Merci de régulariser dans les meilleurs délais.</p>"
-        f"<p>Cordialement,<br>Votre gestionnaire</p>")
+        f"<p>Merci de régulariser dans les meilleurs délais.</p>")
     body_html = _render(rule.body_template, ctx) or default_body
     sms_text = (_render(rule.body_template, ctx) if rule.body_template else None) or (
         f"Le Comptoir Immo : {label.lower()}, loyer {ctx['period']} impaye "
         f"(solde {ctx['balance']}). Merci de regulariser.")
     channel = (rule.channel or "email")
     cc = _rule_cc(rule)
+    from app.services import mail_signature
+    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, rule.created_by, rule.signature)
 
     any_sent = False
     last_err = None
     if channel in ("email", "email_sms") and getattr(tenant, "email", None):
         try:
             from app.services.email_service import send_email
-            ok = await send_email(to=tenant.email, subject=subject, html_body=body_html, cc=cc)
+            ok = await send_email(to=tenant.email, subject=subject, html_body=body_html + sig_html,
+                                  cc=cc, inline_logo=logo, inline_logo_subtype=logo_sub)
             any_sent = any_sent or ok
         except Exception as exc:  # noqa: BLE001
             last_err = exc
@@ -385,6 +393,8 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
         f"Le Comptoir Immo : votre quittance {ctx['period']} ({ctx['amount']}) est disponible.")
     channel = (rule.channel or "email")
     cc = _rule_cc(rule)
+    from app.services import mail_signature
+    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
 
     any_sent = False
     if channel in ("email", "email_sms") and getattr(tenant, "email", None):
@@ -394,7 +404,8 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
             pdf, _fn = await build_quittance_pdf(db, payment)
             ok = await _send_q(to=tenant.email, tenant_name=tenant.full_name or "",
                                period_label=ctx["period"], amount=amount,
-                               pdf_bytes=pdf, cc=cc, subject=subject)
+                               pdf_bytes=pdf, cc=cc, subject=subject,
+                               signature_html=sig_html, inline_logo=logo, inline_logo_subtype=logo_sub)
             any_sent = any_sent or ok
         except Exception as exc:  # noqa: BLE001
             logger.warning("[automation] quittance email échec payment=%s: %r", payment.id, exc)

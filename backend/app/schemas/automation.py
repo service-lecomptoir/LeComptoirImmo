@@ -17,6 +17,8 @@ class AutomationRuleCreate(BaseModel):
     # Adresse(s) en copie (CC) des e-mails de cette règle, séparées par des virgules
     # (ex. l'e-mail du gestionnaire). Vide = aucune copie.
     cc_emails: Optional[str] = None
+    # Signature (nom du service) affichée en bas des e-mails.
+    signature: Optional[str] = None
 
 
 class AutomationRuleUpdate(BaseModel):
@@ -28,6 +30,7 @@ class AutomationRuleUpdate(BaseModel):
     is_active: Optional[bool] = None
     filter_config: Optional[Dict[str, Any]] = None
     cc_emails: Optional[str] = None
+    signature: Optional[str] = None
 
 
 class AutomationRuleResponse(BaseModel):
@@ -41,6 +44,7 @@ class AutomationRuleResponse(BaseModel):
     is_active: bool
     filter_config: Optional[Dict[str, Any]] = None
     cc_emails: Optional[str] = None
+    signature: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

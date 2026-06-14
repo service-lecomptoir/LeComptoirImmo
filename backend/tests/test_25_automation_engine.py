@@ -164,3 +164,51 @@ async def test_ensure_default_rules_idempotent(db, gestionnaire_user):
         select(AutomationRule.rule_type).where(AutomationRule.created_by == gestionnaire_user.id)
     )).scalars().all())
     assert {"avis_echeance", "quittance", "rappel_impaye", "relance_1", "relance_2"} <= types
+
+
+@pytest.mark.asyncio
+async def test_default_rules_signatures_by_type(db, gestionnaire_user):
+    await automation_engine.ensure_default_rules(db, gestionnaire_user.id)
+    rows = (await db.execute(
+        select(AutomationRule.rule_type, AutomationRule.signature)
+        .where(AutomationRule.created_by == gestionnaire_user.id)
+    )).all()
+    sig = {rt: s for rt, s in rows}
+    assert sig["rappel_impaye"] == "Service contentieux"
+    assert sig["relance_2"] == "Service contentieux"
+    assert sig["avis_echeance"] == "Service Gestion Locative"
+    assert sig["quittance"] == "Service Gestion Locative"
+
+
+def test_signature_block_content():
+    from app.services.email_service import build_signature_html
+    html = build_signature_html("Service contentieux", has_logo=True)
+    assert "Service contentieux" in html
+    assert "cid:managerlogo" in html
+    assert "automatiquement par le système Le Comptoir" in html
+    # Sans logo : pas de balise image.
+    assert "cid:managerlogo" not in build_signature_html("Service X", has_logo=False)
+
+
+@pytest.mark.asyncio
+async def test_signature_passed_to_avis_email(db, gestionnaire_user):
+    lease = await _setup_lease(db, gestionnaire_user, email="loc.sig@test.fr")
+    rule = _rule(gestionnaire_user.id, "avis_echeance", trigger_days=7)
+    rule.signature = "Service Gestion Locative"
+    db.add(rule); await db.flush()
+    avis = AvisEcheance(
+        lease_id=lease.id, tenant_id=lease.tenant_id, period_year=2026, period_month=6,
+        due_date=date.today(), amount_rent=800, amount_charges=100, amount_total=900,
+        kind="loyer", status=AvisEcheanceStatus.BROUILLON,
+    )
+    db.add(avis); await db.flush()
+
+    sender = AsyncMock(return_value=True)
+    with patch("app.services.email_service.send_avis_echeance", new=sender), \
+         patch("app.services.pdf_service.AvisEcheancePDFService.generate", new=AsyncMock(return_value=b"pdf")):
+        await automation_engine.run_all(db, date.today(), manager_id=gestionnaire_user.id)
+
+    assert sender.await_count == 1
+    sig = sender.await_args.kwargs.get("signature_html") or ""
+    assert "Service Gestion Locative" in sig
+    assert "automatiquement par le système Le Comptoir" in sig

@@ -50,6 +50,10 @@ class AutomationRule(Base, TimestampMixin):
     # virgules (ex. l'e-mail du gestionnaire). NULL/"" = aucune copie.
     cc_emails: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
+    # Signature (nom du service) affichée en bas des e-mails de cette règle,
+    # ex. « Service contentieux » ou « Service Gestion Locative ».
+    signature: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+
     # Actif/inactif
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

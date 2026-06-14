@@ -876,7 +876,9 @@ async def send_quittance(
                 pdf_bytes, _fn = await build_quittance_pdf(db, payment)
                 from app.services.email_service import send_quittance as _send_q
                 from app.services.cc_service import rule_cc_for_lease
+                from app.services import mail_signature
                 _cc = await rule_cc_for_lease(db, payment.lease_id, "quittance")
+                _sig, _logo, _logosub = await mail_signature.build_for_lease(db, payment.lease_id, "quittance")
                 _amount = float(payment.amount_paid or 0) + float(getattr(payment, "amount_on_plan", 0) or 0)
                 email_sent = await _send_q(
                     to=_to,
@@ -885,6 +887,7 @@ async def send_quittance(
                     amount=_amount,
                     pdf_bytes=pdf_bytes,
                     cc=_cc,
+                    signature_html=_sig, inline_logo=_logo, inline_logo_subtype=_logosub,
                 )
             except Exception as _exc:  # noqa: BLE001
                 _log.warning("Envoi e-mail quittance échoué (%s): %s", payment_id, _exc)

@@ -15,11 +15,15 @@ async def send_email(
     attachment_filename: Optional[str] = None,
     attachment_mime: str = "application/pdf",
     cc: Optional[str] = None,
+    inline_logo: Optional[bytes] = None,
+    inline_logo_subtype: str = "png",
 ) -> bool:
     """Envoie un email via SMTP. Retourne True si envoyé, False si désactivé ou erreur.
 
     ``cc`` : adresse(s) en copie (ex. le gestionnaire en copie d'un e-mail locataire).
     Ignoré si égal au destinataire principal.
+    ``inline_logo`` : image (logo gestionnaire) embarquée en pièce inline et
+    référençable dans le HTML via ``cid:managerlogo`` (signature des e-mails).
     """
     from app.config import get_settings
     cfg = get_settings()
@@ -38,6 +42,17 @@ async def send_email(
         msg["Subject"] = subject
         msg.set_content(text_body or _html_to_text(html_body))
         msg.add_alternative(html_body, subtype="html")
+
+        # Logo gestionnaire en image inline (CID) attachée à la partie HTML.
+        if inline_logo:
+            try:
+                html_part = msg.get_payload()[-1]
+                html_part.add_related(
+                    inline_logo, maintype="image",
+                    subtype=(inline_logo_subtype or "png"), cid="managerlogo",
+                )
+            except Exception as _exc:  # noqa: BLE001 : le logo ne doit jamais bloquer l'envoi
+                logger.warning("Logo inline non joint: %s", _exc)
 
         if attachment_bytes and attachment_filename:
             msg.add_attachment(
@@ -67,6 +82,21 @@ def _html_to_text(html: str) -> str:
     """Conversion HTML → texte brut minimaliste (supprime balises)."""
     import re
     return re.sub(r"<[^>]+>", "", html).strip()
+
+
+def build_signature_html(service_name: Optional[str], has_logo: bool = False) -> str:
+    """Bloc signature des e-mails : « Cordialement », logo gestionnaire (image
+    inline via cid:managerlogo), nom du service, puis la mention d'envoi
+    automatique. Utilisé par les envois pilotés par les règles d'automatisation."""
+    rows = ['<p style="margin:0 0 6px">Cordialement,</p>']
+    if has_logo:
+        rows.append('<img src="cid:managerlogo" alt="" style="max-height:54px;margin:6px 0">')
+    if service_name and service_name.strip():
+        rows.append(f'<p style="margin:2px 0;font-weight:600;color:#111827">{service_name.strip()}</p>')
+    rows.append('<p style="margin:12px 0 0;color:#9ca3af;font-size:12px">'
+                'Cette communication a été envoyée automatiquement par le système Le Comptoir.</p>')
+    return ('<div style="margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px">'
+            + "".join(rows) + '</div>')
 
 
 # ── Templates email ───────────────────────────────────────────────────────────
@@ -106,6 +136,9 @@ async def send_avis_echeance(
     pdf_bytes: Optional[bytes] = None,
     cc: Optional[str] = None,
     subject: Optional[str] = None,
+    signature_html: Optional[str] = None,
+    inline_logo: Optional[bytes] = None,
+    inline_logo_subtype: str = "png",
 ) -> bool:
     content = f"""
 <p>Bonjour {tenant_name},</p>
@@ -117,7 +150,7 @@ async def send_avis_echeance(
       <td style="padding:8px;font-weight:600">{due_date}</td></tr>
 </table>
 {"<p>Le détail de votre avis est joint à cet email en PDF.</p>" if pdf_bytes else ""}
-<p>Cordialement,<br>Votre gestionnaire</p>
+{signature_html or "<p>Cordialement,<br>Votre gestionnaire</p>"}
 """
     return await send_email(
         to=to,
@@ -125,7 +158,7 @@ async def send_avis_echeance(
         html_body=_base_template(f"Avis d'échéance {period_label}", content),
         attachment_bytes=pdf_bytes,
         attachment_filename=f"avis-echeance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
-        cc=cc,
+        cc=cc, inline_logo=inline_logo, inline_logo_subtype=inline_logo_subtype,
     )
 
 
@@ -137,20 +170,23 @@ async def send_quittance(
     pdf_bytes: Optional[bytes] = None,
     cc: Optional[str] = None,
     subject: Optional[str] = None,
+    signature_html: Optional[str] = None,
+    inline_logo: Optional[bytes] = None,
+    inline_logo_subtype: str = "png",
 ) -> bool:
     content = f"""
 <p>Bonjour {tenant_name},</p>
 <p>Votre paiement de <strong>{amount:.2f} €</strong> pour la période <strong>{period_label}</strong> a bien été enregistré.</p>
 {"<p>Votre quittance de loyer est jointe à cet email en PDF.</p>" if pdf_bytes else ""}
-<p>Cordialement,<br>Votre gestionnaire</p>
+{signature_html or "<p>Cordialement,<br>Votre gestionnaire</p>"}
 """
     return await send_email(
         to=to,
-        subject=f"Quittance de loyer : {period_label}",
+        subject=subject or f"Quittance de loyer : {period_label}",
         html_body=_base_template(f"Quittance {period_label}", content),
         attachment_bytes=pdf_bytes,
         attachment_filename=f"quittance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
-        cc=cc,
+        cc=cc, inline_logo=inline_logo, inline_logo_subtype=inline_logo_subtype,
     )
 
 
@@ -281,14 +317,18 @@ async def send_group_message(
     subject: str,
     body: str,
     cc: Optional[str] = None,
+    signature_html: Optional[str] = None,
+    inline_logo: Optional[bytes] = None,
+    inline_logo_subtype: str = "png",
 ) -> bool:
     content = f"""
 <p>{body.replace(chr(10), '<br>')}</p>
+{signature_html or ""}
 """
     return await send_email(
         to=to,
         subject=subject,
         html_body=_base_template(subject, content),
         text_body=body,
-        cc=cc,
+        cc=cc, inline_logo=inline_logo, inline_logo_subtype=inline_logo_subtype,
     )

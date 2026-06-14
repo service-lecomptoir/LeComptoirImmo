@@ -276,7 +276,9 @@ async def mark_sent(
                 from app.services.pdf_service import AvisEcheancePDFService
                 from app.services.email_service import send_avis_echeance
                 from app.services.cc_service import rule_cc_for_lease
+                from app.services import mail_signature
                 _cc = await rule_cc_for_lease(db, avis.lease_id, "avis_echeance")
+                _sig, _logo, _logosub = await mail_signature.build_for_lease(db, avis.lease_id, "avis_echeance")
                 pdf = await AvisEcheancePDFService.generate(db, avis)
                 email_sent = await send_avis_echeance(
                     to=_to,
@@ -286,6 +288,7 @@ async def mark_sent(
                     due_date=avis.due_date.strftime("%d/%m/%Y") if avis.due_date else "",
                     pdf_bytes=pdf,
                     cc=_cc,
+                    signature_html=_sig, inline_logo=_logo, inline_logo_subtype=_logosub,
                 )
             except Exception as _exc:  # noqa: BLE001
                 import logging

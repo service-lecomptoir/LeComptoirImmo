@@ -406,6 +406,12 @@ async def _apply_column_migrations() -> None:
         # créateur (une seule fois : ne touche que les NULL ; un CC vidé = '').
         "UPDATE automation_rules SET cc_emails = (SELECT email FROM users WHERE users.id = automation_rules.created_by) "
         "WHERE cc_emails IS NULL AND created_by IS NOT NULL",
+        # Automatisation : signature (service) par règle + backfill par type
+        # (contentieux pour rappels/relances, gestion locative pour le reste).
+        "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS signature VARCHAR(150)",
+        "UPDATE automation_rules SET signature = 'Service contentieux' "
+        "WHERE signature IS NULL AND rule_type IN ('rappel_impaye','relance_1','relance_2')",
+        "UPDATE automation_rules SET signature = 'Service Gestion Locative' WHERE signature IS NULL",
         # Mois reporté sur un plan d'apurement (sort des impayés/revenus, restaurable).
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settled_by_plan BOOLEAN NOT NULL DEFAULT FALSE",
         # Apurement partiel : part du solde reportée sur un plan sans solder tout le mois

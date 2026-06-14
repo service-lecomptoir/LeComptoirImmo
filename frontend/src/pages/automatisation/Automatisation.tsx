@@ -44,6 +44,17 @@ interface Rule {
   body_template?: string
   is_active: boolean
   cc_emails?: string | null
+  signature?: string | null
+}
+
+// Signature (service) par défaut selon le type : contentieux pour les impayés,
+// gestion locative pour le reste.
+const SIGNATURE_CONTENTIEUX = 'Service contentieux'
+const SIGNATURE_GESTION = 'Service Gestion Locative'
+const KNOWN_SIGNATURES = [SIGNATURE_CONTENTIEUX, SIGNATURE_GESTION]
+function defaultSignature(ruleType: string): string {
+  return ['rappel_impaye', 'relance_1', 'relance_2'].includes(ruleType)
+    ? SIGNATURE_CONTENTIEUX : SIGNATURE_GESTION
 }
 
 interface Log {
@@ -65,9 +76,21 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
     body_template: rule?.body_template || '',
     is_active: rule?.is_active ?? true,
     cc_emails: rule?.cc_emails || '',
+    signature: rule?.signature || defaultSignature(rule?.rule_type || 'avis_echeance'),
   })
   const [saving, setSaving] = useState(false)
   const myEmail = useAuthStore(s => s.user?.email) || ''
+
+  // Change le type ET ajuste la signature par défaut tant qu'elle n'a pas été
+  // personnalisée (vide ou égale à l'une des signatures standard).
+  const selectType = (value: string) => {
+    setForm(f => ({
+      ...f,
+      rule_type: value,
+      signature: (!f.signature.trim() || KNOWN_SIGNATURES.includes(f.signature.trim()))
+        ? defaultSignature(value) : f.signature,
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,7 +133,7 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
                 const Icon = t.icon
                 return (
                   <button key={t.value} type="button"
-                    onClick={() => setForm({ ...form, rule_type: t.value })}
+                    onClick={() => selectType(t.value)}
                     className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs transition-all ${
                       form.rule_type === t.value
                         ? `${RULE_COLORS[t.color]} font-medium`
@@ -206,6 +229,21 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
                   </button>
                 )}
                 <p className="text-xs text-gray-400">Laisser vide pour n'envoyer qu'au locataire. Plusieurs adresses : séparées par des virgules.</p>
+              </div>
+
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Signature (service)</label>
+                <input list="signature-suggestions" className="w-full border rounded-lg px-3 py-2 text-sm"
+                  placeholder="ex : Service Gestion Locative"
+                  value={form.signature}
+                  onChange={e => setForm({ ...form, signature: e.target.value })} />
+                <datalist id="signature-suggestions">
+                  <option value={SIGNATURE_GESTION} />
+                  <option value={SIGNATURE_CONTENTIEUX} />
+                </datalist>
+                <p className="text-xs text-gray-400 mt-1">
+                  Affichée en signature de l'e-mail, avec votre logo et la mention d'envoi automatique.
+                </p>
               </div>
             </div>
           )}

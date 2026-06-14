@@ -238,8 +238,13 @@ async def send_group_communication(
         email_sent = False
         if is_email and recipient:
             from app.services.cc_service import rule_cc
+            from app.services import mail_signature
             _cc = await rule_cc(db, current_user.id, "communication_groupee")
-            email_sent = await send_group_message(recipient, data.subject, data.body, cc=_cc)
+            _sig, _logo, _logosub = await mail_signature.build_for_manager(
+                db, current_user.id, "Service Gestion Locative")
+            email_sent = await send_group_message(recipient, data.subject, data.body, cc=_cc,
+                                                  signature_html=_sig, inline_logo=_logo,
+                                                  inline_logo_subtype=_logosub)
 
         log = CommunicationLog(
             tenant_id=tenant.id,
