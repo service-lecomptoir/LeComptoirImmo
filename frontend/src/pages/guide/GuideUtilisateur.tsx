@@ -1,35 +1,66 @@
-import { useAuthStore } from '@/store/authStore'
-import { BookOpen, CheckCircle2, Lightbulb, HelpCircle, ListChecks } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
 import type { ElementType } from 'react'
+import { useAuthStore } from '@/store/authStore'
+import { useFeaturesStore } from '@/store/featuresStore'
+import { featureForPath, isFeatureAllowed } from '@/lib/features'
+import { BookOpen, CheckCircle2, Lightbulb, HelpCircle, ListChecks } from 'lucide-react'
 import { navForRole, descriptionForRoute } from '@/lib/navigation'
 
 // ─── Types du contenu de guide ────────────────────────────────────────────────
-interface Step { title: string; desc: string }
-interface Feature { icon: ElementType; title: string; desc: string }
 interface Faq { q: string; a: string }
-
-// ─── Rubriques générées depuis le MENU du rôle (source de vérité : lib/navigation.ts) ─
-// Le menu latéral et le guide partagent la même définition : tout ajout, renommage
-// ou retrait d'une fonctionnalité dans la navigation met le guide à jour
-// automatiquement (libellé + icône du menu, description via descriptionForRoute).
-function rubriquesForRole(role?: string): Feature[] {
-  return navForRole(role)
-    .filter(item => !item.isSeparator && item.to)
-    .map(item => ({
-      icon: item.icon ?? ListChecks,
-      title: item.label,
-      desc: descriptionForRoute(item.to),
-    }))
-}
 
 interface Guide {
   badge: string
   title: string
   intro: string
   prerequisites: string[]
-  steps: Step[]
   tips: string[]
   faq: Faq[]
+}
+
+// ─── Pas à pas généré DYNAMIQUEMENT depuis le menu du rôle ────────────────────
+// Source de vérité unique : lib/navigation.ts (+ filtre par formule via les
+// fonctionnalités du plan). Tout ajout / renommage / retrait / réorganisation
+// d'une rubrique, ou une fonctionnalité (dés)activée par l'abonnement, met le
+// pas à pas à jour AUTOMATIQUEMENT (libellé, icône, description, regroupement par
+// section). Chaque étape illustrée reprend l'icône de la rubrique.
+interface StepItem { to: string; label: string; icon: ElementType; desc: string }
+interface StepGroup { section: string; items: StepItem[] }
+
+function buildSteps(role: string | undefined, features: string[] | null): StepGroup[] {
+  const groups: StepGroup[] = []
+  let current: StepGroup | null = null
+  for (const item of navForRole(role)) {
+    if (item.isSeparator) {
+      current = { section: item.label, items: [] }
+      groups.push(current)
+      continue
+    }
+    if (!item.to) continue
+    // Respecte la formule : on n'affiche que les rubriques réellement accessibles.
+    if (!isFeatureAllowed(features, featureForPath(item.to))) continue
+    if (!current) { current = { section: 'Premiers pas', items: [] }; groups.push(current) }
+    current.items.push({
+      to: item.to, label: item.label,
+      icon: item.icon ?? ListChecks, desc: descriptionForRoute(item.to),
+    })
+  }
+  return groups.filter(g => g.items.length > 0)
+}
+
+// Illustration d'étape : panneau décoratif construit à partir de l'icône de la
+// rubrique (donc une nouvelle fonctionnalité est illustrée sans travail manuel).
+function StepIllustration({ icon: Icon, n }: { icon: ElementType; n: number }) {
+  return (
+    <div className="relative w-full sm:w-44 h-28 rounded-xl overflow-hidden shrink-0
+                    bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+      <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10" />
+      <div className="absolute -bottom-8 -left-4 w-24 h-24 rounded-full bg-white/10" />
+      <Icon size={46} strokeWidth={1.5} className="text-white relative z-10" />
+      <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-white text-blue-700
+                       text-xs font-bold flex items-center justify-center z-10">{n}</span>
+    </div>
+  )
 }
 
 // ─── Contenu par rôle ───────────────────────────────────────────────────────────
@@ -45,18 +76,6 @@ const GUIDE_MANDATAIRE: Guide = {
     "Avoir les caractéristiques de chaque bien (adresse, type, surface, DPE, équipements).",
     "Connaître les informations des locataires (identité, n° de sécurité sociale, date de naissance, contact) et les conditions du bail (loyer, charges, dépôt de garantie).",
     "Renseigner dans « Mes informations » le « Nom de la résidence » (affiché dans l'app) et le « Nom et prénom du propriétaire » (bailleur sur les documents officiels), ainsi que vos coordonnées d'agence.",
-  ],
-  steps: [
-    { title: '1. Créez les fiches Propriétaires', desc: "Onglet Propriétaires → « Nouveau ». Saisissez l'identité, le contact et surtout le RIB : c'est lui qui figure sur les quittances. Une fiche peut exister sans compte de connexion." },
-    { title: '2. Enregistrez les Propriétés', desc: "Onglet Propriétés → « Nouveau ». Décrivez le bien (le code postal et la ville bénéficient d'une autocomplétion) et rattachez-le à une fiche propriétaire. Un bien occupé ne sera plus proposé lors de la création d'un contrat." },
-    { title: '3. Créez les fiches Locataires', desc: "Onglet Locataires → « Nouveau ». Le n° de sécurité sociale et la date de naissance sont obligatoires. Vous pouvez aussi créer un locataire à la volée depuis le formulaire de contrat." },
-    { title: '4. Rédigez le Contrat de bail', desc: "Onglet Contrats → « Nouveau ». Reliez un bien et un locataire principal, ajoutez d'éventuels co-titulaires, puis renseignez loyer, charges, dépôt, jour et fréquence de paiement, règle d'appel de loyer, aide au logement et garant. Le bail PDF (« Bail non meublé ») se télécharge depuis la fiche du contrat." },
-    { title: '5. Pilotez les loyers', desc: "Les avis d'échéances et les paiements se génèrent automatiquement selon la fréquence choisie. Enregistrez les règlements reçus, puis générez/envoyez les quittances." },
-    { title: "6. Éditez l'Espace CAF", desc: "Onglet « Espace CAF » : générez l'attestation de loyer et le formulaire tiers payant pré-remplis pour chaque contrat (le bailleur n'a plus qu'à vérifier et signer). De juillet à décembre, un rappel signale que la déclaration des loyers à la CAF est ouverte : à effectuer par le gestionnaire sur la plateforme partenaires CAF, locataire par locataire." },
-    { title: '7. Publiez vos annonces', desc: "Onglet « Publication des annonces » (catégorie « Mise en location »), ou bouton « Diffuser » sur la fiche d'un bien : définissez une fois vos plateformes de partage. Pour chaque bien, ajoutez des photos (et supprimez celles dont vous ne voulez plus), laissez l'IA rédiger le titre et la description à partir des caractéristiques du bien (vous pouvez les ajuster), fixez le loyer, puis publiez immédiatement ou programmez la publication. Une page d'annonce publique partageable est générée et ses vues sont suivies." },
-    { title: '8. Gérez les candidatures', desc: "Onglet « Candidatures » : les dossiers déposés depuis vos annonces publiées y arrivent automatiquement (vous pouvez aussi en saisir). Vérifiez les pièces justificatives, comparez les profils (taux d'effort, complétude, garant) et retenez le candidat le plus adapté." },
-    { title: '9. Organisez la sortie du locataire', desc: "Onglet « Sortie du locataire » (ou bouton « Organiser la sortie » sur le bail) : suivez le préavis et la date de départ, reliez l'état des lieux de sortie et comparez-le à l'entrée, décomptez le dépôt de garantie (retenues → restitution), puis clôturez : le bail est résilié et le bien remis en location." },
-    { title: '10. Donnez les accès', desc: "Dans « Gestion des utilisateurs », créez les comptes de connexion pour vos propriétaires et locataires en les rattachant à leur fiche, afin qu'ils accèdent à leur propre espace." },
   ],
   tips: [
     "Respectez l'ordre Propriétaire → Bien → Locataire → Contrat : chaque étape s'appuie sur la précédente.",
@@ -94,18 +113,6 @@ const GUIDE_GP: Guide = {
     "Réunir les caractéristiques de vos biens (adresse, type, surface, DPE, équipements).",
     "Disposer des informations des locataires (dont n° de sécurité sociale et date de naissance) et des conditions de chaque bail.",
   ],
-  steps: [
-    { title: '1. Complétez votre profil', desc: "Dans « Mes informations », renseignez le « Nom de la résidence », le « Nom et prénom du propriétaire » (qui apparaît comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant), vos coordonnées et votre RIB." },
-    { title: '2. Enregistrez vos Propriétés', desc: "Onglet Propriétés → « Nouveau ». Vous êtes automatiquement le propriétaire rattaché : pas besoin de créer une fiche propriétaire séparée." },
-    { title: '3. Créez les fiches Locataires', desc: "Onglet Locataires → « Nouveau », ou directement depuis le formulaire de contrat." },
-    { title: '4. Rédigez le Contrat de bail', desc: "Onglet Contrats → « Nouveau » : bien, locataire principal, co-titulaires, loyer, charges, dépôt, jour et fréquence de paiement, règle d'appel, aide au logement, garant." },
-    { title: '5. Suivez les loyers', desc: "Avis d'échéances et paiements se génèrent selon la fréquence. Enregistrez les règlements et éditez les quittances." },
-    { title: "6. Éditez votre Espace CAF", desc: "Onglet « Espace CAF » : attestation de loyer et formulaire tiers payant pré-remplis, prêts à signer. De juillet à décembre, un rappel signale l'ouverture de la déclaration des loyers à la CAF (à faire sur la plateforme partenaires CAF)." },
-    { title: '7. Publiez vos annonces', desc: "Onglet « Publication des annonces » (catégorie « Mise en location ») : définissez vos plateformes de partage. Pour chaque bien, ajoutez/supprimez des photos, laissez l'IA rédiger le titre et la description depuis les caractéristiques du bien (modifiables), fixez le loyer, publiez ou programmez, puis suivez les performances (vues)." },
-    { title: '8. Gérez les candidatures', desc: "Onglet « Candidatures » : les dossiers déposés depuis vos annonces se centralisent ; vérifiez les pièces, comparez les profils (taux d'effort, complétude, garant) et retenez le meilleur candidat." },
-    { title: '9. Organisez la sortie du locataire', desc: "Onglet « Sortie du locataire » : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie (retenues → restitution), puis clôture (bail résilié, bien remis en location)." },
-    { title: '10. Pilotez vos finances', desc: "Section « Mes finances » : suivez « Mes revenus », la « Performance bien » et préparez votre « Liasse fiscale »." },
-  ],
   tips: [
     "Suivez l'ordre Bien → Locataire → Contrat : tout en découle.",
     "Votre RIB est saisi une seule fois (Mes informations) et figure sur les quittances.",
@@ -139,13 +146,6 @@ const GUIDE_PROPRIETAIRE: Guide = {
     "Vérifiez votre RIB dans « Mes informations » : c'est sur ce compte que sont reversés vos loyers.",
     "Vos biens et locataires sont saisis par votre gestionnaire ; vous les retrouvez directement dans votre espace.",
   ],
-  steps: [
-    { title: '1. Connectez-vous à votre espace', desc: "Sur la page d'accueil, choisissez la pastille « Propriétaire » puis saisissez vos identifiants." },
-    { title: '2. Vérifiez vos informations', desc: "Dans « Mes informations », contrôlez vos coordonnées et votre RIB pour le bon reversement des loyers." },
-    { title: '3. Consultez votre tableau de bord', desc: "Vue d'ensemble : revenus, taux d'occupation et points d'attention sur vos biens." },
-    { title: '4. Suivez vos revenus', desc: "« Mes revenus » détaille les loyers encaissés, période par période et bien par bien." },
-    { title: '5. Préparez votre fiscalité', desc: "« Liasse fiscale » récapitule loyers et charges ; téléchargez-la pour votre déclaration." },
-  ],
   tips: [
     "Gardez votre RIB à jour : c'est la condition d'un reversement sans accroc.",
     "Suivez les démarches de vos locataires dans la rubrique « Démarche » et échangez avec votre gestionnaire pour toute question.",
@@ -169,14 +169,6 @@ const GUIDE_LOCATAIRE: Guide = {
     "Votre compte est créé par votre gestionnaire : connectez-vous avec l'identifiant et le mot de passe reçus.",
     "Un bail actif doit être enregistré à votre nom (c'est le cas dès votre entrée dans le logement).",
     "Pensez à vérifier votre adresse e-mail et votre téléphone dans « Mes informations ».",
-  ],
-  steps: [
-    { title: '1. Connectez-vous', desc: "Sur la page d'accueil, gardez la pastille « Locataire » et saisissez vos identifiants." },
-    { title: '2. Découvrez votre espace', desc: "Le tableau de bord affiche votre bail, votre prochain avis d'échéance et votre dernier paiement." },
-    { title: '3. Consultez vos avis d\'échéance', desc: "« Avis d'échéances » liste vos appels de loyer ; vous pouvez les télécharger en PDF." },
-    { title: '4. Payez votre loyer', desc: "« Payer mon loyer » vous indique le montant dû et les coordonnées de paiement (virement, etc.)." },
-    { title: '5. Récupérez vos quittances', desc: "Une fois le loyer réglé, votre quittance est disponible dans « Mes paiements » et « Mes documents »." },
-    { title: '6. Faites vos démarches', desc: "Dans « Mes démarches », créez une demande en choisissant son type (problème dans le logement, problème de voisinage, autre) : le bon service est alerté automatiquement. Échangez ensuite avec votre gestionnaire, relancez si besoin, et validez ou refusez la clôture qu'il propose." },
   ],
   tips: [
     "Réglez votre loyer avant le jour d'échéance indiqué sur l'avis pour éviter les relances.",
@@ -202,8 +194,16 @@ function guideForRole(role?: string): Guide {
 export default function GuideUtilisateur() {
   const { user } = useAuthStore()
   const g = guideForRole(user?.role)
-  // Rubriques générées automatiquement depuis le menu du rôle (lib/navigation.ts).
-  const rubriques = rubriquesForRole(user?.role)
+
+  // Filtre par formule : on charge les fonctionnalités du plan (gestionnaires)
+  // pour n'afficher que les rubriques réellement accessibles.
+  const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio' || user?.role === 'admin'
+  const { features, loadFeatures } = useFeaturesStore()
+  useEffect(() => { if (isManager) loadFeatures() }, [isManager, loadFeatures])
+
+  // Pas à pas généré dynamiquement depuis le menu du rôle (+ filtre formule).
+  const groups = useMemo(() => buildSteps(user?.role, features), [user?.role, features])
+  const totalSteps = groups.reduce((n, gr) => n + gr.items.length, 0)
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
@@ -234,43 +234,37 @@ export default function GuideUtilisateur() {
         </ul>
       </section>
 
-      {/* Premiers pas */}
+      {/* Pas à pas (généré dynamiquement depuis le menu + formule) */}
       <section className="mb-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Premiers pas</h2>
-        <ol className="space-y-3">
-          {g.steps.map((s, i) => (
-            <li key={i} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5 flex gap-4">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm flex items-center justify-center shrink-0">
-                {i + 1}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{s.title.replace(/^\d+\.\s*/, '')}</p>
-                <p className="text-sm text-gray-600 mt-0.5 leading-relaxed">{s.desc}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      {/* Fonctionnalités */}
-      <section className="mb-6">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Vos rubriques en un coup d'œil</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {rubriques.map((f, i) => {
-            const Icon = f.icon
-            return (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 flex gap-3">
-                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                  <Icon size={17} className="text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{f.title}</p>
-                  <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{f.desc}</p>
-                </div>
-              </div>
-            )
-          })}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-gray-900">Pas à pas : vos rubriques</h2>
+          <span className="text-xs text-gray-400">{totalSteps} étape{totalSteps > 1 ? 's' : ''}</span>
         </div>
+        {(() => {
+          let n = 0
+          return groups.map(group => (
+            <div key={group.section} className="mb-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2.5">{group.section}</h3>
+              <div className="space-y-3">
+                {group.items.map(it => {
+                  n += 1
+                  const Icon = it.icon
+                  return (
+                    <div key={it.to} className="bg-white rounded-xl border border-gray-200 p-4 flex flex-col sm:flex-row gap-4">
+                      <StepIllustration icon={Icon} n={n} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{it.label}</p>
+                        <p className="text-sm text-gray-600 mt-0.5 leading-relaxed">
+                          {it.desc || "Accédez à cette rubrique depuis le menu pour en profiter."}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))
+        })()}
       </section>
 
       {/* Bonnes pratiques */}
