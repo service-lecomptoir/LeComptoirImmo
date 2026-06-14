@@ -71,6 +71,8 @@ class GroupCommunicationRequest(BaseModel):
     subject: str
     body: str
     channel: Channel = Channel.EMAIL
+    # Adresse(s) en copie (CC), séparées par des virgules (ex. le gestionnaire).
+    cc_emails: Optional[str] = None
     # Filtres optionnels
     property_ids: Optional[list[uuid.UUID]] = None
     all_tenants: bool = True

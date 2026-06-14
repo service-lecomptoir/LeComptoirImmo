@@ -292,9 +292,11 @@ function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
     body: '',
     channel: 'email',
     all_tenants: true,
+    cc_emails: '',
   })
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const myEmail = useAuthStore(s => s.user?.email) || ''
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -353,6 +355,27 @@ function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
               <textarea required rows={6} className="w-full border rounded-lg px-3 py-2 text-sm" value={form.body}
                 onChange={e => setForm({ ...form, body: e.target.value })} />
             </div>
+            {(form.channel === 'email' || form.channel === 'email_sms') && (
+              <div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 shrink-0">Cc :</label>
+                  <input type="email" list="group-cc-suggestions" inputMode="email" autoComplete="email"
+                    className="flex-1 border rounded-lg px-3 py-2 text-sm"
+                    placeholder="ici l'adresse email"
+                    value={form.cc_emails}
+                    onChange={e => setForm({ ...form, cc_emails: e.target.value })} />
+                  <datalist id="group-cc-suggestions">
+                    {myEmail && <option value={myEmail} />}
+                  </datalist>
+                </div>
+                {myEmail && form.cc_emails.trim() !== myEmail && (
+                  <button type="button" onClick={() => setForm({ ...form, cc_emails: myEmail })}
+                    className="text-xs text-blue-600 hover:underline mt-1.5">
+                    + Me mettre en copie ({myEmail})
+                  </button>
+                )}
+              </div>
+            )}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
               ⚠️ Ce message sera envoyé à tous les locataires actifs. Vérifiez le contenu avant d'envoyer.
             </div>
