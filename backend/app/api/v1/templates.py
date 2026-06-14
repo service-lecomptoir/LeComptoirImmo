@@ -91,6 +91,8 @@ async def preview_document_pdf(
 
     sender_name = getattr(current_user, "full_name", "") or ""
     sender_addr = getattr(current_user, "address", "") or ""
+    # Signature du profil (« Mes informations ») : affichée dans l'aperçu comme le logo.
+    sig_uri = getattr(current_user, "signature", None) or ""
 
     _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
                   "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
@@ -132,6 +134,8 @@ async def preview_document_pdf(
         # Taxes foncières (exemple)
         "tax_label": "TAXE ENLÈVEMENT O.M. 2025", "tax_total": f"{eur(178)} €",
         "tax_days": "365", "tax_quote_part": f"{eur(178)} €", "tax_provisions": f"{eur(0)} €",
+        # Signature (affichée dans l'aperçu, comme le logo).
+        "signature_uri": sig_uri,
     }
 
     # Éditeur par blocs (avis d'échéance, mise en page moderne) : rendu prioritaire.
