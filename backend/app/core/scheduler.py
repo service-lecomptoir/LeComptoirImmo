@@ -108,6 +108,7 @@ async def _job_generate_monthly_avis() -> None:
                 )
             )).scalars().all()
 
+            from app.services.cc_service import manager_cc_for_lease
             sent = 0
             for avis in avis_list:
                 tenant = avis.tenant
@@ -115,12 +116,14 @@ async def _job_generate_monthly_avis() -> None:
                     continue
                 # Période réellement couverte (multi-mois selon la fréquence)
                 period_label = avis.period_range_label or f"{months[today.month]} {today.year}"
+                _cc = await manager_cc_for_lease(db, avis.lease_id)
                 ok = await send_avis_echeance(
                     to=tenant.email,
                     tenant_name=tenant.full_name or tenant.email,
                     period_label=period_label,
                     amount_total=float(avis.amount_total),
                     due_date=avis.due_date.strftime("%d/%m/%Y"),
+                    cc=_cc,
                 )
                 if ok:
                     sent += 1

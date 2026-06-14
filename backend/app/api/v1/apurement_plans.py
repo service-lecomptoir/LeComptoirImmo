@@ -50,6 +50,8 @@ async def _auto_send_quittance(db: AsyncSession, payment) -> None:
         from app.api.v1.payments import build_quittance_pdf
         pdf_bytes, _fn = await build_quittance_pdf(db, payment)
         from app.services.email_service import send_quittance as _send_q
+        from app.services.cc_service import manager_cc_for_lease
+        _cc = await manager_cc_for_lease(db, payment.lease_id)
         amount = float(payment.amount_paid or 0) + float(getattr(payment, "amount_on_plan", 0) or 0)
         ok = await _send_q(
             to=to,
@@ -57,6 +59,7 @@ async def _auto_send_quittance(db: AsyncSession, payment) -> None:
             period_label=payment.period_label,
             amount=amount,
             pdf_bytes=pdf_bytes,
+            cc=_cc,
         )
         if ok:
             payment.quittance_sent_at = datetime.now(timezone.utc)

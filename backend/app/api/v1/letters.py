@@ -138,6 +138,8 @@ async def lettre_relance(
     if _ten is not None and getattr(_ten, "email", None):
         try:
             from app.services.email_service import send_email
+            from app.services.cc_service import manager_cc_for_lease
+            _cc = await manager_cc_for_lease(db, payment.lease_id)
             _body = (f"<p>Madame, Monsieur,</p>"
                      f"<p>Sauf erreur de notre part, le loyer de la période "
                      f"<strong>{payment.period_label}</strong> reste impayé "
@@ -145,7 +147,8 @@ async def lettre_relance(
                      f"<p>Merci de régulariser dans les meilleurs délais. La lettre de "
                      f"relance est jointe en PDF.</p><p>Cordialement,<br>Votre gestionnaire</p>")
             await send_email(to=_ten.email, subject=f"Rappel de loyer impayé : {payment.period_label}",
-                             html_body=_body, attachment_bytes=pdf, attachment_filename=filename)
+                             html_body=_body, attachment_bytes=pdf, attachment_filename=filename,
+                             cc=_cc)
         except Exception as _exc:  # noqa: BLE001
             _log.warning("E-mail relance échoué (%s): %s", payment_id, _exc)
     if _ten is not None and getattr(_ten, "phone", None):

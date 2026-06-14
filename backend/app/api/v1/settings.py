@@ -301,16 +301,39 @@ class TestNotifyIn(BaseModel):
 
 
 @router.get("/notifications-status")
-async def notifications_status(current_user: User = Depends(get_current_gestionnaire)):
-    """Indique si l'e-mail (SMTP) et le SMS (Brevo) sont configurés/activés."""
+async def notifications_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Indique si l'e-mail (SMTP) et le SMS (Brevo) sont configurés/activés,
+    et si le gestionnaire est mis en copie (CC) des e-mails locataires."""
     from app.config import get_settings
     cfg = get_settings()
+    cc_manager = (await settings_service.get(db, "cc_manager_emails") or "true").lower() == "true"
     return {
         "email_enabled": cfg.smtp_enabled,
         "sms_enabled": cfg.sms_enabled,
         "smtp_from": cfg.SMTP_FROM_EMAIL,
         "sms_sender": cfg.SMS_SENDER,
+        "cc_manager_emails": cc_manager,
     }
+
+
+class CcManagerIn(BaseModel):
+    enabled: bool
+
+
+@router.put("/cc-manager")
+async def set_cc_manager(
+    body: CcManagerIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Active/désactive la mise en copie (CC) du gestionnaire sur les e-mails
+    envoyés aux locataires (avis, quittances, relances, communications)."""
+    await settings_service.set_(db, "cc_manager_emails", "true" if body.enabled else "false")
+    await db.commit()
+    return {"cc_manager_emails": body.enabled}
 
 
 @router.post("/test-notification")

@@ -242,14 +242,17 @@ class PaymentService:
                 from app.config import get_settings
                 if get_settings().smtp_enabled:
                     from app.services.email_service import send_quittance as _send_q
+                    from app.services.cc_service import manager_cc_for_lease
                     tenant = await db.get(Tenant, payment.tenant_id)
                     to = getattr(tenant, "email", None) if tenant else None
                     if to:
+                        _cc = await manager_cc_for_lease(db, payment.lease_id)
                         ok = await _send_q(
                             to=to,
                             tenant_name=tenant.full_name,
                             period_label=payment.period_label,
                             amount=float(payment.amount_paid),
+                            cc=_cc,
                         )
                         if ok:
                             payment.quittance_sent_at = datetime.now(timezone.utc)

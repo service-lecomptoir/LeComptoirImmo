@@ -275,6 +275,8 @@ async def mark_sent(
             try:
                 from app.services.pdf_service import AvisEcheancePDFService
                 from app.services.email_service import send_avis_echeance
+                from app.services.cc_service import manager_cc_for_lease
+                _cc = await manager_cc_for_lease(db, avis.lease_id)
                 pdf = await AvisEcheancePDFService.generate(db, avis)
                 email_sent = await send_avis_echeance(
                     to=_to,
@@ -283,6 +285,7 @@ async def mark_sent(
                     amount_total=float(avis.amount_total or 0),
                     due_date=avis.due_date.strftime("%d/%m/%Y") if avis.due_date else "",
                     pdf_bytes=pdf,
+                    cc=_cc,
                 )
             except Exception as _exc:  # noqa: BLE001
                 import logging

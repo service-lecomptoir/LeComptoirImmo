@@ -14,8 +14,13 @@ async def send_email(
     attachment_bytes: Optional[bytes] = None,
     attachment_filename: Optional[str] = None,
     attachment_mime: str = "application/pdf",
+    cc: Optional[str] = None,
 ) -> bool:
-    """Envoie un email via SMTP. Retourne True si envoyé, False si désactivé ou erreur."""
+    """Envoie un email via SMTP. Retourne True si envoyé, False si désactivé ou erreur.
+
+    ``cc`` : adresse(s) en copie (ex. le gestionnaire en copie d'un e-mail locataire).
+    Ignoré si égal au destinataire principal.
+    """
     from app.config import get_settings
     cfg = get_settings()
     if not cfg.smtp_enabled:
@@ -28,6 +33,8 @@ async def send_email(
         msg = EmailMessage()
         msg["From"] = f"{cfg.SMTP_FROM_NAME} <{cfg.SMTP_FROM_EMAIL}>"
         msg["To"] = to
+        if cc and cc.strip() and cc.strip().lower() != (to or "").strip().lower():
+            msg["Cc"] = cc.strip()
         msg["Subject"] = subject
         msg.set_content(text_body or _html_to_text(html_body))
         msg.add_alternative(html_body, subtype="html")
@@ -97,6 +104,7 @@ async def send_avis_echeance(
     amount_total: float,
     due_date: str,
     pdf_bytes: Optional[bytes] = None,
+    cc: Optional[str] = None,
 ) -> bool:
     content = f"""
 <p>Bonjour {tenant_name},</p>
@@ -116,6 +124,7 @@ async def send_avis_echeance(
         html_body=_base_template(f"Avis d'échéance {period_label}", content),
         attachment_bytes=pdf_bytes,
         attachment_filename=f"avis-echeance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
+        cc=cc,
     )
 
 
@@ -125,6 +134,7 @@ async def send_quittance(
     period_label: str,
     amount: float,
     pdf_bytes: Optional[bytes] = None,
+    cc: Optional[str] = None,
 ) -> bool:
     content = f"""
 <p>Bonjour {tenant_name},</p>
@@ -138,6 +148,7 @@ async def send_quittance(
         html_body=_base_template(f"Quittance {period_label}", content),
         attachment_bytes=pdf_bytes,
         attachment_filename=f"quittance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
+        cc=cc,
     )
 
 
@@ -267,6 +278,7 @@ async def send_group_message(
     to: str,
     subject: str,
     body: str,
+    cc: Optional[str] = None,
 ) -> bool:
     content = f"""
 <p>{body.replace(chr(10), '<br>')}</p>
@@ -276,4 +288,5 @@ async def send_group_message(
         subject=subject,
         html_body=_base_template(subject, content),
         text_body=body,
+        cc=cc,
     )
