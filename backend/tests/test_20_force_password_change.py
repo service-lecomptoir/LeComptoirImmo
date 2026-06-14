@@ -81,3 +81,69 @@ async def test_internal_reset_password_sets_temporary_flag(client):
     token2 = login2.json()["access_token"]
     me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token2}"})
     assert me.json()["must_change_password"] is True
+
+
+@pytest.mark.asyncio
+async def test_account_created_by_manager_must_change_password(client, gestionnaire_token):
+    """Un compte locataire / propriétaire créé par un gestionnaire reçoit un mot de
+    passe provisoire → changement forcé à la 1re connexion."""
+    auth_mgr = {"Authorization": f"Bearer {gestionnaire_token}"}
+    for role in ("locataire", "proprietaire"):
+        email = f"{role}_{uuid.uuid4().hex[:8]}@locataire.demo"
+        temp_pw = "TempByMgr123!"
+        created = await client.post(
+            "/api/v1/users",
+            headers=auth_mgr,
+            json={"email": email, "password": temp_pw, "full_name": f"Compte {role}", "role": role},
+        )
+        assert created.status_code == 201, created.text
+        assert created.json()["must_change_password"] is True
+
+        # L'utilisateur se connecte et voit le drapeau, puis le change → false.
+        login = await client.post("/api/v1/auth/login", json={"email": email, "password": temp_pw})
+        token = login.json()["access_token"]
+        auth = {"Authorization": f"Bearer {token}"}
+        me = await client.get("/api/v1/auth/me", headers=auth)
+        assert me.json()["must_change_password"] is True
+
+        chg = await client.patch(
+            "/api/v1/users/me/password",
+            headers=auth,
+            json={"current_password": temp_pw, "new_password": "MyOwnPass456!"},
+        )
+        assert chg.status_code == 204, chg.text
+        me2 = await client.get("/api/v1/auth/me", headers=auth)
+        assert me2.json()["must_change_password"] is False
+
+
+@pytest.mark.asyncio
+async def test_manager_reset_of_subaccount_sets_temporary_flag(client, gestionnaire_token):
+    """Quand un gestionnaire réinitialise le mot de passe d'un locataire, celui-ci
+    est provisoire → changement forcé."""
+    auth_mgr = {"Authorization": f"Bearer {gestionnaire_token}"}
+    email = f"loc_{uuid.uuid4().hex[:8]}@locataire.demo"
+    created = await client.post(
+        "/api/v1/users",
+        headers=auth_mgr,
+        json={"email": email, "password": "TempByMgr123!", "full_name": "Loc Reset", "role": "locataire"},
+    )
+    uid = created.json()["id"]
+
+    # Le locataire pose son propre mot de passe (flag → false).
+    login = await client.post("/api/v1/auth/login", json={"email": email, "password": "TempByMgr123!"})
+    tok = login.json()["access_token"]
+    await client.patch("/api/v1/users/me/password", headers={"Authorization": f"Bearer {tok}"},
+                       json={"current_password": "TempByMgr123!", "new_password": "LocOwn789!"})
+
+    # Le gestionnaire réinitialise → de nouveau provisoire.
+    reset = await client.patch(
+        f"/api/v1/users/{uid}/password",
+        headers=auth_mgr,
+        json={"new_password": "MgrReset999!"},
+    )
+    assert reset.status_code == 204, reset.text
+
+    login2 = await client.post("/api/v1/auth/login", json={"email": email, "password": "MgrReset999!"})
+    tok2 = login2.json()["access_token"]
+    me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {tok2}"})
+    assert me.json()["must_change_password"] is True

@@ -22,6 +22,7 @@ function lazyPage<T extends ComponentType<any>>(factory: () => Promise<{ default
 }
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
+import { ForcePasswordChange } from '@/components/auth/ForcePasswordChange'
 import { useAuthStore, roleHomePath } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed, firstAllowedPath } from '@/lib/features'
@@ -145,6 +146,13 @@ function AppLayout() {
   // Vérification auth AVANT tout rendu de layout — élimine le flash de la sidebar
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  // Compte en mot de passe temporaire (gestionnaire provisionné par Alice, ou
+  // propriétaire / locataire créé par un gestionnaire) : on force la définition
+  // d'un mot de passe personnel avant tout accès, quel que soit le rôle.
+  if (user.must_change_password) {
+    return <ForcePasswordChange />
   }
 
   // Garde d'accès : une fonctionnalité non incluse dans le plan est inaccessible

@@ -181,8 +181,12 @@ async def create_user(
                 detail="Le plan Free ne permet pas de créer des comptes locataire. Faites évoluer votre formule.",
             )
 
-    # Passer current_user.id pour tracer le créateur (isolation GP)
-    new_user = await UserService.create(db, data, created_by=current_user.id)
+    # Passer current_user.id pour tracer le créateur (isolation GP).
+    # Le mot de passe est défini par le gestionnaire (communiqué au propriétaire /
+    # locataire) : compte provisoire → changement forcé à la 1re connexion.
+    new_user = await UserService.create(
+        db, data, created_by=current_user.id, must_change_password=True,
+    )
     from app.services import audit_service
     await audit_service.log(
         db, action=audit_service.USER_CREATE,
@@ -303,7 +307,9 @@ async def admin_reset_password(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Un gestionnaire ne peut réinitialiser que les comptes propriétaire ou locataire.",
             )
-    await UserService.admin_set_password(db, user_id, data.new_password)
+    # Mot de passe défini par le gestionnaire/admin (communiqué à l'utilisateur) :
+    # provisoire → changement forcé à la prochaine connexion.
+    await UserService.admin_set_password(db, user_id, data.new_password, temporary=True)
 
 
 # ── Domaines e-mail autorisés ────────────────────────────────────────────────

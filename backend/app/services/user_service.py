@@ -19,8 +19,15 @@ class UserService:
         db: AsyncSession,
         data: UserCreate,
         created_by: Optional[uuid.UUID] = None,
+        *,
+        must_change_password: bool = False,
     ) -> User:
-        """Crée un nouvel utilisateur après vérification de l'unicité de l'email."""
+        """Crée un nouvel utilisateur après vérification de l'unicité de l'email.
+
+        ``must_change_password=True`` : le mot de passe fourni est provisoire
+        (compte provisionné/communiqué par un tiers) et devra être changé à la
+        première connexion.
+        """
         result = await db.execute(select(User).where(User.email == data.email))
         if result.scalar_one_or_none():
             raise ConflictException(f"L'email '{data.email}' est déjà utilisé")
@@ -42,6 +49,7 @@ class UserService:
             phone=(getattr(data, "phone", None) or None),
             created_by=created_by,
             agency_id=agency_id,
+            must_change_password=must_change_password,
             ref_code=await make_ref(db, User.ref_code, user_prefix(data.role)),
         )
         db.add(user)

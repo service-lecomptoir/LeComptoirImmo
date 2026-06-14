@@ -1,7 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import type { Role } from '@/types/auth'
-import { ForcePasswordChange } from '@/components/auth/ForcePasswordChange'
 
 interface ProtectedRouteProps {
   requiredRole?: Role
@@ -23,13 +22,6 @@ export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />
-  }
-
-  // Compte en mot de passe temporaire (provisionné par Alice / réinitialisé) :
-  // on force la définition d'un mot de passe personnel avant tout accès, quel
-  // que soit le rôle et la route demandée.
-  if (user.must_change_password) {
-    return <ForcePasswordChange />
   }
 
   if (requiredRole) {
