@@ -393,14 +393,9 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-4 py-3 text-gray-500">{formatDate(u.created_at)}</td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(u)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Modifier"
-                      >
-                        <Pencil size={14} />
-                      </button>
+                    {/* Actions empilées verticalement (les unes sous les autres) :
+                        envoyer les identifiants, modifier, supprimer. */}
+                    <div className="flex flex-col items-end gap-1">
                       <button
                         onClick={() => sendCredentials(u)}
                         disabled={sendingCredsId === u.id || !u.email}
@@ -408,6 +403,13 @@ export default function AdminUsers() {
                         title="Envoyer les identifiants de connexion par e-mail (nouveau mot de passe temporaire)"
                       >
                         <Send size={14} />
+                      </button>
+                      <button
+                        onClick={() => openEdit(u)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Modifier"
+                      >
+                        <Pencil size={14} />
                       </button>
                       {u.id !== me?.id && (
                         <button
