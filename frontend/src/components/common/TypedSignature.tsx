@@ -47,8 +47,10 @@ export function TypedSignature({
   height?: number
 }) {
   const [mode, setMode] = useState<SignatureMode>(initialMode || 'type')
-  // En mode frappe : on restaure le texte enregistré (sinon le nom par défaut).
-  const [text, setText] = useState(initialText || defaultText)
+  // En mode frappe : on restaure UNIQUEMENT le texte enregistré. Le `defaultText`
+  // (nom du bailleur) n'est qu'une SUGGESTION cliquable, jamais une valeur
+  // pré-remplie : sinon une signature supprimée semble toujours contenir ce nom.
+  const [text, setText] = useState(initialText || '')
   const [font, setFont] = useState(initialFont || FONTS[0].id)
   // `edited` passe à true dès que l'utilisateur modifie quoi que ce soit. Tant
   // qu'il est false et qu'une signature existe, on l'affiche telle quelle.
@@ -211,6 +213,12 @@ export function TypedSignature({
             placeholder="Tapez votre nom"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
           />
+          {defaultText && !text.trim() && (
+            <button type="button" onClick={() => { setEdited(true); setText(defaultText) }}
+              className="text-xs text-blue-600 hover:underline mb-2">
+              Utiliser « {defaultText} »
+            </button>
+          )}
           <div className="flex flex-wrap gap-1.5 mb-2">
             {FONTS.map(f => (
               <button
