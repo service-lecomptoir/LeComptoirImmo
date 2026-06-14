@@ -678,24 +678,28 @@ async def download_quittance(
 ):
     from datetime import datetime, timezone
     payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
-
     # Isolation par rôle : locataire→le sien, propriétaire→son bien, mandataire→hors GP.
     await assert_payment_access(db, current_user, payment)
-
     # Règle : une quittance n'est générée que lorsque le mois est INTÉGRALEMENT payé.
     if payment.status != PaymentStatus.PAID:
         from app.core.exceptions import BadRequestException
         raise BadRequestException(
             "La quittance n'est disponible que lorsque le loyer du mois est intégralement payé."
         )
-
-    # Marquer comme générée si c'est la première fois
     if not payment.quittance_generated_at:
         payment.quittance_generated_at = datetime.now(timezone.utc)
         await db.flush()
         await db.commit()
-        # Rechargement nécessaire : le commit expire tous les objets ORM
         payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    pdf_bytes, filename = await build_quittance_pdf(db, payment)
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+async def build_quittance_pdf(db: AsyncSession, payment) -> tuple:
+    """Construit le PDF de quittance (blocs / template enregistré / .j2) et renvoie
+    (pdf_bytes, filename). Réutilisé par le téléchargement ET l'envoi par e-mail."""
+    from datetime import datetime, timezone  # noqa: F401 (compat imports locaux)
 
     from datetime import date as _date
     from app.services.template_layout_service import get_layout
@@ -771,8 +775,7 @@ async def download_quittance(
                            tenant=payment.tenant.full_name if payment.tenant else None,
                            property_name=_pobj0.name if _pobj0 else None,
                            month=payment.period_month, year=payment.period_year)
-            return Response(content=_pdf0, media_type="application/pdf",
-                            headers={"Content-Disposition": f'attachment; filename="{_fn0}"'})
+            return _pdf0, _fn0
 
     # 1) Template ENREGISTRÉ par le gestionnaire (éditeur) si présent…
     from app.services.document_render_service import render_saved_document, eur
@@ -846,11 +849,7 @@ async def download_quittance(
         month=payment.period_month,
         year=payment.period_year,
     )
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    return pdf_bytes, filename
 
 
 @router.post("/{payment_id}/quittance/send")
@@ -860,17 +859,38 @@ async def send_quittance(
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
     _feat: User = Depends(require_feature("quittances")),
 ):
-    """Marque la quittance comme envoyée au locataire."""
+    """Envoie la quittance par e-mail au locataire (PDF joint) et la marque envoyée."""
+    import logging
     from fastapi import HTTPException
+    _log = logging.getLogger(__name__)
     try:
         _existing = await PaymentService.get_by_id(db, payment_id, load_relations=True)
         await assert_payment_access(db, current_user, _existing, write=True)
         payment = await PaymentService.send_quittance(db, payment_id)
+        # Envoi e-mail réel du PDF au locataire (fail-soft : un échec d'envoi ne
+        # bloque pas le marquage « envoyée »).
+        email_sent = False
+        _to = getattr(getattr(payment, "tenant", None), "email", None)
+        if _to:
+            try:
+                pdf_bytes, _fn = await build_quittance_pdf(db, payment)
+                from app.services.email_service import send_quittance as _send_q
+                _amount = float(payment.amount_paid or 0) + float(getattr(payment, "amount_on_plan", 0) or 0)
+                email_sent = await _send_q(
+                    to=_to,
+                    tenant_name=payment.tenant.full_name if payment.tenant else "",
+                    period_label=payment.period_label,
+                    amount=_amount,
+                    pdf_bytes=pdf_bytes,
+                )
+            except Exception as _exc:  # noqa: BLE001
+                _log.warning("Envoi e-mail quittance échoué (%s): %s", payment_id, _exc)
         await db.commit()
         return {
             "id": str(payment.id),
             "quittance_generated_at": payment.quittance_generated_at,
             "quittance_sent_at": payment.quittance_sent_at,
+            "email_sent": email_sent,
         }
     except Exception as e:
         if "non payé" in str(e):

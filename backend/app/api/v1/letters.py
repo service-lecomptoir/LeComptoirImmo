@@ -128,6 +128,35 @@ async def lettre_relance(
     )
     await _save_to_tenant_docs(db, payment, current_user, pdf, filename,
                                f"Lettre de relance · {payment.period_label}")
+
+    # Notifier le locataire : e-mail (PDF joint) + SMS (fail-soft, n'empêche jamais
+    # le téléchargement de la relance).
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+    _ten = getattr(payment, "tenant", None)
+    _bal = f"{float(payment.balance):.2f}"
+    if _ten is not None and getattr(_ten, "email", None):
+        try:
+            from app.services.email_service import send_email
+            _body = (f"<p>Madame, Monsieur,</p>"
+                     f"<p>Sauf erreur de notre part, le loyer de la période "
+                     f"<strong>{payment.period_label}</strong> reste impayé "
+                     f"(solde dû : <strong>{_bal} €</strong>).</p>"
+                     f"<p>Merci de régulariser dans les meilleurs délais. La lettre de "
+                     f"relance est jointe en PDF.</p><p>Cordialement,<br>Votre gestionnaire</p>")
+            await send_email(to=_ten.email, subject=f"Rappel de loyer impayé : {payment.period_label}",
+                             html_body=_body, attachment_bytes=pdf, attachment_filename=filename)
+        except Exception as _exc:  # noqa: BLE001
+            _log.warning("E-mail relance échoué (%s): %s", payment_id, _exc)
+    if _ten is not None and getattr(_ten, "phone", None):
+        try:
+            from app.services.sms_service import send_sms
+            await send_sms(_ten.phone,
+                           f"Le Comptoir Immo : rappel, loyer {payment.period_label} impaye "
+                           f"(solde {_bal} EUR). Merci de regulariser.")
+        except Exception as _exc:  # noqa: BLE001
+            _log.warning("SMS relance échoué (%s): %s", payment_id, _exc)
+
     return Response(
         content=pdf,
         media_type="application/pdf",

@@ -267,7 +267,28 @@ async def mark_sent(
         avis = await AvisEcheanceService.mark_sent(db, avis_id)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
-        return _avis_to_summary(avis)
+        summary = _avis_to_summary(avis)
+        # Envoi e-mail de l'avis (PDF) au locataire (fail-soft).
+        email_sent = False
+        _to = getattr(getattr(avis, "tenant", None), "email", None)
+        if _to:
+            try:
+                from app.services.pdf_service import AvisEcheancePDFService
+                from app.services.email_service import send_avis_echeance
+                pdf = await AvisEcheancePDFService.generate(db, avis)
+                email_sent = await send_avis_echeance(
+                    to=_to,
+                    tenant_name=avis.tenant.full_name if avis.tenant else "",
+                    period_label=summary["period_label"],
+                    amount_total=float(avis.amount_total or 0),
+                    due_date=avis.due_date.strftime("%d/%m/%Y") if avis.due_date else "",
+                    pdf_bytes=pdf,
+                )
+            except Exception as _exc:  # noqa: BLE001
+                import logging
+                logging.getLogger(__name__).warning("Envoi e-mail avis échoué (%s): %s", avis_id, _exc)
+        summary["email_sent"] = email_sent
+        return summary
     except NotFoundException as e:
         raise HTTPException(status_code=404, detail=str(e))
 

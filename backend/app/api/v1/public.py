@@ -214,4 +214,30 @@ async def apply_to_listing(token: str, data: PublicApplicationIn, db: AsyncSessi
     )
     db.add(c)
     await db.commit()
+
+    # Notifier le gestionnaire (e-mail + SMS) qu'une nouvelle candidature est arrivée.
+    try:
+        mgr = await db.get(User, listing.created_by) if listing.created_by else None
+        prop = await db.get(Property, listing.property_id)
+        _pname = prop.name if prop else "votre bien"
+        if mgr is not None:
+            if getattr(mgr, "email", None):
+                from app.services.email_service import send_email
+                await send_email(
+                    to=mgr.email,
+                    subject=f"Nouvelle candidature : {_pname}",
+                    html_body=(f"<p>Une nouvelle candidature vient d'être déposée pour "
+                               f"<strong>{_pname}</strong>.</p>"
+                               f"<p>Candidat : <strong>{c.full_name}</strong> — {c.email}"
+                               f"{(' — ' + c.phone) if c.phone else ''}</p>"
+                               f"<p>Retrouvez le dossier dans « Candidatures ».</p>"),
+                )
+            if getattr(mgr, "phone", None):
+                from app.services.sms_service import send_sms
+                await send_sms(mgr.phone,
+                               f"Le Comptoir Immo : nouvelle candidature pour {_pname} ({c.full_name}).")
+    except Exception as _exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("Notif candidature échouée: %s", _exc)
+
     return {"status": "received"}
