@@ -1,6 +1,7 @@
 import uuid
 import calendar
-from datetime import date
+import logging
+from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy import select
@@ -25,6 +26,43 @@ from app.core.features import require_feature
 from app.schemas.apurement_plan import ApurementPlanCreate, InstallmentMark
 
 router = APIRouter(prefix="/apurement-plans", tags=["Apurement"])
+_log = logging.getLogger(__name__)
+
+
+async def _auto_send_quittance(db: AsyncSession, payment) -> None:
+    """Mois soldé par un plan d'apurement : génère (si besoin) la quittance et
+    l'envoie automatiquement par e-mail au locataire (PDF joint), exactement
+    comme un paiement intégral classique. Fail-soft : un échec d'envoi ne bloque
+    jamais le marquage de l'échéance ; la quittance reste « En attente » et
+    pourra être envoyée à la main (ex. locataire sans e-mail, SMTP indisponible)."""
+    if not getattr(payment, "quittance_generated_at", None):
+        payment.quittance_generated_at = datetime.now(timezone.utc)
+    if getattr(payment, "quittance_sent_at", None):
+        return  # déjà envoyée
+    try:
+        from app.config import get_settings
+        if not get_settings().smtp_enabled:
+            return
+        tenant = await db.get(Tenant, payment.tenant_id) if payment.tenant_id else None
+        to = getattr(tenant, "email", None) if tenant else None
+        if not to:
+            return
+        from app.api.v1.payments import build_quittance_pdf
+        pdf_bytes, _fn = await build_quittance_pdf(db, payment)
+        from app.services.email_service import send_quittance as _send_q
+        amount = float(payment.amount_paid or 0) + float(getattr(payment, "amount_on_plan", 0) or 0)
+        ok = await _send_q(
+            to=to,
+            tenant_name=getattr(tenant, "full_name", "") or "",
+            period_label=payment.period_label,
+            amount=amount,
+            pdf_bytes=pdf_bytes,
+        )
+        if ok:
+            payment.quittance_sent_at = datetime.now(timezone.utc)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Envoi auto quittance (apurement) échoué (%s): %s",
+                     getattr(payment, "id", None), exc)
 
 
 def _add_months(d: date, m: int) -> date:
@@ -204,6 +242,10 @@ async def mark_installment(
             completed = plan.status == "completed"
             if completed and _pay.balance <= 0.005 and _pay.status != _PS.PAID:
                 _pay.status = _PS.PAID
+                await db.flush()
+                # Le mois est désormais soldé : envoi automatique de la quittance
+                # (comme un paiement intégral classique).
+                await _auto_send_quittance(db, _pay)
                 await db.flush()
             elif (not completed) and _pay.status == _PS.PAID and (
                 getattr(_pay, "settled_by_plan", False) or float(getattr(_pay, "amount_on_plan", 0) or 0) > 0

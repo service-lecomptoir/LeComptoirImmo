@@ -168,3 +168,41 @@ class TestQuittance:
         resp = await client.get(f"/api/v1/payments/{payment.id}/quittance", headers=auth(gestionnaire_token))
         assert resp.status_code == 200, resp.text
         assert "pdf" in resp.headers.get("content-type", "")
+
+    async def test_apurement_settlement_generates_quittance(self, client, gestionnaire_token, gestionnaire_user, db):
+        """Quand un plan d'apurement solde le mois d'origine, le paiement passe
+        « payé » ET la quittance est générée (préparée pour l'envoi auto)."""
+        from app.models.payment import Payment, PaymentStatus
+        lease = await _setup_lease(db, gestionnaire_user)
+        # Mois partiellement réglé (600 / 900) → solde 300 reporté sur un plan.
+        payment = Payment(
+            lease_id=lease.id, tenant_id=lease.tenant_id,
+            period_year=2026, period_month=4, due_date=date.today(),
+            amount_rent=800.00, amount_charges=100.00, amount_due=900.00,
+            amount_paid=600.00, payment_date=date.today(), payment_method="virement",
+            status=PaymentStatus.PARTIAL,
+        )
+        db.add(payment)
+        await db.flush()
+
+        # Plan d'apurement d'une échéance couvrant le solde (300).
+        created = await client.post(
+            "/api/v1/apurement-plans",
+            headers=auth(gestionnaire_token),
+            json={"payment_id": str(payment.id), "installments": 1,
+                  "first_date": date.today().isoformat(), "total_amount": 300.0},
+        )
+        assert created.status_code in (200, 201), created.text
+        plan_id = created.json()["id"]
+
+        # Le gestionnaire pointe l'échéance comme payée → le mois est soldé.
+        marked = await client.patch(
+            f"/api/v1/apurement-plans/{plan_id}/installments/1",
+            headers=auth(gestionnaire_token),
+            json={"paid": True},
+        )
+        assert marked.status_code == 200, marked.text
+
+        await db.refresh(payment)
+        assert payment.status == PaymentStatus.PAID
+        assert payment.quittance_generated_at is not None
