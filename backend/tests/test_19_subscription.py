@@ -104,6 +104,12 @@ class TestSubscriptionResponseStructure:
             mock_class.return_value.__aexit__ = AsyncMock(return_value=None)
             mock_client.get.return_value = mock_response
 
+            # La licence est mise en cache (perf) ; le login du fixture a mis en
+            # cache l'état "non bloqué". On vide le cache pour que le statut bloqué
+            # mocké ici soit pris en compte immédiatement.
+            from app.services import alice_client
+            alice_client.invalidate_license_cache()
+
             resp = await client.get("/api/v1/subscription", headers=auth(gestionnaire_token))
             assert resp.status_code == 401
 

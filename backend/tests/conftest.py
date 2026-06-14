@@ -113,6 +113,17 @@ def mock_alice_http():
         yield
 
 
+@pytest.fixture(autouse=True)
+def _clear_alice_license_cache():
+    """La licence Alice est mise en cache (perf). En tests, chaque cas peut mocker
+    un statut différent (ex. is_blocked) : on vide le cache avant/après pour
+    garantir l'isolation."""
+    from app.services import alice_client
+    alice_client.invalidate_license_cache()
+    yield
+    alice_client.invalidate_license_cache()
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 async def _create_user(db: AsyncSession, email: str, password: str, role: str, name: str = None):
     from app.models.user import User
