@@ -52,7 +52,6 @@ const AvisEcheanceList = lazyPage(() => import('@/pages/avis-echeances/AvisEchea
 const ContactList = lazyPage(() => import('@/pages/contacts/ContactList'))
 const Automatisation = lazyPage(() => import('@/pages/automatisation/Automatisation'))
 const TemplateEditor = lazyPage(() => import('@/pages/templates/TemplateEditor'))
-const NotificationsSettings = lazyPage(() => import('@/pages/settings/NotificationsSettings'))
 const ProprietaireDashboard = lazyPage(() => import('@/pages/proprietaire/ProprietaireDashboard'))
 const ProprietaireBiens = lazyPage(() => import('@/pages/proprietaire/ProprietaireBiens'))
 const ProprietaireAnnonces = lazyPage(() => import('@/pages/proprietaire/ProprietaireAnnonces'))
@@ -215,7 +214,6 @@ export const router = createBrowserRouter([
       { path: 'contacts', element: <ContactList /> },
       { path: 'automatisation', element: <Automatisation /> },
       { path: 'templates', element: <TemplateEditor /> },
-      { path: 'notifications', element: <NotificationsSettings /> },
       { path: 'profil', element: <MonProfil /> },
       { path: 'guide', element: <GuideUtilisateur /> },
       { path: 'notifications', element: <NotificationList /> },

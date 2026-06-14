@@ -8,6 +8,7 @@ import {
   CheckCircle, Clock, AlertTriangle, Users, Settings, RefreshCw,
 } from 'lucide-react'
 import { schedulerApi, avisEcheancesApi } from '@/api/avis_echeances'
+import NotificationsSettings from '@/pages/settings/NotificationsSettings'
 
 const RULE_TYPES = [
   { value: 'avis_echeance', label: "Avis d'échéance", icon: Calendar, color: 'blue' },
@@ -310,7 +311,7 @@ export default function Automatisation() {
   const [rules, setRules] = useState<Rule[]>([])
   const [logs, setLogs] = useState<Log[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'scheduler'>('rules')
+  const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'scheduler' | 'canaux'>('rules')
   const [showRuleModal, setShowRuleModal] = useState(false)
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [editRule, setEditRule] = useState<Rule | null>(null)
@@ -506,6 +507,7 @@ export default function Automatisation() {
           { key: 'rules', label: "Règles d'automatisation" },
           { key: 'logs', label: 'Historique des envois' },
           { key: 'scheduler', label: 'Planificateur' },
+          { key: 'canaux', label: 'Canaux & tests' },
         ] as const).map(tab => (
           <button key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -761,6 +763,11 @@ export default function Automatisation() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Onglet Canaux & tests (état e-mail/SMS, test d'envoi, CC gestionnaire) ── */}
+      {activeTab === 'canaux' && (
+        <NotificationsSettings embedded />
       )}
 
       {showRuleModal && (

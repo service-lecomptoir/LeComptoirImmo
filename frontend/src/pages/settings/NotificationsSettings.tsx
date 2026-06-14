@@ -11,7 +11,7 @@ interface Status {
   cc_manager_emails: boolean
 }
 
-export default function NotificationsSettings() {
+export default function NotificationsSettings({ embedded = false }: { embedded?: boolean }) {
   const [status, setStatus] = useState<Status | null>(null)
   const [loading, setLoading] = useState(true)
   const [channel, setChannel] = useState<'email' | 'sms'>('email')
@@ -81,11 +81,13 @@ export default function NotificationsSettings() {
   )
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-        <p className="text-gray-500 text-sm mt-1">État des canaux e-mail / SMS et envoi de tests.</p>
-      </div>
+    <div className={embedded ? 'max-w-2xl' : 'p-4 sm:p-6 max-w-2xl'}>
+      {!embedded && (
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+          <p className="text-gray-500 text-sm mt-1">État des canaux e-mail / SMS et envoi de tests.</p>
+        </div>
+      )}
 
       {/* État des canaux */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5 divide-y divide-gray-100">

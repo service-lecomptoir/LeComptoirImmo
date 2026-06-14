@@ -17,7 +17,7 @@ import {
   Home, Receipt, BookUser, Zap, PenSquare, BarChart3,
   Calculator, MessageSquare, Wrench, Wallet, FileCheck,
   ShoppingBag, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
-  UserCheck, DoorOpen, AlertTriangle, BookText, Bell,
+  UserCheck, DoorOpen, AlertTriangle, BookText,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -48,7 +48,6 @@ export const navGestionnaire: NavItem[] = [
   { to: '/actualisation', icon: TrendingUp, label: 'Révision des loyers et charges' },
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Atelier de modèles' },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
   { to: '/signalements', icon: AlertTriangle, label: 'Signalements' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
@@ -115,7 +114,6 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/actualisation', icon: TrendingUp, label: 'Révision des loyers et charges' },
   { to: '/automatisation', icon: Zap, label: "Règles d'automatisation" },
   { to: '/templates', icon: PenSquare, label: 'Atelier de modèles' },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/incidents', icon: MessageSquare, label: 'Démarche' },
   { to: '/signalements', icon: AlertTriangle, label: 'Signalements' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
