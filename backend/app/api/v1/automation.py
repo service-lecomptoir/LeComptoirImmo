@@ -186,6 +186,33 @@ async def list_logs(
     return list(result.scalars().all())
 
 
+@router.delete("/logs/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_log(
+    log_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Supprime une ligne de l'historique des envois (dans le périmètre du rôle)."""
+    log = await db.get(CommunicationLog, log_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Entrée introuvable")
+    role = Role(current_user.role)
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        my_tenant_ids = set((await db.execute(
+            select(Tenant.id).where(Tenant.created_by == current_user.id)
+        )).scalars().all())
+        if log.tenant_id not in my_tenant_ids:
+            raise HTTPException(status_code=403, detail="Accès refusé")
+    elif role == Role.GESTIONNAIRE:
+        from app.api.v1._isolation import agency_tenant_ids
+        allowed = set(await agency_tenant_ids(db, current_user))
+        if log.tenant_id not in allowed:
+            raise HTTPException(status_code=403, detail="Accès refusé")
+    # admin : aucune restriction de périmètre
+    await db.delete(log)
+    await db.commit()
+
+
 # ── Communication groupée ─────────────────────────────────────────────────────
 
 @router.post("/send-group", status_code=status.HTTP_200_OK)

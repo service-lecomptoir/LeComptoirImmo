@@ -468,6 +468,17 @@ export default function Automatisation() {
     }
   }
 
+  const deleteLog = async (id: string) => {
+    if (!confirm('Supprimer cette ligne de l\'historique ?')) return
+    try {
+      await apiClient.delete(`/automation/logs/${id}`)
+      toast.success('Ligne supprimée.')
+      load()
+    } catch {
+      // erreur affichée par l'intercepteur (toast)
+    }
+  }
+
   const getRuleInfo = (type: string) => RULE_TYPES.find(t => t.value === type)
 
   const [running, setRunning] = useState(false)
@@ -673,6 +684,7 @@ export default function Automatisation() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Destinataire</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Objet</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Statut</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -698,6 +710,12 @@ export default function Automatisation() {
                         {log.status === 'sent' ? <CheckCircle size={10} /> : <Clock size={10} />}
                         {log.status}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button onClick={() => deleteLog(log.id)} title="Supprimer cette ligne"
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}
