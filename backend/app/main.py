@@ -78,6 +78,19 @@ async def lifespan(app: FastAPI):
     except Exception as _exc:
         logger.warning(f"Sync statuts avis ignoré : {_exc!r}")
 
+    # ── Règles d'automatisation par défaut (no-régression) ─────────────────────
+    # Seede les règles avis/quittance/rappels/relances pour les gestionnaires qui
+    # n'en ont aucune → les envois automatiques continuent, pilotés par les règles.
+    try:
+        from app.services.automation_engine import backfill_default_rules
+        async with AsyncSessionLocal() as _db:
+            nr = await backfill_default_rules(_db)
+            await _db.commit()
+        if nr:
+            logger.info(f"Règles d'automatisation par défaut créées : {nr}")
+    except Exception as _exc:
+        logger.warning(f"Backfill règles d'automatisation ignoré : {_exc!r}")
+
     # Crée les comptes de démonstration s'ils sont absents
     logger.info("Vérification des comptes par défaut...")
     await _seed_default_users()
@@ -384,6 +397,9 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_font VARCHAR(64)",
         # Mot de passe temporaire : forcer le changement à la 1re connexion.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE",
+        # Automatisation : clé d'idempotence des envois (anti-doublon).
+        "ALTER TABLE communication_logs ADD COLUMN IF NOT EXISTS dedup_key VARCHAR(200)",
+        "CREATE INDEX IF NOT EXISTS ix_communication_logs_dedup_key ON communication_logs (dedup_key)",
         # Mois reporté sur un plan d'apurement (sort des impayés/revenus, restaurable).
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settled_by_plan BOOLEAN NOT NULL DEFAULT FALSE",
         # Apurement partiel : part du solde reportée sur un plan sans solder tout le mois

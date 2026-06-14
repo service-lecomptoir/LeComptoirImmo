@@ -105,6 +105,7 @@ async def send_avis_echeance(
     due_date: str,
     pdf_bytes: Optional[bytes] = None,
     cc: Optional[str] = None,
+    subject: Optional[str] = None,
 ) -> bool:
     content = f"""
 <p>Bonjour {tenant_name},</p>
@@ -120,7 +121,7 @@ async def send_avis_echeance(
 """
     return await send_email(
         to=to,
-        subject=f"Avis d'échéance : {period_label}",
+        subject=subject or f"Avis d'échéance : {period_label}",
         html_body=_base_template(f"Avis d'échéance {period_label}", content),
         attachment_bytes=pdf_bytes,
         attachment_filename=f"avis-echeance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
@@ -135,6 +136,7 @@ async def send_quittance(
     amount: float,
     pdf_bytes: Optional[bytes] = None,
     cc: Optional[str] = None,
+    subject: Optional[str] = None,
 ) -> bool:
     content = f"""
 <p>Bonjour {tenant_name},</p>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getErrorMessage } from '@/utils/errors'
 import { apiClient } from '@/api/client'
+import { toast } from '@/store/toast'
 import {
   Zap, Plus, Trash2, Edit2, ToggleLeft, ToggleRight,
   Mail, MessageSquare, Bell, Calendar, Send,
@@ -119,22 +120,43 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Déclenchement (jours avant l'échéance)
-            </label>
-            <div className="flex items-center gap-3">
-              <input type="number" min={-30} max={30}
-                className="w-24 border rounded-lg px-3 py-2 text-sm text-center"
-                value={form.trigger_days}
-                onChange={e => setForm({ ...form, trigger_days: parseInt(e.target.value) || 0 })} />
-              <span className="text-sm text-gray-500">
-                {form.trigger_days > 0 ? `${form.trigger_days} jour${form.trigger_days > 1 ? 's' : ''} avant` :
-                 form.trigger_days < 0 ? `${Math.abs(form.trigger_days)} jour${Math.abs(form.trigger_days) > 1 ? 's' : ''} après` :
-                 'Le jour J'}
-              </span>
-            </div>
-          </div>
+          {(() => {
+            const isAvis = form.rule_type === 'avis_echeance'
+            const isReminder = ['rappel_impaye', 'relance_1', 'relance_2'].includes(form.rule_type)
+            const isEvent = form.rule_type === 'quittance'
+            const isManual = form.rule_type === 'communication_groupee'
+            if (isEvent) return (
+              <p className="text-sm text-gray-500">
+                La quittance est envoyée automatiquement dès qu'un mois est intégralement réglé (aucun délai à régler).
+              </p>
+            )
+            if (isManual) return (
+              <p className="text-sm text-gray-500">Communication ponctuelle, déclenchée manuellement (aucun délai).</p>
+            )
+            const d = Math.abs(form.trigger_days || 0)
+            const dir = isAvis ? 'avant' : 'après'
+            return (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {isAvis ? "Délai (jours avant l'échéance)" : "Délai (jours après l'échéance)"}
+                </label>
+                <div className="flex items-center gap-3">
+                  <input type="number" min={0} max={60}
+                    className="w-24 border rounded-lg px-3 py-2 text-sm text-center"
+                    value={d}
+                    onChange={e => setForm({ ...form, trigger_days: Math.abs(parseInt(e.target.value) || 0) })} />
+                  <span className="text-sm text-gray-500">
+                    {d === 0 ? "Le jour de l'échéance" : `${d} jour${d > 1 ? 's' : ''} ${dir} l'échéance`}
+                  </span>
+                </div>
+                {isReminder && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Envoyé tant que le loyer reste impayé après ce délai.
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Canal d'envoi</label>
@@ -380,15 +402,39 @@ export default function Automatisation() {
 
   const getRuleInfo = (type: string) => RULE_TYPES.find(t => t.value === type)
 
+  const [running, setRunning] = useState(false)
+  const runNow = async () => {
+    setRunning(true)
+    try {
+      const { data } = await apiClient.post('/automation/run')
+      const n = data?.sent ?? 0
+      toast.success(n > 0
+        ? `${n} envoi(s) déclenché(s) par vos règles.`
+        : 'Aucun envoi à effectuer pour le moment (rien d\'éligible).')
+      load()
+    } catch {
+      // toast via intercepteur
+    } finally {
+      setRunning(false)
+    }
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Règles d'automatisation</h1>
           <p className="text-sm text-gray-500 mt-1">Avis d'échéance, quittances, rappels, communications</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={runNow} disabled={running}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={running ? 'animate-spin' : ''} />
+            {running ? 'Exécution…' : 'Exécuter maintenant'}
+          </button>
           <button
             onClick={() => setShowGroupModal(true)}
             className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50"
@@ -404,6 +450,17 @@ export default function Automatisation() {
             Nouvelle règle
           </button>
         </div>
+      </div>
+
+      {/* Bandeau : les règles pilotent réellement les envois */}
+      <div className="mb-6 flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100 text-sm text-blue-800">
+        <Zap size={16} className="text-blue-600 shrink-0 mt-0.5" />
+        <p>
+          Ces règles pilotent <strong>tous les envois automatiques</strong> aux locataires (e-mail / SMS).
+          Les avis sont envoyés selon le délai <em>avant</em> l'échéance ; les rappels et relances, selon le délai
+          <em> après</em> l'échéance tant que le loyer reste impayé ; la quittance part dès qu'un mois est soldé.
+          Le contrôle quotidien est automatique ; « Exécuter maintenant » force un passage immédiat.
+        </p>
       </div>
 
       {/* Stats */}

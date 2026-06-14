@@ -85,6 +85,9 @@ class CommunicationLog(Base, TimestampMixin):
         nullable=True
     )
 
+    # Clé d'idempotence : une cible + une règle = un seul envoi (anti-doublon).
+    dedup_key: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
+
     channel: Mapped[str] = mapped_column(String(20), nullable=False)
     recipient: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     subject: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)

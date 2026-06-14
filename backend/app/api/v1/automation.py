@@ -137,6 +137,20 @@ async def toggle_rule(
     return rule
 
 
+@router.post("/run")
+async def run_rules_now(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Exécute immédiatement les règles d'automatisation du gestionnaire courant
+    (avis selon délai, rappels/relances d'impayés). Idempotent (dédup)."""
+    from app.services import automation_engine
+    summary = await automation_engine.run_all(db, manager_id=current_user.id)
+    await db.commit()
+    total = sum(summary.values()) if summary else 0
+    return {"sent": total, "detail": summary}
+
+
 # ── Logs de communication ─────────────────────────────────────────────────────
 
 @router.get("/logs", response_model=List[CommunicationLogResponse])

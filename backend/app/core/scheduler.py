@@ -69,18 +69,13 @@ async def _job_generate_monthly_payments() -> None:
 
 
 async def _job_generate_monthly_avis() -> None:
-    """1er de chaque mois à 7h30 : génère les avis d'échéances et les envoie par email."""
-    from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
+    """1er de chaque mois : GÉNÈRE les avis d'échéances (données). L'ENVOI est
+    entièrement piloté par les règles d'automatisation (voir _job_run_automation_rules)
+    — aucun envoi en dur ici."""
     from app.database import AsyncSessionLocal
     from app.services.avis_echeance_service import AvisEcheanceService
-    from app.services.email_service import send_avis_echeance
-    from app.models.avis_echeance import AvisEcheance
 
     today = date.today()
-    months = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-              "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
-
     async with AsyncSessionLocal() as db:
         try:
             count = await AvisEcheanceService.generate_monthly_all(
@@ -93,45 +88,22 @@ async def _job_generate_monthly_avis() -> None:
             )
         except Exception as exc:
             logger.error(f"[Scheduler] generate_monthly_avis error: {exc}")
-            return
 
-    # Envoi des emails — session séparée après commit
+
+async def _job_run_automation_rules() -> None:
+    """Chaque jour : exécute les règles d'automatisation (avis selon délai,
+    rappels/relances d'impayés). SEUL émetteur automatique."""
+    from app.database import AsyncSessionLocal
+    from app.services import automation_engine
+
     async with AsyncSessionLocal() as db:
         try:
-            avis_list = (await db.execute(
-                select(AvisEcheance)
-                .options(selectinload(AvisEcheance.tenant))
-                .where(
-                    AvisEcheance.period_year == today.year,
-                    AvisEcheance.period_month == today.month,
-                    AvisEcheance.generated_by.is_(None),  # auto-généré
-                )
-            )).scalars().all()
-
-            from app.services.cc_service import manager_cc_for_lease
-            sent = 0
-            for avis in avis_list:
-                tenant = avis.tenant
-                if not tenant or not tenant.email:
-                    continue
-                # Période réellement couverte (multi-mois selon la fréquence)
-                period_label = avis.period_range_label or f"{months[today.month]} {today.year}"
-                _cc = await manager_cc_for_lease(db, avis.lease_id)
-                ok = await send_avis_echeance(
-                    to=tenant.email,
-                    tenant_name=tenant.full_name or tenant.email,
-                    period_label=period_label,
-                    amount_total=float(avis.amount_total),
-                    due_date=avis.due_date.strftime("%d/%m/%Y"),
-                    cc=_cc,
-                )
-                if ok:
-                    sent += 1
-
-            if sent:
-                logger.info(f"[Scheduler] {sent} email(s) avis d'échéance envoyé(s)")
+            summary = await automation_engine.run_all(db, date.today())
+            await db.commit()
+            if summary:
+                logger.info(f"[Scheduler] Règles d'automatisation : {summary}")
         except Exception as exc:
-            logger.error(f"[Scheduler] email_monthly_avis error: {exc}")
+            logger.error(f"[Scheduler] run_automation_rules error: {exc}")
 
 
 async def _job_send_telegram_reminders() -> None:
@@ -250,6 +222,13 @@ def start_scheduler(
         misfire_grace_time=3600,
     )
     scheduler.add_job(
+        _job_run_automation_rules,
+        CronTrigger(hour=8, minute=5),
+        id="run_automation_rules",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
         _job_send_telegram_reminders,
         CronTrigger(hour=reminder_hour, minute=reminder_minute),
         id="telegram_reminders",
@@ -273,7 +252,7 @@ def start_scheduler(
 
     scheduler.start()
     logger.info(
-        "[Scheduler] Démarré : 7 tâches planifiées (avis: jour=%d %02d:%02d ; "
+        "[Scheduler] Démarré : 8 tâches planifiées (avis: jour=%d %02d:%02d ; "
         "rappels Telegram: %02d:%02d ; publication annonces: */10 min ; "
         "rappels bruit: lundi 10:00)",
         avis_day, avis_hour, avis_minute, reminder_hour, reminder_minute,

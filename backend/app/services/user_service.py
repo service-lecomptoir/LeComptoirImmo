@@ -69,6 +69,9 @@ class UserService:
             role_val = user.role.value if hasattr(user.role, "value") else str(user.role)
             if role_val in TEMPLATE_OWNER_ROLES:
                 await ensure_default_templates(db, user.id)
+                # Règles d'automatisation par défaut (avis/quittance/rappels/relances).
+                from app.services.automation_engine import ensure_default_rules
+                await ensure_default_rules(db, user.id)
         except Exception:
             pass
 

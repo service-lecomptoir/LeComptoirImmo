@@ -30,39 +30,12 @@ _log = logging.getLogger(__name__)
 
 
 async def _auto_send_quittance(db: AsyncSession, payment) -> None:
-    """Mois soldé par un plan d'apurement : génère (si besoin) la quittance et
-    l'envoie automatiquement par e-mail au locataire (PDF joint), exactement
-    comme un paiement intégral classique. Fail-soft : un échec d'envoi ne bloque
-    jamais le marquage de l'échéance ; la quittance reste « En attente » et
-    pourra être envoyée à la main (ex. locataire sans e-mail, SMTP indisponible)."""
-    if not getattr(payment, "quittance_generated_at", None):
-        payment.quittance_generated_at = datetime.now(timezone.utc)
-    if getattr(payment, "quittance_sent_at", None):
-        return  # déjà envoyée
+    """Mois soldé par un plan d'apurement : génération + envoi de la quittance
+    pilotés par la règle d'automatisation « quittance » (aucun envoi en dur).
+    Fail-soft : n'interrompt jamais le marquage de l'échéance."""
     try:
-        from app.config import get_settings
-        if not get_settings().smtp_enabled:
-            return
-        tenant = await db.get(Tenant, payment.tenant_id) if payment.tenant_id else None
-        to = getattr(tenant, "email", None) if tenant else None
-        if not to:
-            return
-        from app.api.v1.payments import build_quittance_pdf
-        pdf_bytes, _fn = await build_quittance_pdf(db, payment)
-        from app.services.email_service import send_quittance as _send_q
-        from app.services.cc_service import manager_cc_for_lease
-        _cc = await manager_cc_for_lease(db, payment.lease_id)
-        amount = float(payment.amount_paid or 0) + float(getattr(payment, "amount_on_plan", 0) or 0)
-        ok = await _send_q(
-            to=to,
-            tenant_name=getattr(tenant, "full_name", "") or "",
-            period_label=payment.period_label,
-            amount=amount,
-            pdf_bytes=pdf_bytes,
-            cc=_cc,
-        )
-        if ok:
-            payment.quittance_sent_at = datetime.now(timezone.utc)
+        from app.services.automation_engine import send_quittance_for_payment
+        await send_quittance_for_payment(db, payment)
     except Exception as exc:  # noqa: BLE001
         _log.warning("Envoi auto quittance (apurement) échoué (%s): %s",
                      getattr(payment, "id", None), exc)
