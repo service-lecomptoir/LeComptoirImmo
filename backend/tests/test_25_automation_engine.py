@@ -212,3 +212,40 @@ async def test_signature_passed_to_avis_email(db, gestionnaire_user):
     sig = sender.await_args.kwargs.get("signature_html") or ""
     assert "Service Gestion Locative" in sig
     assert "automatiquement par le système Le Comptoir" in sig
+
+
+@pytest.mark.asyncio
+async def test_rule_body_rendered_and_sent(db, gestionnaire_user):
+    lease = await _setup_lease(db, gestionnaire_user, email="loc.body@test.fr")
+    rule = _rule(gestionnaire_user.id, "avis_echeance", trigger_days=7)
+    rule.body_template = "Bonjour {{tenant_name}},\nLoyer {{period}} : {{amount}}."
+    db.add(rule); await db.flush()
+    avis = AvisEcheance(
+        lease_id=lease.id, tenant_id=lease.tenant_id, period_year=2026, period_month=6,
+        due_date=date.today(), amount_rent=800, amount_charges=100, amount_total=900,
+        kind="loyer", status=AvisEcheanceStatus.BROUILLON,
+    )
+    db.add(avis); await db.flush()
+
+    sender = AsyncMock(return_value=True)
+    with patch("app.services.email_service.send_avis_echeance", new=sender), \
+         patch("app.services.pdf_service.AvisEcheancePDFService.generate", new=AsyncMock(return_value=b"pdf")):
+        await automation_engine.run_all(db, date.today(), manager_id=gestionnaire_user.id)
+
+    body = sender.await_args.kwargs.get("body_html") or ""
+    assert "Auto Loc" in body  # {{tenant_name}} rendu
+    assert "<br>" in body       # saut de ligne converti
+
+
+@pytest.mark.asyncio
+async def test_default_rules_have_subject_and_body(db, gestionnaire_user):
+    await automation_engine.ensure_default_rules(db, gestionnaire_user.id)
+    rows = (await db.execute(
+        select(AutomationRule.rule_type, AutomationRule.subject, AutomationRule.body_template)
+        .where(AutomationRule.created_by == gestionnaire_user.id)
+    )).all()
+    for rt, subj, body in rows:
+        if rt == "communication_groupee":
+            continue
+        assert subj and subj.strip(), f"sujet manquant pour {rt}"
+        assert body and body.strip(), f"corps manquant pour {rt}"

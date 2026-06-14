@@ -139,8 +139,10 @@ async def send_avis_echeance(
     signature_html: Optional[str] = None,
     inline_logo: Optional[bytes] = None,
     inline_logo_subtype: str = "png",
+    body_html: Optional[str] = None,
 ) -> bool:
-    content = f"""
+    # Corps : celui de la règle (body_html, éditable) sinon corps par défaut.
+    inner = body_html if body_html else f"""
 <p>Bonjour {tenant_name},</p>
 <p>Vous trouverez ci-dessous votre avis d'échéance pour la période <strong>{period_label}</strong>.</p>
 <table style="width:100%;border-collapse:collapse;margin:16px 0">
@@ -149,7 +151,8 @@ async def send_avis_echeance(
   <tr><td style="padding:8px;color:#6b7280">Date d'échéance</td>
       <td style="padding:8px;font-weight:600">{due_date}</td></tr>
 </table>
-{"<p>Le détail de votre avis est joint à cet email en PDF.</p>" if pdf_bytes else ""}
+{"<p>Le détail de votre avis est joint à cet email en PDF.</p>" if pdf_bytes else ""}"""
+    content = f"""{inner}
 {signature_html or "<p>Cordialement,<br>Votre gestionnaire</p>"}
 """
     return await send_email(
@@ -173,11 +176,13 @@ async def send_quittance(
     signature_html: Optional[str] = None,
     inline_logo: Optional[bytes] = None,
     inline_logo_subtype: str = "png",
+    body_html: Optional[str] = None,
 ) -> bool:
-    content = f"""
+    inner = body_html if body_html else f"""
 <p>Bonjour {tenant_name},</p>
 <p>Votre paiement de <strong>{amount:.2f} €</strong> pour la période <strong>{period_label}</strong> a bien été enregistré.</p>
-{"<p>Votre quittance de loyer est jointe à cet email en PDF.</p>" if pdf_bytes else ""}
+{"<p>Votre quittance de loyer est jointe à cet email en PDF.</p>" if pdf_bytes else ""}"""
+    content = f"""{inner}
 {signature_html or "<p>Cordialement,<br>Votre gestionnaire</p>"}
 """
     return await send_email(

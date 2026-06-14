@@ -275,10 +275,18 @@ async def mark_sent(
             try:
                 from app.services.pdf_service import AvisEcheancePDFService
                 from app.services.email_service import send_avis_echeance
-                from app.services.cc_service import rule_cc_for_lease
+                from app.services.cc_service import rule_cc_for_lease, rule_message_for_lease
                 from app.services import mail_signature
+                from app.services.automation_engine import render_rule_body, render_subject
                 _cc = await rule_cc_for_lease(db, avis.lease_id, "avis_echeance")
                 _sig, _logo, _logosub = await mail_signature.build_for_lease(db, avis.lease_id, "avis_echeance")
+                _subjT, _bodyT = await rule_message_for_lease(db, avis.lease_id, "avis_echeance")
+                _ctx = {
+                    "tenant_name": (avis.tenant.full_name if avis.tenant else "") or "",
+                    "period": summary["period_label"],
+                    "amount": f"{float(avis.amount_total or 0):.2f} €",
+                    "due_date": avis.due_date.strftime("%d/%m/%Y") if avis.due_date else "",
+                }
                 pdf = await AvisEcheancePDFService.generate(db, avis)
                 email_sent = await send_avis_echeance(
                     to=_to,
@@ -287,8 +295,9 @@ async def mark_sent(
                     amount_total=float(avis.amount_total or 0),
                     due_date=avis.due_date.strftime("%d/%m/%Y") if avis.due_date else "",
                     pdf_bytes=pdf,
-                    cc=_cc,
+                    cc=_cc, subject=render_subject(_subjT, _ctx),
                     signature_html=_sig, inline_logo=_logo, inline_logo_subtype=_logosub,
+                    body_html=render_rule_body(_bodyT, _ctx),
                 )
             except Exception as _exc:  # noqa: BLE001
                 import logging

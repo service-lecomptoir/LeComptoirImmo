@@ -258,7 +258,7 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Corps du message</label>
-            <p className="text-xs text-gray-400 mb-1">Variables disponibles : {'{{'} tenant_name {'}}'}, {'{{'} amount {'}}'}, {'{{'} due_date {'}}'}, {'{{'} month {'}}'}</p>
+            <p className="text-xs text-gray-400 mb-1">Variables : {'{{'} tenant_name {'}}'}, {'{{'} period {'}}'}, {'{{'} amount {'}}'}, {'{{'} due_date {'}}'}, {'{{'} balance {'}}'}, {'{{'} property_name {'}}'}. La signature, le logo et la mention automatique sont ajoutés sous le message.</p>
             <textarea rows={5} className="w-full border rounded-lg px-3 py-2 text-sm font-mono text-xs"
               value={form.body_template}
               onChange={e => setForm({ ...form, body_template: e.target.value })} />

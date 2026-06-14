@@ -138,18 +138,31 @@ async def lettre_relance(
     if _ten is not None and getattr(_ten, "email", None):
         try:
             from app.services.email_service import send_email
-            from app.services.cc_service import rule_cc_for_lease
+            from app.services.cc_service import rule_cc_for_lease, rule_message_for_lease
             from app.services import mail_signature
-            _cc = await rule_cc_for_lease(db, payment.lease_id, "relance_1", "relance_2", "rappel_impaye")
-            _sig, _logo, _logosub = await mail_signature.build_for_lease(
-                db, payment.lease_id, "relance_1", "relance_2", "rappel_impaye")
-            _body = (f"<p>Madame, Monsieur,</p>"
-                     f"<p>Sauf erreur de notre part, le loyer de la période "
-                     f"<strong>{payment.period_label}</strong> reste impayé "
-                     f"(solde dû : <strong>{_bal} €</strong>).</p>"
-                     f"<p>Merci de régulariser dans les meilleurs délais. La lettre de "
-                     f"relance est jointe en PDF.</p>" + _sig)
-            await send_email(to=_ten.email, subject=f"Rappel de loyer impayé : {payment.period_label}",
+            from app.services.automation_engine import render_rule_body, render_subject
+            _types = ("relance_1", "relance_2", "rappel_impaye")
+            _cc = await rule_cc_for_lease(db, payment.lease_id, *_types)
+            _sig, _logo, _logosub = await mail_signature.build_for_lease(db, payment.lease_id, *_types)
+            _subjT, _bodyT = await rule_message_for_lease(db, payment.lease_id, *_types)
+            _ctx = {
+                "tenant_name": (getattr(_ten, "full_name", "") or ""),
+                "period": payment.period_label,
+                "balance": f"{_bal} €",
+                "due_date": payment.due_date.strftime("%d/%m/%Y") if payment.due_date else "",
+                "property_name": (property_obj.name if property_obj else ""),
+            }
+            # Corps : celui de la règle (éditable) sinon corps par défaut. La lettre
+            # de relance reste jointe en PDF dans tous les cas.
+            _default_body = (f"<p>Madame, Monsieur,</p>"
+                             f"<p>Sauf erreur de notre part, le loyer de la période "
+                             f"<strong>{payment.period_label}</strong> reste impayé "
+                             f"(solde dû : <strong>{_bal} €</strong>).</p>"
+                             f"<p>Merci de régulariser dans les meilleurs délais.</p>")
+            _body = (render_rule_body(_bodyT, _ctx) or _default_body) \
+                + "<p>La lettre de relance est jointe en PDF.</p>" + _sig
+            await send_email(to=_ten.email,
+                             subject=render_subject(_subjT, _ctx) or f"Rappel de loyer impayé : {payment.period_label}",
                              html_body=_body, attachment_bytes=pdf, attachment_filename=filename,
                              cc=_cc, inline_logo=_logo, inline_logo_subtype=_logosub)
         except Exception as _exc:  # noqa: BLE001

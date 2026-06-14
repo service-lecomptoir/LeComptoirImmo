@@ -42,6 +42,32 @@ async def rule_cc(db: AsyncSession, manager_id, *rule_types: str) -> Optional[st
         return None
 
 
+async def rule_message_for_lease(db: AsyncSession, lease_id, *rule_types: str):
+    """(subject, body_template) de la 1re règle active (parmi `rule_types`) du
+    gestionnaire du bail. Sert aux envois MANUELS pour réutiliser le contenu
+    éditable de la règle (cohérence avec l'automatique)."""
+    if not lease_id or not rule_types:
+        return None, None
+    try:
+        from app.models.lease import Lease
+        from app.models.automation import AutomationRule
+        lease = await db.get(Lease, lease_id)
+        mid = getattr(lease, "created_by", None) if lease else None
+        if not mid:
+            return None, None
+        row = (await db.execute(
+            select(AutomationRule.subject, AutomationRule.body_template).where(
+                AutomationRule.created_by == mid,
+                AutomationRule.rule_type.in_(list(rule_types)),
+                AutomationRule.is_active.is_(True),
+            ).limit(1)
+        )).first()
+        return (row[0], row[1]) if row else (None, None)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("rule_message_for_lease(%s) failed: %s", lease_id, exc)
+        return None, None
+
+
 async def rule_cc_for_lease(db: AsyncSession, lease_id, *rule_types: str) -> Optional[str]:
     """CC (selon la règle du type voulu) résolu via le gestionnaire créateur du bail."""
     if not lease_id:

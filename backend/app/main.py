@@ -82,12 +82,15 @@ async def lifespan(app: FastAPI):
     # Seede les règles avis/quittance/rappels/relances pour les gestionnaires qui
     # n'en ont aucune → les envois automatiques continuent, pilotés par les règles.
     try:
-        from app.services.automation_engine import backfill_default_rules
+        from app.services.automation_engine import backfill_default_rules, backfill_default_content
         async with AsyncSessionLocal() as _db:
             nr = await backfill_default_rules(_db)
+            nc = await backfill_default_content(_db)
             await _db.commit()
         if nr:
             logger.info(f"Règles d'automatisation par défaut créées : {nr}")
+        if nc:
+            logger.info(f"Contenu par défaut (sujet/corps) rempli pour {nc} règle(s)")
     except Exception as _exc:
         logger.warning(f"Backfill règles d'automatisation ignoré : {_exc!r}")
 

@@ -101,6 +101,69 @@ _DEFAULT_RULES = [
     ("relance_2", "Relance 2 (mise en demeure)", "email_sms", 15, _CTX),
 ]
 
+# Sujet et corps PAR DÉFAUT, ÉDITABLES dans la règle (rien en boîte noire).
+# Placeholders disponibles : {{tenant_name}} {{period}} {{amount}} {{due_date}}
+# {{balance}} {{property_name}}.
+_DEFAULT_SUBJECTS = {
+    "avis_echeance": "Avis d'échéance : {{period}}",
+    "quittance": "Quittance de loyer : {{period}}",
+    "rappel_impaye": "Rappel : loyer {{period}} impayé",
+    "relance_1": "Relance : loyer {{period}} impayé",
+    "relance_2": "Mise en demeure : loyer {{period}}",
+}
+_DEFAULT_BODIES = {
+    "avis_echeance": (
+        "Bonjour {{tenant_name}},\n\n"
+        "Vous trouverez ci-dessous votre avis d'échéance pour la période {{period}}.\n"
+        "Montant dû : {{amount}} — échéance le {{due_date}}.\n"
+        "Le détail de votre avis est joint à cet e-mail en PDF."
+    ),
+    "quittance": (
+        "Bonjour {{tenant_name}},\n\n"
+        "Nous accusons réception de votre règlement de {{amount}} pour la période {{period}}.\n"
+        "Votre quittance de loyer est jointe à cet e-mail en PDF."
+    ),
+    "rappel_impaye": (
+        "Bonjour {{tenant_name}},\n\n"
+        "Sauf erreur de notre part, le loyer de la période {{period}} reste impayé "
+        "(solde dû : {{balance}}).\n"
+        "Merci de régulariser dans les meilleurs délais."
+    ),
+    "relance_1": (
+        "Bonjour {{tenant_name}},\n\n"
+        "Malgré notre précédent message, le loyer de la période {{period}} demeure impayé "
+        "(solde dû : {{balance}}).\n"
+        "Nous vous remercions de bien vouloir régulariser sans délai."
+    ),
+    "relance_2": (
+        "Bonjour {{tenant_name}},\n\n"
+        "À défaut de règlement du loyer de la période {{period}} (solde dû : {{balance}}), "
+        "la présente vaut mise en demeure de régulariser sous huitaine.\n"
+        "À défaut, nous serons contraints d'engager les démarches de recouvrement."
+    ),
+}
+
+
+def _body_to_html(text: Optional[str]) -> str:
+    """Convertit un corps (texte simple éditable) en HTML pour l'e-mail."""
+    if not text:
+        return ""
+    return "<div>" + text.replace("\n", "<br>") + "</div>"
+
+
+def render_rule_body(template: Optional[str], ctx: dict) -> Optional[str]:
+    """Rend le corps d'une règle (placeholders + sauts de ligne → HTML)."""
+    if not template or not template.strip():
+        return None
+    return _body_to_html(_render(template, ctx))
+
+
+def render_subject(template: Optional[str], ctx: dict) -> Optional[str]:
+    """Rend le sujet d'une règle (placeholders)."""
+    if not template or not template.strip():
+        return None
+    return _render(template, ctx)
+
 
 async def ensure_default_rules(db: AsyncSession, gestionnaire_id) -> int:
     """Crée les règles d'automatisation par défaut manquantes pour un gestionnaire
@@ -123,11 +186,36 @@ async def ensure_default_rules(db: AsyncSession, gestionnaire_id) -> int:
             name=name, rule_type=rule_type, channel=channel,
             trigger_days=days, is_active=True, created_by=gestionnaire_id,
             cc_emails=cc_default, signature=signature,
+            subject=_DEFAULT_SUBJECTS.get(rule_type),
+            body_template=_DEFAULT_BODIES.get(rule_type),
         ))
         created += 1
     if created:
         await db.flush()
     return created
+
+
+async def backfill_default_content(db: AsyncSession) -> int:
+    """Au démarrage : remplit le SUJET et le CORPS par défaut (éditables) des règles
+    existantes qui n'en ont pas, par type. Rend le contenu visible et modifiable
+    dans l'éditeur (plus de corps « en boîte noire »). Ne touche pas un contenu
+    déjà personnalisé."""
+    from app.models.automation import AutomationRule
+    rules = (await db.execute(select(AutomationRule))).scalars().all()
+    n = 0
+    for r in rules:
+        changed = False
+        if not (r.body_template or "").strip() and _DEFAULT_BODIES.get(r.rule_type):
+            r.body_template = _DEFAULT_BODIES[r.rule_type]
+            changed = True
+        if not (r.subject or "").strip() and _DEFAULT_SUBJECTS.get(r.rule_type):
+            r.subject = _DEFAULT_SUBJECTS[r.rule_type]
+            changed = True
+        if changed:
+            n += 1
+    if n:
+        await db.flush()
+    return n
 
 
 async def backfill_default_rules(db: AsyncSession) -> int:
@@ -196,6 +284,7 @@ async def _send_avis(db, rule, avis, today: date) -> bool:
                 period_label=period, amount_total=float(avis.amount_total or 0),
                 due_date=ctx["due_date"], pdf_bytes=pdf, cc=cc, subject=subject,
                 signature_html=sig_html, inline_logo=logo, inline_logo_subtype=logo_sub,
+                body_html=render_rule_body(rule.body_template, ctx),
             )
             any_sent = any_sent or ok
         except Exception as exc:  # noqa: BLE001
@@ -282,7 +371,7 @@ async def _send_reminder(db, rule, payment, today: date) -> bool:
         f"<strong>{ctx['period']}</strong> reste impayé (solde dû : "
         f"<strong>{ctx['balance']}</strong>).</p>"
         f"<p>Merci de régulariser dans les meilleurs délais.</p>")
-    body_html = _render(rule.body_template, ctx) or default_body
+    body_html = render_rule_body(rule.body_template, ctx) or default_body
     sms_text = (_render(rule.body_template, ctx) if rule.body_template else None) or (
         f"Le Comptoir Immo : {label.lower()}, loyer {ctx['period']} impaye "
         f"(solde {ctx['balance']}). Merci de regulariser.")
@@ -405,7 +494,8 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
             ok = await _send_q(to=tenant.email, tenant_name=tenant.full_name or "",
                                period_label=ctx["period"], amount=amount,
                                pdf_bytes=pdf, cc=cc, subject=subject,
-                               signature_html=sig_html, inline_logo=logo, inline_logo_subtype=logo_sub)
+                               signature_html=sig_html, inline_logo=logo, inline_logo_subtype=logo_sub,
+                               body_html=render_rule_body(rule.body_template, ctx))
             any_sent = any_sent or ok
         except Exception as exc:  # noqa: BLE001
             logger.warning("[automation] quittance email échec payment=%s: %r", payment.id, exc)
