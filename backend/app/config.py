@@ -41,7 +41,9 @@ class Settings(BaseSettings):
     ALICE_URL: str = "http://localhost:8001"
     ALICE_INTERNAL_KEY: str = "lecomptoir-internal-dev-key-change-in-production"
 
-    # ── SMTP (désactivé si SMTP_HOST est vide) ───────────────────────────────
+    # ── SMTP / e-mail (désactivé si SMTP_HOST est vide) ──────────────────────
+    # Brevo (recommandé) : SMTP_HOST=smtp-relay.brevo.com, SMTP_PORT=587,
+    # SMTP_USER=<login SMTP Brevo>, SMTP_PASSWORD=<clé SMTP Brevo>, SMTP_TLS=true.
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
@@ -49,6 +51,13 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@lecomptoirimmo.fr"
     SMTP_FROM_NAME: str = "Le Comptoir Immo"
     SMTP_TLS: bool = True
+
+    # ── SMS via Brevo (désactivé si BREVO_API_KEY est vide) ──────────────────
+    # Brevo (ex-Sendinblue), API transactionnelle SMS. Clé : app.brevo.com →
+    # « SMTP & API » → API Keys. SMS_SENDER = expéditeur affiché (≤ 11 caractères
+    # alphanumériques, pas d'espace). Fail-soft : si désactivé, les SMS sont simulés.
+    BREVO_API_KEY: str = ""
+    SMS_SENDER: str = "LeComptoir"
 
     # Destinataire des notifications de nouvelles demandes de souscription
     # (vide → repli sur FIRST_ADMIN_EMAIL).
@@ -81,6 +90,10 @@ class Settings(BaseSettings):
     @property
     def smtp_enabled(self) -> bool:
         return bool(self.SMTP_HOST)
+
+    @property
+    def sms_enabled(self) -> bool:
+        return bool(self.BREVO_API_KEY)
 
     # ── First Admin ──────────────────────────────────────────────────────────
     FIRST_ADMIN_EMAIL: str = "admin@locataire-cloud.fr"

@@ -292,3 +292,43 @@ async def preview_template(
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="apercu_{template}.pdf"'},
     )
+
+
+# ── État + test des canaux de notification (e-mail / SMS) ─────────────────────
+class TestNotifyIn(BaseModel):
+    channel: str = Field(..., pattern="^(email|sms)$")
+    to: str = Field(..., description="Adresse e-mail ou numéro de téléphone destinataire")
+
+
+@router.get("/notifications-status")
+async def notifications_status(current_user: User = Depends(get_current_gestionnaire)):
+    """Indique si l'e-mail (SMTP) et le SMS (Brevo) sont configurés/activés."""
+    from app.config import get_settings
+    cfg = get_settings()
+    return {
+        "email_enabled": cfg.smtp_enabled,
+        "sms_enabled": cfg.sms_enabled,
+        "smtp_from": cfg.SMTP_FROM_EMAIL,
+        "sms_sender": cfg.SMS_SENDER,
+    }
+
+
+@router.post("/test-notification")
+async def test_notification(
+    body: TestNotifyIn,
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Envoie un e-mail ou un SMS de test (pour valider la configuration Brevo)."""
+    if body.channel == "email":
+        from app.services.email_service import send_email
+        ok = await send_email(
+            to=body.to,
+            subject="Le Comptoir Immo : e-mail de test",
+            html_body="<p>Ceci est un e-mail de test. Votre configuration SMTP fonctionne ✅</p>",
+        )
+        return {"channel": "email", "to": body.to, "sent": ok,
+                "detail": "Envoyé" if ok else "Désactivé (SMTP non configuré) ou erreur — voir logs"}
+    from app.services.sms_service import send_sms
+    ok = await send_sms(body.to, "Le Comptoir Immo : SMS de test. Configuration OK.")
+    return {"channel": "sms", "to": body.to, "sent": ok,
+            "detail": "Envoyé" if ok else "Désactivé (BREVO_API_KEY absente), numéro invalide, ou erreur — voir logs"}
