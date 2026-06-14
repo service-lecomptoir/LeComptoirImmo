@@ -72,6 +72,7 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
     logo_path = None
     sender_name, sender_addr = "", ""
     owner_company, owner_national_id = "", ""
+    user_signature = ""
     if gestionnaire_user_id:
         user = (await db.execute(select(User).where(User.id == gestionnaire_user_id))).scalar_one_or_none()
         if user:
@@ -80,6 +81,7 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
             sender_addr = getattr(user, "address", "") or ""
             owner_company = getattr(user, "owner_company", "") or ""
             owner_national_id = getattr(user, "owner_national_id", "") or ""
+            user_signature = getattr(user, "signature", "") or ""
 
     from app.services.document_render_service import build_emitter_address
     variables = dict(variables)
@@ -88,6 +90,9 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
     if not variables.get("company_address"):
         # Émetteur enrichi : Société + « SIRET : … » + adresse (sidebar de l'en-tête).
         variables["company_address"] = build_emitter_address(sender_addr, owner_company, owner_national_id)
+    # Signature du gestionnaire (apposée en pied par le bloc « signature »).
+    if not variables.get("signature_uri"):
+        variables["signature_uri"] = user_signature
 
     html = render_avis_blocks_html(blocks, theme, variables, line_items=line_items, logo_path=logo_path)
     return html_to_pdf(html)
