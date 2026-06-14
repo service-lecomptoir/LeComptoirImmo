@@ -101,6 +101,7 @@ class UserResponse(BaseModel):
     full_name: str
     role: Role
     is_active: bool
+    must_change_password: bool = False
     phone: Optional[str] = None
     address: Optional[str] = None
     zip_code: Optional[str] = None

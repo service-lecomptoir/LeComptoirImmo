@@ -167,15 +167,24 @@ class UserService:
         if not verify_password(data.current_password, user.hashed_password):
             raise BadRequestException("Mot de passe actuel incorrect")
         user.hashed_password = hash_password(data.new_password)
+        # L'utilisateur a défini son propre mot de passe : le compte n'est plus
+        # en « mot de passe temporaire ».
+        user.must_change_password = False
         await db.flush()
 
     @staticmethod
     async def admin_set_password(
-        db: AsyncSession, user_id: uuid.UUID, new_password: str
+        db: AsyncSession, user_id: uuid.UUID, new_password: str,
+        *, temporary: bool = False,
     ) -> None:
-        """Réinitialise le mot de passe sans vérifier l'ancien (action gestionnaire/admin)."""
+        """Réinitialise le mot de passe sans vérifier l'ancien (action gestionnaire/admin).
+
+        ``temporary=True`` marque le compte pour forcer le changement à la
+        prochaine connexion (mot de passe provisoire communiqué à l'utilisateur).
+        """
         user = await UserService.get_by_id(db, user_id)
         user.hashed_password = hash_password(new_password)
+        user.must_change_password = temporary
         await db.flush()
 
     @staticmethod

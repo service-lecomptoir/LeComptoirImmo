@@ -7,6 +7,9 @@ export interface User {
   full_name: string
   role: Role
   is_active: boolean
+  // Mot de passe temporaire (compte provisionné/réinitialisé) : tant que true,
+  // l'utilisateur est forcé de définir un nouveau mot de passe à la connexion.
+  must_change_password?: boolean
   phone?: string | null
   address?: string | null
   zip_code?: string | null

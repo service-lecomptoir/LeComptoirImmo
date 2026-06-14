@@ -382,6 +382,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_mode VARCHAR(16)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_text TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_font VARCHAR(64)",
+        # Mot de passe temporaire : forcer le changement à la 1re connexion.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE",
         # Mois reporté sur un plan d'apurement (sort des impayés/revenus, restaurable).
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settled_by_plan BOOLEAN NOT NULL DEFAULT FALSE",
         # Apurement partiel : part du solde reportée sur un plan sans solder tout le mois

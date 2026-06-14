@@ -200,6 +200,9 @@ async def create_manager(
         user.phone = data.phone
     if data.address is not None:
         user.address = data.address
+    # Mot de passe provisoire défini par Alice : le gestionnaire devra le
+    # changer à sa première connexion (LeComptoir Immo / Séjour).
+    user.must_change_password = True
     await db.flush()
     await db.commit()
     await db.refresh(user)
@@ -347,7 +350,7 @@ async def reset_manager_password(
     target = await db.get(User, manager_id)
     if target is None or target.role not in _MANAGER_ROLES:
         raise HTTPException(status_code=404, detail="Gestionnaire introuvable.")
-    await UserService.admin_set_password(db, manager_id, data.new_password)
+    await UserService.admin_set_password(db, manager_id, data.new_password, temporary=True)
     await db.commit()
 
 

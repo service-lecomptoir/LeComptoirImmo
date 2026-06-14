@@ -31,6 +31,12 @@ class User(Base, TimestampMixin):
         default=Role.LECTURE,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Mot de passe temporaire (compte gestionnaire provisionné par Alice ou
+    # réinitialisé par un admin) : tant que True, l'utilisateur est forcé de
+    # définir un nouveau mot de passe à sa prochaine connexion.
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
 
     # ── Coordonnées (profil — agence/gestionnaire) ────────────────────────────
     # full_name = NOM DE LA RÉSIDENCE (marque/affichage partout).
