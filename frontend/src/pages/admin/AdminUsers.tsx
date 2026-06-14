@@ -3,9 +3,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
-  Users, Plus, Pencil, Trash2, ShieldCheck, CheckCircle, XCircle,
+  Users, Plus, Pencil, Trash2, ShieldCheck, CheckCircle, XCircle, Send,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import { toast } from '@/store/toast'
 import { tenantsApi } from '@/api/tenants'
 import { ownersApi } from '@/api/owners'
 import { Modal } from '@/components/common/Modal'
@@ -117,6 +118,7 @@ export default function AdminUsers() {
   const [showCreate, setShowCreate] = useState(false)
   const [editTarget, setEditTarget] = useState<User | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
+  const [sendingCredsId, setSendingCredsId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -264,6 +266,26 @@ export default function AdminUsers() {
     }
   }
 
+  // ── Envoyer les identifiants de connexion par e-mail ──
+  const sendCredentials = async (u: User) => {
+    if (!confirm(
+      `Envoyer les identifiants de connexion à ${u.email} ?\n\n` +
+      `Un nouveau mot de passe temporaire sera généré et envoyé par e-mail ` +
+      `(le mot de passe actuel n'est pas récupérable). ` +
+      `L'utilisateur devra le changer à sa première connexion.`
+    )) return
+    setSendingCredsId(u.id)
+    try {
+      const { data } = await apiClient.post(`/users/${u.id}/send-credentials`)
+      if (data?.email_sent) toast.success(`Identifiants envoyés à ${u.email}.`)
+      else toast.error(data?.detail || "Mot de passe défini, mais e-mail non envoyé (SMTP désactivé ou erreur).")
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, "Échec de l'envoi des identifiants."))
+    } finally {
+      setSendingCredsId(null)
+    }
+  }
+
   // ── Delete ──
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -378,6 +400,14 @@ export default function AdminUsers() {
                         title="Modifier"
                       >
                         <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => sendCredentials(u)}
+                        disabled={sendingCredsId === u.id || !u.email}
+                        className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-40"
+                        title="Envoyer les identifiants de connexion par e-mail (nouveau mot de passe temporaire)"
+                      >
+                        <Send size={14} />
                       </button>
                       {u.id !== me?.id && (
                         <button

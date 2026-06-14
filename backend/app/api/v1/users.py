@@ -312,6 +312,70 @@ async def admin_reset_password(
     await UserService.admin_set_password(db, user_id, data.new_password, temporary=True)
 
 
+def _generate_temp_password(length: int = 10) -> str:
+    """Mot de passe temporaire lisible (sans caractères ambigus)."""
+    import secrets
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+@router.post("/{user_id}/send-credentials", summary="Envoyer les identifiants de connexion par e-mail")
+async def send_user_credentials(
+    user_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_admin),
+    _feat: User = Depends(require_feature("admin")),
+):
+    """Génère un mot de passe TEMPORAIRE, le pose sur le compte (changement forcé à
+    la 1re connexion) et envoie un e-mail à l'utilisateur avec son identifiant et ce
+    mot de passe. Le mot de passe actuel n'étant pas récupérable (haché), on en émet
+    un nouveau. Respecte l'isolation (GP : ses comptes ; mandataire : proprio/locataire)."""
+    role = Role(current_user.role)
+    target = await UserService.get_by_id(db, user_id)
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        await _require_gp_scope(db, current_user, user_id)
+    elif role == Role.GESTIONNAIRE:
+        if Role(target.role) not in _GESTIONNAIRE_ALLOWED_ROLES:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Un gestionnaire ne peut envoyer les identifiants que des comptes propriétaire ou locataire.",
+            )
+    if not (target.email or "").strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Ce compte n'a pas d'adresse e-mail.")
+
+    temp_password = _generate_temp_password()
+    await UserService.admin_set_password(db, user_id, temp_password, temporary=True)
+    await db.commit()
+
+    email_sent = False
+    try:
+        from app.services.email_service import send_credentials
+        email_sent = await send_credentials(
+            to=target.email, login=target.email,
+            password=temp_password, full_name=target.full_name,
+        )
+    except Exception as _exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("Envoi identifiants échoué (%s): %s", user_id, _exc)
+
+    # Audit : ne jamais journaliser le mot de passe.
+    from app.services import audit_service
+    await audit_service.log(
+        db, action="user.send_credentials",
+        user_id=current_user.id, user_email=current_user.email,
+        entity_type="user", entity_id=target.id,
+        details={"to": target.email, "email_sent": email_sent},
+    )
+    await db.commit()
+    return {
+        "email_sent": email_sent,
+        "to": target.email,
+        "detail": ("Identifiants envoyés par e-mail." if email_sent
+                   else "Mot de passe temporaire défini, mais e-mail non envoyé (SMTP désactivé ou erreur)."),
+    }
+
+
 # ── Domaines e-mail autorisés ────────────────────────────────────────────────
 # Domaines de fournisseurs publics : envoi depuis ces domaines impossible.
 _PUBLIC_EMAIL_DOMAINS = {

@@ -4,6 +4,8 @@ Mot de passe temporaire : un gestionnaire provisionné par Alice (POST /internal
 passe à la première connexion. Le flag retombe à False après changement.
 """
 import uuid
+from unittest.mock import patch
+
 import pytest
 
 from app.config import get_settings
@@ -146,4 +148,33 @@ async def test_manager_reset_of_subaccount_sets_temporary_flag(client, gestionna
     login2 = await client.post("/api/v1/auth/login", json={"email": email, "password": "MgrReset999!"})
     tok2 = login2.json()["access_token"]
     me = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {tok2}"})
+    assert me.json()["must_change_password"] is True
+
+
+@pytest.mark.asyncio
+async def test_send_credentials_sets_temp_password(client, admin_token, locataire_user):
+    """Le bouton « Envoyer les identifiants » génère un mot de passe temporaire,
+    l'envoie par e-mail, et force le changement à la 1re connexion."""
+    captured = {}
+
+    async def _fake_send(**kw):
+        captured.update(kw)
+        return True
+
+    with patch("app.services.email_service.send_credentials", new=_fake_send):
+        r = await client.post(
+            f"/api/v1/users/{locataire_user.id}/send-credentials",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+    assert r.status_code == 200, r.text
+    assert r.json()["email_sent"] is True
+    assert captured.get("login") == locataire_user.email
+    temp = captured.get("password")
+    assert temp and len(temp) >= 8
+
+    # Le nouveau mot de passe temporaire fonctionne et impose un changement.
+    login = await client.post("/api/v1/auth/login", json={"email": locataire_user.email, "password": temp})
+    assert login.status_code == 200, login.text
+    me = await client.get("/api/v1/auth/me",
+                          headers={"Authorization": f"Bearer {login.json()['access_token']}"})
     assert me.json()["must_change_password"] is True

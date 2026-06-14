@@ -195,6 +195,35 @@ async def send_quittance(
     )
 
 
+async def send_credentials(
+    to: str,
+    login: str,
+    password: str,
+    full_name: Optional[str] = None,
+    login_url: str = "https://immo.lecomptoir.services/login",
+) -> bool:
+    """Envoie les identifiants de connexion (identifiant + mot de passe TEMPORAIRE)
+    à un utilisateur. Le mot de passe devra être changé à la 1re connexion."""
+    content = f"""
+<p>Bonjour {full_name or ""},</p>
+<p>Voici vos identifiants pour accéder à votre espace <strong>Le Comptoir Immo</strong> :</p>
+<table style="width:100%;border-collapse:collapse;margin:16px 0">
+  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">Identifiant</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">{login}</td></tr>
+  <tr><td style="padding:8px;color:#6b7280">Mot de passe temporaire</td>
+      <td style="padding:8px;font-weight:600">{password}</td></tr>
+</table>
+<p>Connectez-vous sur <a href="{login_url}">{login_url}</a>. Pour votre sécurité, il vous
+sera demandé de définir un nouveau mot de passe lors de votre première connexion.</p>
+<p>Cordialement,<br>Votre gestionnaire</p>
+"""
+    return await send_email(
+        to=to,
+        subject="Vos identifiants de connexion — Le Comptoir Immo",
+        html_body=_base_template("Vos identifiants de connexion", content),
+    )
+
+
 async def send_revision_loyer(
     to: str,
     tenant_name: str,
