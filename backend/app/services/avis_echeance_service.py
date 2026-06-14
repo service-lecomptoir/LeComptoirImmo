@@ -82,12 +82,16 @@ class AvisEcheanceService:
                 f"Le bail ne couvre pas la période {month:02d}/{year}."
             )
 
-        # Vérifier unicité sur la clé de période (premier mois couvert)
+        # Vérifier unicité sur la clé de période (premier mois couvert).
+        # IMPORTANT : seuls les avis de LOYER comptent ici. Un avis d'apurement
+        # (kind='apurement') pour la même période ne doit PAS bloquer la création
+        # de l'avis de loyer — ils coexistent (cf. index uq_avis_loyer_period).
         existing = (await db.execute(
             select(AvisEcheance).where(
                 AvisEcheance.lease_id == lease.id,
                 AvisEcheance.period_year == bp.key_year,
                 AvisEcheance.period_month == bp.key_month,
+                (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
             )
         )).scalar_one_or_none()
 

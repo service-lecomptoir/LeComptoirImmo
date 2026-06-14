@@ -206,3 +206,24 @@ class TestQuittance:
         await db.refresh(payment)
         assert payment.status == PaymentStatus.PAID
         assert payment.quittance_generated_at is not None
+
+
+@pytest.mark.asyncio
+async def test_loyer_avis_not_blocked_by_apurement_avis(db, gestionnaire_user):
+    """Un avis d'apurement pour une période ne doit pas empêcher la création de
+    l'avis de loyer de cette même période (ils coexistent)."""
+    from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
+    from app.services.avis_echeance_service import AvisEcheanceService
+    lease = await _setup_lease(db, gestionnaire_user)
+    y, m = date.today().year, date.today().month
+    # Avis d'apurement préexistant sur la période.
+    db.add(AvisEcheance(
+        lease_id=lease.id, tenant_id=lease.tenant_id, period_year=y, period_month=m,
+        due_date=date.today(), amount_rent=0, amount_charges=0, amount_total=300,
+        kind="apurement", installment_seq=1, status=AvisEcheanceStatus.BROUILLON,
+    ))
+    await db.flush()
+    # Génération de l'avis de loyer : ne doit PAS lever de conflit.
+    avis = await AvisEcheanceService.generate_for_lease(db, lease, y, m, generated_by=gestionnaire_user.id)
+    assert avis is not None
+    assert (avis.kind or "loyer") == "loyer"
