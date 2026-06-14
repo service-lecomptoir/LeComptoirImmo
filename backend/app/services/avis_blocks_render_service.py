@@ -636,7 +636,7 @@ def _render_signature(variables: dict, t: dict) -> str:
         f'<td style="width:55%;">&nbsp;</td>'
         f'<td style="width:45%; text-align:center;">'
         f'{place_html}{name_html}'
-        f'<img src="{uri}" alt="signature" style="height:40px; max-width:140px;"/>'
+        f'<img src="{uri}" alt="signature" style="height:40px; max-width:70px;"/>'
         f'</td></tr></table>'
     )
 
