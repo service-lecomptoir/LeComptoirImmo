@@ -46,6 +46,10 @@ class AutomationRule(Base, TimestampMixin):
     subject: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     body_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Adresse(s) en copie (CC) des e-mails de cette règle, séparées par des
+    # virgules (ex. l'e-mail du gestionnaire). NULL/"" = aucune copie.
+    cc_emails: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
     # Actif/inactif
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

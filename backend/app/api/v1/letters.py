@@ -138,8 +138,8 @@ async def lettre_relance(
     if _ten is not None and getattr(_ten, "email", None):
         try:
             from app.services.email_service import send_email
-            from app.services.cc_service import manager_cc_for_lease
-            _cc = await manager_cc_for_lease(db, payment.lease_id)
+            from app.services.cc_service import rule_cc_for_lease
+            _cc = await rule_cc_for_lease(db, payment.lease_id, "relance_1", "relance_2", "rappel_impaye")
             _body = (f"<p>Madame, Monsieur,</p>"
                      f"<p>Sauf erreur de notre part, le loyer de la période "
                      f"<strong>{payment.period_label}</strong> reste impayé "

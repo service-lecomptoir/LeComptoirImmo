@@ -275,8 +275,8 @@ async def mark_sent(
             try:
                 from app.services.pdf_service import AvisEcheancePDFService
                 from app.services.email_service import send_avis_echeance
-                from app.services.cc_service import manager_cc_for_lease
-                _cc = await manager_cc_for_lease(db, avis.lease_id)
+                from app.services.cc_service import rule_cc_for_lease
+                _cc = await rule_cc_for_lease(db, avis.lease_id, "avis_echeance")
                 pdf = await AvisEcheancePDFService.generate(db, avis)
                 email_sent = await send_avis_echeance(
                     to=_to,

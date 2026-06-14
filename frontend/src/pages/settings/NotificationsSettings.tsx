@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react'
-import { Mail, MessageSquare, Send, CheckCircle, XCircle, Copy } from 'lucide-react'
+import { Mail, MessageSquare, Send, CheckCircle, XCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
 
@@ -8,7 +8,6 @@ interface Status {
   sms_enabled: boolean
   smtp_from: string
   sms_sender: string
-  cc_manager_emails: boolean
 }
 
 export default function NotificationsSettings({ embedded = false }: { embedded?: boolean }) {
@@ -26,24 +25,6 @@ export default function NotificationsSettings({ embedded = false }: { embedded?:
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
-
-  const [ccSaving, setCcSaving] = useState(false)
-  const toggleCc = async () => {
-    if (!status) return
-    const next = !status.cc_manager_emails
-    setCcSaving(true)
-    try {
-      await apiClient.put('/settings/cc-manager', { enabled: next })
-      setStatus({ ...status, cc_manager_emails: next })
-      toast.success(next
-        ? 'Le gestionnaire sera mis en copie des e-mails locataires.'
-        : 'Le gestionnaire ne sera plus mis en copie.')
-    } catch {
-      toast.error('Impossible de modifier ce réglage.')
-    } finally {
-      setCcSaving(false)
-    }
-  }
 
   const sendTest = async () => {
     if (!to.trim()) { toast.error('Indiquez un destinataire.'); return }
@@ -104,29 +85,6 @@ export default function NotificationsSettings({ embedded = false }: { embedded?:
           <p className="text-sm text-gray-400 py-6 text-center">État indisponible.</p>
         )}
       </div>
-
-      {/* Mise en copie du gestionnaire */}
-      {status && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
-                <Copy size={18} className="text-indigo-600" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">Gestionnaire en copie (CC)</p>
-                <p className="text-xs text-gray-400">
-                  Met le gestionnaire en copie des e-mails envoyés aux locataires (avis, quittances, relances, communications).
-                </p>
-              </div>
-            </div>
-            <button onClick={toggleCc} disabled={ccSaving} role="switch" aria-checked={status.cc_manager_emails}
-              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${status.cc_manager_emails ? 'bg-indigo-600' : 'bg-gray-300'}`}>
-              <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${status.cc_manager_emails ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Envoi d'un test */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">

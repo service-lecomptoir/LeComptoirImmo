@@ -237,8 +237,8 @@ async def send_group_communication(
         # Envoi réel si SMTP configuré, sinon log "simulated"
         email_sent = False
         if is_email and recipient:
-            from app.services.cc_service import manager_cc_for_user
-            _cc = await manager_cc_for_user(db, current_user.id)
+            from app.services.cc_service import rule_cc
+            _cc = await rule_cc(db, current_user.id, "communication_groupee")
             email_sent = await send_group_message(recipient, data.subject, data.body, cc=_cc)
 
         log = CommunicationLog(

@@ -34,6 +34,15 @@ _REMINDER_LABELS = {
 }
 
 
+def _rule_cc(rule) -> Optional[str]:
+    """Adresse(s) en copie de la règle (CC), nettoyées ; None si vide."""
+    raw = (getattr(rule, "cc_emails", None) or "").strip()
+    if not raw:
+        return None
+    parts = [p.strip() for p in raw.replace(";", ",").split(",") if p.strip()]
+    return ", ".join(parts) or None
+
+
 def _render(template: Optional[str], ctx: dict) -> Optional[str]:
     """Remplace les {{variables}} d'un modèle par les valeurs du contexte."""
     if not template:
@@ -94,11 +103,15 @@ async def ensure_default_rules(db: AsyncSession, gestionnaire_id) -> int:
     """Crée les règles d'automatisation par défaut manquantes pour un gestionnaire
     (idempotent : ne recrée jamais un type déjà présent). Renvoie le nb créé."""
     from app.models.automation import AutomationRule
+    from app.models.user import User
     if not gestionnaire_id:
         return 0
     existing = set((await db.execute(
         select(AutomationRule.rule_type).where(AutomationRule.created_by == gestionnaire_id)
     )).scalars().all())
+    # Le gestionnaire est mis en copie par défaut (son propre e-mail).
+    mgr = await db.get(User, gestionnaire_id)
+    cc_default = (getattr(mgr, "email", None) or "").strip() or None
     created = 0
     for rule_type, name, channel, days in _DEFAULT_RULES:
         if rule_type in existing:
@@ -106,6 +119,7 @@ async def ensure_default_rules(db: AsyncSession, gestionnaire_id) -> int:
         db.add(AutomationRule(
             name=name, rule_type=rule_type, channel=channel,
             trigger_days=days, is_active=True, created_by=gestionnaire_id,
+            cc_emails=cc_default,
         ))
         created += 1
     if created:
@@ -142,7 +156,6 @@ async def backfill_default_rules(db: AsyncSession) -> int:
 async def _send_avis(db, rule, avis, today: date) -> bool:
     from app.models.tenant import Tenant
     from app.models.avis_echeance import AvisEcheanceStatus
-    from app.services.cc_service import manager_cc_for_lease
 
     dedup = f"avis:{avis.id}:{rule.id}"
     if await _already_sent(db, dedup):
@@ -163,7 +176,7 @@ async def _send_avis(db, rule, avis, today: date) -> bool:
         f"Le Comptoir Immo : votre avis d'échéance {period} "
         f"({ctx['amount']}) est disponible. Échéance le {ctx['due_date']}.")
     channel = (rule.channel or "email")
-    cc = await manager_cc_for_lease(db, avis.lease_id)
+    cc = _rule_cc(rule)
 
     any_sent = False
     last_err = None
@@ -237,7 +250,6 @@ async def _send_reminder(db, rule, payment, today: date) -> bool:
     from app.models.tenant import Tenant
     from app.models.property import Property
     from app.models.lease import Lease
-    from app.services.cc_service import manager_cc_for_lease
 
     dedup = f"{rule.rule_type}:{payment.id}:{rule.id}"
     if await _already_sent(db, dedup):
@@ -270,7 +282,7 @@ async def _send_reminder(db, rule, payment, today: date) -> bool:
         f"Le Comptoir Immo : {label.lower()}, loyer {ctx['period']} impaye "
         f"(solde {ctx['balance']}). Merci de regulariser.")
     channel = (rule.channel or "email")
-    cc = await manager_cc_for_lease(db, payment.lease_id)
+    cc = _rule_cc(rule)
 
     any_sent = False
     last_err = None
@@ -335,7 +347,6 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
     from app.models.lease import Lease
     from app.models.tenant import Tenant
     from app.models.automation import AutomationRule
-    from app.services.cc_service import manager_cc_for_lease
 
     if not getattr(payment, "quittance_generated_at", None):
         payment.quittance_generated_at = datetime.now(timezone.utc)
@@ -373,7 +384,7 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
     sms_text = _render(rule.body_template, ctx) or (
         f"Le Comptoir Immo : votre quittance {ctx['period']} ({ctx['amount']}) est disponible.")
     channel = (rule.channel or "email")
-    cc = await manager_cc_for_lease(db, payment.lease_id)
+    cc = _rule_cc(rule)
 
     any_sent = False
     if channel in ("email", "email_sms") and getattr(tenant, "email", None):

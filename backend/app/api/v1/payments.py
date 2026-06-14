@@ -875,8 +875,8 @@ async def send_quittance(
             try:
                 pdf_bytes, _fn = await build_quittance_pdf(db, payment)
                 from app.services.email_service import send_quittance as _send_q
-                from app.services.cc_service import manager_cc_for_lease
-                _cc = await manager_cc_for_lease(db, payment.lease_id)
+                from app.services.cc_service import rule_cc_for_lease
+                _cc = await rule_cc_for_lease(db, payment.lease_id, "quittance")
                 _amount = float(payment.amount_paid or 0) + float(getattr(payment, "amount_on_plan", 0) or 0)
                 email_sent = await _send_q(
                     to=_to,

@@ -13,9 +13,6 @@ _DEFAULTS = {
     "telegram_reminder_enabled": "true",
     "telegram_reminder_hour": "8",
     "telegram_reminder_minute": "0",
-    # Mettre le gestionnaire en copie (CC) des e-mails envoyés aux locataires
-    # (avis d'échéance, quittances, relances, communications groupées).
-    "cc_manager_emails": "true",
 }
 
 

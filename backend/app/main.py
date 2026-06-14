@@ -400,6 +400,12 @@ async def _apply_column_migrations() -> None:
         # Automatisation : clé d'idempotence des envois (anti-doublon).
         "ALTER TABLE communication_logs ADD COLUMN IF NOT EXISTS dedup_key VARCHAR(200)",
         "CREATE INDEX IF NOT EXISTS ix_communication_logs_dedup_key ON communication_logs (dedup_key)",
+        # Automatisation : CC (gestionnaire) par règle.
+        "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS cc_emails VARCHAR(500)",
+        # Initialise le CC des règles existantes avec l'e-mail du gestionnaire
+        # créateur (une seule fois : ne touche que les NULL ; un CC vidé = '').
+        "UPDATE automation_rules SET cc_emails = (SELECT email FROM users WHERE users.id = automation_rules.created_by) "
+        "WHERE cc_emails IS NULL AND created_by IS NOT NULL",
         # Mois reporté sur un plan d'apurement (sort des impayés/revenus, restaurable).
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS settled_by_plan BOOLEAN NOT NULL DEFAULT FALSE",
         # Apurement partiel : part du solde reportée sur un plan sans solder tout le mois

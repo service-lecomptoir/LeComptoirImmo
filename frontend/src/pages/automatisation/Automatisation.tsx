@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { getErrorMessage } from '@/utils/errors'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
+import { useAuthStore } from '@/store/authStore'
 import {
   Zap, Plus, Trash2, Edit2, ToggleLeft, ToggleRight,
   Mail, MessageSquare, Bell, Calendar, Send,
@@ -42,6 +43,7 @@ interface Rule {
   subject?: string
   body_template?: string
   is_active: boolean
+  cc_emails?: string | null
 }
 
 interface Log {
@@ -62,8 +64,10 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
     subject: rule?.subject || '',
     body_template: rule?.body_template || '',
     is_active: rule?.is_active ?? true,
+    cc_emails: rule?.cc_emails || '',
   })
   const [saving, setSaving] = useState(false)
+  const myEmail = useAuthStore(s => s.user?.email) || ''
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -196,6 +200,29 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
               value={form.body_template}
               onChange={e => setForm({ ...form, body_template: e.target.value })} />
           </div>
+
+          {(form.channel === 'email' || form.channel === 'email_sms') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Gestionnaire en copie (CC)</label>
+              <input type="email" list="cc-suggestions" inputMode="email" autoComplete="email"
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+                placeholder="adresse e-mail à mettre en copie"
+                value={form.cc_emails}
+                onChange={e => setForm({ ...form, cc_emails: e.target.value })} />
+              <datalist id="cc-suggestions">
+                {myEmail && <option value={myEmail} />}
+              </datalist>
+              <div className="flex items-center gap-2 mt-1.5">
+                {myEmail && form.cc_emails.trim() !== myEmail && (
+                  <button type="button" onClick={() => setForm({ ...form, cc_emails: myEmail })}
+                    className="text-xs text-blue-600 hover:underline">
+                    + Me mettre en copie ({myEmail})
+                  </button>
+                )}
+                <p className="text-xs text-gray-400">Laisser vide pour n'envoyer qu'au locataire. Plusieurs adresses : séparées par des virgules.</p>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
             <input type="checkbox" id="active" checked={form.is_active}
