@@ -243,7 +243,16 @@ export default function QuittanceList() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{p.period_label}</td>
                   <td className="px-4 py-3 text-sm text-right text-gray-900 whitespace-nowrap">{fmtEuro(p.amount_due)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-green-700 font-medium whitespace-nowrap">{fmtEuro(p.amount_paid)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-green-700 font-medium whitespace-nowrap">
+                    {/* Payé effectif = règlement direct + part couverte par un plan
+                        d'apurement (cohérent avec la quittance PDF). */}
+                    {fmtEuro(p.amount_paid + (p.amount_on_plan || 0))}
+                    {(p.amount_on_plan || 0) > 0.005 && (
+                      <div className="text-[11px] font-normal text-gray-400">
+                        dont {fmtEuro(p.amount_on_plan || 0)} par apurement
+                      </div>
+                    )}
+                  </td>
 
                   {/* Date de génération de la quittance */}
                   <td className="px-4 py-3 text-xs whitespace-nowrap">
