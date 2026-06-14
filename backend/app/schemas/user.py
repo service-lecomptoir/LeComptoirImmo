@@ -11,6 +11,8 @@ class UserCreate(BaseModel):
     password: str
     full_name: str
     role: Role = Role.LECTURE
+    # Téléphone (repris de la fiche locataire à la création du compte).
+    phone: Optional[str] = None
 
     @field_validator("password")
     @classmethod

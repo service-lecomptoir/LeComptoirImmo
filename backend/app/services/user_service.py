@@ -39,6 +39,7 @@ class UserService:
             hashed_password=hash_password(data.password),
             full_name=data.full_name,
             role=data.role,
+            phone=(getattr(data, "phone", None) or None),
             created_by=created_by,
             agency_id=agency_id,
             ref_code=await make_ref(db, User.ref_code, user_prefix(data.role)),

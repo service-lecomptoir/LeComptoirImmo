@@ -173,6 +173,8 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
         email,
         password: newUserPassword,
         role: 'locataire',
+        // Téléphone repris de la fiche locataire (synchronisé ensuite dans les deux sens).
+        phone: watch('phone')?.trim() || undefined,
       })
       setLocataireUsers(prev => [...prev, newUser])
       setValue('user_id', newUser.id)
