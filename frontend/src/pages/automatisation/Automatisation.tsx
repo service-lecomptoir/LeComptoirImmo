@@ -185,6 +185,31 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
             </div>
           </div>
 
+          {(form.channel === 'email' || form.channel === 'email_sms') && (
+            <div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 shrink-0">Cc :</label>
+                <input type="email" list="cc-suggestions" inputMode="email" autoComplete="email"
+                  className="flex-1 border rounded-lg px-3 py-2 text-sm"
+                  placeholder="ici l'adresse email"
+                  value={form.cc_emails}
+                  onChange={e => setForm({ ...form, cc_emails: e.target.value })} />
+                <datalist id="cc-suggestions">
+                  {myEmail && <option value={myEmail} />}
+                </datalist>
+              </div>
+              <div className="flex items-center gap-2 mt-1.5">
+                {myEmail && form.cc_emails.trim() !== myEmail && (
+                  <button type="button" onClick={() => setForm({ ...form, cc_emails: myEmail })}
+                    className="text-xs text-blue-600 hover:underline">
+                    + Me mettre en copie ({myEmail})
+                  </button>
+                )}
+                <p className="text-xs text-gray-400">Laisser vide pour n'envoyer qu'au locataire. Plusieurs adresses : séparées par des virgules.</p>
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Objet du message</label>
             <input className="w-full border rounded-lg px-3 py-2 text-sm"
@@ -200,29 +225,6 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
               value={form.body_template}
               onChange={e => setForm({ ...form, body_template: e.target.value })} />
           </div>
-
-          {(form.channel === 'email' || form.channel === 'email_sms') && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gestionnaire en copie (CC)</label>
-              <input type="email" list="cc-suggestions" inputMode="email" autoComplete="email"
-                className="w-full border rounded-lg px-3 py-2 text-sm"
-                placeholder="adresse e-mail à mettre en copie"
-                value={form.cc_emails}
-                onChange={e => setForm({ ...form, cc_emails: e.target.value })} />
-              <datalist id="cc-suggestions">
-                {myEmail && <option value={myEmail} />}
-              </datalist>
-              <div className="flex items-center gap-2 mt-1.5">
-                {myEmail && form.cc_emails.trim() !== myEmail && (
-                  <button type="button" onClick={() => setForm({ ...form, cc_emails: myEmail })}
-                    className="text-xs text-blue-600 hover:underline">
-                    + Me mettre en copie ({myEmail})
-                  </button>
-                )}
-                <p className="text-xs text-gray-400">Laisser vide pour n'envoyer qu'au locataire. Plusieurs adresses : séparées par des virgules.</p>
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center gap-2">
             <input type="checkbox" id="active" checked={form.is_active}
