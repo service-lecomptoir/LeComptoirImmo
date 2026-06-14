@@ -281,13 +281,16 @@ async def _exec_avis(db, user, p) -> str:
         )
         await db.commit()
     except ConflictException:
-        # Un avis existe déjà pour cette période → on le récupère au lieu d'échouer.
+        # Un avis de loyer existe déjà pour cette période → on le récupère au lieu
+        # d'échouer. Filtrer kind='loyer' (un avis d'apurement de la même période
+        # ne doit pas faire remonter 2 lignes → MultipleResultsFound).
         await db.rollback()
         avis = (await db.execute(
             select(AvisEcheance).where(
                 AvisEcheance.lease_id == lease.id,
                 AvisEcheance.period_year == year,
                 AvisEcheance.period_month == month,
+                (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
             )
         )).scalar_one_or_none()
         if avis is None:

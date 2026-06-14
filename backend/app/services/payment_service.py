@@ -225,13 +225,16 @@ class PaymentService:
             # Quittance auto-générée dès que le loyer est intégralement payé
             if not payment.quittance_generated_at:
                 payment.quittance_generated_at = datetime.now(timezone.utc)
-            # L'avis d'échéance correspondant passe « Acquitté »
+            # L'avis d'échéance de LOYER correspondant passe « Acquitté ».
+            # Filtrer sur kind='loyer' : sinon un avis d'apurement de la même
+            # période ferait remonter 2 lignes → MultipleResultsFound (erreur 500).
             from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
             avis = (await db.execute(
                 select(AvisEcheance).where(
                     AvisEcheance.lease_id == payment.lease_id,
                     AvisEcheance.period_year == payment.period_year,
                     AvisEcheance.period_month == payment.period_month,
+                    (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
                 )
             )).scalar_one_or_none()
             if avis and avis.status != AvisEcheanceStatus.ACQUITTE:

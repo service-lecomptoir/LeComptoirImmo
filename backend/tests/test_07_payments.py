@@ -227,3 +227,36 @@ async def test_loyer_avis_not_blocked_by_apurement_avis(db, gestionnaire_user):
     avis = await AvisEcheanceService.generate_for_lease(db, lease, y, m, generated_by=gestionnaire_user.id)
     assert avis is not None
     assert (avis.kind or "loyer") == "loyer"
+
+
+@pytest.mark.asyncio
+async def test_record_payment_ok_with_apurement_avis_same_period(db, gestionnaire_user):
+    """Régression 500 : enregistrer un paiement intégral ne doit pas échouer si un
+    avis d'apurement existe aussi pour la période (MultipleResultsFound)."""
+    from app.models.payment import Payment, PaymentStatus
+    from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
+    from app.services.payment_service import PaymentService
+    from app.schemas.payment import PaymentRecordIn
+    lease = await _setup_lease(db, gestionnaire_user)
+    payment = Payment(
+        lease_id=lease.id, tenant_id=lease.tenant_id, period_year=2026, period_month=9,
+        due_date=date.today(), amount_rent=800, amount_charges=100, amount_due=900,
+        amount_paid=0, status=PaymentStatus.PENDING,
+    )
+    db.add(payment)
+    db.add(AvisEcheance(
+        lease_id=lease.id, tenant_id=lease.tenant_id, period_year=2026, period_month=9,
+        due_date=date.today(), amount_rent=800, amount_charges=100, amount_total=900,
+        kind="loyer", status=AvisEcheanceStatus.ENVOYE,
+    ))
+    db.add(AvisEcheance(
+        lease_id=lease.id, tenant_id=lease.tenant_id, period_year=2026, period_month=9,
+        due_date=date.today(), amount_rent=0, amount_charges=0, amount_total=300,
+        kind="apurement", installment_seq=1, status=AvisEcheanceStatus.BROUILLON,
+    ))
+    await db.flush()
+    pay = await PaymentService.record_payment(
+        db, payment.id,
+        PaymentRecordIn(amount_paid=900, payment_date=date.today(), payment_method="virement"),
+    )
+    assert pay.status == PaymentStatus.PAID
