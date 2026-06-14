@@ -384,13 +384,25 @@ async def comptabilite_ledger(
         select(Lease).options(selectinload(Lease.parent_property), selectinload(Lease.tenant))
         .where(Lease.id.in_(lease_ids))
     )).scalars().all()
+    # Noms de propriétaires : repli sur la fiche Owner si le champ dénormalisé est vide.
+    from app.models.owner import Owner as _Owner
+    _oids = {getattr(getattr(l, "parent_property", None), "owner_id", None) for l in leases}
+    _oids.discard(None)
+    owners_by_id = {}
+    if _oids:
+        owners_by_id = {o.id: o for o in (await db.execute(
+            select(_Owner).where(_Owner.id.in_(_oids))
+        )).scalars().all()}
     ctx: dict = {}
     for l in leases:
         pr = getattr(l, "parent_property", None)
+        _own = owners_by_id.get(getattr(pr, "owner_id", None)) if pr else None
+        _own_name = ((getattr(pr, "owner_name", "") or "") if pr else "") or \
+                    (getattr(_own, "full_name", "") or "" if _own else "")
         ctx[l.id] = {
             "logement": (getattr(pr, "name", "") or "") if pr else "",
             "logement_ref": (getattr(pr, "ref_code", "") or "") if pr else "",
-            "proprietaire": (getattr(pr, "owner_name", "") or "") if pr else "",
+            "proprietaire": _own_name,
             "locataire": (getattr(getattr(l, "tenant", None), "full_name", "") or ""),
         }
 
