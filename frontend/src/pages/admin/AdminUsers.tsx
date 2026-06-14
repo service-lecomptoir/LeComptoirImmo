@@ -393,14 +393,11 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-4 py-3 text-gray-500">{formatDate(u.created_at)}</td>
                   <td className="px-4 py-3">
+                    {/* Colonnes d'actions fixes (envoyer / modifier / supprimer) :
+                        chaque icône garde sa colonne d'une ligne à l'autre. Quand
+                        une action est indisponible (ex. supprimer son propre compte),
+                        l'emplacement reste réservé (invisible) pour ne pas décaler. */}
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEdit(u)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Modifier"
-                      >
-                        <Pencil size={14} />
-                      </button>
                       <button
                         onClick={() => sendCredentials(u)}
                         disabled={sendingCredsId === u.id || !u.email}
@@ -409,15 +406,24 @@ export default function AdminUsers() {
                       >
                         <Send size={14} />
                       </button>
-                      {u.id !== me?.id && (
-                        <button
-                          onClick={() => setDeleteTarget(u)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Supprimer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => openEdit(u)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Modifier"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(u)}
+                        className={`p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ${
+                          u.id === me?.id ? 'invisible pointer-events-none' : ''
+                        }`}
+                        title="Supprimer"
+                        tabIndex={u.id === me?.id ? -1 : 0}
+                        aria-hidden={u.id === me?.id}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
