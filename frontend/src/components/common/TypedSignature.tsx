@@ -95,15 +95,18 @@ export function TypedSignature({
       if (!ctx) return
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, cv.width, cv.height)
+      // Tant que l'utilisateur n'a rien modifié : afficher la signature enregistrée
+      // si elle existe, sinon laisser le cadre VIDE (pas d'aperçu du nom par défaut,
+      // sinon une signature supprimée semble toujours présente). Aucune émission.
+      if (!edited) {
+        if (value) await drawImageOnto(ctx, value)
+        return
+      }
       const t = text.trim()
       if (t) {
         await drawText(ctx, t, font)
-      } else if (!edited && value) {
-        // Aucun texte connu (ancienne signature) : afficher l'image enregistrée.
-        await drawImageOnto(ctx, value)
       }
       if (cancelled) return
-      if (!edited) return   // ne pas écraser l'existant tant que rien n'est modifié
       emit(t ? cv.toDataURL('image/png') : null, 'type', t, font)
     })()
     return () => { cancelled = true }
