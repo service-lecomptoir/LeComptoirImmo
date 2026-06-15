@@ -20,8 +20,7 @@ const MONTHS = [
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
 ]
 
-const fmtEuro = (n: number) =>
-  n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+import { formatEuro as fmtEuro } from '@/utils/format'
 
 function statusVariant(s: string): 'gray' | 'blue' | 'green' {
   if (s === 'envoye') return 'blue'

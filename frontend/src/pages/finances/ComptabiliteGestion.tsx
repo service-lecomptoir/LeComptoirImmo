@@ -5,8 +5,7 @@ import { exportCsv } from '@/utils/exportCsv'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
-const fmtEuro = (n: number) =>
-  n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+import { formatEuro as fmtEuro } from '@/utils/format'
 
 interface Entry {
   date: string | null

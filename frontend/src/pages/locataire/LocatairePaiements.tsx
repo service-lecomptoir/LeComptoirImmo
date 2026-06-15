@@ -9,8 +9,7 @@ import { exportCsv } from '@/utils/exportCsv'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
-const fmtEuro = (n: number) =>
-  n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+import { formatEuro as fmtEuro } from '@/utils/format'
 
 // Libellé du type de paiement (sert d'intitulé pour la ligne de règlement).
 const METHOD_LABELS: Record<string, string> = {

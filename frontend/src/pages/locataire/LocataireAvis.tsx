@@ -10,8 +10,7 @@ import { downloadBlob } from '@/utils/download'
 import { toast } from '@/store/toast'
 import { getErrorMessage } from '@/utils/errors'
 
-const fmtEuro = (n: number) =>
-  n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+import { formatEuro as fmtEuro } from '@/utils/format'
 
 function statusConfig(s: string) {
   if (s === 'acquitte') return { label: 'Acquitté', variant: 'green' as const, Icon: CheckCircle, color: 'text-green-600' }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Receipt, Search, FileDown, CheckCircle2, Mail, RefreshCw, Filter } from 'lucide-react'
 import { paymentsApi } from '@/api/payments'
 import { docFilename } from '@/utils/filename'
+import { formatEuro } from '@/utils/format'
 import type { PaymentListItem } from '@/types/payment'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -98,8 +99,7 @@ export default function QuittanceList() {
     fetchPayments(search, filterYear, filterMonth)
   }
 
-  const fmtEuro = (n: number) =>
-    n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
+  const fmtEuro = formatEuro
 
   // Filtre côté client sur statut d'envoi
   const filtered = payments.filter(p => {

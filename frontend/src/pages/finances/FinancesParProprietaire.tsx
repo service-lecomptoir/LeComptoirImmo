@@ -9,8 +9,7 @@ import type { PaymentStatus } from '@/types/payment'
 
 type View = 'revenus' | 'biens' | 'fiscal'
 
-const fmtEuro = (n: number) =>
-  (n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+import { formatEuro as fmtEuro } from '@/utils/format'
 
 // Statuts spécifiques aux lignes d'apurement (hors énumération paiement standard).
 const EXTRA_STATUS: Record<string, { label: string; variant: any }> = {

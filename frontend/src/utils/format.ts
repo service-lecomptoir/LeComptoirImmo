@@ -1,4 +1,30 @@
 /** Utilitaires de formatage d'affichage (saisie plus lisible). */
+import { format as _formatDate, parseISO, isValid } from 'date-fns'
+import { fr } from 'date-fns/locale'
+
+/**
+ * Montant en euros, format français, avec un ESPACE INSÉCABLE avant le « € »
+ * pour qu'un montant ne se coupe jamais en fin de ligne (« 1 150,00 € »).
+ * Source unique : à utiliser partout (listes, fiches, exports d'affichage).
+ */
+export const formatEuro = (n: number | null | undefined, decimals = 2): string => {
+  const v = Number(n ?? 0)
+  return v.toLocaleString('fr-FR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }) + ' €'
+}
+
+/**
+ * Date au format français (date-fns + locale fr). Accepte une chaîne ISO ou un
+ * Date. Renvoie '' si vide/invalide (jamais d'exception). Motif par défaut :
+ * « d MMM yyyy » (ex. « 5 juin 2026 »).
+ */
+export const formatDateFr = (value?: string | Date | null, pattern = 'd MMM yyyy'): string => {
+  if (!value) return ''
+  const d = value instanceof Date ? value : parseISO(value)
+  return isValid(d) ? _formatDate(d, pattern, { locale: fr }) : ''
+}
 
 /** Ne garde que les chiffres d'une chaîne. */
 export const digitsOnly = (v: string): string => (v || '').replace(/\D/g, '')
