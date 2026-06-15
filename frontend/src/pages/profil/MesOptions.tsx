@@ -13,7 +13,7 @@ export default function MesOptions() {
   if (!isManager) return <Navigate to="/profil" replace />
 
   return (
-    <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-5">
+    <div className="max-w-2xl p-4 sm:p-6 space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Mes options</h1>
         <p className="text-gray-500 text-sm mt-1">
