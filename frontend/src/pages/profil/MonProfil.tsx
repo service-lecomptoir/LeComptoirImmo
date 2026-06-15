@@ -473,6 +473,7 @@ export default function MonProfil() {
           <div>
             <label className={lbl}>Signature</label>
             <TypedSignature
+              width={230}
               value={signature !== undefined ? signature : (user?.signature ?? null)}
               initialMode={(user?.signature_mode as 'type' | 'draw' | null) ?? 'type'}
               initialText={user?.signature_text ?? null}

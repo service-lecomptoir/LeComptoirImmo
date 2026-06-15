@@ -76,7 +76,9 @@ export function TypedSignature({
     ctx.fillStyle = '#1f2937'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    let size = 76
+    // Taille de police proportionnelle à la largeur du cadre (≈ largeur/6), pour
+    // qu'elle s'adapte quand le cadre est réduit. À 460px → 76px (inchangé).
+    let size = Math.max(20, Math.round(ctx.canvas.width / 6))
     ctx.font = `${size}px '${f}', cursive`
     const maxW = ctx.canvas.width - 28
     while (size > 20 && ctx.measureText(t).width > maxW) {
