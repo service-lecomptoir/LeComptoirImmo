@@ -243,10 +243,10 @@ export default function TenantList() {
         </div>
       )}
 
-      {!isLoading && tenants.length < total && (
+      {!isLoading && tenants.length < total && tenants.length < 1000 && (
         <div className="flex justify-center mt-4">
           <button
-            onClick={() => setLimit(l => l + 100)}
+            onClick={() => setLimit(l => Math.min(l + 100, 1000))}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Charger plus ({tenants.length} / {total})
