@@ -117,8 +117,10 @@ async def export_csv(
             (tenant.full_name if tenant else ""),
             (s.description or "").replace("\n", " "),
         ])
-    data = "﻿" + buf.getvalue()  # BOM pour Excel
-    return Response(content=data, media_type="text/csv; charset=utf-8",
+    # UTF-16 LE + BOM (FF FE) : seul encodage fiable pour Excel FR (l'UTF-8+BOM est
+    # parfois ignoré à l'ouverture par double-clic → accents cassés).
+    body = b"\xff\xfe" + buf.getvalue().encode("utf-16-le")
+    return Response(content=body, media_type="text/csv; charset=utf-16le",
                     headers={"Content-Disposition": "attachment; filename=signalements.csv"})
 
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { BookText, Download, Search } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import { exportCsv } from '@/utils/exportCsv'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -104,24 +105,18 @@ export default function ComptabiliteGestion() {
   }, [filtered, isMandataire])
 
   const handleExport = () => {
-    const sep = ';'
-    const esc = (s: string) => `"${(s || '').replace(/"/g, '""')}"`
-    const head = ['Date', 'Logement', ...(isMandataire ? ['Propriétaire'] : []), 'Locataire', 'Intitulé', 'Montant']
-    const lines = filtered.map(e => [
+    // Passe par l'utilitaire commun (UTF-16 LE + BOM) : seul format fiable pour
+    // Excel FR. On fournit les valeurs BRUTES, exportCsv gère l'échappement.
+    const headers = ['Date', 'Logement', ...(isMandataire ? ['Propriétaire'] : []), 'Locataire', 'Intitulé', 'Montant']
+    const rows = filtered.map(e => [
       e.date ? format(new Date(e.date), 'dd/MM/yyyy') : '',
-      esc(e.logement_ref ? `${e.logement} (${e.logement_ref})` : e.logement),
-      ...(isMandataire ? [esc(e.proprietaire)] : []),
-      esc(e.locataire),
-      esc(e.intitule),
+      e.logement_ref ? `${e.logement} (${e.logement_ref})` : e.logement,
+      ...(isMandataire ? [e.proprietaire] : []),
+      e.locataire,
+      e.intitule,
       (e.sign === 'credit' ? '' : '-') + e.montant.toFixed(2).replace('.', ','),
-    ].join(sep))
-    const csv = String.fromCharCode(0xFEFF) + [head.join(sep), ...lines].join('\r\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'comptabilite.csv'
-    a.click()
-    URL.revokeObjectURL(url)
+    ])
+    exportCsv('comptabilite', headers, rows)
   }
 
   return (

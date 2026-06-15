@@ -5,6 +5,7 @@ import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { docFilename } from '@/utils/filename'
+import { exportCsv } from '@/utils/exportCsv'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -155,24 +156,15 @@ export default function LocatairePaiements() {
   const totalCredits = entries.filter(e => e.sign === 'credit').reduce((s, e) => s + e.montant, 0)
   const solde = r2(totalDebits - totalCredits)
 
-  // Export CSV du grand livre (séparateur « ; » + BOM pour Excel FR).
+  // Export CSV du grand livre via l'utilitaire commun (UTF-16 LE + BOM), seul
+  // format fiable pour les accents dans Excel FR.
   const handleExport = () => {
-    const sep = ';'
-    const esc = (s: string) => `"${(s || '').replace(/"/g, '""')}"`
-    const lines = entries.map(e => [
+    const rows = entries.map(e => [
       e.date ? format(new Date(e.date), 'dd/MM/yyyy') : '',
-      esc(e.intitule),
+      e.intitule,
       (e.sign === 'credit' ? '' : '-') + e.montant.toFixed(2).replace('.', ','),
-    ].join(sep))
-    // BOM UTF-8 (﻿) en tête pour qu'Excel reconnaisse l'encodage et affiche
-    // correctement les accents (séquence d'échappement, fiable au build).
-    const csv = String.fromCharCode(0xFEFF) + ['Date;Intitulé;Montant', ...lines].join('\r\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'ma_comptabilite.csv'
-    a.click()
-    URL.revokeObjectURL(url)
+    ])
+    exportCsv('ma_comptabilite', ['Date', 'Intitulé', 'Montant'], rows)
   }
 
   // Solde signé (+/-) : négatif rouge si reste à payer, positif vert si en faveur.
