@@ -424,9 +424,9 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
           <SectionTitle icon={Sparkles}>Équipements & extérieurs</SectionTitle>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {AMENITIES.map(a => (
-              <label key={a.key} className="flex items-start gap-2 px-3 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 text-sm text-gray-700">
-                <input type="checkbox" {...register(a.key)} className="w-4 h-4 mt-0.5 shrink-0 rounded border-gray-300 text-blue-600" />
-                <span className="min-w-0 leading-tight break-words">{a.label}</span>
+              <label key={a.key} className="flex items-center gap-2 px-2.5 py-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 text-xs text-gray-700">
+                <input type="checkbox" {...register(a.key)} className="w-4 h-4 shrink-0 rounded border-gray-300 text-blue-600" />
+                <span className="min-w-0 leading-tight">{a.label}</span>
               </label>
             ))}
           </div>
