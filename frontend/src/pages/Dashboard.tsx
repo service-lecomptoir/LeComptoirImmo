@@ -6,7 +6,8 @@ import {
 import {
   Building2, Users, TrendingUp, AlertTriangle, Home,
   CreditCard, CheckCircle, ArrowUpRight, ArrowDownRight,
-  Activity, Euro, RefreshCw, Wrench, KeyRound
+  Activity, Euro, RefreshCw, Wrench, KeyRound,
+  Sunrise, CloudSun, Sunset, Moon
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/api/client'
@@ -140,9 +141,27 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
           <p className="text-sm text-gray-500 mt-1">Vue d'ensemble de votre portefeuille</p>
         </div>
-        <div className="text-sm text-gray-400">
-          {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </div>
+        {(() => {
+          // Icône « moment de la journée » : aube / journée / crépuscule / nuit.
+          const h = new Date().getHours()
+          const moment = h < 7 ? { Icon: Moon, color: '#6366F1', bg: '#EEF2FF', label: 'Nuit' }
+            : h < 12 ? { Icon: Sunrise, color: '#F59E0B', bg: '#FFF7ED', label: 'Bonne matinée' }
+            : h < 18 ? { Icon: CloudSun, color: '#F07800', bg: '#FFF7ED', label: 'Bel après-midi' }
+            : h < 22 ? { Icon: Sunset, color: '#EA580C', bg: '#FFF1F0', label: 'Bonne soirée' }
+            : { Icon: Moon, color: '#6366F1', bg: '#EEF2FF', label: 'Bonne nuit' }
+          const { Icon } = moment
+          return (
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: moment.bg }} title={moment.label}>
+                <Icon size={18} style={{ color: moment.color }} />
+              </span>
+              <span className="text-sm text-gray-500 capitalize">
+                {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </span>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Alertes */}
