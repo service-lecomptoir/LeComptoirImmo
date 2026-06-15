@@ -1,21 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { getErrorMessage } from '@/utils/errors'
-import { Save, Landmark, KeyRound, Eye, EyeOff, AtSign, Plus, X, AlertTriangle, Image as ImageIcon, Trash2, UploadCloud, Bot, Send, Copy, Check, RefreshCw, Unlink } from 'lucide-react'
+import { Save, Landmark, KeyRound, Eye, EyeOff, Image as ImageIcon, Trash2, UploadCloud } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
-import { TypedSignature } from '@/components/common/TypedSignature'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
-import { usersApi, type EmailDomain } from '@/api/users'
-import { agentsApi, type TelegramStatus } from '@/api/agents'
-import { useFeaturesStore } from '@/store/featuresStore'
-import { isFeatureAllowed } from '@/lib/features'
 import { toast } from '@/store/toast'
-import PaymentOnlineSection from './PaymentOnlineSection'
 
 function splitName(s?: string | null): { first: string; last: string } {
   const parts = (s ?? '').trim().split(/\s+/).filter(Boolean)
@@ -63,80 +57,12 @@ export default function MonProfil() {
   const showRib = user?.role === 'proprietaire' || user?.role === 'gestionnaire_proprio'
   // Le locataire n'a pas d'adresse propre (son adresse = le bien loué) → champ masqué.
   const isLocataire = user?.role === 'locataire'
-  // Domaines e-mail autorisés : pour les comptes qui envoient des communications.
   const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
   const isGP = user?.role === 'gestionnaire_proprio'
-  const [domains, setDomains] = useState<EmailDomain[]>([])
-  const [newDomain, setNewDomain] = useState('')
-  const [domainErr, setDomainErr] = useState<string | null>(null)
-  const [domainBusy, setDomainBusy] = useState(false)
 
   // Logo du gestionnaire (en-tête des documents).
   const logoInputRef = useRef<HTMLInputElement>(null)
   const [logoBusy, setLogoBusy] = useState(false)
-
-  // Signature numérique (data-URL PNG) apposée en bas des courriers générés.
-  // undefined = inchangée ; null = à supprimer ; string = nouvelle signature.
-  // `sigMeta` retient le mode/texte/police pour réédition (case texte synchronisée).
-  const [signature, setSignature] = useState<string | null | undefined>(undefined)
-  const [sigMeta, setSigMeta] = useState<{ mode: string; text: string; font: string } | null>(null)
-
-  // ── Agents IA (Telegram) — option de plan « agents_ia » ──
-  const { features } = useFeaturesStore()
-  const showAgents = isManager && isFeatureAllowed(features, 'agents_ia')
-  const [tgStatus, setTgStatus] = useState<TelegramStatus | null>(null)
-  const [tgCode, setTgCode] = useState<string | null>(null)
-  const [tgDeepLink, setTgDeepLink] = useState<string | null>(null)
-  const [tgBusy, setTgBusy] = useState(false)
-  const [tgCopied, setTgCopied] = useState(false)
-
-  useEffect(() => {
-    if (!showAgents) return
-    agentsApi.telegramStatus().then(r => setTgStatus(r.data)).catch(() => {})
-  }, [showAgents])
-
-  const generateTgCode = async () => {
-    setTgBusy(true)
-    try {
-      const { data } = await agentsApi.generateLinkCode()
-      setTgCode(data.code)
-      setTgDeepLink(data.deep_link)
-      setTgStatus({
-        linked: data.linked,
-        bot_username: data.bot_username,
-        enabled: data.enabled,
-      })
-    } catch (e: any) {
-      toast.error(getErrorMessage(e, 'Génération du code impossible'))
-    } finally {
-      setTgBusy(false)
-    }
-  }
-
-  const copyTgCommand = async () => {
-    if (!tgCode) return
-    try {
-      await navigator.clipboard.writeText(`/start ${tgCode}`)
-      setTgCopied(true)
-      setTimeout(() => setTgCopied(false), 2000)
-    } catch {
-      toast.error('Copie impossible')
-    }
-  }
-
-  const unlinkTg = async () => {
-    setTgBusy(true)
-    try {
-      await agentsApi.unlink()
-      setTgCode(null); setTgDeepLink(null)
-      setTgStatus(s => s ? { ...s, linked: false } : s)
-      toast.success('Telegram délié')
-    } catch {
-      toast.error('Suppression impossible')
-    } finally {
-      setTgBusy(false)
-    }
-  }
 
   const handleLogoFile = async (file: File) => {
     if (!file.type.startsWith('image/')) { toast.error('Choisissez une image (PNG, JPG, SVG, WebP).'); return }
@@ -190,36 +116,6 @@ export default function MonProfil() {
     return () => { cancelled = true }
   }, [showRib])
 
-  useEffect(() => {
-    if (!isManager) return
-    usersApi.listEmailDomains().then(r => setDomains(r.data)).catch(() => {})
-  }, [isManager])
-
-  const addDomain = async () => {
-    if (!newDomain.trim()) return
-    setDomainBusy(true); setDomainErr(null)
-    try {
-      const { data } = await usersApi.addEmailDomain(newDomain.trim())
-      setDomains(prev => prev.some(d => d.id === data.id) ? prev : [...prev, data])
-      setNewDomain('')
-      toast.success('Domaine ajouté')
-    } catch (e: any) {
-      setDomainErr(getErrorMessage(e, "Impossible d'ajouter ce domaine"))
-    } finally {
-      setDomainBusy(false)
-    }
-  }
-
-  const removeDomain = async (id: string) => {
-    try {
-      await usersApi.removeEmailDomain(id)
-      setDomains(prev => prev.filter(d => d.id !== id))
-      toast.success('Domaine supprimé')
-    } catch {
-      toast.error('Suppression impossible')
-    }
-  }
-
   const save = async () => {
     setSaving(true); setMsg(null); setErr(null)
     try {
@@ -249,14 +145,6 @@ export default function MonProfil() {
             ? (joinName(ownerFirstName, ownerLastName) || null) : null,
           owner_company: ownerCompany.trim() || null,
           owner_national_id: ownerNationalId.trim() || null,
-          // Signature : envoyée seulement si modifiée (string = nouvelle, null = supprimée).
-          // On envoie aussi le mode/texte/police pour pouvoir la rééditer ensuite.
-          ...(signature !== undefined ? {
-            signature,
-            signature_mode: sigMeta?.mode || null,
-            signature_text: sigMeta?.text || null,
-            signature_font: sigMeta?.font || null,
-          } : {}),
         } : {}),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
@@ -468,30 +356,6 @@ export default function MonProfil() {
           </div>
         )}
 
-        {/* ── Signature numérique (apposée au bas des courriers générés) ── */}
-        {isManager && (
-          <div>
-            <label className={lbl}>Signature</label>
-            <TypedSignature
-              width={230}
-              value={signature !== undefined ? signature : (user?.signature ?? null)}
-              initialMode={(user?.signature_mode as 'type' | 'draw' | null) ?? 'type'}
-              initialText={user?.signature_text ?? null}
-              initialFont={user?.signature_font ?? null}
-              onChange={(sig) => {
-                setSignature(sig.dataUrl)
-                setSigMeta({ mode: sig.mode, text: sig.text, font: sig.font })
-              }}
-              defaultText={(isManager ? (ownerKind === 'personne' ? joinName(ownerFirstName, ownerLastName) : ownerCompany) : '') || fullName || ''}
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Deux possibilités : tapez votre nom et choisissez un style d'écriture, ou dessinez votre
-              signature à la souris (onglet « Dessin »). Apposée en bas de vos documents générés
-              (quittance, avis d'échéance, relance…). Pensez à cliquer sur « Enregistrer » ci-dessous.
-            </p>
-          </div>
-        )}
-
         {/* ── Coordonnées bancaires (RIB) : propriétaire / GP ── */}
         {showRib && (
           <div className="pt-4 mt-2 border-t border-gray-100 space-y-4">
@@ -529,158 +393,6 @@ export default function MonProfil() {
           </button>
         </div>
       </div>
-
-      {/* ── Domaines e-mail autorisés (gestionnaires) ── */}
-      {isManager && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 mt-5">
-          <div className="flex items-center gap-2">
-            <AtSign size={16} className="text-blue-600" />
-            <h2 className="text-sm font-semibold text-gray-900">Domaines e-mail autorisés</h2>
-          </div>
-          <p className="text-xs text-gray-500 -mt-2">
-            Ajoutez votre nom de domaine pour envoyer les communications depuis ce domaine.
-          </p>
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-            <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">
-              Attention, il n'est pas possible d'activer l'envoi depuis un nom de domaine d'un fournisseur
-              public (p. ex. : @gmail.com, @hotmail.com, @yahoo.com, etc.).
-            </p>
-          </div>
-
-          {domains.length > 0 && (
-            <ul className="space-y-2">
-              {domains.map(d => (
-                <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2">
-                  <span className="text-sm font-medium text-gray-800">{d.domain}</span>
-                  <button onClick={() => removeDomain(d.id)} title="Supprimer"
-                    className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
-                    <X size={15} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {domainErr && <p className="text-xs text-red-600">{domainErr}</p>}
-
-          <div className="flex gap-2">
-            <input
-              className={inp}
-              value={newDomain}
-              onChange={e => setNewDomain(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDomain() } }}
-              placeholder="mon-agence.fr"
-            />
-            <button onClick={addDomain} disabled={domainBusy || !newDomain.trim()}
-              className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">
-              <Plus size={15} /> Ajouter un domaine
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Paiement du loyer par carte (gestionnaires) ── */}
-      {isManager && <PaymentOnlineSection />}
-
-      {/* ── Agents IA (Telegram) ── */}
-      {showAgents && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 mt-5">
-          <div className="flex items-center gap-2">
-            <Bot size={16} className="text-blue-600" />
-            <h2 className="text-sm font-semibold text-gray-900">Agents IA</h2>
-          </div>
-          <p className="text-xs text-gray-500 -mt-2">
-            Votre équipe d'agents répond à vos questions, vous envoie un point du jour, et peut
-            <b> exécuter des actions</b> (générer un avis ou une quittance, enregistrer un paiement,
-            ouvrir une démarche) : avec confirmation : directement sur Telegram (gratuit).
-          </p>
-
-          {/* Présentation des 3 agents */}
-          <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              { emoji: '📊', name: 'Agent Comptable', desc: 'Impayés, encaissements, quittances.' },
-              { emoji: '🛡️', name: 'Agent Sécurité', desc: 'Démarches, incidents, conflits de voisinage.' },
-              { emoji: '🗂️', name: 'Agent Administratif', desc: 'Biens, locataires, contrats, entretiens.' },
-            ].map(a => (
-              <li key={a.name} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="text-lg">{a.emoji}</div>
-                <div className="text-sm font-semibold text-gray-800 mt-1">{a.name}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{a.desc}</div>
-              </li>
-            ))}
-          </ul>
-
-          {tgStatus?.linked ? (
-            <div className="flex items-start justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-              <div className="flex items-start gap-2 text-sm text-emerald-800 min-w-0">
-                <Check size={15} className="text-emerald-600 shrink-0 mt-0.5" />
-                <div className="leading-relaxed">
-                  <p>
-                    Telegram est connecté{tgStatus.bot_username ? <> à <span className="font-semibold">@{tgStatus.bot_username}</span></> : null}.
-                  </p>
-                  <p className="mt-1 text-emerald-700">
-                    Écrivez <span className="font-semibold">« aide »</span> au bot pour commencer. Vous recevez aussi
-                    chaque matin un <span className="font-semibold">point du jour</span>.
-                  </p>
-                </div>
-              </div>
-              <button onClick={unlinkTg} disabled={tgBusy}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-50 whitespace-nowrap shrink-0">
-                <Unlink size={14} /> Délier
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {!tgStatus?.enabled && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                  <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-800">
-                    Le canal Telegram n'est pas encore activé sur la plateforme. Vous pouvez préparer votre code de liaison ;
-                    la connexion deviendra effective dès l'activation.
-                  </p>
-                </div>
-              )}
-              {!tgCode ? (
-                <button onClick={generateTgCode} disabled={tgBusy}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                  <Send size={15} /> {tgBusy ? 'Génération…' : 'Connecter Telegram'}
-                </button>
-              ) : (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
-                  <p className="text-sm text-gray-700">
-                    {tgDeepLink ? (
-                      <>1. Ouvrez le bot puis envoyez la commande ci-dessous.</>
-                    ) : (
-                      <>1. Ouvrez votre bot Telegram et envoyez-lui la commande ci-dessous.</>
-                    )}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-mono text-gray-800 select-all">
-                      /start {tgCode}
-                    </code>
-                    <button onClick={copyTgCommand} title="Copier"
-                      className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-white whitespace-nowrap">
-                      {tgCopied ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} />}
-                      {tgCopied ? 'Copié' : 'Copier'}
-                    </button>
-                  </div>
-                  {tgDeepLink && (
-                    <a href={tgDeepLink} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
-                      <Send size={15} /> Ouvrir Telegram et lier automatiquement
-                    </a>
-                  )}
-                  <button onClick={generateTgCode} disabled={tgBusy}
-                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700">
-                    <RefreshCw size={12} /> Générer un nouveau code
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── Sécurité : mot de passe ── */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 mt-5">

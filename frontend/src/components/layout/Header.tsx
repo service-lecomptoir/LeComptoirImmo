@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, ChevronDown, Menu, BookOpen, Package } from 'lucide-react'
+import { Bell, User, LogOut, ChevronDown, Menu, BookOpen, Package, SlidersHorizontal } from 'lucide-react'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
@@ -133,6 +133,15 @@ export function Header({ onMenuClick }: HeaderProps) {
                   <User size={15} className="text-gray-400" />
                   Mes informations
                 </button>
+                {(user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio') && (
+                  <button
+                    onClick={() => { setMenuOpen(false); navigate('/profil/options') }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <SlidersHorizontal size={15} className="text-gray-400" />
+                    Mes options
+                  </button>
+                )}
                 {(user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio') && (
                   <button
                     onClick={() => { setMenuOpen(false); navigate('/abonnement') }}
