@@ -409,6 +409,7 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_webhook_secret_enc TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS sumup_api_key_enc TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS sumup_merchant_code VARCHAR(50)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_currency VARCHAR(3) NOT NULL DEFAULT 'EUR'",
         # Automatisation : clé d'idempotence des envois (anti-doublon).
         "ALTER TABLE communication_logs ADD COLUMN IF NOT EXISTS dedup_key VARCHAR(200)",
         "CREATE INDEX IF NOT EXISTS ix_communication_logs_dedup_key ON communication_logs (dedup_key)",

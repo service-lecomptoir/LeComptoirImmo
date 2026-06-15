@@ -49,6 +49,15 @@ async def put_config(
     return ops.config_out(current_user)
 
 
+@router.post("/config/test", summary="Tester mes clés de paiement (sans paiement réel)")
+async def test_config(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_manager(current_user)
+    return await ops.test_connection(current_user)
+
+
 # ── Locataire : disponibilité + checkout ───────────────────────────────────────
 @router.get("/locataire/availability", summary="Le paiement par carte est-il proposé ?")
 async def availability(

@@ -3,6 +3,7 @@ import { apiClient } from './client'
 export interface PaymentConfig {
   card_payments_enabled: boolean
   payment_provider: 'stripe' | 'sumup' | null
+  payment_currency: string
   stripe: { publishable_key: string; secret_key_set: boolean; webhook_secret_set: boolean; webhook_url: string }
   sumup: { merchant_code: string; api_key_set: boolean }
 }
@@ -24,6 +25,8 @@ export const onlinePaymentsApi = {
   getConfig: () => apiClient.get<PaymentConfig>('/online-payments/config'),
   putConfig: (data: Record<string, unknown>) =>
     apiClient.put<PaymentConfig>('/online-payments/config', data),
+  testConfig: () =>
+    apiClient.post<{ ok: boolean; detail: string }>('/online-payments/config/test'),
   availability: () =>
     apiClient.get<CardAvailability>('/online-payments/locataire/availability'),
   checkout: (payment_id?: string) =>

@@ -109,6 +109,10 @@ class User(Base, TimestampMixin):
     stripe_webhook_secret_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     sumup_api_key_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     sumup_merchant_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    # Devise des encaissements par carte (ISO 4217, ex. EUR). Configurable.
+    payment_currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="EUR", server_default="EUR"
+    )
 
     @property
     def full_address(self) -> Optional[str]:

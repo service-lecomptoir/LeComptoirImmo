@@ -44,6 +44,7 @@ def config_out(user: User) -> dict:
     return {
         "card_payments_enabled": bool(user.card_payments_enabled),
         "payment_provider": user.payment_provider,
+        "payment_currency": user.payment_currency or "EUR",
         "stripe": {
             "publishable_key": user.stripe_publishable_key or "",
             "secret_key_set": bool(user.stripe_secret_key_enc),
@@ -68,6 +69,9 @@ def apply_config(user: User, data: dict) -> None:
         user.payment_provider = prov
     if "card_payments_enabled" in data:
         user.card_payments_enabled = bool(data.get("card_payments_enabled"))
+    if "payment_currency" in data:
+        cur = (data.get("payment_currency") or "EUR").strip().upper()[:3]
+        user.payment_currency = cur or "EUR"
     # Champs non secrets : toujours mis à jour s'ils sont présents.
     if "stripe_publishable_key" in data:
         user.stripe_publishable_key = (data.get("stripe_publishable_key") or "").strip() or None
@@ -172,6 +176,7 @@ async def create_checkout(
         raise BadRequestException("Aucun montant à régler.")
     cents = int(round(amount * 100))
     label = f"Loyer {_period_label(payment)}"
+    currency = (holder.payment_currency or "EUR").upper()
     base = get_settings().PUBLIC_APP_URL.rstrip("/")
 
     if holder.payment_provider == "stripe":
@@ -184,7 +189,7 @@ async def create_checkout(
             "cancel_url": f"{base}/locataire/payer?card=cancel",
             "client_reference_id": str(payment.id),
             "line_items[0][quantity]": "1",
-            "line_items[0][price_data][currency]": "eur",
+            "line_items[0][price_data][currency]": currency.lower(),
             "line_items[0][price_data][unit_amount]": str(cents),
             "line_items[0][price_data][product_data][name]": label,
             "metadata[payment_id]": str(payment.id),
@@ -207,7 +212,7 @@ async def create_checkout(
     payload = {
         "checkout_reference": str(payment.id),
         "amount": amount,
-        "currency": "EUR",
+        "currency": currency,
         "merchant_code": holder.sumup_merchant_code,
         "description": label,
     }
@@ -221,7 +226,7 @@ async def create_checkout(
         logger.warning("SumUp checkout error %s: %s", r.status_code, r.text[:300])
         raise BadRequestException("Le paiement par carte a échoué (SumUp). Réessayez plus tard.")
     co = r.json()
-    return {"provider": "sumup", "checkout_id": co.get("id"), "amount": amount, "currency": "EUR"}
+    return {"provider": "sumup", "checkout_id": co.get("id"), "amount": amount, "currency": currency}
 
 
 # ── Confirmation / enregistrement ──────────────────────────────────────────────
@@ -246,7 +251,66 @@ async def _record_card_payment(db: AsyncSession, payment_id, provider_label: str
     )
     await db.commit()
     logger.info("Loyer %s réglé par carte (%s)", pid, provider_label)
+
+    # Notifie le gestionnaire + journal d'audit (best-effort, jamais bloquant).
+    try:
+        full = await PaymentService.get_by_id(db, pid, load_relations=True)
+        manager_id = getattr(full.lease, "created_by", None) if getattr(full, "lease", None) else None
+        tenant_name = getattr(getattr(full, "tenant", None), "full_name", None) or "Le locataire"
+        if manager_id:
+            from app.models.notification import (
+                Notification, NotificationPriority, NotificationType,
+            )
+            db.add(Notification(
+                title=f"Loyer payé par carte : {tenant_name}",
+                message=(f"{tenant_name} a réglé le loyer de {_period_label(full)} par carte "
+                         f"({provider_label}, {amount:.2f}). Le règlement est enregistré."),
+                notification_type=NotificationType.PAIEMENT_RECU,
+                priority=getattr(NotificationPriority, "NORMAL", NotificationPriority.HIGH),
+                entity_type="payment", entity_id=full.id, user_id=manager_id,
+            ))
+            await db.commit()
+        from app.services import audit_service
+        await audit_service.log(
+            db, action="payment.card_paid", user_id=manager_id,
+            entity_type="payment", entity_id=pid,
+            details={"provider": provider_label, "amount": amount},
+        )
+        await db.commit()
+    except Exception:  # noqa: BLE001
+        logger.warning("Notif/audit paiement carte ignoré pour %s", pid, exc_info=True)
     return True
+
+
+async def test_connection(user: User) -> dict:
+    """Vérifie que les clés enregistrées du gestionnaire sont valides, sans
+    effectuer de paiement (Stripe : GET /balance ; SumUp : GET /me)."""
+    prov = user.payment_provider
+    if prov == "stripe":
+        secret = decrypt_secret(user.stripe_secret_key_enc)
+        if not secret:
+            return {"ok": False, "detail": "Renseignez d'abord la clé secrète Stripe puis enregistrez."}
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as c:
+                r = await c.get(f"{_STRIPE_API}/balance", auth=(secret, ""))
+        except httpx.RequestError as exc:
+            return {"ok": False, "detail": f"Stripe injoignable : {exc}"}
+        if r.status_code == 200:
+            return {"ok": True, "detail": "Connexion Stripe réussie : vos clés sont valides."}
+        return {"ok": False, "detail": "Clé Stripe refusée. Vérifiez votre clé secrète."}
+    if prov == "sumup":
+        api = decrypt_secret(user.sumup_api_key_enc)
+        if not api:
+            return {"ok": False, "detail": "Renseignez d'abord la clé API SumUp puis enregistrez."}
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as c:
+                r = await c.get(f"{_SUMUP_API}/me", headers={"Authorization": f"Bearer {api}"})
+        except httpx.RequestError as exc:
+            return {"ok": False, "detail": f"SumUp injoignable : {exc}"}
+        if r.status_code == 200:
+            return {"ok": True, "detail": "Connexion SumUp réussie : vos clés sont valides."}
+        return {"ok": False, "detail": "Clé SumUp refusée. Vérifiez votre clé API."}
+    return {"ok": False, "detail": "Choisissez un prestataire (Stripe ou SumUp)."}
 
 
 def _verify_stripe_signature(payload: bytes, sig_header: str, secret: str) -> bool:

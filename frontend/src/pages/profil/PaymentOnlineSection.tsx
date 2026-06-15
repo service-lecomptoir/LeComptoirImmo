@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CreditCard, Save, Copy, Check } from 'lucide-react'
+import { CreditCard, Save, Copy, Check, Plug } from 'lucide-react'
 import { onlinePaymentsApi, type PaymentConfig } from '@/api/onlinePayments'
 import { getErrorMessage } from '@/utils/errors'
 import { toast } from '@/store/toast'
@@ -13,7 +13,9 @@ export default function PaymentOnlineSection() {
   const [cfg, setCfg] = useState<PaymentConfig | null>(null)
   const [provider, setProvider] = useState<'stripe' | 'sumup'>('stripe')
   const [enabled, setEnabled] = useState(false)
+  const [currency, setCurrency] = useState('EUR')
   const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
   const [copied, setCopied] = useState(false)
 
   // Champs (secrets : vides au chargement, saisis seulement pour modifier).
@@ -28,6 +30,7 @@ export default function PaymentOnlineSection() {
       setCfg(data)
       setProvider(data.payment_provider || 'stripe')
       setEnabled(data.card_payments_enabled)
+      setCurrency(data.payment_currency || 'EUR')
       setStripePub(data.stripe.publishable_key || '')
       setSumupMerchant(data.sumup.merchant_code || '')
     }).catch(() => { /* non-gestionnaire ou erreur : section masquée par le parent */ })
@@ -39,6 +42,7 @@ export default function PaymentOnlineSection() {
       const payload: Record<string, unknown> = {
         payment_provider: provider,
         card_payments_enabled: enabled,
+        payment_currency: currency,
         stripe_publishable_key: stripePub,
         sumup_merchant_code: sumupMerchant,
       }
@@ -53,6 +57,19 @@ export default function PaymentOnlineSection() {
       toast.error(getErrorMessage(e, "Échec de l'enregistrement"))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const testConnection = async () => {
+    setTesting(true)
+    try {
+      const { data } = await onlinePaymentsApi.testConfig()
+      if (data.ok) toast.success(data.detail)
+      else toast.error(data.detail)
+    } catch (e) {
+      toast.error(getErrorMessage(e, 'Test de connexion impossible'))
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -98,6 +115,13 @@ export default function PaymentOnlineSection() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Devise (configurable) */}
+      <div className="w-32">
+        <label className="block text-xs font-medium text-gray-600 mb-1">Devise</label>
+        <input type="text" className={inp} value={currency} maxLength={3}
+          onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder="EUR" />
       </div>
 
       {provider === 'stripe' ? (
@@ -156,7 +180,12 @@ export default function PaymentOnlineSection() {
         </div>
       )}
 
-      <div className="flex justify-end pt-1">
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <button onClick={testConnection} disabled={testing}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 disabled:opacity-60"
+          title="Vérifie vos clés auprès du prestataire, sans paiement réel (enregistrez d'abord)">
+          <Plug size={15} /> {testing ? 'Test…' : 'Tester la connexion'}
+        </button>
         <button onClick={save} disabled={saving}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
           <Save size={15} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
