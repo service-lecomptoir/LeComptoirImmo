@@ -425,7 +425,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                             {e.title}
                             {e.notes?.startsWith('[auto]') && (
                               <span className="ml-2 align-middle text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                                style={{ color: '#0E9F8E', background: '#D1FAE5' }} title="Planifié automatiquement d'après l'historique">
+                                style={{ color: BRAND.teal, background: '#D1FAE5' }} title="Planifié automatiquement d'après l'historique">
                                 Auto
                               </span>
                             )}

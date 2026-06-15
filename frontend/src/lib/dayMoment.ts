@@ -1,4 +1,5 @@
 import { Moon, Sunrise, CloudSun, Sunset } from 'lucide-react'
+import { BRAND } from '@/lib/brand'
 import type { LucideIcon } from 'lucide-react'
 
 export interface DayMoment {
@@ -14,7 +15,7 @@ export function getDayMoment(d: Date = new Date()): DayMoment {
   const h = d.getHours()
   if (h < 7) return { Icon: Moon, color: '#6366F1', bg: '#EEF2FF', label: 'Bonne nuit' }
   if (h < 12) return { Icon: Sunrise, color: '#F59E0B', bg: '#FFF7ED', label: 'Bonne matinée' }
-  if (h < 18) return { Icon: CloudSun, color: '#F07800', bg: '#FFF7ED', label: 'Bel après-midi' }
+  if (h < 18) return { Icon: CloudSun, color: BRAND.orange, bg: '#FFF7ED', label: 'Bel après-midi' }
   if (h < 22) return { Icon: Sunset, color: '#EA580C', bg: '#FFF1F0', label: 'Bonne soirée' }
   return { Icon: Moon, color: '#6366F1', bg: '#EEF2FF', label: 'Bonne nuit' }
 }

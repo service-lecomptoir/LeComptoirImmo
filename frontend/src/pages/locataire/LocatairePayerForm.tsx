@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BRAND } from '@/lib/brand'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Building2, Banknote, AlertCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
@@ -154,7 +155,7 @@ export default function LocatairePayerForm() {
         onClick={handleDeclare}
         disabled={isSending || !amount || amount <= 0}
         className="w-full py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-        style={{ background: '#0D2F5C' }}
+        style={{ background: BRAND.navy }}
       >
         {isSending ? 'Envoi…' : `Déclarer le paiement de ${fmtEuro(amount)}`}
       </button>

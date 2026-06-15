@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BRAND } from '@/lib/brand'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -25,8 +26,8 @@ const ACCOUNT_TYPES: {
     icon: '🏢',
     label: 'Gestionnaire',
     subtitle: 'Administration & gestion',
-    color: '#0D2F5C',
-    activeColor: '#0D2F5C',
+    color: BRAND.navy,
+    activeColor: BRAND.navy,
     activeBg: 'rgba(13, 47, 92, 0.07)',
     placeholder: 'gestionnaire@cabinet.fr',
   },
@@ -35,8 +36,8 @@ const ACCOUNT_TYPES: {
     icon: '🔑',
     label: 'Propriétaire',
     subtitle: 'Suivi de vos biens',
-    color: '#1A4A8A',
-    activeColor: '#1A4A8A',
+    color: BRAND.navyLight,
+    activeColor: BRAND.navyLight,
     activeBg: 'rgba(26, 74, 138, 0.07)',
     placeholder: 'proprietaire@email.fr',
   },
@@ -110,7 +111,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
       <div className="relative z-10 px-12 pt-12">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-               style={{ background: '#F07800' }}>
+               style={{ background: BRAND.orange }}>
             <LogoMark size={26} className="text-white" />
           </div>
           <span className="text-white font-bold text-lg tracking-wide">Le Comptoir Immo</span>
@@ -146,7 +147,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
           {content.title.split('\n').map((line, i) => (
             i === 0
               ? <span key={i}>{line}<br /></span>
-              : <span key={i} style={{ color: '#F07800' }}>{line}</span>
+              : <span key={i} style={{ color: BRAND.orange }}>{line}</span>
           ))}
         </h1>
         <p className="text-blue-200 text-sm leading-relaxed max-w-xs">
@@ -278,10 +279,10 @@ export default function Login() {
         <div className="lg:hidden mb-10 text-center">
           <div className="inline-flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                 style={{ background: '#0D2F5C' }}>
+                 style={{ background: BRAND.navy }}>
               <LogoMark size={24} className="text-white" />
             </div>
-            <span className="font-bold text-lg" style={{ color: '#0D2F5C' }}>Le Comptoir Immo</span>
+            <span className="font-bold text-lg" style={{ color: BRAND.navy }}>Le Comptoir Immo</span>
           </div>
         </div>
 
@@ -290,7 +291,7 @@ export default function Login() {
 
           {/* Titre */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-1" style={{ color: '#0D2F5C' }}>
+            <h2 className="text-2xl font-bold mb-1" style={{ color: BRAND.navy }}>
               Connexion
             </h2>
             <p className="text-sm text-gray-500">
@@ -406,7 +407,7 @@ export default function Login() {
                   type="button"
                   onClick={openForgot}
                   className="text-xs font-medium hover:underline"
-                  style={{ color: '#F07800' }}
+                  style={{ color: BRAND.orange }}
                 >
                   Mot de passe oublié ?
                 </button>
@@ -511,7 +512,7 @@ export default function Login() {
           <p className="mt-4 text-center text-xs text-gray-400">
             Pas encore client ?{' '}
             <button type="button" onClick={() => setShowSubscribe(true)}
-              className="font-medium hover:underline" style={{ color: '#F07800' }}>
+              className="font-medium hover:underline" style={{ color: BRAND.orange }}>
               Demander une démo
             </button>
           </p>
@@ -534,7 +535,7 @@ export default function Login() {
           <div className="absolute inset-0 bg-black/40" />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
                onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-2" style={{ color: '#0D2F5C' }}>
+            <h3 className="text-lg font-bold mb-2" style={{ color: BRAND.navy }}>
               Mot de passe oublié&nbsp;?
             </h3>
 
