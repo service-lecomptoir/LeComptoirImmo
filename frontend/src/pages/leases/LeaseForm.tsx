@@ -150,8 +150,6 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
       apl_tiers_payant: false,
       has_guarantor: false,
       payment_day: 1,
-      charges_amount: 0,
-      deposit_amount: 0,
     },
   })
 

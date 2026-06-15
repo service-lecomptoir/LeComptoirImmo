@@ -36,12 +36,23 @@ const schema = z.object({
 }).superRefine((d, ctx) => {
   if (d.tenant_type === 'company') {
     if (!d.company_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Société / SCI requise', path: ['company_name'] })
-    if (!d.siret?.trim()) ctx.addIssue({ code: 'custom', message: 'SIREN / SIRET requis', path: ['siret'] })
+    if (!d.siret?.trim()) {
+      ctx.addIssue({ code: 'custom', message: 'SIREN / SIRET requis', path: ['siret'] })
+    } else {
+      const digits = d.siret.replace(/\D/g, '')
+      if (digits.length !== 9 && digits.length !== 14) {
+        ctx.addIssue({ code: 'custom', message: 'SIREN (9 chiffres) ou SIRET (14 chiffres)', path: ['siret'] })
+      }
+    }
   } else {
     if (!d.first_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Prénom requis', path: ['first_name'] })
     if (!d.last_name?.trim()) ctx.addIssue({ code: 'custom', message: 'Nom requis', path: ['last_name'] })
     if (!d.birth_date?.trim()) ctx.addIssue({ code: 'custom', message: 'Date de naissance requise', path: ['birth_date'] })
     if (!d.national_id?.trim()) ctx.addIssue({ code: 'custom', message: 'Numéro de sécurité sociale requis', path: ['national_id'] })
+  }
+  // Téléphone (facultatif) : s'il est saisi, au moins 10 chiffres.
+  if (d.phone?.trim() && d.phone.replace(/\D/g, '').length < 10) {
+    ctx.addIssue({ code: 'custom', message: 'Numéro de téléphone incomplet', path: ['phone'] })
   }
 })
 
