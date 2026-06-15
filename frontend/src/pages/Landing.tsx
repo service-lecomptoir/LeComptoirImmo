@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BRAND } from '@/lib/brand'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight, Check, Building2, Users, Calendar, CreditCard,
@@ -9,8 +10,8 @@ import SubscriptionModal from '@/pages/SubscriptionModal'
 import { publicPlansApi, type PublicPlan } from '@/api/publicPlans'
 import { FEATURE_LABELS, FEATURE_DESCRIPTIONS } from '@/lib/features'
 
-const NAVY = '#0D2F5C'
-const ORANGE = '#F07800'
+const NAVY = BRAND.navy
+const ORANGE = BRAND.orange
 const FEATURE_ORDER = Object.keys(FEATURE_LABELS)
 
 const NAV = [

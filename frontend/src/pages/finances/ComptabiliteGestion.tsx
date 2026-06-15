@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { BRAND } from '@/lib/brand'
 import { BookText, Download, Search } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { exportCsv } from '@/utils/exportCsv'
@@ -123,7 +124,7 @@ export default function ComptabiliteGestion() {
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <BookText size={22} className="text-[#0D2F5C]" /> Comptabilité
+            <BookText size={22} className="text-brand-navy" /> Comptabilité
           </h1>
           <p className="text-gray-500 text-sm mt-1">
             Grand livre de toutes les transactions : appels de loyer, règlements, apurement, régularisations de charges.
@@ -132,7 +133,7 @@ export default function ComptabiliteGestion() {
         {filtered.length > 0 && (
           <button onClick={handleExport}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
-            style={{ background: '#0D2F5C' }}>
+            style={{ background: BRAND.navy }}>
             <Download size={15} /> Exporter
           </button>
         )}

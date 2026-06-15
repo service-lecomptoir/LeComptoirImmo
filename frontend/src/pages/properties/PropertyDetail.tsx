@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BRAND } from '@/lib/brand'
 import { formatPhoneDisplay } from '@/utils/format'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -82,7 +83,7 @@ export default function PropertyDetail() {
             <button
               onClick={() => navigate(`/properties/${property.id}/publish`)}
               className="flex items-center gap-2 px-3 py-2 border text-sm rounded-lg text-white hover:opacity-90"
-              style={{ background: '#0E9F8E', borderColor: '#0E9F8E' }}
+              style={{ background: BRAND.teal, borderColor: BRAND.teal }}
             >
               <Megaphone size={15} /> Diffuser
             </button>

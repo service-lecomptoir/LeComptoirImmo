@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { BRAND } from '@/lib/brand'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Upload, Image as ImageIcon, Send, Clock, EyeOff, Save, ExternalLink, Eye, TrendingUp, Trash2, Sparkles } from 'lucide-react'
 import { publishingApi, uploadPropertyPhoto, type Listing, type PublishPlatform } from '@/api/publishing'
@@ -295,7 +296,7 @@ export default function PropertyPublish() {
 
         <div className="flex justify-end">
           <button onClick={save} disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: '#0D2F5C' }}>
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: BRAND.navy }}>
             <Save size={15} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
         </div>
@@ -306,7 +307,7 @@ export default function PropertyPublish() {
         <h2 className="text-sm font-semibold text-gray-900 mb-3">Publication</h2>
         <div className="flex flex-wrap items-end gap-3">
           <button onClick={onPublish} disabled={busy}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: '#0E9F8E' }}>
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: BRAND.teal }}>
             <Send size={15} /> Publier maintenant
           </button>
           <div className="flex items-end gap-2">

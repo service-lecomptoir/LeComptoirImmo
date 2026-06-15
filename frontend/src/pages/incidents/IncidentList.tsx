@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { BRAND } from '@/lib/brand'
 import { getErrorMessage } from '@/utils/errors'
 import { MessageSquare, Clock, AlertCircle, CheckCircle, XCircle, Send, User, Building2, CheckCheck, Pencil } from 'lucide-react'
 import { ticketsApi, type Ticket } from '@/api/tickets'
@@ -161,7 +162,7 @@ function TicketsTab({
             onClick={() => { setFilter(f.value); setSelected(null) }}
             className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
             style={{
-              background: filter === f.value ? '#0D2F5C' : '#F1F5F9',
+              background: filter === f.value ? BRAND.navy : '#F1F5F9',
               color: filter === f.value ? '#FFFFFF' : '#475569',
             }}
           >
@@ -308,7 +309,7 @@ function TicketsTab({
                             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply() } }}
                             placeholder="Répondre au locataire… (Entrée pour envoyer)" rows={2}
                             className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-blue-400" />
-                          <button onClick={handleReply} disabled={isSending || !reply.trim()} className="px-4 rounded-xl text-white disabled:opacity-40" style={{ background: '#0D2F5C' }}>
+                          <button onClick={handleReply} disabled={isSending || !reply.trim()} className="px-4 rounded-xl text-white disabled:opacity-40" style={{ background: BRAND.navy }}>
                             <Send size={16} />
                           </button>
                         </div>
@@ -492,7 +493,7 @@ function ProprietaireMessagesTab() {
                   onClick={handleSend}
                   disabled={isSending || !reply.trim()}
                   className="px-4 rounded-xl text-white disabled:opacity-40"
-                  style={{ background: '#0D2F5C' }}
+                  style={{ background: BRAND.navy }}
                 >
                   <Send size={16} />
                 </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { BRAND } from '@/lib/brand'
 import { ShieldCheck, X, Plus, Trash2, TrendingUp, AlertTriangle, KeyRound, ChevronRight, ChevronDown, Sparkles } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import {
@@ -8,7 +9,7 @@ import {
 import { useAuthStore } from '@/store/authStore'
 
 const POLARITY_STYLE: Record<string, { color: string; bg: string }> = {
-  positif: { color: '#0E9F8E', bg: '#D1FAE5' },
+  positif: { color: BRAND.teal, bg: '#D1FAE5' },
   negatif: { color: '#DC2626', bg: '#FEE2E2' },
   neutre:  { color: '#6B7280', bg: '#F3F4F6' },
 }
@@ -24,7 +25,7 @@ function GradeBadge({ grade, score }: { grade: string; score: number }) {
 }
 
 function ScoreBar({ value }: { value: number }) {
-  const c = value >= 70 ? '#0E9F8E' : value >= 55 ? '#D97706' : value >= 40 ? '#EA580C' : '#DC2626'
+  const c = value >= 70 ? BRAND.teal : value >= 55 ? '#D97706' : value >= 40 ? '#EA580C' : '#DC2626'
   return (
     <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
       <div className="h-full rounded-full" style={{ width: `${value}%`, background: c }} />
@@ -147,7 +148,7 @@ function DetailPanel({ tenantId, onClose, onChanged }: { tenantId: string; onClo
                     <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                       placeholder="Note (facultatif)" className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1" />
                     <button onClick={addEvent} disabled={!form.kind || saving}
-                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: '#0D2F5C' }}>
+                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: BRAND.navy }}>
                       <Plus size={15} /> Ajouter
                     </button>
                   </div>

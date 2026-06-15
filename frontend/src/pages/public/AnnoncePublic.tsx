@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BRAND } from '@/lib/brand'
 import { useParams } from 'react-router-dom'
 import { apiClient } from '@/api/client'
 import { MapPin, Home } from 'lucide-react'
@@ -109,7 +110,7 @@ export default function AnnoncePublic() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: '#0D2F5C' }}>LC</div>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: BRAND.navy }}>LC</div>
           <span className="font-semibold text-gray-900 text-sm">Le Comptoir Immo</span>
         </div>
       </header>
@@ -150,7 +151,7 @@ export default function AnnoncePublic() {
             </div>
             {listing.price != null && (
               <div className="text-right">
-                <p className="text-2xl font-bold" style={{ color: '#0E9F8E' }}>
+                <p className="text-2xl font-bold" style={{ color: BRAND.teal }}>
                   {listing.price.toLocaleString('fr-FR')} €
                 </p>
                 <p className="text-xs text-gray-400">par mois (CC)</p>
@@ -241,7 +242,7 @@ export default function AnnoncePublic() {
               <div className="sm:col-span-2 flex justify-end">
                 <button type="submit" disabled={applyState === 'sending'}
                   className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-                  style={{ background: '#0D2F5C' }}>
+                  style={{ background: BRAND.navy }}>
                   {applyState === 'sending' ? 'Envoi…' : 'Envoyer ma candidature'}
                 </button>
               </div>

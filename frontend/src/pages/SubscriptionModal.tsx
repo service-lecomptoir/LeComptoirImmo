@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BRAND } from '@/lib/brand'
 import { getErrorMessage } from '@/utils/errors'
 import { X, Send, CheckCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
@@ -46,7 +47,7 @@ export default function SubscriptionModal({ open, onClose }: Props) {
     }
   }
 
-  const inp = 'w-full px-3 py-2.5 text-sm rounded-xl outline-none border border-gray-200 bg-gray-50 focus:bg-white focus:border-[#0D2F5C] focus:ring-2 focus:ring-[#0D2F5C]/10 transition-all'
+  const inp = 'w-full px-3 py-2.5 text-sm rounded-xl outline-none border border-gray-200 bg-gray-50 focus:bg-white focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 transition-all'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -71,7 +72,7 @@ export default function SubscriptionModal({ open, onClose }: Props) {
             </p>
             <button onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-white rounded-xl"
-              style={{ background: '#0D2F5C' }}>
+              style={{ background: BRAND.navy }}>
               Fermer
             </button>
           </div>

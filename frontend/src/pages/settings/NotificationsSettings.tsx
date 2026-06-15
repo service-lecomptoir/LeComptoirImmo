@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react'
+import { BRAND } from '@/lib/brand'
 import { Mail, MessageSquare, Send, CheckCircle, XCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
@@ -106,7 +107,7 @@ export default function NotificationsSettings({ embedded = false }: { embedded?:
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           <button onClick={sendTest} disabled={sending}
             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 shrink-0"
-            style={{ background: '#0D2F5C' }}>
+            style={{ background: BRAND.navy }}>
             <Send size={15} /> {sending ? 'Envoi…' : 'Tester'}
           </button>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { BRAND } from '@/lib/brand'
 import { useSearchParams, Link } from 'react-router-dom'
 import { DoorOpen, Plus, X, Trash2, CheckCircle2, ArrowLeftRight, Wallet } from 'lucide-react'
 import { leaseExitsApi, type LeaseExit, type Deduction } from '@/api/leaseExits'
@@ -144,7 +145,7 @@ export default function SortiesPage() {
         </div>
         <button onClick={() => setShowCreate(true)}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white self-start"
-          style={{ background: '#0D2F5C' }}>
+          style={{ background: BRAND.navy }}>
           <Plus size={16} /> Nouvelle sortie
         </button>
       </div>
@@ -325,7 +326,7 @@ export default function SortiesPage() {
                   )}
                   <div className="flex justify-between text-sm border-t border-gray-100 pt-2">
                     <span className="font-semibold text-gray-900">À restituer au locataire</span>
-                    <span className="font-bold" style={{ color: '#0E9F8E' }}>{eur(selected.deposit_to_return)}</span>
+                    <span className="font-bold" style={{ color: BRAND.teal }}>{eur(selected.deposit_to_return)}</span>
                   </div>
                 </div>
               </div>
@@ -357,7 +358,7 @@ export default function SortiesPage() {
                   <button onClick={close} disabled={busy || !selected.departure_date}
                     title={!selected.departure_date ? 'Renseignez la date de départ' : undefined}
                     className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                    style={{ background: '#0E9F8E' }}>
+                    style={{ background: BRAND.teal }}>
                     <CheckCircle2 size={15} /> Clôturer (résilier le bail)
                   </button>
                 </div>
@@ -399,7 +400,7 @@ export default function SortiesPage() {
                 <button type="button" onClick={() => setShowCreate(false)}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Annuler</button>
                 <button type="submit" disabled={busy || !createLease}
-                  className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: '#0D2F5C' }}>
+                  className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: BRAND.navy }}>
                   {busy ? 'Ouverture…' : 'Ouvrir le dossier'}
                 </button>
               </div>

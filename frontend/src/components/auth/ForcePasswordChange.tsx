@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BRAND } from '@/lib/brand'
 import { Eye, EyeOff, Lock, ShieldCheck, LogOut } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -53,7 +54,7 @@ export function ForcePasswordChange() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-7 sm:p-9">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: '#0D2F5C' }}>
+            style={{ background: BRAND.navy }}>
             <LogoMark size={26} className="text-white" />
           </div>
           <div className="min-w-0">
@@ -108,7 +109,7 @@ export function ForcePasswordChange() {
 
           <button type="submit" disabled={!canSubmit}
             className="w-full py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition"
-            style={{ background: '#0D2F5C' }}>
+            style={{ background: BRAND.navy }}>
             {saving ? 'Enregistrement…' : 'Définir mon mot de passe'}
           </button>
         </form>

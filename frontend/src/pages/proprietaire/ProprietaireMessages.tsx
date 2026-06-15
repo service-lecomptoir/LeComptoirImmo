@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { BRAND } from '@/lib/brand'
 import { MessageSquare, Send, Building2 } from 'lucide-react'
 import { messagesApi, type ProprietaireMessage } from '@/api/messages'
 import { format } from 'date-fns'
@@ -153,7 +154,7 @@ export default function ProprietaireMessages() {
               onClick={handleSend}
               disabled={isSending || !text.trim()}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-all disabled:opacity-40"
-              style={{ background: '#0D2F5C' }}
+              style={{ background: BRAND.navy }}
             >
               <Send size={16} />
             </button>

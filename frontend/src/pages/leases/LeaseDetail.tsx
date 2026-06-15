@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BRAND } from '@/lib/brand'
 import { getErrorMessage } from '@/utils/errors'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -27,7 +28,7 @@ import { fr } from 'date-fns/locale'
 
 // ── Section « Relation locataire » (alimente le scoring) ─────────────────────
 const _POLARITY: Record<string, { color: string; bg: string }> = {
-  positif: { color: '#0E9F8E', bg: '#D1FAE5' },
+  positif: { color: BRAND.teal, bg: '#D1FAE5' },
   negatif: { color: '#DC2626', bg: '#FEE2E2' },
   neutre:  { color: '#6B7280', bg: '#F3F4F6' },
 }
@@ -76,7 +77,7 @@ function RelationSection({ leaseId, canEdit }: { leaseId: string; canEdit: boole
           <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
             placeholder="Note (facultatif)" className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1" />
           <button onClick={add} disabled={!form.kind || saving}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: '#0D2F5C' }}>
+            className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: BRAND.navy }}>
             <Plus size={15} /> Ajouter
           </button>
         </div>
@@ -331,7 +332,7 @@ export default function LeaseDetail() {
             <button
               onClick={() => navigate(`/sorties?lease=${lease.id}`)}
               className="flex items-center gap-2 px-3 py-2 border text-sm rounded-lg text-white hover:opacity-90"
-              style={{ background: '#0E9F8E', borderColor: '#0E9F8E' }}
+              style={{ background: BRAND.teal, borderColor: BRAND.teal }}
               title="Préavis, état des lieux de sortie, dépôt de garantie, clôture"
             >
               <DoorOpen size={15} /> Organiser la sortie

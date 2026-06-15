@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { BRAND } from '@/lib/brand'
 
 export interface ScoreFactor {
   key: string
@@ -77,7 +78,7 @@ export const scoringApi = {
 }
 
 export const GRADE_COLORS: Record<string, { color: string; bg: string }> = {
-  A: { color: '#0E9F8E', bg: '#D1FAE5' },
+  A: { color: BRAND.teal, bg: '#D1FAE5' },
   B: { color: '#2563EB', bg: '#DBEAFE' },
   C: { color: '#D97706', bg: '#FEF3C7' },
   D: { color: '#EA580C', bg: '#FFEDD5' },
