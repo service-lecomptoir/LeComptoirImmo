@@ -8,6 +8,7 @@ import { useAuthStore, roleHomePath } from '@/store/authStore'
 import type { AccountType } from '@/store/authStore'
 import SubscriptionModal from './SubscriptionModal'
 import { LogoMark } from '@/components/common/Logo'
+import { authApi } from '@/api/auth'
 
 const ACCOUNT_TYPES: {
   id: AccountType
@@ -187,12 +188,41 @@ export default function Login() {
   const [accountType, setAccountType] = useState<AccountType>('gestionnaire')
   const [showSubscribe, setShowSubscribe] = useState(false)
   const [showForgot, setShowForgot] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotDone, setForgotDone] = useState(false)
+  const [forgotError, setForgotError] = useState<string | null>(null)
 
   const activeType = ACCOUNT_TYPES.find(t => t.id === accountType)!
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<LoginForm>({
+  const { register, handleSubmit, reset, getValues, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   })
+
+  const openForgot = () => {
+    setForgotEmail(getValues('email') || '')
+    setForgotDone(false)
+    setForgotError(null)
+    setShowForgot(true)
+  }
+
+  const submitForgot = async () => {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(forgotEmail.trim())) {
+      setForgotError('Adresse e-mail invalide')
+      return
+    }
+    setForgotLoading(true)
+    setForgotError(null)
+    try {
+      await authApi.forgotPassword(forgotEmail.trim())
+      setForgotDone(true)
+    } catch {
+      // Réponse générique côté serveur : en cas d'erreur réseau on reste neutre.
+      setForgotDone(true)
+    } finally {
+      setForgotLoading(false)
+    }
+  }
 
   // Déjà connecté → redirect immédiat vers la page d'accueil du rôle
   if (isAuthenticated && user) {
@@ -374,7 +404,7 @@ export default function Login() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setShowForgot(true)}
+                  onClick={openForgot}
                   className="text-xs font-medium hover:underline"
                   style={{ color: '#F07800' }}
                 >
@@ -497,7 +527,7 @@ export default function Login() {
 
       <SubscriptionModal open={showSubscribe} onClose={() => setShowSubscribe(false)} />
 
-      {/* Aide « Mot de passe oublié ? » : adaptée au profil sélectionné */}
+      {/* « Mot de passe oublié ? » : réinitialisation en libre-service par e-mail */}
       {showForgot && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
              onClick={() => setShowForgot(false)}>
@@ -507,33 +537,66 @@ export default function Login() {
             <h3 className="text-lg font-bold mb-2" style={{ color: '#0D2F5C' }}>
               Mot de passe oublié&nbsp;?
             </h3>
-            {accountType === 'gestionnaire' ? (
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Votre accès gestionnaire est géré par <span className="font-semibold">Le Comptoir Immo</span>.
-                Pour réinitialiser votre mot de passe, contactez votre interlocuteur habituel
-                (ou répondez à l'e-mail de votre abonnement)&nbsp;: nous le réinitialisons et vous
-                communiquons un accès temporaire.
-              </p>
+
+            {forgotDone ? (
+              <>
+                <div className="mb-2 flex items-start gap-2.5 p-3.5 rounded-xl text-sm"
+                     style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#15803D' }}>
+                  <span>
+                    Si un compte est associé à cette adresse, vous allez recevoir un e-mail
+                    contenant un mot de passe temporaire. Pensez à vérifier vos courriers indésirables.
+                  </span>
+                </div>
+                <div className="mt-5 flex justify-end">
+                  <button type="button" onClick={() => setShowForgot(false)}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
+                    style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #1A4A8A 100%)' }}>
+                    Fermer
+                  </button>
+                </div>
+              </>
             ) : (
-              <p className="text-sm text-gray-600 leading-relaxed">
-                Votre compte est géré par votre <span className="font-semibold">gestionnaire</span>.
-                Contactez-le&nbsp;: il peut réinitialiser votre mot de passe en quelques secondes
-                depuis son espace, puis vous communique vos nouveaux identifiants.
-              </p>
+              <>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Saisissez votre adresse e-mail&nbsp;: vous recevrez un <span className="font-semibold">mot de
+                  passe temporaire</span> pour vous reconnecter. Il vous sera demandé d'en choisir
+                  un nouveau dès la connexion.
+                </p>
+                {forgotError && (
+                  <p className="mt-3 text-xs" style={{ color: '#CF1322' }}>{forgotError}</p>
+                )}
+                <div className="mt-4 relative">
+                  <div className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                    <Mail size={16} className="text-gray-400" />
+                  </div>
+                  <input
+                    type="email"
+                    autoFocus
+                    value={forgotEmail}
+                    onChange={e => setForgotEmail(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') submitForgot() }}
+                    placeholder="votre@email.fr"
+                    className="w-full pl-10 pr-4 py-3 text-sm rounded-xl outline-none"
+                    style={{ border: '1.5px solid #E2E8F0', background: '#F8FAFC', color: '#1A2F4E' }}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-gray-400">
+                  Pour votre sécurité, votre mot de passe actuel n'est jamais communiqué&nbsp;: nous en
+                  générons un nouveau, temporaire.
+                </p>
+                <div className="mt-5 flex justify-end gap-3">
+                  <button type="button" onClick={() => setShowForgot(false)}
+                    className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100">
+                    Annuler
+                  </button>
+                  <button type="button" onClick={submitForgot} disabled={forgotLoading}
+                    className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
+                    style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #1A4A8A 100%)' }}>
+                    {forgotLoading ? 'Envoi…' : 'Recevoir un accès temporaire'}
+                  </button>
+                </div>
+              </>
             )}
-            <p className="mt-3 text-xs text-gray-400">
-              Par sécurité, les mots de passe sont chiffrés et ne peuvent pas être communiqués tels quels.
-            </p>
-            <div className="mt-5 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowForgot(false)}
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-                style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #1A4A8A 100%)' }}
-              >
-                J'ai compris
-              </button>
-            </div>
           </div>
         </div>
       )}

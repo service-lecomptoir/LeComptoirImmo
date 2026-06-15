@@ -195,33 +195,86 @@ async def send_quittance(
     )
 
 
+def build_credentials_email(
+    *,
+    login: str,
+    password: str,
+    full_name: Optional[str] = None,
+    login_url: str = "https://immo.lecomptoir.services/login",
+    product_label: str = "Le Comptoir Immo",
+    plan_label: Optional[str] = None,
+    reset: bool = False,
+) -> tuple[str, str]:
+    """Modèle d'e-mail professionnel des identifiants de connexion.
+
+    Retourne (objet, corps_html). Réutilisable pour l'envoi initial des accès
+    comme pour une réinitialisation (``reset=True``). L'objet est volontairement
+    sobre (sans tiret, sans majuscules criardes ni ponctuation suspecte) pour
+    limiter le classement en courrier indésirable.
+    """
+    greeting = f"Bonjour {full_name.strip()}," if (full_name or "").strip() else "Bonjour,"
+    if reset:
+        subject = f"Réinitialisation de votre mot de passe {product_label}"
+        title = "Réinitialisation de votre mot de passe"
+        intro = (
+            f"Vous avez demandé la réinitialisation de votre mot de passe pour votre "
+            f"espace <strong>{product_label}</strong>. Voici un mot de passe temporaire "
+            f"pour vous reconnecter :"
+        )
+    else:
+        subject = f"Vos accès à votre espace {product_label}"
+        title = "Vos accès à votre espace"
+        intro = (
+            f"Votre espace <strong>{product_label}</strong> est prêt. "
+            f"Voici vos identifiants de connexion :"
+        )
+
+    rows = []
+    if plan_label and plan_label.strip():
+        rows.append(("Formule", plan_label.strip()))
+    rows.append(("Identifiant", login))
+    rows.append(("Mot de passe temporaire", password))
+    rows_html = "".join(
+        f'<tr><td style="padding:11px 16px;border-bottom:1px solid #eef2f7;color:#64748b;'
+        f'font-size:13px">{k}</td>'
+        f'<td style="padding:11px 16px;border-bottom:1px solid #eef2f7;font-weight:600;'
+        f'color:#0f172a;font-size:14px">{v}</td></tr>'
+        for k, v in rows
+    )
+
+    content = f"""
+<p style="margin:0 0 14px;font-size:15px;color:#0f172a">{greeting}</p>
+<p style="margin:0 0 18px;font-size:14px;color:#334155;line-height:1.6">{intro}</p>
+<table role="presentation" style="width:100%;border-collapse:collapse;border:1px solid #eef2f7;border-radius:8px;overflow:hidden;margin:0 0 24px">
+{rows_html}
+</table>
+<div style="text-align:center;margin:0 0 24px">
+  <a href="{login_url}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 30px;border-radius:8px">Accéder à mon espace</a>
+</div>
+<p style="margin:0 0 8px;font-size:13px;color:#64748b;line-height:1.6">Lien de connexion : <a href="{login_url}" style="color:#1e40af;text-decoration:none">{login_url}</a></p>
+<p style="margin:0 0 8px;font-size:13px;color:#64748b;line-height:1.6">Pour votre sécurité, un nouveau mot de passe vous sera demandé lors de votre première connexion.</p>
+<p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6">Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail.</p>
+"""
+    return subject, _base_template(title, content)
+
+
 async def send_credentials(
     to: str,
     login: str,
     password: str,
     full_name: Optional[str] = None,
     login_url: str = "https://immo.lecomptoir.services/login",
+    product_label: str = "Le Comptoir Immo",
+    plan_label: Optional[str] = None,
+    reset: bool = False,
 ) -> bool:
-    """Envoie les identifiants de connexion (identifiant + mot de passe TEMPORAIRE)
-    à un utilisateur. Le mot de passe devra être changé à la 1re connexion."""
-    content = f"""
-<p>Bonjour {full_name or ""},</p>
-<p>Voici vos identifiants pour accéder à votre espace <strong>Le Comptoir Immo</strong> :</p>
-<table style="width:100%;border-collapse:collapse;margin:16px 0">
-  <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">Identifiant</td>
-      <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600">{login}</td></tr>
-  <tr><td style="padding:8px;color:#6b7280">Mot de passe temporaire</td>
-      <td style="padding:8px;font-weight:600">{password}</td></tr>
-</table>
-<p>Connectez-vous sur <a href="{login_url}">{login_url}</a>. Pour votre sécurité, il vous
-sera demandé de définir un nouveau mot de passe lors de votre première connexion.</p>
-<p>Cordialement,<br>Votre gestionnaire</p>
-"""
-    return await send_email(
-        to=to,
-        subject="Vos identifiants de connexion — Le Comptoir Immo",
-        html_body=_base_template("Vos identifiants de connexion", content),
+    """Envoie les identifiants de connexion (identifiant + mot de passe TEMPORAIRE).
+    Le mot de passe devra être changé à la 1re connexion."""
+    subject, html = build_credentials_email(
+        login=login, password=password, full_name=full_name, login_url=login_url,
+        product_label=product_label, plan_label=plan_label, reset=reset,
     )
+    return await send_email(to=to, subject=subject, html_body=html)
 
 
 async def send_revision_loyer(

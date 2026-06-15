@@ -5,11 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, AccessTokenResponse
+from app.schemas.auth import (
+    LoginRequest, TokenResponse, RefreshRequest, AccessTokenResponse, ForgotPasswordRequest,
+)
 from app.schemas.user import UserMeResponse, ProfileUpdate
 from app.services.auth_service import AuthService
+from app.services.user_service import UserService
 from app.services import audit_service
 from app.core.exceptions import UnauthorizedException
+from app.core.passwords import generate_temp_password
 
 router = APIRouter(prefix="/auth", tags=["Authentification"])
 
@@ -40,6 +44,50 @@ async def login(
         user_id=user.id, user_email=user.email, ip_address=ip,
     )
     return AuthService.generate_tokens(user)
+
+
+@router.post("/forgot-password", summary="Mot de passe oublié : envoi d'un mot de passe temporaire")
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Réinitialise le mot de passe en libre-service : génère un mot de passe
+    TEMPORAIRE, le pose sur le compte (changement forcé à la prochaine connexion)
+    et l'envoie par e-mail. Réponse toujours générique pour ne pas révéler si un
+    compte existe (anti-énumération d'adresses)."""
+    ip = request.client.host if request.client else None
+    generic = {
+        "detail": "Si un compte est associé à cette adresse, un e-mail contenant un "
+                  "mot de passe temporaire vient d'être envoyé.",
+    }
+    user = await UserService.get_by_email(db, data.email)
+    if user is None or not getattr(user, "is_active", True):
+        # Pas d'indice sur l'existence du compte.
+        return generic
+
+    temp_password = generate_temp_password()
+    await UserService.admin_set_password(db, user.id, temp_password, temporary=True)
+    await db.commit()
+
+    email_sent = False
+    try:
+        from app.services.email_service import send_credentials
+        email_sent = await send_credentials(
+            to=user.email, login=user.email, password=temp_password,
+            full_name=user.full_name, reset=True,
+        )
+    except Exception as _exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("Envoi reset mot de passe échoué: %s", _exc)
+
+    await audit_service.log(
+        db, action="user.forgot_password",
+        user_id=user.id, user_email=user.email,
+        details={"email_sent": email_sent}, ip_address=ip,
+    )
+    await db.commit()
+    return generic
 
 
 @router.post("/refresh", response_model=AccessTokenResponse, summary="Renouveler l'access token")
