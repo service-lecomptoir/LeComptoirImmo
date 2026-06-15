@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed } from '@/lib/features'
 import { navForRole, proprioSectionForPath, type NavItem } from '@/lib/navigation'
+import { getDayMoment, formatLongDate } from '@/lib/dayMoment'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
 import type { Role } from '@/types/auth'
@@ -379,6 +380,24 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           )
         })}
       </nav>
+
+      {/* ── Pied : moment de la journée + date (visible sur toutes les pages) ── */}
+      {(() => {
+        const moment = getDayMoment()
+        const { Icon } = moment
+        return (
+          <div className="px-4 py-3 border-t border-gray-700 flex items-center gap-2.5 shrink-0">
+            <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: moment.bg }}>
+              <Icon size={18} style={{ color: moment.color }} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-gray-300 text-xs font-medium leading-tight">{moment.label}</p>
+              <p className="text-gray-500 text-xs capitalize truncate">{formatLongDate()}</p>
+            </div>
+          </div>
+        )
+      })()}
       </aside>
     </>
   )
