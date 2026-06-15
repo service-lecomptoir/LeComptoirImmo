@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { formatPhoneDisplay } from '@/utils/format'
+import { BRAND } from '@/lib/brand'
 import { Wrench, Plus, Pencil, Trash2, X } from 'lucide-react'
 import { entretiensApi, prestatairesApi, type Entretien, type Prestataire } from '@/api/entretiens'
 import { format } from 'date-fns'
@@ -185,7 +186,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
           <button
             onClick={() => { setShowForm(true); setEditId(null); setForm(DEFAULT_FORM) }}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{ background: '#0D2F5C' }}
+            style={{ background: BRAND.navy }}
           >
             <Plus size={16} />
             Nouvel entretien
@@ -198,7 +199,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
         {(['liste', 'prestataires'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className="px-4 py-1.5 rounded-md text-sm font-medium transition-all"
-            style={{ background: tab === t ? '#FFFFFF' : 'transparent', color: tab === t ? '#0D2F5C' : '#6B7280', boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
+            style={{ background: tab === t ? '#FFFFFF' : 'transparent', color: tab === t ? BRAND.navy : '#6B7280', boxShadow: tab === t ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>
             {t === 'liste' ? 'Entretiens' : 'Prestataires'}
           </button>
         ))}
@@ -223,7 +224,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
             <div className="mb-4 flex justify-end">
               <button onClick={() => setShowPrestForm(true)}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-                style={{ background: '#0D2F5C' }}>
+                style={{ background: BRAND.navy }}>
                 <Plus size={16} /> Ajouter un prestataire
               </button>
             </div>
@@ -262,7 +263,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                     className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg">Annuler</button>
                   <button type="submit" disabled={isSavingPrest}
                     className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60"
-                    style={{ background: '#0D2F5C' }}>{isSavingPrest ? 'Enregistrement…' : 'Enregistrer'}</button>
+                    style={{ background: BRAND.navy }}>{isSavingPrest ? 'Enregistrement…' : 'Enregistrer'}</button>
                 </div>
               </form>
             </div>
@@ -377,7 +378,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                     className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg">Annuler</button>
                   <button type="submit" disabled={isSaving}
                     className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60"
-                    style={{ background: '#0D2F5C' }}>{isSaving ? 'Enregistrement…' : editId ? 'Modifier' : 'Créer'}</button>
+                    style={{ background: BRAND.navy }}>{isSaving ? 'Enregistrement…' : editId ? 'Modifier' : 'Créer'}</button>
                 </div>
               </form>
             </div>
@@ -388,7 +389,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
             {FILTERS.map(f => (
               <button key={f.value} onClick={() => setFilter(f.value)}
                 className="px-3 py-1.5 rounded-full text-sm font-medium transition-all"
-                style={{ background: filter === f.value ? '#0D2F5C' : '#F1F5F9', color: filter === f.value ? '#FFFFFF' : '#475569' }}>
+                style={{ background: filter === f.value ? BRAND.navy : '#F1F5F9', color: filter === f.value ? '#FFFFFF' : '#475569' }}>
                 {f.label}
               </button>
             ))}

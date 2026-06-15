@@ -6,6 +6,7 @@ import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { docFilename } from '@/utils/filename'
 import { exportCsv } from '@/utils/exportCsv'
+import { BRAND } from '@/lib/brand'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -61,7 +62,7 @@ interface Entry {
 
 function SectionAvatar() {
   return (
-    <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#0D2F5C' }}>
+    <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: BRAND.navy }}>
       <Wallet size={18} className="text-white" />
     </span>
   )
@@ -185,7 +186,7 @@ export default function LocatairePaiements() {
           <button
             onClick={() => navigate('/locataire/payer')}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
-            style={{ background: '#0D2F5C' }}
+            style={{ background: BRAND.navy }}
           >
             <Wallet size={15} /> Payer
           </button>
@@ -212,7 +213,7 @@ export default function LocatairePaiements() {
             <button
               onClick={handleExport}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
-              style={{ background: '#0D2F5C' }}
+              style={{ background: BRAND.navy }}
             >
               <Download size={15} /> Exporter
             </button>

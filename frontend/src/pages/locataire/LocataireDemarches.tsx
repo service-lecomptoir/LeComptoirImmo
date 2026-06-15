@@ -5,6 +5,7 @@ import { leaseExitsApi } from '@/api/leaseExits'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { toast } from '@/store/toast'
 import { getErrorMessage } from '@/utils/errors'
+import { BRAND } from '@/lib/brand'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -127,7 +128,7 @@ export default function LocataireDemarches() {
     <div className="max-w-3xl p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <MessageSquare size={22} className="text-[#0D2F5C]" /> Mes démarches
+          <MessageSquare size={22} className="text-brand-navy" /> Mes démarches
         </h1>
         <p className="text-gray-500 text-sm mt-1">
           Vos échanges avec votre gestionnaire au sujet de votre logement : demandes, questions, incidents,
@@ -140,7 +141,7 @@ export default function LocataireDemarches() {
         <h2 className="text-sm font-semibold text-gray-900">Mes échanges</h2>
         <button onClick={() => setShowNew(true)}
           className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-white rounded-lg"
-          style={{ background: '#0D2F5C' }}>
+          style={{ background: BRAND.navy }}>
           <Plus size={15} /> Nouvelle démarche
         </button>
       </div>
@@ -209,7 +210,7 @@ export default function LocataireDemarches() {
                           placeholder="Votre message…"
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                         <button onClick={() => sendReply(t.id)} disabled={!reply.trim()}
-                          className="p-2 rounded-lg text-white disabled:opacity-40" style={{ background: '#0D2F5C' }}><Send size={15} /></button>
+                          className="p-2 rounded-lg text-white disabled:opacity-40" style={{ background: BRAND.navy }}><Send size={15} /></button>
                       </div>
                     )}
                   </div>
@@ -265,7 +266,7 @@ export default function LocataireDemarches() {
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-medium text-gray-700">Description</label>
                       <button type="button" onClick={aiDraft} disabled={drafting}
-                        className="inline-flex items-center gap-1 text-xs text-[#0D2F5C] hover:underline disabled:opacity-50">
+                        className="inline-flex items-center gap-1 text-xs text-brand-navy hover:underline disabled:opacity-50">
                         <Sparkles size={12} /> {drafting ? 'Rédaction…' : 'Aide à la rédaction'}
                       </button>
                     </div>
@@ -295,7 +296,7 @@ export default function LocataireDemarches() {
               <button type="button" onClick={() => { setShowNew(false); resetNew() }}
                 className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
               <button type="button" onClick={submitNew} disabled={submitting}
-                className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: '#0D2F5C' }}>
+                className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: BRAND.navy }}>
                 <CheckCircle size={15} /> {submitting ? 'Envoi…' : (form.category === 'preavis' ? 'Envoyer le préavis' : 'Envoyer la démarche')}
               </button>
             </div>

@@ -5,6 +5,7 @@ import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { onlinePaymentsApi } from '@/api/onlinePayments'
+import { BRAND } from '@/lib/brand'
 import { toast } from '@/store/toast'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { docFilename } from '@/utils/filename'
@@ -221,7 +222,7 @@ export default function LocatairePayer() {
                       onClick={() => declareInst(pl.id, i.seq)}
                       disabled={declaringInst === `${pl.id}-${i.seq}`}
                       className="text-xs px-3 py-1.5 rounded-lg text-white font-medium disabled:opacity-50"
-                      style={{ background: '#0D2F5C' }}
+                      style={{ background: BRAND.navy }}
                     >
                       {declaringInst === `${pl.id}-${i.seq}` ? '…' : 'Régler'}
                     </button>
@@ -270,8 +271,8 @@ export default function LocatairePayer() {
             </div>
           )}
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#0D2F5C15' }}>
-              <CreditCard size={18} style={{ color: '#0D2F5C' }} />
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${BRAND.navy}15` }}>
+              <CreditCard size={18} style={{ color: BRAND.navy }} />
             </div>
             <p className="text-sm font-semibold text-gray-800">Choisissez votre moyen de paiement</p>
           </div>
@@ -303,8 +304,8 @@ export default function LocatairePayer() {
                   : 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
               }`}
             >
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#0D2F5C15' }}>
-                <CreditCard size={20} style={{ color: '#0D2F5C' }} />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${BRAND.navy}15` }}>
+                <CreditCard size={20} style={{ color: BRAND.navy }} />
               </div>
               <p className="text-sm font-semibold text-gray-900">{cardBusy ? 'Redirection…' : 'Carte bancaire'}</p>
               <p className="text-xs text-gray-500">{cardAvail.available ? 'Paiement immédiat sécurisé' : 'Non proposé'}</p>
