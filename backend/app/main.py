@@ -400,6 +400,15 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_font VARCHAR(64)",
         # Mot de passe temporaire : forcer le changement à la 1re connexion.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE",
+        # ── Paiement en ligne par carte (config propre au gestionnaire) ─────────
+        # Clés Stripe/SumUp saisies par le gestionnaire ; secrets stockés chiffrés.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS card_payments_enabled BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_provider VARCHAR(10)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_secret_key_enc TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_publishable_key VARCHAR(255)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_webhook_secret_enc TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS sumup_api_key_enc TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS sumup_merchant_code VARCHAR(50)",
         # Automatisation : clé d'idempotence des envois (anti-doublon).
         "ALTER TABLE communication_logs ADD COLUMN IF NOT EXISTS dedup_key VARCHAR(200)",
         "CREATE INDEX IF NOT EXISTS ix_communication_logs_dedup_key ON communication_logs (dedup_key)",

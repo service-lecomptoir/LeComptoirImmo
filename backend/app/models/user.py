@@ -96,6 +96,20 @@ class User(Base, TimestampMixin):
     # propriétaires qui n'ont pas de surcharge.
     proprio_visibility_default: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
 
+    # ── Paiement en ligne par carte (config propre au gestionnaire) ───────────
+    # Le gestionnaire renseigne SES clés (Stripe ou SumUp) dans « Mes informations ».
+    # Si activé, ses locataires voient le paiement par carte ; sinon il est grisé.
+    # Les clés secrètes sont stockées CHIFFRÉES (Fernet, cf. core.crypto).
+    card_payments_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
+    payment_provider: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 'stripe' | 'sumup'
+    stripe_secret_key_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    stripe_publishable_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    stripe_webhook_secret_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    sumup_api_key_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    sumup_merchant_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
     @property
     def full_address(self) -> Optional[str]:
         """Adresse postale recomposée sur une ligne : « rue, CP Ville [, Pays] ».

@@ -6,6 +6,7 @@ from app.api.v1 import (
     tickets, entretiens, messages, proprietaire_perf, offers, subscription,
     webhook, audit, settings, public, actualisation, scoring, telegram,
     publishing, candidatures, lease_exits, apurement_plans, signalements,
+    online_payments,
 )
 from app.core.features import require_feature
 
@@ -54,3 +55,6 @@ api_router.include_router(publishing.router, dependencies=_feat("diffusion"))
 api_router.include_router(candidatures.router, dependencies=_feat("candidatures"))
 api_router.include_router(lease_exits.router, dependencies=_feat("sortie_locataire"))
 api_router.include_router(actualisation.router, dependencies=_feat("actualisation"))
+# Paiement en ligne du loyer par carte (config GM + checkout locataire + webhooks).
+# Pas de _feat : la config est transverse au profil et les webhooks sont publics.
+api_router.include_router(online_payments.router)

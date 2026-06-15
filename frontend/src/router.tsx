@@ -64,6 +64,7 @@ const LocatairePaiements = lazyPage(() => import('@/pages/locataire/LocatairePai
 const LocataireDocuments = lazyPage(() => import('@/pages/locataire/LocataireDocuments'))
 const LocatairePayer = lazyPage(() => import('@/pages/locataire/LocatairePayer'))
 const LocatairePayerForm = lazyPage(() => import('@/pages/locataire/LocatairePayerForm'))
+const LocataireCarteSumup = lazyPage(() => import('@/pages/locataire/LocataireCarteSumup'))
 const LocataireDemarches = lazyPage(() => import('@/pages/locataire/LocataireDemarches'))
 const IncidentList = lazyPage(() => import('@/pages/incidents/IncidentList'))
 const EntretienList = lazyPage(() => import('@/pages/entretien/EntretienList'))
@@ -236,6 +237,7 @@ export const router = createBrowserRouter([
       { path: 'locataire/demarches', element: <LocataireDemarches /> },
       { path: 'locataire/payer', element: <LocatairePayer /> },
       { path: 'locataire/payer/regler/:method', element: <LocatairePayerForm /> },
+      { path: 'locataire/payer/carte', element: <LocataireCarteSumup /> },
       { path: 'locataire/documents', element: <LocataireDocuments /> },
       { path: 'incidents', element: <IncidentList /> },
       { path: 'signalements', element: <SignalementList /> },

@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
+    # ── URL publique de l'app (liens de retour Stripe/SumUp, webhooks) ───────
+    PUBLIC_APP_URL: str = "https://immo.lecomptoir.services"
+
     # ── Alice internal API ─────────────────────────────────────────────────
     ALICE_URL: str = "http://localhost:8001"
     ALICE_INTERNAL_KEY: str = "lecomptoir-internal-dev-key-change-in-production"

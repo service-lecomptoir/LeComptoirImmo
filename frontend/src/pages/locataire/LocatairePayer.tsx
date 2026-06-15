@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Building2, Banknote, CheckCircle, Wallet, Clock, CreditCard, Download, CalendarClock, ChevronDown, ChevronRight } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
+import { onlinePaymentsApi } from '@/api/onlinePayments'
 import { toast } from '@/store/toast'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { docFilename } from '@/utils/filename'
@@ -31,23 +32,60 @@ const STATUT: Record<StatutKey, { label: string; variant: 'green' | 'yellow' }> 
 
 export default function LocatairePayer() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [payment, setPayment] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [allPayments, setAllPayments] = useState<any[]>([])
   const [plans, setPlans] = useState<ApurementPlan[]>([])
+  // Disponibilité du paiement par carte (selon la config du gestionnaire).
+  const [cardAvail, setCardAvail] = useState<{ available: boolean; provider: string | null }>({ available: false, provider: null })
+  const [cardBusy, setCardBusy] = useState(false)
 
   const load = useCallback(async () => {
-    const [cur, lst, pl] = await Promise.allSettled([
+    const [cur, lst, pl, av] = await Promise.allSettled([
       apiClient.get('/payments/locataire/current'),
       paymentsApi.list({ limit: 120 }),
       apurementApi.mine(),
+      onlinePaymentsApi.availability(),
     ])
     if (cur.status === 'fulfilled') setPayment(cur.value.data.payment)
     if (lst.status === 'fulfilled') setAllPayments(lst.value.data.items ?? lst.value.data)
     if (pl.status === 'fulfilled') setPlans(pl.value.data)
+    if (av.status === 'fulfilled') setCardAvail(av.value.data)
   }, [])
 
   useEffect(() => { load().finally(() => setIsLoading(false)) }, [load])
+
+  // Retour depuis le paiement par carte (Stripe Checkout).
+  useEffect(() => {
+    const card = searchParams.get('card')
+    if (!card) return
+    if (card === 'success') toast.success('Paiement par carte confirmé. Votre loyer est enregistré.')
+    else if (card === 'cancel') toast.info('Paiement par carte annulé.')
+    searchParams.delete('card')
+    setSearchParams(searchParams, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Lance le paiement par carte : Stripe (redirection) ou SumUp (widget).
+  const payByCard = async () => {
+    if (!payment?.id) return
+    setCardBusy(true)
+    try {
+      const { data } = await onlinePaymentsApi.checkout(payment.id)
+      if (data.provider === 'stripe' && data.url) {
+        window.location.href = data.url
+      } else if (data.provider === 'sumup' && data.checkout_id) {
+        navigate('/locataire/payer/carte', { state: { checkoutId: data.checkout_id, amount: data.amount } })
+      } else {
+        toast.error('Paiement par carte indisponible pour le moment.')
+        setCardBusy(false)
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || 'Impossible de démarrer le paiement par carte.')
+      setCardBusy(false)
+    }
+  }
 
   // Déclaration du règlement d'une échéance d'apurement (passe « en attente »,
   // le gestionnaire valide ensuite, comme un loyer).
@@ -237,7 +275,7 @@ export default function LocatairePayer() {
             </div>
             <p className="text-sm font-semibold text-gray-800">Choisissez votre moyen de paiement</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 mb-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-2">
             {METHODS.map(m => {
               const Icon = m.icon
               return (
@@ -254,6 +292,23 @@ export default function LocatairePayer() {
                 </button>
               )
             })}
+            {/* Carte bancaire : proposée seulement si le gestionnaire l'a activée, sinon grisée. */}
+            <button
+              onClick={payByCard}
+              disabled={!cardAvail.available || cardBusy}
+              title={cardAvail.available ? 'Payer par carte bancaire' : "Votre gestionnaire ne propose pas le paiement par carte"}
+              className={`flex flex-col items-center gap-2 p-4 rounded-xl border text-center transition-all ${
+                cardAvail.available
+                  ? 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 cursor-pointer'
+                  : 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
+              }`}
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#0D2F5C15' }}>
+                <CreditCard size={20} style={{ color: '#0D2F5C' }} />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">{cardBusy ? 'Redirection…' : 'Carte bancaire'}</p>
+              <p className="text-xs text-gray-500">{cardAvail.available ? 'Paiement immédiat sécurisé' : 'Non proposé'}</p>
+            </button>
           </div>
         </>
       )}

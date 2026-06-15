@@ -15,6 +15,7 @@ import { agentsApi, type TelegramStatus } from '@/api/agents'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { isFeatureAllowed } from '@/lib/features'
 import { toast } from '@/store/toast'
+import PaymentOnlineSection from './PaymentOnlineSection'
 
 function splitName(s?: string | null): { first: string; last: string } {
   const parts = (s ?? '').trim().split(/\s+/).filter(Boolean)
@@ -577,6 +578,9 @@ export default function MonProfil() {
           </div>
         </div>
       )}
+
+      {/* ── Paiement du loyer par carte (gestionnaires) ── */}
+      {isManager && <PaymentOnlineSection />}
 
       {/* ── Agents IA (Telegram) ── */}
       {showAgents && (
