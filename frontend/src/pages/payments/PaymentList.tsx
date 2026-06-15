@@ -226,7 +226,8 @@ export default function PaymentList() {
   }
 
   const fmtEuro = (n: number) =>
-    n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
+    // Espace insécable avant € pour que « 1 150,00 € » ne se coupe jamais.
+    n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
 
   const months = [
     '', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -421,9 +422,9 @@ export default function PaymentList() {
                     </button>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-sm text-gray-900">{p.property_name}</div>
+                    <div className="text-sm text-gray-900 whitespace-nowrap">{p.property_name}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
+                  <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                     {p.period_label}
                     {isMultiMonth(p.period_start, p.period_end) && p.period_range_label && (
                       <div className="text-xs text-gray-500">{p.period_range_label}</div>
@@ -630,8 +631,8 @@ export default function PaymentList() {
                 return (
                   <tr key={`apur-${k}`} className="border-b border-gray-50 hover:bg-amber-50/40">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{pl.tenant_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{pl.property_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
+                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{pl.property_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                       Apurement · éch. {inst.seq}
                       <div className="text-xs text-gray-500">{format(new Date(inst.due_date), 'd MMM yyyy', { locale: fr })}</div>
                     </td>
