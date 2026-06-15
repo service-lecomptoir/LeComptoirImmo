@@ -145,13 +145,10 @@ function ManagerHeaderCard({ roleLabel, name, address, refCode }: { roleLabel: s
   const roleRest = _parts.slice(1).join(' ')
   return (
     <div className="px-4 py-4 border-b border-gray-700">
-      <div
-        className="rounded-xl p-3.5 flex items-center gap-3"
-        style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #0E9F8E 130%)' }}
-      >
-        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(255,255,255,0.22)' }}>
-          <Building2 size={20} className="text-white" />
+      <div className="rounded-xl p-3.5 flex items-center gap-3 bg-brand-navy">
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-brand-orange/70"
+          style={{ background: 'rgba(255,255,255,0.14)' }}>
+          <Building2 size={20} className="text-brand-orange" />
         </div>
         <div className="min-w-0">
           {name && <p className="text-white font-bold text-sm leading-tight truncate">{name}</p>}

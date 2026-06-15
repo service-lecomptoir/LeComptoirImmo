@@ -22,6 +22,14 @@ export default {
           900: '#1e3a8a',
           950: '#172554',
         },
+        // Tokens de marque Le Comptoir Immo (source unique : on remplace
+        // progressivement les hex en dur #0D2F5C / #F07800 dispersés).
+        brand: {
+          navy: '#0D2F5C',
+          'navy-light': '#1A4A8A',
+          teal: '#0E9F8E',
+          orange: '#F07800',
+        },
       },
     },
   },
