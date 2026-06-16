@@ -25,6 +25,14 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
   const [loading, setLoading] = useState(true)
   const [forms, setForms] = useState<Record<string, FormState>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
+  // Date d'effet des révisions de provision (par défaut 1er du mois suivant).
+  const firstOfNextMonth = () => {
+    const d = new Date()
+    const y = d.getMonth() === 11 ? d.getFullYear() + 1 : d.getFullYear()
+    const m = d.getMonth() === 11 ? 0 : d.getMonth() + 1
+    return new Date(y, m, 1).toLocaleDateString('fr-CA')
+  }
+  const [effectiveDate, setEffectiveDate] = useState(firstOfNextMonth())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -94,8 +102,8 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
         await actualisationApi.updateCharge(f.editRegId, payload)
         flash(`Régularisation des charges modifiée pour ${row.tenant_full_name}.`)
       } else {
-        await actualisationApi.applyCharge(row.lease_id, payload)
-        flash(`Régularisation des charges appliquée pour ${row.tenant_full_name}.`)
+        await actualisationApi.applyCharge(row.lease_id, { ...payload, effective_date: effectiveDate })
+        flash(`Régularisation des charges appliquée pour ${row.tenant_full_name} (effet ${fmtDate(effectiveDate)}).`)
       }
       upd(row.lease_id, { preview: null, real: '', newMonthly: '', editRegId: null })
       load()
@@ -158,8 +166,8 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
     const note = window.prompt("Référence / note de l'accord (facultatif) :") ?? ''
     setBusyId(r.lease_id)
     try {
-      await actualisationApi.amiableProvision(r.lease_id, { new_provision: val, note: note.trim() || undefined })
-      flash(`Provision réévaluée d'un commun accord pour ${r.tenant_full_name}.`)
+      await actualisationApi.amiableProvision(r.lease_id, { new_provision: val, effective_date: effectiveDate, note: note.trim() || undefined })
+      flash(`Provision réévaluée d'un commun accord pour ${r.tenant_full_name} (effet ${fmtDate(effectiveDate)}).`)
       load()
     } catch (e: any) {
       alert(getErrorMessage(e, 'Erreur lors de la réévaluation'))
@@ -179,6 +187,20 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
 
   return (
     <div className="space-y-5">
+      {/* Date d'effet des révisions de provision (le mois en cours n'est jamais impacté) */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-xl border border-amber-200 bg-amber-50">
+        <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Date d'effet des révisions</label>
+        <input
+          type="date"
+          value={effectiveDate}
+          onChange={e => setEffectiveDate(e.target.value)}
+          className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy max-w-[180px]"
+        />
+        <span className="text-xs text-gray-600">
+          Appliquée aux régularisations et réévaluations ci-dessous. Par défaut le 1er du mois suivant ; le mois en cours n'est pas modifié.
+        </span>
+      </div>
+
       {Object.entries(groups).map(([owner, list]) => (
         <div key={owner} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-3 bg-gray-50 border-b border-gray-100">

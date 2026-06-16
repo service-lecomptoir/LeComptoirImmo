@@ -111,11 +111,12 @@ class ChargeRegularizationService:
         # Réajustement de la provision mensuelle via une révision datée : le mois
         # courant reste figé, l'ancienne provision est conservée en historique.
         from app.services.rent_revision_service import RentRevisionService, first_of_next_month
-        await RentRevisionService.schedule(
+        rev = await RentRevisionService.schedule(
             db, lease, new_rent=float(lease.rent_amount), new_charges=new_monthly,
             effective_date=effective_date or first_of_next_month(date.today()),
             source="charges", reason="Régularisation des charges", created_by=created_by,
         )
+        reg.rent_revision_id = rev.id
         await db.flush()
 
         await cls._notify(db, lease, reg)
@@ -143,9 +144,21 @@ class ChargeRegularizationService:
         reg.new_monthly_provision = new_monthly
         if notes is not None:
             reg.notes = notes
-        # Réajuste la provision du bail sur la nouvelle valeur.
-        lease.charges_amount = new_monthly
+        # Met à jour la révision de charges liée (au lieu d'écraser le bail).
+        from app.services.rent_revision_service import RentRevisionService, first_of_next_month
+        from app.models.rent_revision import RentRevision
+        rev = await db.get(RentRevision, reg.rent_revision_id) if reg.rent_revision_id else None
+        if rev:
+            rev.charges_amount = new_monthly
+        else:
+            rev = await RentRevisionService.schedule(
+                db, lease, new_rent=float(lease.rent_amount), new_charges=new_monthly,
+                effective_date=first_of_next_month(date.today()),
+                source="charges", reason="Régularisation des charges (modifiée)",
+            )
+            reg.rent_revision_id = rev.id
         await db.flush()
+        await RentRevisionService.sync_lease_current(db, lease)
         await cls._notify(db, lease, reg)
         await db.commit()
         await db.refresh(reg)
@@ -153,9 +166,28 @@ class ChargeRegularizationService:
 
     @staticmethod
     async def delete(db: AsyncSession, reg: ChargeRegularization, lease: Lease) -> None:
-        """Supprime une régularisation et restaure la provision mensuelle
-        antérieure du bail (old_monthly_provision)."""
-        lease.charges_amount = round(float(reg.old_monthly_provision), 2)
+        """Supprime une régularisation : retire la révision de charges qu'elle avait
+        générée, puis restaure la provision mensuelle en vigueur (révision restante
+        applicable, ou la provision antérieure à la régularisation)."""
+        from datetime import datetime
+        from app.services.rent_revision_service import RentRevisionService
+        from app.models.rent_revision import RentRevision
+
+        if reg.rent_revision_id:
+            rev = await db.get(RentRevision, reg.rent_revision_id)
+            if rev:
+                await db.delete(rev)
+                await db.flush()
+
+        remaining = await RentRevisionService.list_for_lease(db, lease.id)
+        today = date.today()
+        applicable = [r for r in remaining if r.effective_date <= today]
+        if applicable:
+            best = max(applicable, key=lambda r: (r.effective_date, r.created_at or datetime.min))
+            lease.charges_amount = round(float(best.charges_amount), 2)
+        else:
+            lease.charges_amount = round(float(reg.old_monthly_provision), 2)
+
         await db.delete(reg)
         await db.flush()
         await db.commit()

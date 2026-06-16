@@ -57,6 +57,8 @@ class ChargeRegularization(Base, TimestampMixin):
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    # Révision de loyer/charges générée par cette régularisation (lien pour annulation).
+    rent_revision_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     lease: Mapped["Lease"] = relationship("Lease", lazy="select")
     tenant: Mapped["Tenant"] = relationship("Tenant", lazy="select")

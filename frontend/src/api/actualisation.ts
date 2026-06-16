@@ -75,15 +75,16 @@ export const actualisationApi = {
     apiClient.patch<RevisionRow>(`/actualisation/loyers/${leaseId}/reference`, data),
   clearReference: (leaseId: string) =>
     apiClient.post<RevisionRow>(`/actualisation/loyers/${leaseId}/reference/clear`),
-  applyRevision: (leaseId: string) =>
-    apiClient.post<RevisionRow>(`/actualisation/loyers/${leaseId}/appliquer`),
+  applyRevision: (leaseId: string, effectiveDate?: string) =>
+    apiClient.post<RevisionRow>(`/actualisation/loyers/${leaseId}/appliquer`,
+      effectiveDate ? { effective_date: effectiveDate } : {}),
   amiableRent: (leaseId: string, data: { new_rent: number; effective_date?: string; note?: string }) =>
     apiClient.post<RevisionRow>(`/actualisation/loyers/${leaseId}/reevaluation-amiable`, data),
 
   listCharges: () => apiClient.get<ChargeRow[]>('/actualisation/charges'),
   previewCharge: (leaseId: string, data: { period_start: string; period_end: string; real_total: number }) =>
     apiClient.post<ChargePreview>(`/actualisation/charges/${leaseId}/preview`, data),
-  applyCharge: (leaseId: string, data: { period_start: string; period_end: string; real_total: number; new_monthly_provision: number; notes?: string }) =>
+  applyCharge: (leaseId: string, data: { period_start: string; period_end: string; real_total: number; new_monthly_provision: number; notes?: string; effective_date?: string }) =>
     apiClient.post<ChargeRow>(`/actualisation/charges/${leaseId}/appliquer`, data),
   amiableProvision: (leaseId: string, data: { new_provision: number; effective_date?: string; note?: string }) =>
     apiClient.post<ChargeRow>(`/actualisation/charges/${leaseId}/reevaluation-amiable`, data),

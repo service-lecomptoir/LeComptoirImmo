@@ -257,6 +257,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS irl_quarter INTEGER",
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS irl_base_index NUMERIC(8,2)",
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS last_revision_date DATE",
+        # Lien régularisation de charges -> révision de loyer générée (annulation propre)
+        "ALTER TABLE charge_regularizations ADD COLUMN IF NOT EXISTS rent_revision_id UUID",
         # Période réellement couverte par un avis d'échéance (prorata d'entrée/sortie)
         "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS period_start DATE",
         "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS period_end DATE",

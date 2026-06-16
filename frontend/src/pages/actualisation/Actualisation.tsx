@@ -27,6 +27,19 @@ export default function Actualisation() {
   const [refForm, setRefForm] = useState<Record<string, { q: number; base: string }>>({})
   // bail dont on (ré)édite la référence IRL alors qu'elle est déjà renseignée
   const [editRefId, setEditRefId] = useState<string | null>(null)
+  // Date d'effet des révisions de loyer (par défaut le 1er du mois suivant ;
+  // le mois en cours n'est jamais impacté).
+  const firstOfNextMonth = () => {
+    const d = new Date()
+    const y = d.getMonth() === 11 ? d.getFullYear() + 1 : d.getFullYear()
+    const m = d.getMonth() === 11 ? 0 : d.getMonth() + 1
+    return new Date(y, m, 1).toLocaleDateString('fr-CA')
+  }
+  const [effectiveDate, setEffectiveDate] = useState(firstOfNextMonth())
+  const fmtDateFr = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString('fr-FR')
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -110,11 +123,11 @@ export default function Actualisation() {
   }
 
   const apply = async (r: RevisionRow) => {
-    if (!confirm(`Appliquer la révision du loyer de ${r.tenant_full_name} : ${fmtEuro(r.current_rent)} → ${fmtEuro(r.proposed_rent)} ?`)) return
+    if (!confirm(`Appliquer la révision du loyer de ${r.tenant_full_name} : ${fmtEuro(r.current_rent)} → ${fmtEuro(r.proposed_rent)}, à compter du ${fmtDateFr(effectiveDate)} ?`)) return
     setBusyId(r.lease_id)
     try {
-      await actualisationApi.applyRevision(r.lease_id)
-      flash(`Loyer révisé pour ${r.tenant_full_name}.`)
+      await actualisationApi.applyRevision(r.lease_id, effectiveDate)
+      flash(`Loyer révisé pour ${r.tenant_full_name} (effet ${fmtDateFr(effectiveDate)}).`)
       load()
     } catch (e: any) {
       alert(getErrorMessage(e, 'Erreur lors de la révision'))
@@ -131,8 +144,8 @@ export default function Actualisation() {
     const note = window.prompt("Référence / note de l'accord (facultatif) :") ?? ''
     setBusyId(r.lease_id)
     try {
-      await actualisationApi.amiableRent(r.lease_id, { new_rent: val, note: note.trim() || undefined })
-      flash(`Loyer réévalué d'un commun accord pour ${r.tenant_full_name}.`)
+      await actualisationApi.amiableRent(r.lease_id, { new_rent: val, effective_date: effectiveDate, note: note.trim() || undefined })
+      flash(`Loyer réévalué d'un commun accord pour ${r.tenant_full_name} (effet ${fmtDateFr(effectiveDate)}).`)
       load()
     } catch (e: any) {
       alert(getErrorMessage(e, 'Erreur lors de la réévaluation'))
@@ -247,6 +260,20 @@ export default function Actualisation() {
       )}
 
       {tab === 'loyers' && (<>
+      {/* Date d'effet des révisions (le mois en cours n'est jamais impacté) */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-5 p-3 rounded-xl border border-amber-200 bg-amber-50">
+        <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Date d'effet des révisions</label>
+        <input
+          type="date"
+          value={effectiveDate}
+          onChange={e => setEffectiveDate(e.target.value)}
+          className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy max-w-[180px]"
+        />
+        <span className="text-xs text-gray-600">
+          Appliquée aux révisions IRL et amiables ci-dessous. Par défaut le 1er du mois suivant ; le mois en cours n'est pas modifié.
+        </span>
+      </div>
+
       {/* Indices IRL */}
       <div className="bg-white rounded-xl border border-gray-200 mb-6">
         <button onClick={() => setShowIrl(v => !v)} className="w-full flex items-center justify-between px-5 py-4">

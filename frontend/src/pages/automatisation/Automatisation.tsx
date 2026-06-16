@@ -525,7 +525,7 @@ export default function Automatisation() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Règles d'automatisation</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Communication et automatisation</h1>
           <p className="text-sm text-gray-500 mt-1">Avis d'échéance, quittances, rappels, communications</p>
         </div>
         <div className="flex gap-2">
@@ -604,7 +604,7 @@ export default function Automatisation() {
       {/* Tabs */}
       <div className="flex border-b mb-6">
         {([
-          { key: 'rules', label: "Règles d'automatisation" },
+          { key: 'rules', label: 'Règles' },
           { key: 'logs', label: 'Historique des envois' },
           { key: 'scheduler', label: 'Planificateur' },
           { key: 'canaux', label: 'Canaux & tests' },
