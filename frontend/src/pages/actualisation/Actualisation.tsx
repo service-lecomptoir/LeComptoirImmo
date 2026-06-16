@@ -491,8 +491,7 @@ export default function Actualisation() {
 
       <p className="text-xs text-gray-400 mt-4">
         Le locataire est prévenu 1 mois à l'avance : une mention « révision de loyer à venir » apparaît
-        automatiquement sur l'avis d'échéance et la quittance du mois précédent, accompagnée d'une notification
-        (l'e-mail s'activera avec la configuration SMTP).
+        automatiquement sur l'avis d'échéance et la quittance du mois précédent, accompagnée d'une notification.
       </p>
       </>)}
     </div>
