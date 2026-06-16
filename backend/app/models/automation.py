@@ -18,6 +18,13 @@ class RuleType(str, Enum):
     RELANCE_1 = "relance_1"
     RELANCE_2 = "relance_2"
     COMMUNICATION_GROUPEE = "communication_groupee"
+    # Révision du loyer / des charges (déclenché à une revalorisation datée)
+    REVISION_LOYER = "revision_loyer"
+    REVISION_CHARGES = "revision_charges"
+    # Taxe d'enlèvement des ordures ménagères (déclenché à une déclaration à payer)
+    TAXE_OM = "taxe_om"
+    # Rapport mensuel de gestion (envoi planifié, jour = trigger_days)
+    RAPPORT_MENSUEL = "rapport_mensuel"
 
 
 class Channel(str, Enum):

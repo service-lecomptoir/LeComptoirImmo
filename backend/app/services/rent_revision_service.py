@@ -63,6 +63,8 @@ class RentRevisionService:
         conserve qu'une révision par champ (la plus récente). Si la date d'effet
         est atteinte, le bail est mis à jour immédiatement."""
         today = date.today()
+        # Montant actuellement en vigueur (= « ancien » pour la notification locataire).
+        old_for_email = float(lease.rent_amount if kind == "rent" else lease.charges_amount)
         revisions = await RentRevisionService.list_for_lease(db, lease.id)
         same = [r for r in revisions if r.kind == kind]
         pending = next((r for r in same if (not r.applied) and r.effective_date > today), None)
@@ -97,6 +99,18 @@ class RentRevisionService:
             else:
                 lease.charges_amount = new_amount
         await db.flush()
+        # Notification e-mail au locataire (si la règle « révision loyer/charges »
+        # du gestionnaire est active). Best-effort : n'échoue jamais la révision.
+        if round(old_for_email, 2) != new_amount:
+            try:
+                from app.services.automation_engine import send_revision_email
+                await send_revision_email(
+                    db, lease, kind=kind, old_amount=old_for_email,
+                    new_amount=new_amount, effective_date=effective_date,
+                )
+            except Exception:  # noqa: BLE001
+                import logging
+                logging.getLogger(__name__).warning("[revision] e-mail locataire non envoyé", exc_info=True)
         return rev
 
     @staticmethod

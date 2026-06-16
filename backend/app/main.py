@@ -82,9 +82,14 @@ async def lifespan(app: FastAPI):
     # Seede les règles avis/quittance/rappels/relances pour les gestionnaires qui
     # n'en ont aucune → les envois automatiques continuent, pilotés par les règles.
     try:
-        from app.services.automation_engine import backfill_default_rules, backfill_default_content
+        from app.services.automation_engine import backfill_default_rules, backfill_default_content, backfill_rule_types
         async with AsyncSessionLocal() as _db:
             nr = await backfill_default_rules(_db)
+            # Nouveaux types (révisions loyer/charges, taxe OM, rapport mensuel) sur
+            # les comptes existants, sans recréer des règles supprimées.
+            nr += await backfill_rule_types(_db, [
+                "revision_loyer", "revision_charges", "taxe_om", "rapport_mensuel",
+            ])
             nc = await backfill_default_content(_db)
             await _db.commit()
         if nr:

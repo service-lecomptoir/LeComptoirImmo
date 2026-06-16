@@ -644,4 +644,13 @@ async def taxes_pdf(
         raise HTTPException(status_code=404, detail="Contrat introuvable")
     await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
     pdf = await TaxesFoncieresPDFService.generate(db, lease, data.year, data.teom_amount)
+    # Mail TEOM au locataire (si la règle « taxe_om » du gestionnaire est active).
+    # Best-effort, dédupliqué par bail+année : ne bloque jamais la génération du PDF.
+    try:
+        from app.services.automation_engine import send_teom_email
+        if await send_teom_email(db, lease, year=data.year, amount=data.teom_amount, pdf_bytes=pdf):
+            await db.commit()
+    except Exception:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("[taxe_om] e-mail locataire non envoyé", exc_info=True)
     return _pdf_response(pdf, f"taxes_foncieres_{data.year}.pdf")

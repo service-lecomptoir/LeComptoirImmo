@@ -99,6 +99,12 @@ _DEFAULT_RULES = [
     ("rappel_impaye", "Rappel impayé", "email", 3, _CTX),
     ("relance_1", "Relance 1", "email", 8, _CTX),
     ("relance_2", "Relance 2 (mise en demeure)", "email_sms", 15, _CTX),
+    # Événementiels (trigger_days non utilisé)
+    ("revision_loyer", "Révision du loyer", "email", 0, _GL),
+    ("revision_charges", "Révision des charges", "email", 0, _GL),
+    ("taxe_om", "Taxe d'ordures ménagères", "email", 0, _GL),
+    # Rapport mensuel : trigger_days = jour d'envoi (1er par défaut)
+    ("rapport_mensuel", "Rapport mensuel de gestion", "email", 1, _GL),
 ]
 
 # Sujet et corps PAR DÉFAUT, ÉDITABLES dans la règle (rien en boîte noire).
@@ -110,6 +116,10 @@ _DEFAULT_SUBJECTS = {
     "rappel_impaye": "Rappel : loyer {{period}} impayé",
     "relance_1": "Relance : loyer {{period}} impayé",
     "relance_2": "Mise en demeure : loyer {{period}}",
+    "revision_loyer": "Révision de votre loyer à compter du {{effective_date}}",
+    "revision_charges": "Révision de vos provisions pour charges à compter du {{effective_date}}",
+    "taxe_om": "Taxe d'enlèvement des ordures ménagères {{year}}",
+    "rapport_mensuel": "Votre rapport de gestion : {{period}}",
 }
 _DEFAULT_BODIES = {
     "avis_echeance": (
@@ -140,6 +150,30 @@ _DEFAULT_BODIES = {
         "À défaut de règlement du loyer de la période {{period}} (solde dû : {{balance}}), "
         "la présente vaut mise en demeure de régulariser sous huitaine.\n"
         "À défaut, nous serons contraints d'engager les démarches de recouvrement."
+    ),
+    "revision_loyer": (
+        "Bonjour {{tenant_name}},\n\n"
+        "Nous vous informons que votre loyer hors charges est révisé : {{old_amount}} → {{new_amount}}, "
+        "à compter du {{effective_date}}.\n"
+        "Le détail figure dans votre espace locataire et sur votre prochain avis d'échéance."
+    ),
+    "revision_charges": (
+        "Bonjour {{tenant_name}},\n\n"
+        "Nous vous informons que vos provisions mensuelles pour charges sont révisées : "
+        "{{old_amount}} → {{new_amount}}, à compter du {{effective_date}}.\n"
+        "Cette régularisation sera prise en compte sur vos prochains avis d'échéance."
+    ),
+    "taxe_om": (
+        "Bonjour {{tenant_name}},\n\n"
+        "Conformément au bail, la taxe d'enlèvement des ordures ménagères {{year}} d'un montant de "
+        "{{amount}} vous est refacturée.\n"
+        "Le décompte détaillé est joint à cet e-mail."
+    ),
+    "rapport_mensuel": (
+        "Bonjour,\n\n"
+        "Voici la synthèse de votre gestion locative pour {{period}} :\n\n"
+        "{{stats}}\n"
+        "Bonne journée."
     ),
 }
 
@@ -239,6 +273,42 @@ async def backfill_default_rules(db: AsyncSession) -> int:
         if mid in with_rules:
             continue
         total += await ensure_default_rules(db, mid)
+    return total
+
+
+async def backfill_rule_types(db: AsyncSession, types: list) -> int:
+    """Au démarrage : ajoute les TYPES de règles donnés aux gestionnaires qui ne les
+    ont pas encore (sans recréer d'autres règles supprimées). Sert à introduire de
+    NOUVEAUX types (révisions, taxe OM, rapport mensuel) sur les comptes existants."""
+    from app.models.user import User
+    from app.models.automation import AutomationRule
+    from app.core.permissions import Role
+    mgr_roles = [Role.ADMIN.value, Role.GESTIONNAIRE.value, Role.GESTIONNAIRE_PROPRIO.value]
+    managers = (await db.execute(select(User.id).where(User.role.in_(mgr_roles)))).scalars().all()
+    if not managers:
+        return 0
+    existing = {
+        (row[0], row[1]) for row in (await db.execute(
+            select(AutomationRule.created_by, AutomationRule.rule_type).where(
+                AutomationRule.created_by.in_(managers), AutomationRule.rule_type.in_(types),
+            )
+        )).all()
+    }
+    by_type = {rt: (name, channel, days, sig) for (rt, name, channel, days, sig) in _DEFAULT_RULES}
+    total = 0
+    for mid in managers:
+        for rt in types:
+            if (mid, rt) in existing or rt not in by_type:
+                continue
+            name, channel, days, sig = by_type[rt]
+            db.add(AutomationRule(
+                name=name, rule_type=rt, channel=channel, trigger_days=days,
+                is_active=True, created_by=mid, signature=sig,
+                subject=_DEFAULT_SUBJECTS.get(rt), body_template=_DEFAULT_BODIES.get(rt),
+            ))
+            total += 1
+    if total:
+        await db.flush()
     return total
 
 
@@ -515,6 +585,170 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
     return any_sent
 
 
+# ── Événementiels : révision loyer/charges, taxe ordures ménagères ───────────
+
+async def _active_rule(db, manager_id, rule_type):
+    from app.models.automation import AutomationRule
+    if not manager_id:
+        return None
+    return (await db.execute(
+        select(AutomationRule).where(
+            AutomationRule.created_by == manager_id,
+            AutomationRule.rule_type == rule_type,
+            AutomationRule.is_active.is_(True),
+        ).limit(1)
+    )).scalar_one_or_none()
+
+
+async def _send_event_to_tenant(db, lease, *, rule_type, ctx_extra, dedup_suffix, pdf_bytes=None, pdf_name=None) -> bool:
+    """Envoi e-mail au locataire pour un événement (révision, TEOM), si la règle
+    correspondante du gestionnaire est active. Sans boîte noire (rule = source)."""
+    from app.models.tenant import Tenant
+    manager_id = getattr(lease, "created_by", None)
+    rule = await _active_rule(db, manager_id, rule_type)
+    if rule is None:
+        return False
+    tenant = await db.get(Tenant, getattr(lease, "tenant_id", None))
+    if tenant is None or not getattr(tenant, "email", None):
+        return False
+    dedup = f"{rule_type}:{lease.id}:{dedup_suffix}:{rule.id}"
+    if await _already_sent(db, dedup):
+        return False
+    ctx = {
+        "tenant_name": tenant.full_name or "",
+        "property_name": getattr(getattr(lease, "parent_property", None), "name", "") or "",
+        **ctx_extra,
+    }
+    subject = render_subject(rule.subject, ctx) or (_DEFAULT_SUBJECTS.get(rule_type) or "")
+    body_html = render_rule_body(rule.body_template, ctx) or _body_to_html(_render(_DEFAULT_BODIES.get(rule_type), ctx))
+    from app.services import mail_signature
+    from app.services.email_service import send_email
+    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
+    ok = await send_email(
+        to=tenant.email, subject=subject, html_body=body_html + (sig_html or ""),
+        cc=_rule_cc(rule), inline_logo=logo, inline_logo_subtype=logo_sub,
+        attachment_bytes=pdf_bytes, attachment_filename=pdf_name,
+    )
+    if ok:
+        await _log(db, rule=rule, tenant_id=tenant.id, lease_id=lease.id, channel="email",
+                   recipient=tenant.email, subject=subject, body=body_html, status="sent", dedup_key=dedup)
+    return ok
+
+
+async def send_revision_email(db, lease, *, kind, old_amount, new_amount, effective_date) -> bool:
+    """Notifie le locataire d'une révision de loyer ('rent') ou de charges ('charges')."""
+    eff = effective_date.strftime("%d/%m/%Y") if hasattr(effective_date, "strftime") else str(effective_date)
+    return await _send_event_to_tenant(
+        db, lease,
+        rule_type=("revision_loyer" if kind == "rent" else "revision_charges"),
+        ctx_extra={"old_amount": f"{float(old_amount):.2f} €", "new_amount": f"{float(new_amount):.2f} €",
+                   "effective_date": eff},
+        dedup_suffix=eff,
+    )
+
+
+async def send_teom_email(db, lease, *, year, amount, pdf_bytes=None) -> bool:
+    """Notifie le locataire de la taxe d'ordures ménagères à payer (règle 'taxe_om')."""
+    return await _send_event_to_tenant(
+        db, lease, rule_type="taxe_om",
+        ctx_extra={"year": str(year), "amount": f"{float(amount):.2f} €"},
+        dedup_suffix=str(year),
+        pdf_bytes=pdf_bytes, pdf_name=(f"taxe_ordures_{year}.pdf" if pdf_bytes else None),
+    )
+
+
+# ── Rapport mensuel de gestion (planifié, jour = trigger_days) ────────────────
+
+_MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin",
+              "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+
+
+async def _compute_manager_stats(db, manager_id, year: int, month: int) -> str:
+    """Synthèse textuelle du mois (encaissements/impayés, parc/occupation, demandes)."""
+    lease_ids = await _manager_lease_ids(db, manager_id)
+    lines: list[str] = []
+    try:
+        from app.models.payment import Payment
+        pays = []
+        if lease_ids:
+            pays = (await db.execute(select(Payment).where(
+                Payment.lease_id.in_(lease_ids),
+                Payment.period_year == year, Payment.period_month == month,
+            ))).scalars().all()
+        due = sum(float(p.amount_due or 0) for p in pays)
+        paid = sum(float(p.amount_paid or 0) for p in pays)
+        unpaid = sum(float(getattr(p, "balance", 0) or 0) for p in pays if p.status in ("pending", "partial", "late"))
+        taux = (paid / due * 100) if due > 0 else 0
+        lines.append(f"• Loyers encaissés : {paid:.2f} € sur {due:.2f} € appelés (recouvrement {taux:.0f} %)")
+        lines.append(f"• Impayés du mois : {unpaid:.2f} €")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[rapport] stats encaissements échec: %r", exc)
+    try:
+        from app.models.lease import Lease
+        leases = (await db.execute(select(Lease).where(Lease.created_by == manager_id))).scalars().all()
+        actifs = [l for l in leases if l.is_active]
+        biens = len({l.property_id for l in leases})
+        entrees = sum(1 for l in leases if l.start_date and l.start_date.year == year and l.start_date.month == month)
+        sorties = sum(1 for l in leases if getattr(l, "end_date", None) and l.end_date.year == year and l.end_date.month == month)
+        occ = (len(actifs) / biens * 100) if biens else 0
+        lines.append(f"• Parc : {biens} bien(s), {len(actifs)} bail/baux actif(s) (occupation {occ:.0f} %)")
+        lines.append(f"• Mouvements : {entrees} entrée(s), {sorties} sortie(s)")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[rapport] stats parc échec: %r", exc)
+    try:
+        from app.models.ticket import Ticket
+        from app.models.signalement import Signalement
+        t_open = s_open = 0
+        if lease_ids:
+            t_open = len((await db.execute(select(Ticket.id).where(
+                Ticket.lease_id.in_(lease_ids),
+                Ticket.status.in_(("open", "in_progress", "pending_closure")),
+            ))).scalars().all())
+            s_open = len((await db.execute(select(Signalement.id).where(
+                Signalement.lease_id.in_(lease_ids),
+                Signalement.status.in_(("nouveau", "en_cours")),
+            ))).scalars().all())
+        lines.append(f"• Demandes en cours : {t_open} démarche(s), {s_open} signalement(s)")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[rapport] stats demandes échec: %r", exc)
+    return "\n".join(lines) if lines else "Aucune donnée disponible pour cette période."
+
+
+async def _run_rapport_mensuel(db, rule, today: date) -> int:
+    """Envoie le rapport mensuel si `today.day == rule.trigger_days` (1 fois/mois),
+    sur le mois écoulé, au destinataire configuré (cc_emails) ou au gestionnaire."""
+    from datetime import timedelta
+    from app.models.user import User
+    if int(rule.trigger_days or 1) != today.day:
+        return 0
+    last_prev = today.replace(day=1) - timedelta(days=1)
+    year, month = last_prev.year, last_prev.month
+    manager_id = rule.created_by
+    dedup = f"rapport_mensuel:{manager_id}:{year}-{month:02d}"
+    if await _already_sent(db, dedup):
+        return 0
+    recipient = (_rule_cc(rule) or "").split(",")[0].strip()
+    if not recipient:
+        mgr = await db.get(User, manager_id)
+        recipient = getattr(mgr, "email", None)
+    if not recipient:
+        return 0
+    period = f"{_MONTHS_FR[month]} {year}"
+    ctx = {"period": period, "stats": await _compute_manager_stats(db, manager_id, year, month)}
+    subject = render_subject(rule.subject, ctx) or f"Votre rapport de gestion : {period}"
+    body_html = render_rule_body(rule.body_template, ctx) or _body_to_html(_render(_DEFAULT_BODIES["rapport_mensuel"], ctx))
+    from app.services import mail_signature
+    from app.services.email_service import send_email
+    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
+    ok = await send_email(to=recipient, subject=subject, html_body=body_html + (sig_html or ""),
+                          inline_logo=logo, inline_logo_subtype=logo_sub)
+    if ok:
+        await _log(db, rule=rule, tenant_id=None, lease_id=None, channel="email",
+                   recipient=recipient, subject=subject, body=body_html, status="sent", dedup_key=dedup)
+        return 1
+    return 0
+
+
 # ── Boucle principale (planifiée quotidiennement) ─────────────────────────────
 
 async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=None) -> dict:
@@ -536,8 +770,10 @@ async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=Non
                 n = await _run_avis_rule(db, rule, today)
             elif rule.rule_type in _REMINDER_TYPES:
                 n = await _run_reminder_rule(db, rule, today)
+            elif rule.rule_type == "rapport_mensuel":
+                n = await _run_rapport_mensuel(db, rule, today)
             else:
-                continue  # quittance (événementiel) / communication_groupee (manuel)
+                continue  # quittance / révisions / taxe_om = événementiels ; communication_groupee = manuel
             if n:
                 summary[rule.rule_type] = summary.get(rule.rule_type, 0) + n
         except Exception as exc:  # noqa: BLE001 : une règle ne bloque pas les autres

@@ -58,6 +58,18 @@ export function TypedSignature({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawing = useRef(false)
   const lastPt = useRef<{ x: number; y: number } | null>(null)
+  // Le canevas s'aligne sur la largeur de la rangée d'onglets (Frappe/Dessin/Importer).
+  const tabsRef = useRef<HTMLDivElement>(null)
+  const [boxW, setBoxW] = useState<number | undefined>(undefined)
+  useEffect(() => {
+    const el = tabsRef.current
+    if (!el) return
+    const update = () => setBoxW(el.offsetWidth)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const emit = (dataUrl: string | null, m: SignatureMode, t: string, f: string) =>
     onChange({ dataUrl, mode: m, text: t, font: f })
@@ -237,7 +249,7 @@ export function TypedSignature({
   return (
     <div>
       {/* Choix du mode */}
-      <div className="flex gap-2 mb-3">
+      <div ref={tabsRef} className="inline-flex gap-2 mb-3">
         <button type="button" onClick={() => switchMode('type')} className={tabCls(mode === 'type')}>
           <Type size={15} /> Frappe
         </button>
@@ -248,13 +260,6 @@ export function TypedSignature({
           <Upload size={15} /> Importer
         </button>
       </div>
-
-      {mode === 'upload' && (
-        <label className="inline-flex items-center gap-1.5 px-3 py-2 mb-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer">
-          <Upload size={14} /> Choisir une image (PNG, JPG)
-          <input type="file" accept="image/*" onChange={onUploadFile} className="hidden" />
-        </label>
-      )}
 
       {mode === 'type' && (
         <>
@@ -287,7 +292,7 @@ export function TypedSignature({
         </>
       )}
 
-      <div className="inline-block rounded-lg border border-gray-300 bg-white overflow-hidden">
+      <div className="rounded-lg border border-gray-300 bg-white overflow-hidden" style={{ width: boxW }}>
         <canvas
           ref={canvasRef}
           width={width}
@@ -296,9 +301,17 @@ export function TypedSignature({
           onPointerMove={onPointerMove}
           onPointerUp={endStroke}
           onPointerLeave={endStroke}
-          style={{ width: '100%', maxWidth: width, height, touchAction: 'none', cursor: mode === 'draw' ? 'crosshair' : 'default' }}
+          style={{ width: '100%', display: 'block', height, touchAction: 'none', cursor: mode === 'draw' ? 'crosshair' : 'default' }}
         />
       </div>
+
+      {mode === 'upload' && (
+        <label className="inline-flex items-center gap-1.5 px-3 py-2 mt-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer">
+          <Upload size={14} /> Choisir une image (PNG, JPG)
+          <input type="file" accept="image/*" onChange={onUploadFile} className="hidden" />
+        </label>
+      )}
+
       <div className="flex items-center gap-3 mt-2">
         <button type="button" onClick={clear}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">

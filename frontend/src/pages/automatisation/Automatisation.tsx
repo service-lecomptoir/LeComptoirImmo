@@ -18,6 +18,10 @@ const RULE_TYPES = [
   { value: 'rappel_impaye', label: 'Rappel impayé', icon: AlertTriangle, color: 'red' },
   { value: 'relance_1', label: 'Relance 1', icon: Bell, color: 'orange' },
   { value: 'relance_2', label: 'Relance 2 (mise en demeure)', icon: Bell, color: 'red' },
+  { value: 'revision_loyer', label: 'Révision du loyer', icon: RefreshCw, color: 'blue' },
+  { value: 'revision_charges', label: 'Révision des charges', icon: RefreshCw, color: 'orange' },
+  { value: 'taxe_om', label: "Taxe d'ordures ménagères", icon: Trash2, color: 'gray' },
+  { value: 'rapport_mensuel', label: 'Rapport mensuel de gestion', icon: Clock, color: 'purple' },
   { value: 'communication_groupee', label: 'Communication groupée', icon: Users, color: 'purple' },
 ]
 
@@ -33,6 +37,7 @@ const RULE_COLORS: Record<string, string> = {
   red: 'bg-red-50 text-red-700 border-red-200',
   orange: 'bg-orange-50 text-orange-700 border-orange-200',
   purple: 'bg-purple-50 text-purple-700 border-purple-200',
+  gray: 'bg-gray-50 text-gray-700 border-gray-200',
 }
 
 interface Rule {
@@ -154,6 +159,9 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
             const isReminder = ['rappel_impaye', 'relance_1', 'relance_2'].includes(form.rule_type)
             const isEvent = form.rule_type === 'quittance'
             const isManual = form.rule_type === 'communication_groupee'
+            const isRevision = ['revision_loyer', 'revision_charges'].includes(form.rule_type)
+            const isTaxe = form.rule_type === 'taxe_om'
+            const isRapport = form.rule_type === 'rapport_mensuel'
             if (isEvent) return (
               <p className="text-sm text-gray-500">
                 La quittance est envoyée automatiquement dès qu'un mois est intégralement réglé (aucun délai à régler).
@@ -162,6 +170,34 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
             if (isManual) return (
               <p className="text-sm text-gray-500">Communication ponctuelle, déclenchée manuellement (aucun délai).</p>
             )
+            if (isRevision) return (
+              <p className="text-sm text-gray-500">
+                Envoyé automatiquement au locataire dès qu'une revalorisation {form.rule_type === 'revision_loyer' ? 'du loyer' : 'des charges'} est programmée (aucun délai à régler).
+              </p>
+            )
+            if (isTaxe) return (
+              <p className="text-sm text-gray-500">
+                Envoyé automatiquement au locataire lorsqu'une taxe d'ordures ménagères est déclarée à payer (aucun délai à régler).
+              </p>
+            )
+            if (isRapport) {
+              const day = Math.min(28, Math.max(1, form.trigger_days || 1))
+              return (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Jour d'envoi (1 à 28)</label>
+                  <div className="flex items-center gap-3">
+                    <input type="number" min={1} max={28}
+                      className="w-24 border rounded-lg px-3 py-2 text-sm text-center"
+                      value={day}
+                      onChange={e => setForm({ ...form, trigger_days: Math.min(28, Math.max(1, parseInt(e.target.value) || 1)) })} />
+                    <span className="text-sm text-gray-500">Le {day} de chaque mois, sur le mois écoulé.</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Destinataire : adresse(s) du champ « Copie (CC) » ci-dessous, sinon votre e-mail de gestionnaire.
+                  </p>
+                </div>
+              )
+            }
             const d = Math.abs(form.trigger_days || 0)
             const dir = isAvis ? 'avant' : 'après'
             return (
