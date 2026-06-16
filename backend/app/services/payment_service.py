@@ -93,8 +93,19 @@ class PaymentService:
             )
 
         year, month = bp.key_year, bp.key_month
-        amount_rent = round(float(lease.rent_amount) * bp.factor_sum, 2)
-        amount_charges = round(float(lease.charges_amount) * bp.factor_sum, 2)
+        # Loyer/charges applicables à la période : la dernière révision dont la date
+        # d'effet précède le début de période (le mois courant déjà appelé n'est
+        # jamais modifié ; une hausse programmée s'applique au mois suivant).
+        from app.services.rent_revision_service import RentRevisionService
+        eff_rent, eff_charges = RentRevisionService.effective_amounts(
+            lease,
+            await RentRevisionService.list_for_lease(db, lease.id),
+            bp.period_start,
+        )
+        amount_rent = round(eff_rent * bp.factor_sum, 2)
+        amount_charges = round(eff_charges * bp.factor_sum, 2)
+        # Tient le montant « en vigueur » du bail à jour (applique les révisions échues).
+        await RentRevisionService.sync_lease_current(db, lease)
         amount_apl = (
             round(float(lease.apl_amount) * bp.covered_count, 2)
             if lease.apl_tiers_payant and lease.apl_amount else None

@@ -206,14 +206,20 @@ async def clear_reference(
     return await _row(db, lease)
 
 
+class ApplyRevisionIn(BaseModel):
+    effective_date: Optional[date] = None
+
+
 @router.post("/loyers/{lease_id}/appliquer")
 async def apply_revision(
     lease_id: uuid.UUID,
+    data: Optional[ApplyRevisionIn] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
     from app.models.notification import Notification, NotificationType, NotificationPriority
     from app.models.tenant import Tenant
+    from app.services.rent_revision_service import RentRevisionService, first_of_next_month
 
     lease = (await db.execute(
         select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))
@@ -231,9 +237,16 @@ async def apply_revision(
 
     old_rent = float(lease.rent_amount)
     new_rent = round(old_rent * float(latest.value) / base, 2)
-    lease.rent_amount = new_rent
+    eff = (data.effective_date if data else None) or first_of_next_month(date.today())
+    # Révision datée : le mois courant reste figé, l'ancien loyer est conservé en historique.
+    await RentRevisionService.schedule(
+        db, lease, new_rent=new_rent, new_charges=float(lease.charges_amount),
+        effective_date=eff, source="irl",
+        reason=f"Révision IRL T{lease.irl_quarter} {latest.year}",
+        created_by=current_user.id,
+    )
     lease.irl_base_index = float(latest.value)
-    lease.last_revision_date = date.today()
+    lease.last_revision_date = eff
 
     # Notifie le locataire de la révision (mention 1 mois à l'avance à câbler sur l'avis/quittance/email).
     tenant = await db.get(Tenant, lease.tenant_id)
@@ -288,9 +301,15 @@ async def amiable_rent(
         raise HTTPException(status_code=404, detail="Contrat introuvable")
     await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
 
+    from app.services.rent_revision_service import RentRevisionService, first_of_next_month
     old_rent = float(lease.rent_amount)
-    eff = data.effective_date or date.today()
-    lease.rent_amount = data.new_rent
+    eff = data.effective_date or first_of_next_month(date.today())
+    # Révision datée : le mois courant reste figé, l'ancien loyer est conservé en historique.
+    await RentRevisionService.schedule(
+        db, lease, new_rent=float(data.new_rent), new_charges=float(lease.charges_amount),
+        effective_date=eff, source="amiable", reason=data.note or "Réévaluation amiable",
+        created_by=current_user.id,
+    )
     # Le loyer convenu devient la nouvelle base ; on ancre la date de dernière révision.
     lease.last_revision_date = eff
 
@@ -408,6 +427,7 @@ class ChargeApplyIn(BaseModel):
     real_total: float
     new_monthly_provision: float
     notes: Optional[str] = None
+    effective_date: Optional[date] = None
 
 
 @router.post("/charges/{lease_id}/appliquer")
@@ -431,6 +451,7 @@ async def apply_charge(
     await ChargeRegularizationService.apply(
         db, lease, data.period_start, data.period_end, data.real_total,
         data.new_monthly_provision, created_by=current_user.id, notes=data.notes,
+        effective_date=data.effective_date,
     )
     lease = (await db.execute(
         select(Lease).options(selectinload(Lease.tenant), selectinload(Lease.parent_property))

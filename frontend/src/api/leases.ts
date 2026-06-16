@@ -41,4 +41,20 @@ export const leasesApi = {
     })
     downloadBlob(response.data, filename)
   },
+
+  rentRevisions: (id: string) =>
+    apiClient.get<RentRevision[]>(`/leases/${id}/rent-revisions`),
+}
+
+export interface RentRevision {
+  id: string
+  effective_date: string
+  rent_amount: number
+  charges_amount: number
+  prev_rent_amount: number | null
+  prev_charges_amount: number | null
+  source: 'manuel' | 'irl' | 'charges' | 'amiable' | 'initial'
+  reason: string | null
+  applied: boolean
+  created_at: string | null
 }

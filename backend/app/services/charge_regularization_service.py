@@ -82,6 +82,7 @@ class ChargeRegularizationService:
         cls, db: AsyncSession, lease: Lease, period_start: date, period_end: date,
         real_total: float, new_monthly_provision: float,
         created_by: Optional[uuid.UUID] = None, notes: Optional[str] = None,
+        effective_date: Optional[date] = None,
     ) -> ChargeRegularization:
         """Applique la régularisation : enregistre, réajuste la provision mensuelle
         du bail, notifie le locataire (+ e-mail no-op tant que SMTP off)."""
@@ -107,8 +108,14 @@ class ChargeRegularizationService:
         )
         db.add(reg)
 
-        # Réajustement de la provision mensuelle (effet sur les prochains avis/loyers).
-        lease.charges_amount = new_monthly
+        # Réajustement de la provision mensuelle via une révision datée : le mois
+        # courant reste figé, l'ancienne provision est conservée en historique.
+        from app.services.rent_revision_service import RentRevisionService, first_of_next_month
+        await RentRevisionService.schedule(
+            db, lease, new_rent=float(lease.rent_amount), new_charges=new_monthly,
+            effective_date=effective_date or first_of_next_month(date.today()),
+            source="charges", reason="Régularisation des charges", created_by=created_by,
+        )
         await db.flush()
 
         await cls._notify(db, lease, reg)

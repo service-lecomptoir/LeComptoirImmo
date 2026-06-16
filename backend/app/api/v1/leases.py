@@ -143,6 +143,35 @@ async def get_lease(
     return lease
 
 
+@router.get("/{lease_id}/rent-revisions")
+async def list_rent_revisions(
+    lease_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Historique des révisions de loyer/charges du bail (ancien → nouveau, date
+    d'effet). Les révisions programmées (date d'effet future) sont incluses."""
+    from app.services.rent_revision_service import RentRevisionService
+    lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
+    await assert_lease_access(db, current_user, lease)
+    revisions = await RentRevisionService.list_for_lease(db, lease_id)
+    return [
+        {
+            "id": str(r.id),
+            "effective_date": r.effective_date.isoformat(),
+            "rent_amount": float(r.rent_amount),
+            "charges_amount": float(r.charges_amount),
+            "prev_rent_amount": float(r.prev_rent_amount) if r.prev_rent_amount is not None else None,
+            "prev_charges_amount": float(r.prev_charges_amount) if r.prev_charges_amount is not None else None,
+            "source": r.source,
+            "reason": r.reason,
+            "applied": bool(r.applied),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in revisions
+    ]
+
+
 @router.put("/{lease_id}", response_model=LeaseResponse)
 async def update_lease(
     lease_id: uuid.UUID,

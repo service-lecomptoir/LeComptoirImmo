@@ -157,6 +157,21 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
   const aplTiersPayant = watch('apl_tiers_payant')
   const hasGuarantor = watch('has_guarantor')
 
+  // ── Révision loyer/charges : date d'effet (le mois courant n'est jamais impacté) ──
+  const firstOfNextMonth = () => {
+    const d = new Date()
+    const y = d.getMonth() === 11 ? d.getFullYear() + 1 : d.getFullYear()
+    const m = d.getMonth() === 11 ? 0 : d.getMonth() + 1
+    return new Date(y, m, 1).toLocaleDateString('fr-CA') // yyyy-mm-dd local
+  }
+  const [rentEffectiveDate, setRentEffectiveDate] = useState(firstOfNextMonth())
+  const rentVal = watch('rent_amount')
+  const chargesVal = watch('charges_amount')
+  const rentChanged = !!lease && (
+    Number(rentVal) !== Number(lease.rent_amount) ||
+    Number(chargesVal ?? 0) !== Number(lease.charges_amount)
+  )
+
   useEffect(() => {
     // En édition, les <select> sont rendus avant l'arrivée des options : on ré-applique
     // les valeurs une fois les listes chargées pour que le bien et le locataire s'affichent.
@@ -190,6 +205,9 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
         end_date: data.end_date || undefined,
         apl_amount: data.apl_amount !== '' && data.apl_tiers_payant ? Number(data.apl_amount) : undefined,
         secondary_tenant_ids: secondaryIds,
+        // Édition : si le loyer/charges change, on transmet la date d'effet (révision
+        // datée côté serveur ; le mois courant reste figé, l'ancien montant en historique).
+        rent_effective_date: isEdit && rentChanged ? rentEffectiveDate : undefined,
       }
       if (isEdit) {
         await leasesApi.update(lease.id, payload)
@@ -378,6 +396,21 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
               <input type="number" step="0.01" min="0" {...register('deposit_amount')} className={inp} placeholder="0.00" />
             </div>
           </div>
+          {isEdit && rentChanged && (
+            <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50">
+              <label className={lbl}>Date d'effet de la nouvelle valeur</label>
+              <input
+                type="date"
+                value={rentEffectiveDate}
+                onChange={e => setRentEffectiveDate(e.target.value)}
+                className={`${inp} max-w-xs`}
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                Le mois en cours n'est pas modifié. Le nouveau loyer/charges s'applique à partir de cette date
+                (par défaut le 1er du mois suivant) ; l'ancien montant est conservé dans l'historique du bail.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
             <div>
               <label className={lbl}>Jour de paiement</label>

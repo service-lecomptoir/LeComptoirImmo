@@ -178,8 +178,27 @@ class LeaseService:
 
         payload = data.model_dump(exclude_unset=True)
         secondary_ids = payload.pop("secondary_tenant_ids", None)
+        # Loyer/charges : ne pas écraser directement. Toute évolution passe par une
+        # révision datée (le mois courant reste figé, l'ancien montant est conservé).
+        rent_eff = payload.pop("rent_effective_date", None)
+        new_rent = payload.pop("rent_amount", None)
+        new_charges = payload.pop("charges_amount", None)
         for field, value in payload.items():
             setattr(lease, field, value)
+
+        cur_rent = float(lease.rent_amount)
+        cur_charges = float(lease.charges_amount)
+        want_rent = float(new_rent) if new_rent is not None else cur_rent
+        want_charges = float(new_charges) if new_charges is not None else cur_charges
+        if round(want_rent, 2) != round(cur_rent, 2) or round(want_charges, 2) != round(cur_charges, 2):
+            from datetime import date
+            from app.services.rent_revision_service import RentRevisionService, first_of_next_month
+            await RentRevisionService.schedule(
+                db, lease,
+                new_rent=want_rent, new_charges=want_charges,
+                effective_date=rent_eff or first_of_next_month(date.today()),
+                source="manuel", reason="Modification du contrat",
+            )
 
         # Remplacer les co-titulaires si la liste est fournie
         if secondary_ids is not None:

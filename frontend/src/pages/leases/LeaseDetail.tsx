@@ -6,9 +6,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Edit, FileDown, XCircle,
   Home, User, Calendar, CreditCard, ShieldCheck, StickyNote, ClipboardList, Plus,
-  HeartHandshake, Trash2, DoorOpen,
+  HeartHandshake, Trash2, DoorOpen, TrendingUp,
 } from 'lucide-react'
-import { leasesApi } from '@/api/leases'
+import { leasesApi, type RentRevision } from '@/api/leases'
 import { scoringApi, type RelationEvent, type EventKind } from '@/api/scoring'
 import { inspectionsApi } from '@/api/inspections'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -223,6 +223,87 @@ const fmtDate = (d?: string | null) =>
   d ? format(new Date(d), 'd MMMM yyyy', { locale: fr }) : ''
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
+
+const REVISION_SOURCE_LABELS: Record<string, string> = {
+  manuel: 'Modification du contrat',
+  irl: 'Révision IRL',
+  charges: 'Régularisation des charges',
+  amiable: 'Réévaluation amiable',
+  initial: 'Montant initial',
+}
+
+// ── Historique des loyers (révisions datées : ancien → nouveau) ──────────────
+function RentHistorySection({ leaseId }: { leaseId: string }) {
+  const [revisions, setRevisions] = useState<RentRevision[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    leasesApi.rentRevisions(leaseId)
+      .then(r => setRevisions(r.data))
+      .catch(() => {})
+      .finally(() => setLoaded(true))
+  }, [leaseId])
+
+  if (!loaded || revisions.length === 0) return null
+
+  const today = new Date().toLocaleDateString('fr-CA')
+  const scheduled = revisions.filter(r => r.effective_date > today)
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-4">
+        <TrendingUp size={15} className="text-blue-500" /> Historique des loyers
+      </h2>
+
+      {scheduled.length > 0 && (
+        <div className="mb-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-800">
+          Révision programmée : <strong>{fmtEuro(scheduled[0].rent_amount + scheduled[0].charges_amount)}</strong>
+          {' '}(loyer {fmtEuro(scheduled[0].rent_amount)} + charges {fmtEuro(scheduled[0].charges_amount)})
+          {' '}à compter du {format(new Date(scheduled[0].effective_date), 'd MMMM yyyy', { locale: fr })}.
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date d'effet</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Motif</th>
+              <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ancien (loyer + charges)</th>
+              <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nouveau (loyer + charges)</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {revisions.map(r => {
+              const isFuture = r.effective_date > today
+              const oldTotal = (r.prev_rent_amount ?? 0) + (r.prev_charges_amount ?? 0)
+              return (
+                <tr key={r.id} className="hover:bg-gray-50">
+                  <td className="px-3 py-2 whitespace-nowrap text-gray-700">
+                    {format(new Date(r.effective_date), 'd MMM yyyy', { locale: fr })}
+                  </td>
+                  <td className="px-3 py-2 text-gray-600">{r.reason || REVISION_SOURCE_LABELS[r.source] || r.source}</td>
+                  <td className="px-3 py-2 text-right text-gray-400 whitespace-nowrap">
+                    {r.prev_rent_amount === null ? '—' : `${fmtEuro(oldTotal)}`}
+                  </td>
+                  <td className="px-3 py-2 text-right font-medium text-gray-900 whitespace-nowrap">
+                    {fmtEuro(r.rent_amount + r.charges_amount)}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {isFuture
+                      ? <StatusBadge label="Programmée" variant="yellow" />
+                      : <StatusBadge label="Appliquée" variant="green" />}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
 
 export default function LeaseDetail() {
   const { id } = useParams<{ id: string }>()
@@ -455,6 +536,9 @@ export default function LeaseDetail() {
             <p className="text-sm text-gray-700 whitespace-pre-wrap">{lease.notes}</p>
           </div>
         )}
+
+        {/* Historique des loyers (révisions datées) */}
+        <RentHistorySection leaseId={lease.id} />
 
         {/* Relation locataire (scoring) */}
         <RelationSection leaseId={lease.id} canEdit={lease.is_active} />

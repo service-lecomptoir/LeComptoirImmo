@@ -26,6 +26,7 @@ from app.models.lease_exit import LeaseExit
 from app.models.apurement_plan import ApurementPlan
 from app.models.signalement import Signalement
 from app.models.signalement_alert import SignalementAlert
+from app.models.rent_revision import RentRevision
 
 __all__ = [
     "User", "Tenant", "Owner", "Property", "Document",
@@ -35,4 +36,5 @@ __all__ = [
     "ProprietaireMessage", "AuditLog", "IrlIndex", "ChargeRegularization",
     "EmailDomain", "TelegramLink", "PublishPlatform", "Listing",
     "Candidature", "LeaseExit", "ApurementPlan", "Signalement", "SignalementAlert",
+    "RentRevision",
 ]

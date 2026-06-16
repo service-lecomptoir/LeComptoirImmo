@@ -68,6 +68,9 @@ class LeaseUpdate(BaseModel):
     notice_date: Optional[date] = None
     rent_amount: Optional[float] = Field(None, gt=0)
     charges_amount: Optional[float] = Field(None, ge=0)
+    # Date d'effet d'une modification du loyer/charges (défaut : 1er du mois suivant).
+    # Le mois en cours n'est pas impacté ; l'ancien montant est conservé en historique.
+    rent_effective_date: Optional[date] = None
     deposit_amount: Optional[float] = Field(None, ge=0)
     payment_day: Optional[int] = Field(None, ge=1, le=28)
     payment_method: Optional[PaymentMethod] = None
