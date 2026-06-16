@@ -30,8 +30,8 @@
 </head>
 <body>
 
-  <h1>Contrat de location : Logement non meublé</h1>
-  <p class="law">(Loi n°89-462 du 6 juillet 1989 : décret n°2015-587 du 29 mai 2015)</p>
+  <h1>Contrat de location : Logement {% if is_furnished %}meublé{% else %}non meublé{% endif %}</h1>
+  <p class="law">{% if is_furnished %}(Loi n°89-462 du 6 juillet 1989, art. 25-3 et suivants &middot; décrets n°2015-587 et n°2015-981 du 31 juillet 2015){% else %}(Loi n°89-462 du 6 juillet 1989 &middot; décret n°2015-587 du 29 mai 2015){% endif %}</p>
   <div class="bar">&nbsp;</div>
 
   <div class="sec">I. Désignation des parties</div>
@@ -75,12 +75,31 @@
   <p class="row"><span class="lbl">Niveau de performance énergétique (DPE) :</span> <span class="v">{{ dpe if dpe else '………' }}</span></p>
   <p class="sub">B. Destination des locaux</p>
   <p class="row"><span class="cbon">X</span> Usage d'habitation &nbsp; <span class="cb">&nbsp;&nbsp;</span> Usage mixte professionnel et d'habitation</p>
+  {% if is_furnished %}
+  <p class="small">Le logement est loué <strong>meublé</strong>, à titre de <strong>résidence principale</strong> du locataire. Il est garni
+    de l'ensemble des éléments de mobilier permettant au locataire d'y dormir, manger et vivre convenablement (liste minimale
+    fixée par le décret n°2015-981 du 31 juillet 2015), détaillés à l'inventaire annexé.</p>
+  {% endif %}
   <p class="small">Le bailleur remet au locataire un logement décent au sens du décret n°2002-120 du 30 janvier 2002,
     ne laissant pas apparaître de risque manifeste pour la sécurité physique ou la santé, exempt de toute
     infestation d'espèces nuisibles et parasites, et doté des éléments le rendant conforme à l'usage d'habitation.</p>
 
   <div class="sec">III. Date de prise d'effet et durée du contrat</div>
   <p class="row"><span class="lbl">Date de prise d'effet du contrat :</span> <span class="v">{{ start_date }}</span></p>
+  {% if is_furnished %}
+  <p class="row"><span class="lbl">Durée du contrat :</span>
+    <span class="cbon">X</span> 1 an (renouvelable par tacite reconduction) &nbsp;
+    <span class="cb">&nbsp;&nbsp;</span> 9 mois (locataire étudiant, sans tacite reconduction)</p>
+  <p class="small">Le bail meublé est conclu pour une durée d'un an, reconduit tacitement dans les mêmes conditions à défaut
+    de congé. Lorsque le locataire est étudiant, la durée peut être réduite à neuf mois, sans reconduction tacite.</p>
+  <p class="sub keep">Congé et préavis (art. 25-8 de la loi du 6 juillet 1989)</p>
+  <ul class="cl keep">
+    <li><strong>Congé donné par le locataire :</strong> à tout moment, moyennant un préavis de <strong>1 mois</strong>,
+      par lettre recommandée avec accusé de réception, acte de commissaire de justice ou remise en main propre contre récépissé.</li>
+    <li><strong>Congé donné par le bailleur :</strong> pour l'échéance du contrat, moyennant un préavis de <strong>3 mois</strong>,
+      et exclusivement pour reprise, pour vente, ou pour motif légitime et sérieux. Le congé doit être motivé.</li>
+  </ul>
+  {% else %}
   <p class="row"><span class="lbl">Durée du contrat :</span>
     {% if duration_morale %}<span class="cb">&nbsp;&nbsp;</span> 3 ans (bailleur personne physique) &nbsp; <span class="cbon">X</span> 6 ans (bailleur personne morale)
     {% else %}<span class="cbon">X</span> 3 ans (bailleur personne physique) &nbsp; <span class="cb">&nbsp;&nbsp;</span> 6 ans (bailleur personne morale){% endif %}</p>
@@ -89,7 +108,7 @@
   <p class="sub keep">Congé et préavis (art. 12 et 15 de la loi du 6 juillet 1989)</p>
   <ul class="cl keep">
     <li><strong>Congé donné par le locataire :</strong> à tout moment, par lettre recommandée avec accusé de réception,
-      acte d'huissier ou remise en main propre contre récépissé. Préavis de <strong>3 mois</strong>, réduit à
+      acte de commissaire de justice ou remise en main propre contre récépissé. Préavis de <strong>3 mois</strong>, réduit à
       <strong>1 mois</strong> en zone tendue ou dans les cas prévus par la loi (mutation, perte d'emploi, nouvel emploi
       consécutif à une perte d'emploi, état de santé justifiant un changement de domicile, bénéficiaires du RSA ou
       de l'AAH, attribution d'un logement social).</li>
@@ -97,6 +116,7 @@
       <strong>6 mois</strong>, et exclusivement pour reprise (habitation par le bailleur ou un proche), pour vente,
       ou pour motif légitime et sérieux. Le congé doit être motivé.</li>
   </ul>
+  {% endif %}
 
   <div class="sec">IV. Conditions financières</div>
   <p class="sub">A. Loyer</p>
@@ -132,7 +152,7 @@
   <div class="sec">VI. Garanties : Dépôt de garantie</div>
   <p class="row"><span class="lbl">Montant du dépôt de garantie :</span>
     <span class="v">{{ deposit if deposit else '0.00' }} €</span>
-    <span class="note">(inférieur ou égal à un mois de loyer hors charges)</span></p>
+    <span class="note">{% if is_furnished %}(inférieur ou égal à deux mois de loyer hors charges){% else %}(inférieur ou égal à un mois de loyer hors charges){% endif %}</span></p>
   <p class="small">Le dépôt de garantie est restitué dans un délai maximal de <strong>1 mois</strong> à compter de la
     remise des clés lorsque l'état des lieux de sortie est conforme à l'état des lieux d'entrée, et de
     <strong>2 mois</strong> dans le cas contraire, déduction faite, le cas échéant, des sommes restant dues et des
@@ -185,6 +205,7 @@
     <li>le dossier de diagnostic technique (DDT) comprenant notamment le <strong>diagnostic de performance énergétique (DPE)</strong>, le <strong>constat de risque d'exposition au plomb (CREP)</strong> pour les logements antérieurs à 1949, l'<strong>état des risques et pollutions (ERP)</strong>, et, le cas échéant, l'état de l'installation intérieure d'électricité et de gaz et le diagnostic amiante ;</li>
     <li>la <strong>notice d'information</strong> relative aux droits et obligations des locataires et des bailleurs (arrêté du 29 mai 2015) ;</li>
     <li>l'<strong>état des lieux d'entrée</strong>, établi contradictoirement et joint au contrat ;</li>
+    {% if is_furnished %}<li>l'<strong>inventaire et l'état détaillé du mobilier</strong>, établi contradictoirement, comportant au minimum les éléments fixés par le décret n°2015-981 du 31 juillet 2015 (literie, plaques de cuisson, four ou micro-ondes, réfrigérateur et congélateur, vaisselle et ustensiles, table et sièges, étagères de rangement, luminaires, matériel d'entretien ménager) ;</li>{% endif %}
     <li>le cas échéant, l'extrait du <strong>règlement de copropriété</strong> concernant la destination de l'immeuble, la jouissance et l'usage des parties privatives et communes ;</li>
     <li>le cas échéant, l'attestation d'assurance contre les risques locatifs.</li>
   </ul>

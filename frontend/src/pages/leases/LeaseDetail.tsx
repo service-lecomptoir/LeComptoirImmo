@@ -393,7 +393,7 @@ export default function LeaseDetail() {
     setPdfLoading(true)
     setDownloadError(null)
     try {
-      await leasesApi.downloadPdf(id, docFilename('bail_non_meuble', { tenant: lease.tenant?.full_name, property: lease.parent_property?.name }))
+      await leasesApi.downloadPdf(id, docFilename(lease.lease_type === 'meuble' ? 'bail_meuble' : 'bail_non_meuble', { tenant: lease.tenant?.full_name, property: lease.parent_property?.name }))
     } catch {
       setDownloadError('Erreur lors de la génération du bail non meublé')
     } finally {

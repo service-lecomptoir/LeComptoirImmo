@@ -58,7 +58,9 @@ async def user_signature_uri(db, gestionnaire_id) -> str:
 
 
 def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_mandataire: bool = False) -> bytes:
-    """Génère le PDF d'un contrat de bail — logement non meublé (loi 89-462).
+    """Génère le PDF d'un contrat de bail (loi 89-462) — logement non meublé OU
+    meublé (art. 25-3 et s.) selon `lease.lease_type` : durée, préavis, dépôt de
+    garantie et inventaire du mobilier sont adaptés en conséquence.
 
     - `owner` : fiche propriétaire du bien (bailleur). Si absent, repli sur les
       champs dénormalisés du bien.
@@ -118,8 +120,16 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
     except Exception:
         tenant_names = tenant.full_name if tenant else ""
 
+    # Type de bail : meublé (loi 89-462 art. 25-3 et s.) ou non meublé. L'enum
+    # LeaseType hérite de str → .value donne 'vide'/'meuble'/...
+    _lt = getattr(lease, "lease_type", None)
+    _lt_val = getattr(_lt, "value", _lt) or "vide"
+    is_furnished = (_lt_val == "meuble")
+
     ctx = {
         "is_morale": is_morale,
+        "is_furnished": is_furnished,
+        "lease_type": _lt_val,
         "bailleur_name": bailleur_name,
         "bailleur_address": bailleur_address,
         "bailleur_addr1": bailleur_addr1,

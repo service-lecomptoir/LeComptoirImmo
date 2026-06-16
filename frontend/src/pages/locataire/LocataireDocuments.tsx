@@ -284,7 +284,7 @@ export default function LocataireDocuments() {
         typeLabel: 'Contrat de bail',
         date: l.start_date ?? l.created_at,
         onDownload: () => leasesApi.downloadPdf(
-          l.id, docFilename('bail_non_meuble', { tenant: l.tenant_full_name, property: l.property_name }),
+          l.id, docFilename(l.lease_type === 'meuble' ? 'bail_meuble' : 'bail_non_meuble', { tenant: l.tenant_full_name, property: l.property_name }),
         ),
       }))
       return [...virtual, ...stored]
