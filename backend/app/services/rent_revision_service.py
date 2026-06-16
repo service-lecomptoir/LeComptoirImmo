@@ -57,6 +57,7 @@ class RentRevisionService:
         source: str,
         reason: Optional[str] = None,
         created_by: Optional[uuid.UUID] = None,
+        notify: bool = True,
     ) -> RentRevision:
         """Programme la révision d'UN champ. S'il existe déjà une révision de ce
         champ non encore appliquée, elle est REMPLACÉE (pas de doublon). On ne
@@ -101,12 +102,26 @@ class RentRevisionService:
         await db.flush()
         # Notification e-mail au locataire (si la règle « révision loyer/charges »
         # du gestionnaire est active). Best-effort : n'échoue jamais la révision.
-        if round(old_for_email, 2) != new_amount:
+        # `notify=False` quand l'appelant gère lui-même l'e-mail (ex. régularisation
+        # de charges qui joint son décompte) afin d'éviter un doublon.
+        if notify and round(old_for_email, 2) != new_amount:
+            # Avis de révision IRL en pièce jointe (le seul document propre à une
+            # révision de loyer) ; révision manuelle/amiable : e-mail sans PJ.
+            pdf_bytes = pdf_name = None
+            if kind == "rent" and source == "irl":
+                try:
+                    from app.services.document_blocks_pdf_service import RevisionLoyerPDFService
+                    pdf_bytes = await RevisionLoyerPDFService.generate(db, lease)
+                    pdf_name = f"revision-loyer-{lease.id}.pdf"
+                except Exception:  # noqa: BLE001
+                    import logging
+                    logging.getLogger(__name__).warning("[revision] PDF IRL indisponible", exc_info=True)
             try:
                 from app.services.automation_engine import send_revision_email
                 await send_revision_email(
                     db, lease, kind=kind, old_amount=old_for_email,
                     new_amount=new_amount, effective_date=effective_date,
+                    pdf_bytes=pdf_bytes, pdf_name=pdf_name,
                 )
             except Exception:  # noqa: BLE001
                 import logging

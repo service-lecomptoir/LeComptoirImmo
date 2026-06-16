@@ -648,8 +648,10 @@ async def _send_event_to_tenant(db, lease, *, rule_type, ctx_extra, dedup_suffix
     return ok
 
 
-async def send_revision_email(db, lease, *, kind, old_amount, new_amount, effective_date) -> bool:
-    """Notifie le locataire d'une révision de loyer ('rent') ou de charges ('charges')."""
+async def send_revision_email(db, lease, *, kind, old_amount, new_amount, effective_date,
+                              pdf_bytes=None, pdf_name=None) -> bool:
+    """Notifie le locataire d'une révision de loyer ('rent') ou de charges ('charges').
+    PDF optionnel joint (avis IRL pour le loyer, décompte de régularisation pour les charges)."""
     eff = effective_date.strftime("%d/%m/%Y") if hasattr(effective_date, "strftime") else str(effective_date)
     return await _send_event_to_tenant(
         db, lease,
@@ -657,6 +659,7 @@ async def send_revision_email(db, lease, *, kind, old_amount, new_amount, effect
         ctx_extra={"old_amount": f"{float(old_amount):.2f} €", "new_amount": f"{float(new_amount):.2f} €",
                    "effective_date": eff},
         dedup_suffix=eff,
+        pdf_bytes=pdf_bytes, pdf_name=pdf_name,
     )
 
 

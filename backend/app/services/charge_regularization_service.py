@@ -115,6 +115,7 @@ class ChargeRegularizationService:
             db, lease, kind="charges", new_amount=new_monthly,
             effective_date=effective_date or first_of_next_month(date.today()),
             source="charges", reason="Régularisation des charges", created_by=created_by,
+            notify=False,  # l'e-mail (avec décompte) est envoyé par _notify
         )
         reg.rent_revision_id = rev.id
         await db.flush()
@@ -155,6 +156,7 @@ class ChargeRegularizationService:
                 db, lease, kind="charges", new_amount=new_monthly,
                 effective_date=first_of_next_month(date.today()),
                 source="charges", reason="Régularisation des charges (modifiée)",
+                notify=False,  # l'e-mail (avec décompte) est envoyé par _notify
             )
             reg.rent_revision_id = rev.id
         await db.flush()
@@ -227,15 +229,21 @@ class ChargeRegularizationService:
 
             email = getattr(tenant, "email", None) if tenant else None
             if email:
-                from app.services.email_service import send_charge_regularization
-                await send_charge_regularization(
-                    to=email,
-                    tenant_name=tenant.full_name if tenant else "",
-                    period=period,
-                    provisions_total=float(reg.provisions_total),
-                    real_total=float(reg.real_total),
-                    balance=bal,
-                    new_monthly_provision=float(reg.new_monthly_provision),
+                # E-mail unique piloté par la règle « Révision des charges », avec le
+                # décompte (Régularisation de charges locatives) en pièce jointe.
+                # Plus d'envoi en dur : tout passe par une règle éditable.
+                from app.services.document_blocks_pdf_service import ChargeRegularizationPDFService
+                from app.services.automation_engine import send_revision_email
+                from app.models.rent_revision import RentRevision
+                pdf = await ChargeRegularizationPDFService.generate(db, reg)
+                rev = await db.get(RentRevision, reg.rent_revision_id) if reg.rent_revision_id else None
+                eff = rev.effective_date if rev else date.today()
+                await send_revision_email(
+                    db, lease, kind="charges",
+                    old_amount=float(reg.old_monthly_provision),
+                    new_amount=float(reg.new_monthly_provision),
+                    effective_date=eff,
+                    pdf_bytes=pdf, pdf_name=f"regularisation-charges-{reg.id}.pdf",
                 )
         except Exception:  # pragma: no cover - best effort
             pass
