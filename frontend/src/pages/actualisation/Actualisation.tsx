@@ -154,8 +154,11 @@ export default function Actualisation() {
   }
 
   const amiableRent = async (r: RevisionRow) => {
+    // Alerte explicite si une réévaluation est déjà programmée (elle sera remplacée).
+    if (r.pending_rent != null && !confirm(
+      `⚠ Une réévaluation de loyer est déjà programmée pour ${r.tenant_full_name} : ${fmtEuro(r.pending_rent)}${r.pending_rent_date ? ` au ${fmtDateFr(r.pending_rent_date)}` : ''}.\n\nElle sera remplacée par la nouvelle. Continuer ?`)) return
     const input = window.prompt(
-      `Réévaluation amiable du loyer de ${r.tenant_full_name} (actuel ${fmtEuro(r.current_rent)}).${pendingWarn(r)}\n\nNouveau loyer convenu (€) :`,
+      `Réévaluation amiable du loyer de ${r.tenant_full_name} (actuel ${fmtEuro(r.current_rent)}).\n\nNouveau loyer convenu (€) :`,
       String(r.pending_rent ?? r.current_rent))
     if (input == null) return
     const val = parseFloat(input.replace(',', '.'))

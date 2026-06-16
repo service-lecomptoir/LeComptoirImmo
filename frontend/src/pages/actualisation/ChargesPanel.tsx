@@ -177,8 +177,11 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
   }
 
   const amiableProvision = async (r: ChargeRow) => {
+    // Alerte explicite si une réévaluation de charges est déjà programmée (remplacée).
+    if (r.pending_charges != null && !confirm(
+      `⚠ Une réévaluation de charges est déjà programmée pour ${r.tenant_full_name} : ${fmtEuro(r.pending_charges)}${r.pending_charges_date ? ` au ${fmtDate(r.pending_charges_date)}` : ''}.\n\nElle sera remplacée par la nouvelle. Continuer ?`)) return
     const input = window.prompt(
-      `Réévaluation amiable de la provision pour charges de ${r.tenant_full_name} (actuelle ${fmtEuro(r.current_monthly_provision)}).${pendingWarn(r)}\n\nNouvelle provision mensuelle convenue (€) :`,
+      `Réévaluation amiable de la provision pour charges de ${r.tenant_full_name} (actuelle ${fmtEuro(r.current_monthly_provision)}).\n\nNouvelle provision mensuelle convenue (€) :`,
       String(r.pending_charges ?? r.current_monthly_provision))
     if (input == null) return
     const val = parseFloat(input.replace(',', '.'))

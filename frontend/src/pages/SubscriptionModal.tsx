@@ -1,20 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui'
 import { getErrorMessage } from '@/utils/errors'
-import { X, Send, CheckCircle } from 'lucide-react'
+import { X, Send, CheckCircle, Check } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import { publicPlansApi, type PublicPlan } from '@/api/publicPlans'
 
 interface Props {
   open: boolean
   onClose: () => void
+  /** Plan pré-sélectionné (clic sur une carte de tarification). */
+  initialPlanId?: string
 }
 
 /** Demande de souscription / démo — page d'accueil. Alimente Alice (lead à traiter). */
-export default function SubscriptionModal({ open, onClose }: Props) {
+export default function SubscriptionModal({ open, onClose, initialPlanId }: Props) {
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company: '', message: '' })
+  const [plans, setPlans] = useState<PublicPlan[]>([])
+  const [planId, setPlanId] = useState<string>('')
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Charge les plans à l'ouverture ; pré-sélectionne celui d'où vient le clic.
+  useEffect(() => {
+    if (!open) return
+    setPlanId(initialPlanId ?? '')
+    publicPlansApi.list().then(r => setPlans(r.data)).catch(() => setPlans([]))
+  }, [open, initialPlanId])
 
   if (!open) return null
 
@@ -30,6 +42,8 @@ export default function SubscriptionModal({ open, onClose }: Props) {
       setError('Un numéro de téléphone est requis.')
       return
     }
+    const chosen = plans.find(p => p.id === planId)
+    const planLabel = chosen ? `${chosen.name} (${chosen.monthly_price.toFixed(0)} €/mois)` : null
     setSending(true); setError(null)
     try {
       await apiClient.post('/public/subscription-requests', {
@@ -38,6 +52,8 @@ export default function SubscriptionModal({ open, onClose }: Props) {
         phone: form.phone.trim(),
         company: form.company || null,
         message: form.message || null,
+        plan_id: chosen?.id || null,
+        plan_label: planLabel,
       })
       setDone(true)
     } catch (e: any) {
@@ -52,8 +68,8 @@ export default function SubscriptionModal({ open, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100"
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0"
              style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #1A4A8A 100%)' }}>
           <h2 className="text-base font-semibold text-white">Demander une démo</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-white/80">
@@ -75,13 +91,47 @@ export default function SubscriptionModal({ open, onClose }: Props) {
             </Button>
           </div>
         ) : (
-          <div className="px-6 py-5 space-y-3">
+          <div className="px-6 py-5 space-y-3 overflow-y-auto">
             <p className="text-sm text-gray-500">
               Vous gérez des biens en location ? Laissez-nous vos coordonnées, on s'occupe du reste.
             </p>
             {error && (
               <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
             )}
+
+            {/* Choix de la formule (description + prix) */}
+            {plans.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-gray-700">Formule souhaitée</p>
+                <div className="space-y-2">
+                  {plans.map(p => {
+                    const selected = p.id === planId
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setPlanId(selected ? '' : p.id)}
+                        className={`w-full text-left rounded-xl border p-3 transition-all ${selected ? 'border-brand-navy bg-brand-navy/5 ring-2 ring-brand-navy/10' : 'border-gray-200 hover:border-gray-300'}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                            {selected && <Check size={14} className="text-brand-navy shrink-0" />}
+                            {p.name}
+                          </span>
+                          <span className="text-sm font-bold text-brand-navy whitespace-nowrap">{p.monthly_price.toFixed(0)} €<span className="text-xs font-normal text-gray-500">/mois</span></span>
+                        </div>
+                        {p.description && <p className="mt-1 text-xs text-gray-500">{p.description}</p>}
+                        <p className="mt-1 text-[11px] text-gray-400">
+                          {p.property_limit === null ? 'Biens illimités' : `Jusqu'à ${p.property_limit} bien${p.property_limit > 1 ? 's' : ''}`}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[11px] text-gray-400">Optionnel : vous pourrez en discuter avec notre équipe.</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input className={inp} placeholder="Prénom *" value={form.first_name}

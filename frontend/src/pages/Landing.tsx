@@ -304,7 +304,7 @@ function FeatureItem({ featureKey }: { featureKey: string }) {
   )
 }
 
-function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: () => void; highlight: boolean }) {
+function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: (planId?: string) => void; highlight: boolean }) {
   const included = plan.features === null ? FEATURE_ORDER : FEATURE_ORDER.filter(k => plan.features!.includes(k))
   // « Toutes » dès que l'intégralité des modules est incluse (null OU les 18 cochés).
   const allFeatures = included.length === FEATURE_ORDER.length
@@ -351,7 +351,7 @@ function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: () =>
       </div>
 
       <button
-        onClick={onDemo}
+        onClick={() => onDemo(plan.id)}
         className="mt-6 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
         style={{ background: highlight ? ORANGE : NAVY }}
       >
@@ -361,7 +361,7 @@ function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: () =>
   )
 }
 
-function Pricing({ onDemo }: { onDemo: () => void }) {
+function Pricing({ onDemo }: { onDemo: (planId?: string) => void }) {
   const [plans, setPlans] = useState<PublicPlan[] | null>(null)
   const [error, setError] = useState(false)
 
@@ -382,7 +382,7 @@ function Pricing({ onDemo }: { onDemo: () => void }) {
         {error || (plans && plans.length === 0) ? (
           <div className="text-center text-gray-500">
             <p>Nos formules vous seront présentées sur demande.</p>
-            <button onClick={onDemo} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: NAVY }}>
+            <button onClick={() => onDemo()} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-semibold text-white" style={{ background: NAVY }}>
               Demander une démo
             </button>
           </div>
@@ -423,7 +423,8 @@ function Footer() {
 
 export default function Landing() {
   const [demoOpen, setDemoOpen] = useState(false)
-  const onDemo = () => setDemoOpen(true)
+  const [demoPlanId, setDemoPlanId] = useState<string | undefined>(undefined)
+  const onDemo = (planId?: string) => { setDemoPlanId(planId); setDemoOpen(true) }
   return (
     <div className="min-h-screen bg-white">
       <Header onDemo={onDemo} />
@@ -434,7 +435,7 @@ export default function Landing() {
         <Pricing onDemo={onDemo} />
       </main>
       <Footer />
-      <SubscriptionModal open={demoOpen} onClose={() => setDemoOpen(false)} />
+      <SubscriptionModal open={demoOpen} onClose={() => setDemoOpen(false)} initialPlanId={demoPlanId} />
     </div>
   )
 }

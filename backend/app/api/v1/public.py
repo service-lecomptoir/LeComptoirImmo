@@ -47,8 +47,9 @@ async def list_public_plans():
     ]
 
 
-async def _notify_team(data: "SubscriptionRequestIn") -> None:
-    """Best-effort : notifie l'équipe par email (n'échoue jamais la requête)."""
+async def _notify_team(data: "SubscriptionRequestIn", message: Optional[str]) -> None:
+    """Best-effort : notifie l'équipe par email (n'échoue jamais la requête).
+    `message` inclut éventuellement la formule souhaitée."""
     try:
         from app.config import get_settings
         from app.services.email_service import send_subscription_lead_notification
@@ -60,7 +61,7 @@ async def _notify_team(data: "SubscriptionRequestIn") -> None:
             email=str(data.email).lower(),
             phone=data.phone,
             company=data.company,
-            message=data.message,
+            message=message,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Notification de souscription non envoyée : %s", exc)
@@ -72,6 +73,8 @@ class SubscriptionRequestIn(BaseModel):
     phone: str = Field(..., min_length=6, max_length=30)
     company: Optional[str] = Field(None, max_length=200)
     message: Optional[str] = Field(None, max_length=2000)
+    plan_id: Optional[str] = Field(None, max_length=64)
+    plan_label: Optional[str] = Field(None, max_length=200)
 
 
 @router.post("/subscription-requests", status_code=201, summary="Demande de souscription / démo")
@@ -79,16 +82,19 @@ async def create_subscription_request(
     data: SubscriptionRequestIn,
     background: BackgroundTasks,
 ):
-    """Enregistre une demande publique côté Alice (à traiter dans « Demandes »)."""
+    """Enregistre une demande publique côté Alice (à traiter dans « Demandes »).
+    La formule choisie est jointe au message du lead (visible dans « Demandes »)."""
+    plan_line = f"Formule souhaitée : {data.plan_label}" if data.plan_label else None
+    composed = "\n\n".join(x for x in (plan_line, data.message) if x) or None
     await alice_client.create_lead(
         full_name=data.full_name.strip(),
         email=str(data.email).lower(),
         phone=data.phone,
         company=data.company,
-        message=data.message,
+        message=composed,
         source="site_lecomptoir",
     )
-    background.add_task(_notify_team, data)
+    background.add_task(_notify_team, data, composed)
     return {"status": "received"}
 
 
