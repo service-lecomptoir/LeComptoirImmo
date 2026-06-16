@@ -44,16 +44,17 @@ export const leasesApi = {
 
   rentRevisions: (id: string) =>
     apiClient.get<RentRevision[]>(`/leases/${id}/rent-revisions`),
+  deleteRentRevision: (id: string, revisionId: string) =>
+    apiClient.delete(`/leases/${id}/rent-revisions/${revisionId}`),
 }
 
 export interface RentRevision {
   id: string
+  kind: 'rent' | 'charges'
   effective_date: string
-  rent_amount: number
-  charges_amount: number
-  prev_rent_amount: number | null
-  prev_charges_amount: number | null
-  source: 'manuel' | 'irl' | 'charges' | 'amiable' | 'initial'
+  amount: number
+  prev_amount: number | null
+  source: 'manuel' | 'irl' | 'charges' | 'amiable'
   reason: string | null
   applied: boolean
   created_at: string | null

@@ -259,6 +259,16 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS last_revision_date DATE",
         # Lien régularisation de charges -> révision de loyer générée (annulation propre)
         "ALTER TABLE charge_regularizations ADD COLUMN IF NOT EXISTS rent_revision_id UUID",
+        # Révisions de loyer « par champ » (loyer OU charges). Purge des lignes
+        # combinées (schéma initial, données de test) puis bascule du schéma.
+        "DELETE FROM lease_rent_revisions",
+        "ALTER TABLE lease_rent_revisions DROP COLUMN IF EXISTS rent_amount",
+        "ALTER TABLE lease_rent_revisions DROP COLUMN IF EXISTS charges_amount",
+        "ALTER TABLE lease_rent_revisions DROP COLUMN IF EXISTS prev_rent_amount",
+        "ALTER TABLE lease_rent_revisions DROP COLUMN IF EXISTS prev_charges_amount",
+        "ALTER TABLE lease_rent_revisions ADD COLUMN IF NOT EXISTS kind VARCHAR(10) NOT NULL DEFAULT 'rent'",
+        "ALTER TABLE lease_rent_revisions ADD COLUMN IF NOT EXISTS amount NUMERIC(10,2) NOT NULL DEFAULT 0",
+        "ALTER TABLE lease_rent_revisions ADD COLUMN IF NOT EXISTS prev_amount NUMERIC(10,2)",
         # Période réellement couverte par un avis d'échéance (prorata d'entrée/sortie)
         "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS period_start DATE",
         "ALTER TABLE avis_echeances ADD COLUMN IF NOT EXISTS period_end DATE",

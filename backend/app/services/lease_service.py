@@ -193,12 +193,17 @@ class LeaseService:
         if round(want_rent, 2) != round(cur_rent, 2) or round(want_charges, 2) != round(cur_charges, 2):
             from datetime import date
             from app.services.rent_revision_service import RentRevisionService, first_of_next_month
-            await RentRevisionService.schedule(
-                db, lease,
-                new_rent=want_rent, new_charges=want_charges,
-                effective_date=rent_eff or first_of_next_month(date.today()),
-                source="manuel", reason="Modification du contrat",
-            )
+            eff = rent_eff or first_of_next_month(date.today())
+            if round(want_rent, 2) != round(cur_rent, 2):
+                await RentRevisionService.schedule(
+                    db, lease, kind="rent", new_amount=want_rent, effective_date=eff,
+                    source="manuel", reason="Modification du contrat",
+                )
+            if round(want_charges, 2) != round(cur_charges, 2):
+                await RentRevisionService.schedule(
+                    db, lease, kind="charges", new_amount=want_charges, effective_date=eff,
+                    source="manuel", reason="Modification du contrat",
+                )
 
         # Remplacer les co-titulaires si la liste est fournie
         if secondary_ids is not None:

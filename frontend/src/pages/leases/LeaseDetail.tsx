@@ -4,11 +4,12 @@ import { Button } from '@/components/ui'
 import { getErrorMessage } from '@/utils/errors'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Edit, FileDown, XCircle,
+  ArrowLeft, ArrowRight, Edit, FileDown, XCircle,
   Home, User, Calendar, CreditCard, ShieldCheck, StickyNote, ClipboardList, Plus,
   HeartHandshake, Trash2, DoorOpen, TrendingUp,
 } from 'lucide-react'
 import { leasesApi, type RentRevision } from '@/api/leases'
+import { toast } from '@/store/toast'
 import { scoringApi, type RelationEvent, type EventKind } from '@/api/scoring'
 import { inspectionsApi } from '@/api/inspections'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -232,74 +233,74 @@ const REVISION_SOURCE_LABELS: Record<string, string> = {
   initial: 'Montant initial',
 }
 
-// ── Historique des loyers (révisions datées : ancien → nouveau) ──────────────
-function RentHistorySection({ leaseId }: { leaseId: string }) {
+// ── Évolution du loyer et des charges (révisions datées, par champ) ──────────
+const REVISION_KIND_LABELS: Record<string, string> = { rent: 'Loyer HC', charges: 'Charges' }
+
+function RentHistorySection({ leaseId, canEdit }: { leaseId: string; canEdit: boolean }) {
   const [revisions, setRevisions] = useState<RentRevision[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
-  useEffect(() => {
-    leasesApi.rentRevisions(leaseId)
-      .then(r => setRevisions(r.data))
-      .catch(() => {})
-      .finally(() => setLoaded(true))
-  }, [leaseId])
+  const load = () => leasesApi.rentRevisions(leaseId)
+    .then(r => setRevisions(r.data)).catch(() => {}).finally(() => setLoaded(true))
+  useEffect(() => { load() }, [leaseId])
 
   if (!loaded || revisions.length === 0) return null
 
   const today = new Date().toLocaleDateString('fr-CA')
-  const scheduled = revisions.filter(r => r.effective_date > today)
+
+  const del = async (rev: RentRevision) => {
+    if (!confirm('Supprimer cette réévaluation programmée ? Elle ne sera pas appliquée.')) return
+    setBusyId(rev.id)
+    try {
+      await leasesApi.deleteRentRevision(leaseId, rev.id)
+      toast.success('Réévaluation supprimée.')
+      await load()
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Suppression impossible'))
+    } finally { setBusyId(null) }
+  }
+
+  // Une révision « courante » par champ (loyer puis charges) : précédent → nouveau.
+  const order = ['rent', 'charges'] as const
+  const shown = order
+    .map(k => revisions.find(r => r.kind === k))
+    .filter((r): r is RentRevision => !!r)
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 md:col-span-2">
       <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-4">
-        <TrendingUp size={15} className="text-blue-500" /> Historique des loyers
+        <TrendingUp size={15} className="text-blue-500" /> Évolution du loyer et des charges
       </h2>
-
-      {scheduled.length > 0 && (
-        <div className="mb-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-800">
-          Révision programmée : <strong>{fmtEuro(scheduled[0].rent_amount + scheduled[0].charges_amount)}</strong>
-          {' '}(loyer {fmtEuro(scheduled[0].rent_amount)} + charges {fmtEuro(scheduled[0].charges_amount)})
-          {' '}à compter du {format(new Date(scheduled[0].effective_date), 'd MMMM yyyy', { locale: fr })}.
-        </div>
-      )}
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date d'effet</th>
-              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Motif</th>
-              <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ancien (loyer + charges)</th>
-              <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Nouveau (loyer + charges)</th>
-              <th className="px-3 py-2" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {revisions.map(r => {
-              const isFuture = r.effective_date > today
-              const oldTotal = (r.prev_rent_amount ?? 0) + (r.prev_charges_amount ?? 0)
-              return (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-2 whitespace-nowrap text-gray-700">
-                    {format(new Date(r.effective_date), 'd MMM yyyy', { locale: fr })}
-                  </td>
-                  <td className="px-3 py-2 text-gray-600">{r.reason || REVISION_SOURCE_LABELS[r.source] || r.source}</td>
-                  <td className="px-3 py-2 text-right text-gray-400 whitespace-nowrap">
-                    {r.prev_rent_amount === null ? '—' : `${fmtEuro(oldTotal)}`}
-                  </td>
-                  <td className="px-3 py-2 text-right font-medium text-gray-900 whitespace-nowrap">
-                    {fmtEuro(r.rent_amount + r.charges_amount)}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {isFuture
-                      ? <StatusBadge label="Programmée" variant="yellow" />
-                      : <StatusBadge label="Appliquée" variant="green" />}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+      <div className="space-y-2">
+        {shown.map(r => {
+          const isFuture = r.effective_date > today
+          return (
+            <div key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-gray-200 px-3 py-2.5">
+              <span className="text-sm font-semibold text-gray-800 w-20 shrink-0">{REVISION_KIND_LABELS[r.kind] ?? r.kind}</span>
+              <span className="text-sm text-gray-400 line-through">{r.prev_amount == null ? '—' : fmtEuro(r.prev_amount)}</span>
+              <ArrowRight size={13} className="text-gray-400 shrink-0" />
+              <span className="text-sm font-semibold text-gray-900">{fmtEuro(r.amount)}</span>
+              <span className="text-xs text-gray-500">à compter du {format(new Date(r.effective_date), 'd MMM yyyy', { locale: fr })}</span>
+              <span className="text-xs text-gray-400">· {r.reason || REVISION_SOURCE_LABELS[r.source] || r.source}</span>
+              <span className="ml-auto flex items-center gap-2 shrink-0">
+                {isFuture
+                  ? <StatusBadge label="Programmée" variant="yellow" />
+                  : <StatusBadge label="Appliquée" variant="green" />}
+                {isFuture && canEdit && (
+                  <button
+                    onClick={() => del(r)}
+                    disabled={busyId === r.id}
+                    title="Supprimer cette réévaluation"
+                    className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -537,8 +538,8 @@ export default function LeaseDetail() {
           </div>
         )}
 
-        {/* Historique des loyers (révisions datées) */}
-        <RentHistorySection leaseId={lease.id} />
+        {/* Évolution du loyer et des charges (révisions datées) */}
+        <RentHistorySection leaseId={lease.id} canEdit={lease.is_active} />
 
         {/* Relation locataire (scoring) */}
         <RelationSection leaseId={lease.id} canEdit={lease.is_active} />

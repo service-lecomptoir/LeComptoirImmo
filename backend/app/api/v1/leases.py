@@ -158,11 +158,10 @@ async def list_rent_revisions(
     return [
         {
             "id": str(r.id),
+            "kind": r.kind,
             "effective_date": r.effective_date.isoformat(),
-            "rent_amount": float(r.rent_amount),
-            "charges_amount": float(r.charges_amount),
-            "prev_rent_amount": float(r.prev_rent_amount) if r.prev_rent_amount is not None else None,
-            "prev_charges_amount": float(r.prev_charges_amount) if r.prev_charges_amount is not None else None,
+            "amount": float(r.amount),
+            "prev_amount": float(r.prev_amount) if r.prev_amount is not None else None,
             "source": r.source,
             "reason": r.reason,
             "applied": bool(r.applied),
@@ -170,6 +169,30 @@ async def list_rent_revisions(
         }
         for r in revisions
     ]
+
+
+@router.delete("/{lease_id}/rent-revisions/{revision_id}", status_code=204)
+async def delete_rent_revision(
+    lease_id: uuid.UUID,
+    revision_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Supprime une révision de loyer/charges UNIQUEMENT si elle n'est pas encore
+    appliquée (date d'effet future). Le montant en vigueur du bail n'est pas
+    modifié (la révision n'avait pas encore pris effet)."""
+    from datetime import date
+    from app.models.rent_revision import RentRevision
+    lease = await LeaseService.get_by_id(db, lease_id, load_relations=True)
+    await assert_lease_access(db, current_user, lease, write=True)
+    rev = await db.get(RentRevision, revision_id)
+    if not rev or rev.lease_id != lease_id:
+        raise HTTPException(status_code=404, detail="Révision introuvable")
+    if rev.applied or rev.effective_date <= date.today():
+        raise HTTPException(status_code=400, detail="Cette révision est déjà appliquée et ne peut plus être supprimée.")
+    await db.delete(rev)
+    await db.commit()
+    return None
 
 
 @router.put("/{lease_id}", response_model=LeaseResponse)

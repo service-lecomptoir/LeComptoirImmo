@@ -112,7 +112,7 @@ class ChargeRegularizationService:
         # courant reste figé, l'ancienne provision est conservée en historique.
         from app.services.rent_revision_service import RentRevisionService, first_of_next_month
         rev = await RentRevisionService.schedule(
-            db, lease, new_rent=float(lease.rent_amount), new_charges=new_monthly,
+            db, lease, kind="charges", new_amount=new_monthly,
             effective_date=effective_date or first_of_next_month(date.today()),
             source="charges", reason="Régularisation des charges", created_by=created_by,
         )
@@ -152,7 +152,7 @@ class ChargeRegularizationService:
             rev.charges_amount = new_monthly
         else:
             rev = await RentRevisionService.schedule(
-                db, lease, new_rent=float(lease.rent_amount), new_charges=new_monthly,
+                db, lease, kind="charges", new_amount=new_monthly,
                 effective_date=first_of_next_month(date.today()),
                 source="charges", reason="Régularisation des charges (modifiée)",
             )
@@ -169,7 +169,6 @@ class ChargeRegularizationService:
         """Supprime une régularisation : retire la révision de charges qu'elle avait
         générée, puis restaure la provision mensuelle en vigueur (révision restante
         applicable, ou la provision antérieure à la régularisation)."""
-        from datetime import datetime
         from app.services.rent_revision_service import RentRevisionService
         from app.models.rent_revision import RentRevision
 
@@ -179,14 +178,11 @@ class ChargeRegularizationService:
                 await db.delete(rev)
                 await db.flush()
 
+        # Provision en vigueur après retrait : dernière révision de charges restante
+        # applicable, sinon la provision antérieure à la régularisation.
         remaining = await RentRevisionService.list_for_lease(db, lease.id)
-        today = date.today()
-        applicable = [r for r in remaining if r.effective_date <= today]
-        if applicable:
-            best = max(applicable, key=lambda r: (r.effective_date, r.created_at or datetime.min))
-            lease.charges_amount = round(float(best.charges_amount), 2)
-        else:
-            lease.charges_amount = round(float(reg.old_monthly_provision), 2)
+        lease.charges_amount = round(RentRevisionService._effective_field(
+            float(reg.old_monthly_provision), remaining, "charges", date.today()), 2)
 
         await db.delete(reg)
         await db.flush()

@@ -240,7 +240,7 @@ async def apply_revision(
     eff = (data.effective_date if data else None) or first_of_next_month(date.today())
     # Révision datée : le mois courant reste figé, l'ancien loyer est conservé en historique.
     await RentRevisionService.schedule(
-        db, lease, new_rent=new_rent, new_charges=float(lease.charges_amount),
+        db, lease, kind="rent", new_amount=new_rent,
         effective_date=eff, source="irl",
         reason=f"Révision IRL T{lease.irl_quarter} {latest.year}",
         created_by=current_user.id,
@@ -306,7 +306,7 @@ async def amiable_rent(
     eff = data.effective_date or first_of_next_month(date.today())
     # Révision datée : le mois courant reste figé, l'ancien loyer est conservé en historique.
     await RentRevisionService.schedule(
-        db, lease, new_rent=float(data.new_rent), new_charges=float(lease.charges_amount),
+        db, lease, kind="rent", new_amount=float(data.new_rent),
         effective_date=eff, source="amiable", reason=data.note or "Réévaluation amiable",
         created_by=current_user.id,
     )
@@ -487,9 +487,15 @@ async def amiable_provision(
         raise HTTPException(status_code=404, detail="Contrat introuvable")
     await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
 
+    from app.services.rent_revision_service import RentRevisionService, first_of_next_month
     old = float(lease.charges_amount)
-    eff = data.effective_date or date.today()
-    lease.charges_amount = data.new_provision
+    eff = data.effective_date or first_of_next_month(date.today())
+    # Révision datée : le mois courant reste figé, l'ancienne provision en historique.
+    await RentRevisionService.schedule(
+        db, lease, kind="charges", new_amount=float(data.new_provision),
+        effective_date=eff, source="amiable", reason=data.note or "Réévaluation amiable des charges",
+        created_by=current_user.id,
+    )
 
     tenant = await db.get(Tenant, lease.tenant_id)
     if tenant and tenant.user_id:
