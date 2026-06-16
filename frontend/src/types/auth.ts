@@ -30,6 +30,7 @@ export interface User {
   proprio_sections?: string[] | null
   proprio_visibility?: string[] | null
   proprio_visibility_default?: string[] | null
+  last_login_at?: string | null
   created_at: string
   updated_at: string
 }

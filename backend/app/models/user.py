@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Boolean, Enum as SAEnum, ForeignKey, Text
+from sqlalchemy import String, Boolean, Enum as SAEnum, ForeignKey, Text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
@@ -87,6 +88,9 @@ class User(Base, TimestampMixin):
     agency_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), nullable=True, index=True
     )
+
+    # Dernière connexion réussie (affichée dans « Gestion des utilisateurs »).
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # ── Visibilité de l'espace propriétaire (lecture seule) ───────────────────
     # Liste de clés de rubriques (cf. core.proprio_sections). Null = non défini.

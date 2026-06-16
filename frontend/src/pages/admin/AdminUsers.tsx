@@ -84,6 +84,14 @@ function formatDate(iso: string) {
   }).format(new Date(iso))
 }
 
+/** Dernière connexion : date + heure, ou « Jamais » si l'utilisateur ne s'est jamais connecté. */
+function formatLastLogin(iso?: string | null) {
+  if (!iso) return 'Jamais'
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).format(new Date(iso))
+}
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 async function fetchUsers(): Promise<User[]> {
@@ -350,6 +358,7 @@ export default function AdminUsers() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Rôle</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Statut</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">Dernière connexion</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Créé le</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -390,6 +399,9 @@ export default function AdminUsers() {
                         <><XCircle size={11} /> Inactif</>
                       )}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                    <span className={u.last_login_at ? '' : 'text-gray-400 italic'}>{formatLastLogin(u.last_login_at)}</span>
                   </td>
                   <td className="px-4 py-3 text-gray-500">{formatDate(u.created_at)}</td>
                   <td className="px-4 py-3">

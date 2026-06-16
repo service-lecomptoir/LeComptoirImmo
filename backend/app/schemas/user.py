@@ -117,6 +117,7 @@ class UserResponse(BaseModel):
     signature_mode: Optional[str] = None
     signature_text: Optional[str] = None
     signature_font: Optional[str] = None
+    last_login_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 

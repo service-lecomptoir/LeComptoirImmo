@@ -43,6 +43,10 @@ async def login(
         db, action=audit_service.LOGIN,
         user_id=user.id, user_email=user.email, ip_address=ip,
     )
+    # Horodate la dernière connexion (visible dans « Gestion des utilisateurs »).
+    from datetime import datetime, timezone
+    user.last_login_at = datetime.now(timezone.utc)
+    await db.commit()
     return AuthService.generate_tokens(user)
 
 

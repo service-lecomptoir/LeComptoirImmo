@@ -286,6 +286,8 @@ async def _apply_column_migrations() -> None:
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_owners_ref_code ON owners (ref_code)",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_tenants_ref_code ON tenants (ref_code)",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_properties_ref_code ON properties (ref_code)",
+        # Dernière connexion (affichée dans « Gestion des utilisateurs »)
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ",
         # Coordonnées profil utilisateur (gestionnaire/agence)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
