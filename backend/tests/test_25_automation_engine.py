@@ -158,12 +158,14 @@ async def test_quittance_sent_only_with_active_rule(db, gestionnaire_user):
 async def test_ensure_default_rules_idempotent(db, gestionnaire_user):
     n1 = await automation_engine.ensure_default_rules(db, gestionnaire_user.id)
     n2 = await automation_engine.ensure_default_rules(db, gestionnaire_user.id)
-    assert n1 == 5
+    # Dérivé du jeu de règles par défaut pour ne pas dériver quand on en ajoute.
+    assert n1 == len(automation_engine._DEFAULT_RULES)
     assert n2 == 0
     types = set((await db.execute(
         select(AutomationRule.rule_type).where(AutomationRule.created_by == gestionnaire_user.id)
     )).scalars().all())
-    assert {"avis_echeance", "quittance", "rappel_impaye", "relance_1", "relance_2"} <= types
+    assert {"avis_echeance", "quittance", "rappel_impaye", "relance_1", "relance_2",
+            "revision_loyer", "revision_charges", "taxe_om", "rapport_mensuel"} <= types
 
 
 @pytest.mark.asyncio

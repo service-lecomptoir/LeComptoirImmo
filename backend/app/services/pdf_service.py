@@ -303,6 +303,57 @@ async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
     )
 
 
+async def build_relance_pdf(db: AsyncSession, payment: Any) -> bytes:
+    """Génère la lettre de relance (PDF) d'un loyer impayé : modèle par blocs du
+    gestionnaire en priorité, repli sur le template .j2 historique sinon.
+    `payment` doit être chargé avec ses relations (lease, tenant, parent_property).
+    Génération à la volée : aucun fichier n'est persisté ici."""
+    lease = getattr(payment, "lease", None)
+    property_obj = getattr(lease, "parent_property", None) if lease else None
+    html = await render_relance_html(db, payment)
+    if not html:
+        tenant = getattr(payment, "tenant", None)
+        gid = getattr(lease, "created_by", None) if lease else None
+        ctx = {
+            "property_name": property_obj.name if property_obj else "Le bailleur",
+            "property_address": property_obj.full_address if property_obj else "",
+            "city": (property_obj.city if property_obj else ""),
+            "tenant_name": tenant.full_name if tenant else "",
+            "period_label": payment.period_label,
+            "due_date": payment.due_date.strftime("%d/%m/%Y") if getattr(payment, "due_date", None) else "",
+            "amount_due": f"{float(payment.balance):.2f}",
+            "apl_info": bool(getattr(payment, "amount_apl", None)),
+            "apl_amount": f"{float(payment.amount_apl):.2f}" if getattr(payment, "amount_apl", None) else "0.00",
+            "today": _today_fr(),
+            "signature_uri": await user_signature_uri(db, gid),
+        }
+        html = render_template("lettre_relance.html.j2", ctx)
+    return html_to_pdf(html)
+
+
+def relance_filename(payment: Any) -> str:
+    """Nom de fichier normalisé pour une lettre de relance."""
+    from app.utils.filename import doc_filename
+    lease = getattr(payment, "lease", None)
+    property_obj = getattr(lease, "parent_property", None) if lease else None
+    tenant = getattr(payment, "tenant", None)
+    return doc_filename(
+        "relance",
+        tenant=tenant.full_name if tenant else None,
+        property_name=property_obj.name if property_obj else None,
+        month=getattr(payment, "period_month", None),
+        year=getattr(payment, "period_year", None),
+    )
+
+
+def _today_fr() -> str:
+    from datetime import date as _date
+    _MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin",
+                  "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+    d = _date.today()
+    return f"{d.day} {_MONTHS_FR[d.month]} {d.year}"
+
+
 def _add_months(d, m: int):
     """Ajoute `m` mois à une date en bornant le jour au dernier jour du mois cible."""
     import calendar

@@ -455,7 +455,20 @@ async def _send_reminder(db, rule, payment, today: date) -> bool:
     if channel in ("email", "email_sms") and getattr(tenant, "email", None):
         try:
             from app.services.email_service import send_email
+            # Lettre de relance jointe : génération à la volée (modèle du gestionnaire
+            # sinon repli .j2), comme l'envoi manuel. Fail-soft : si la génération
+            # échoue, l'e-mail part quand même sans pièce jointe.
+            pdf_bytes = pdf_name = None
+            try:
+                from app.services.payment_service import PaymentService
+                from app.services.pdf_service import build_relance_pdf, relance_filename
+                _full = await PaymentService.get_by_id(db, payment.id, load_relations=True)
+                pdf_bytes = await build_relance_pdf(db, _full)
+                pdf_name = relance_filename(_full)
+            except Exception as pexc:  # noqa: BLE001
+                logger.warning("[automation] PDF relance indisponible payment=%s: %r", payment.id, pexc)
             ok = await send_email(to=tenant.email, subject=subject, html_body=body_html + sig_html,
+                                  attachment_bytes=pdf_bytes, attachment_filename=pdf_name,
                                   cc=cc, inline_logo=logo, inline_logo_subtype=logo_sub)
             any_sent = any_sent or ok
         except Exception as exc:  # noqa: BLE001
