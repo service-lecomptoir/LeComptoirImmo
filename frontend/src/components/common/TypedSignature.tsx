@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Eraser, Type, PenTool } from 'lucide-react'
+import { Eraser, Type, PenTool, Upload } from 'lucide-react'
 
 /** Polices manuscrites proposées (chargées via Google Fonts dans index.html). */
 const FONTS = [
@@ -11,7 +11,7 @@ const FONTS = [
   { id: 'Caveat', label: 'Décontractée' },
 ]
 
-export type SignatureMode = 'type' | 'draw'
+export type SignatureMode = 'type' | 'draw' | 'upload'
 export interface SignatureValue {
   dataUrl: string | null   // PNG (data-URL) ou null si vidée
   mode: SignatureMode
@@ -70,6 +70,22 @@ export function TypedSignature({
       img.src = src
     })
 
+  // Dessine une image en conservant ses proportions (centrée), pour une signature
+  // importée (sinon une image au mauvais ratio serait déformée par drawImageOnto).
+  const drawImageFit = (ctx: CanvasRenderingContext2D, src: string) =>
+    new Promise<void>(resolve => {
+      const img = new Image()
+      img.onload = () => {
+        const cw = ctx.canvas.width, ch = ctx.canvas.height
+        const r = Math.min(cw / img.width, ch / img.height)
+        const w = img.width * r, h = img.height * r
+        ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h)
+        resolve()
+      }
+      img.onerror = () => resolve()
+      img.src = src
+    })
+
   const drawText = async (ctx: CanvasRenderingContext2D, t: string, f: string) => {
     if (!t) return
     try { await (document as any).fonts?.load(`72px '${f}'`) } catch { /* repli police système */ }
@@ -117,18 +133,41 @@ export function TypedSignature({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, font, mode, edited, value])
 
-  // ── Mode DESSIN : affiche la signature enregistrée au montage (avant édition).
+  // ── Mode DESSIN / IMPORT : affiche la signature enregistrée au montage (avant
+  // édition). L'import conserve les proportions (drawImageFit).
   useEffect(() => {
-    if (mode !== 'draw' || edited) return
+    if ((mode !== 'draw' && mode !== 'upload') || edited) return
     const cv = canvasRef.current
     if (!cv) return
     const ctx = cv.getContext('2d')
     if (!ctx) return
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, cv.width, cv.height)
-    if (value) drawImageOnto(ctx, value)
+    if (value) (mode === 'upload' ? drawImageFit : drawImageOnto)(ctx, value)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
+
+  // ── Mode IMPORT : charge un fichier image et l'enregistre comme signature.
+  const onUploadFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const dataUrl = String(reader.result)
+      setEdited(true)
+      const cv = canvasRef.current
+      const ctx = cv?.getContext('2d')
+      if (ctx && cv) {
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, cv.width, cv.height)
+        await drawImageFit(ctx, dataUrl)
+      }
+      emit(dataUrl, 'upload', '', font)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = '' // permet de re-sélectionner le même fichier
+  }
 
   const switchMode = (m: SignatureMode) => {
     if (m === mode) return
@@ -187,7 +226,7 @@ export function TypedSignature({
     const ctx = cv?.getContext('2d')
     if (ctx && cv) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height) }
     if (mode === 'type') setText('')
-    else emit(null, 'draw', '', font)
+    else emit(null, mode, '', font)
   }
 
   const tabCls = (active: boolean) =>
@@ -205,7 +244,17 @@ export function TypedSignature({
         <button type="button" onClick={() => switchMode('draw')} className={tabCls(mode === 'draw')}>
           <PenTool size={15} /> Dessin
         </button>
+        <button type="button" onClick={() => switchMode('upload')} className={tabCls(mode === 'upload')}>
+          <Upload size={15} /> Importer
+        </button>
       </div>
+
+      {mode === 'upload' && (
+        <label className="inline-flex items-center gap-1.5 px-3 py-2 mb-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer">
+          <Upload size={14} /> Choisir une image (PNG, JPG)
+          <input type="file" accept="image/*" onChange={onUploadFile} className="hidden" />
+        </label>
+      )}
 
       {mode === 'type' && (
         <>
@@ -258,9 +307,11 @@ export function TypedSignature({
         <span className="text-xs text-gray-400">
           {mode === 'draw'
             ? 'Dessinez votre signature dans le cadre avec la souris, puis enregistrez.'
-            : (value && !edited
-                ? 'Une signature est déjà enregistrée. Tapez votre nom pour la remplacer.'
-                : 'Tapez votre nom, choisissez un style, puis enregistrez.')}
+            : mode === 'upload'
+              ? 'Importez une image de votre signature (fond blanc ou transparent), puis enregistrez.'
+              : (value && !edited
+                  ? 'Une signature est déjà enregistrée. Tapez votre nom pour la remplacer.'
+                  : 'Tapez votre nom, choisissez un style, puis enregistrez.')}
         </span>
       </div>
     </div>

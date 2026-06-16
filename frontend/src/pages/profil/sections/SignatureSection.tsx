@@ -47,15 +47,16 @@ export default function SignatureSection() {
       <TypedSignature
         width={230}
         value={signature !== undefined ? signature : (user?.signature ?? null)}
-        initialMode={(user?.signature_mode as 'type' | 'draw' | null) ?? 'type'}
+        initialMode={(user?.signature_mode as 'type' | 'draw' | 'upload' | null) ?? 'type'}
         initialText={user?.signature_text ?? null}
         initialFont={user?.signature_font ?? null}
         onChange={(sig) => { setSignature(sig.dataUrl); setSigMeta({ mode: sig.mode, text: sig.text, font: sig.font }) }}
         defaultText={defaultText}
       />
       <p className="text-xs text-gray-400">
-        Tapez votre nom et choisissez un style d'écriture, ou dessinez votre signature à la souris
-        (onglet « Dessin »). Apposée en bas de vos documents générés (quittance, avis d'échéance, relance).
+        Tapez votre nom et choisissez un style d'écriture, dessinez votre signature à la souris
+        (onglet « Dessin »), ou importez-en une image (onglet « Importer »). Apposée en bas de vos
+        documents générés (quittance, avis d'échéance, relance).
       </p>
       <div className="flex justify-end">
         <button onClick={save} disabled={saving}

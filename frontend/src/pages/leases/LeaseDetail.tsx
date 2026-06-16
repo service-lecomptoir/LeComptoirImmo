@@ -318,6 +318,44 @@ export default function LeaseDetail() {
   const [showInspectionForm, setShowInspectionForm] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+  // Revalorisation rapide loyer/charges depuis le contrat (sans passer par Modifier).
+  const [reval, setReval] = useState<null | 'rent' | 'charges'>(null)
+  const [revalAmount, setRevalAmount] = useState('')
+  const [revalEff, setRevalEff] = useState('')
+  const [revalBusy, setRevalBusy] = useState(false)
+  const [histKey, setHistKey] = useState(0) // force le rechargement de l'historique
+
+  const firstOfNextMonth = () => {
+    const d = new Date()
+    const y = d.getMonth() === 11 ? d.getFullYear() + 1 : d.getFullYear()
+    const m = d.getMonth() === 11 ? 0 : d.getMonth() + 1
+    return new Date(y, m, 1).toLocaleDateString('fr-CA')
+  }
+
+  const openReval = (kind: 'rent' | 'charges') => {
+    if (!lease) return
+    setReval(kind)
+    setRevalAmount(String(kind === 'rent' ? lease.rent_amount : lease.charges_amount))
+    setRevalEff(firstOfNextMonth())
+  }
+
+  const submitReval = async () => {
+    if (!lease || !reval) return
+    const val = parseFloat(revalAmount.replace(',', '.'))
+    if (isNaN(val) || val < 0) { toast.error('Montant invalide'); return }
+    setRevalBusy(true)
+    try {
+      await leasesApi.update(lease.id, reval === 'rent'
+        ? { rent_amount: val, rent_effective_date: revalEff }
+        : { charges_amount: val, rent_effective_date: revalEff })
+      toast.success(`${reval === 'rent' ? 'Loyer' : 'Charges'} : nouvelle valeur programmée.`)
+      setReval(null)
+      await fetchLease()
+      setHistKey(k => k + 1)
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Erreur lors de la revalorisation'))
+    } finally { setRevalBusy(false) }
+  }
 
   const fetchLease = async () => {
     if (!id) return
@@ -472,8 +510,28 @@ export default function LeaseDetail() {
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-3">
             <CreditCard size={15} className="text-blue-500" /> Finances
           </h2>
-          <InfoRow label="Loyer HC" value={fmtEuro(lease.rent_amount)} />
-          <InfoRow label="Charges" value={fmtEuro(lease.charges_amount)} />
+          <InfoRow label="Loyer HC" value={
+            <span className="inline-flex items-center gap-2">
+              {fmtEuro(lease.rent_amount)}
+              {lease.is_active && (
+                <button onClick={() => openReval('rent')} title="Revaloriser le loyer (programmé)"
+                  className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
+                  <TrendingUp size={13} />
+                </button>
+              )}
+            </span>
+          } />
+          <InfoRow label="Charges" value={
+            <span className="inline-flex items-center gap-2">
+              {fmtEuro(lease.charges_amount)}
+              {lease.is_active && (
+                <button onClick={() => openReval('charges')} title="Revaloriser les charges (programmé)"
+                  className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
+                  <TrendingUp size={13} />
+                </button>
+              )}
+            </span>
+          } />
           <InfoRow label="Total CC" value={
             <span className="font-bold text-blue-700">{fmtEuro(lease.total_monthly)}</span>
           } />
@@ -539,7 +597,7 @@ export default function LeaseDetail() {
         )}
 
         {/* Évolution du loyer et des charges (révisions datées) */}
-        <RentHistorySection leaseId={lease.id} canEdit={lease.is_active} />
+        <RentHistorySection key={histKey} leaseId={lease.id} canEdit={lease.is_active} />
 
         {/* Relation locataire (scoring) */}
         <RelationSection leaseId={lease.id} canEdit={lease.is_active} />
@@ -626,6 +684,53 @@ export default function LeaseDetail() {
         confirmLabel="Résilier"
         confirmVariant="red"
       />
+
+      {/* Revalorisation rapide loyer / charges (révision datée, sans passer par Modifier) */}
+      {reval && lease && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <TrendingUp size={15} className="text-blue-600" />
+              Revaloriser {reval === 'rent' ? 'le loyer (HC)' : 'les charges'}
+            </h3>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Nouveau montant (€) — actuel {fmtEuro(reval === 'rent' ? lease.rent_amount : lease.charges_amount)}
+              </label>
+              <input
+                type="number" step="0.01" min="0" autoFocus
+                value={revalAmount}
+                onChange={e => setRevalAmount(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Date d'effet</label>
+              <input
+                type="date"
+                value={revalEff}
+                onChange={e => setRevalEff(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Le mois en cours n'est pas modifié ; la nouvelle valeur s'applique à partir de cette date
+                (par défaut le 1er du mois suivant). L'ancien montant est conservé dans l'historique.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={() => setReval(null)} disabled={revalBusy}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                Annuler
+              </button>
+              <button onClick={submitReval} disabled={revalBusy}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60">
+                {revalBusy ? 'Enregistrement…' : 'Programmer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
