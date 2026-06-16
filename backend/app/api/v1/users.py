@@ -215,6 +215,26 @@ async def update_my_profile(
     return await UserService.update(db, current_user.id, data)
 
 
+@router.get("/me/manager", summary="Contact de mon gestionnaire (locataire / propriétaire)")
+async def get_my_manager(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Coordonnées de l'agence de rattachement (point de contact) pour un locataire
+    ou un propriétaire. Renvoie ``null`` si le compte n'est rattaché à aucune agence."""
+    if Role(current_user.role) not in (Role.LOCATAIRE, Role.PROPRIETAIRE):
+        return None
+    root = await _agency_root_for(db, current_user)
+    if not root or root.id == current_user.id:
+        return None
+    return {
+        "full_name": root.full_name,
+        "email": root.email,
+        "phone": root.phone,
+        "address": root.full_address,
+    }
+
+
 @router.get("/{user_id}", response_model=UserResponse, summary="Détail d'un utilisateur")
 async def get_user(
     user_id: uuid.UUID,

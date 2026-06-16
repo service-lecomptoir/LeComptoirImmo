@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { MapPin, Hash, User, Building2 } from 'lucide-react'
+import { MapPin, Hash, User, Building2, Home } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed } from '@/lib/features'
@@ -99,47 +100,22 @@ function useProprietaireInfo(active: boolean, userName: string): ProprietaireInf
   return info
 }
 
-// ── Bloc d'info affiché en haut de sidebar ────────────────────────────────────
-
-interface SidebarInfoBlockProps {
-  line1: string           // gras, blanc : titre principal
-  address: string         // avec icône MapPin
-  personName?: string     // optionnel : nom personne sous séparateur (icône User)
-  refCode: string         // référence avec icône #
-}
-
-function SidebarInfoBlock({ line1, address, personName, refCode }: SidebarInfoBlockProps) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-white font-semibold text-sm leading-tight truncate">{line1}</p>
-
-      {address && (
-        <div className="flex items-start gap-1.5">
-          <MapPin size={11} className="text-gray-400 mt-0.5 shrink-0" />
-          <p className="text-gray-400 text-xs leading-snug line-clamp-2 whitespace-pre-line">{address}</p>
-        </div>
-      )}
-
-      <div className="border-t border-gray-700/60 pt-1.5 mt-1.5 space-y-1">
-        {personName && (
-          <div className="flex items-center gap-1.5">
-            <User size={10} className="text-gray-500 shrink-0" />
-            <p className="text-gray-300 text-xs font-medium truncate">{personName}</p>
-          </div>
-        )}
-        <div className="flex items-center gap-1.5">
-          <Hash size={10} className="text-gray-500 shrink-0" />
-          <p className="text-gray-500 text-xs font-mono tracking-wide">{refCode}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Carte d'en-tête gestionnaire (dégradé + icône immo) ──────────────────────
-function ManagerHeaderCard({ roleLabel, name, address, refCode }: { roleLabel: string; name: string; address?: string; refCode?: string | null }) {
-  // Rôle affiché sur deux lignes : « Gestionnaire » puis le qualificatif
-  // (mandataire / propriétaire), de façon identique pour les deux types.
+// ── Carte d'en-tête unifiée (emblème navy + icône orange) ────────────────────
+// Utilisée pour TOUS les rôles (gestionnaire, locataire, propriétaire) afin que
+// l'avatar en haut de sidebar soit identique partout. L'icône et le libellé de
+// rôle s'adaptent ; `personName` ajoute une ligne « personne » (ex. locataire).
+function SidebarHeaderCard({
+  Icon = Building2, roleLabel, name, personName, address, refCode,
+}: {
+  Icon?: LucideIcon
+  roleLabel: string
+  name: string
+  personName?: string
+  address?: string
+  refCode?: string | null
+}) {
+  // Rôle affiché sur deux lignes : 1er mot puis le qualificatif éventuel
+  // (« Gestionnaire » / « mandataire »), de façon identique pour tous.
   const _parts = roleLabel.trim().split(/\s+/)
   const roleFirst = _parts[0]
   const roleRest = _parts.slice(1).join(' ')
@@ -148,7 +124,7 @@ function ManagerHeaderCard({ roleLabel, name, address, refCode }: { roleLabel: s
       <div className="rounded-xl p-3.5 flex items-center gap-3 bg-brand-navy">
         <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border border-brand-orange/70"
           style={{ background: 'rgba(255,255,255,0.14)' }}>
-          <Building2 size={20} className="text-brand-orange" />
+          <Icon size={20} className="text-brand-orange" />
         </div>
         <div className="min-w-0">
           {name && <p className="text-white font-bold text-sm leading-tight truncate">{name}</p>}
@@ -162,6 +138,12 @@ function ManagerHeaderCard({ roleLabel, name, address, refCode }: { roleLabel: s
         <div className="flex items-start gap-1.5 mt-2 px-0.5">
           <MapPin size={11} className="text-gray-400 mt-0.5 shrink-0" />
           <p className="text-gray-400 text-xs leading-snug line-clamp-2 whitespace-pre-line">{address}</p>
+        </div>
+      )}
+      {personName && (
+        <div className="flex items-center gap-1.5 mt-1.5 px-0.5">
+          <User size={10} className="text-gray-500 shrink-0" />
+          <p className="text-gray-300 text-xs font-medium truncate">{personName}</p>
         </div>
       )}
       {refCode && (
@@ -253,40 +235,34 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   // ── Header sidebar ────────────────────────────────────────────────────────
   const renderHeader = () => {
     if (isLocataire) {
-      return (
-        <div className="px-4 py-4 border-b border-gray-700">
-          {leaseInfo
-            ? <SidebarInfoBlock
-                line1={leaseInfo.propertyName}
-                address={leaseInfo.propertyAddress}
-                personName={leaseInfo.tenantName}
-                refCode={user?.ref_code || leaseInfo.leaseRef}
-              />
-            : <SidebarSkeleton />
-          }
-        </div>
-      )
+      return leaseInfo
+        ? <SidebarHeaderCard
+            Icon={Home}
+            roleLabel="Locataire"
+            name={leaseInfo.propertyName}
+            personName={leaseInfo.tenantName}
+            address={leaseInfo.propertyAddress}
+            refCode={user?.ref_code || leaseInfo.leaseRef}
+          />
+        : <div className="px-4 py-4 border-b border-gray-700"><SidebarSkeleton /></div>
     }
 
     if (isProprietaire) {
-      return (
-        <div className="px-4 py-4 border-b border-gray-700">
-          {proprietaireInfo
-            ? <SidebarInfoBlock
-                line1={proprietaireInfo.fullName}
-                address={proprietaireInfo.propertyAddress}
-                refCode={user?.ref_code || proprietaireInfo.contractRef}
-              />
-            : <SidebarSkeleton />
-          }
-        </div>
-      )
+      return proprietaireInfo
+        ? <SidebarHeaderCard
+            Icon={Building2}
+            roleLabel="Propriétaire"
+            name={proprietaireInfo.fullName}
+            address={proprietaireInfo.propertyAddress}
+            refCode={user?.ref_code || proprietaireInfo.contractRef}
+          />
+        : <div className="px-4 py-4 border-b border-gray-700"><SidebarSkeleton /></div>
     }
 
     // Gestionnaire propriétaire
     if (user?.role === 'gestionnaire_proprio') {
       return (
-        <ManagerHeaderCard
+        <SidebarHeaderCard
           roleLabel="Gestionnaire propriétaire"
           name={user.full_name ?? ''}
           address={agencyAddress}
@@ -298,7 +274,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     // Gestionnaire mandataire
     if (user?.role === 'gestionnaire') {
       return (
-        <ManagerHeaderCard
+        <SidebarHeaderCard
           roleLabel="Gestionnaire mandataire"
           name={user.full_name ?? ''}
           address={agencyAddress}

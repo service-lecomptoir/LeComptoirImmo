@@ -23,6 +23,10 @@ export const usersApi = {
   me: () =>
     apiClient.get<User>('/users/me'),
 
+  /** Coordonnées de l'agence de rattachement (locataire / propriétaire). null si aucune. */
+  myManager: () =>
+    apiClient.get<ManagerContact | null>('/users/me/manager'),
+
   /** Domaines e-mail autorisés du compte connecté */
   listEmailDomains: () =>
     apiClient.get<EmailDomain[]>('/users/me/email-domains'),
@@ -35,4 +39,11 @@ export const usersApi = {
 export interface EmailDomain {
   id: string
   domain: string
+}
+
+export interface ManagerContact {
+  full_name: string
+  email: string
+  phone: string | null
+  address: string | null
 }

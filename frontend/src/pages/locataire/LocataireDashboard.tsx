@@ -1,44 +1,66 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Home, CreditCard, FileText,
-  ArrowRight, Download,
+  Home, CreditCard, FileText, ArrowRight, Download, Wallet, CheckCircle,
+  Receipt, MessageSquare, Megaphone, Bell, Building2, Mail, Phone, MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { apiClient } from '@/api/client'
 import { leasesApi } from '@/api/leases'
 import { paymentsApi } from '@/api/payments'
+import { ticketsApi } from '@/api/tickets'
+import { signalementsApi } from '@/api/signalements'
+import { usersApi, type ManagerContact } from '@/api/users'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { Button } from '@/components/ui'
+import { formatEuro as fmtEuro } from '@/utils/format'
 import { docFilename } from '@/utils/filename'
-
-const fmtEuro = (n: number) =>
-  n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
 
 export default function LocataireDashboard() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const [lease, setLease] = useState<any>(null)
+  const [current, setCurrent] = useState<any>(null)
   const [lastPayment, setLastPayment] = useState<any>(null)
+  const [lastQuittance, setLastQuittance] = useState<any>(null)
+  const [openTickets, setOpenTickets] = useState(0)
+  const [openSignalements, setOpenSignalements] = useState(0)
+  const [manager, setManager] = useState<ManagerContact | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const today = new Date()
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [leasesRes, paymentsRes] = await Promise.allSettled([
+        const [leasesRes, curRes, paymentsRes, ticketsRes, signRes, mgrRes] = await Promise.allSettled([
           leasesApi.list({ is_active: true, limit: 1 }),
-          paymentsApi.list({ limit: 3 }),
+          apiClient.get('/payments/locataire/current'),
+          paymentsApi.list({ limit: 12 }),
+          ticketsApi.mine(),
+          signalementsApi.mine(),
+          usersApi.myManager(),
         ])
 
         if (leasesRes.status === 'fulfilled') {
           const items = leasesRes.value.data.items ?? leasesRes.value.data
           setLease(items?.[0] ?? null)
         }
+        if (curRes.status === 'fulfilled') setCurrent(curRes.value.data.payment ?? null)
         if (paymentsRes.status === 'fulfilled') {
           const items = paymentsRes.value.data.items ?? paymentsRes.value.data
           setLastPayment(items?.[0] ?? null)
+          setLastQuittance((items ?? []).find((p: any) => p.status === 'paid') ?? null)
         }
+        if (ticketsRes.status === 'fulfilled') {
+          setOpenTickets(ticketsRes.value.data.filter(
+            (t) => ['open', 'in_progress', 'pending_closure'].includes(t.status)).length)
+        }
+        if (signRes.status === 'fulfilled') {
+          setOpenSignalements(signRes.value.data.filter(
+            (s) => ['nouveau', 'en_cours'].includes(s.status)).length)
+        }
+        if (mgrRes.status === 'fulfilled') setManager(mgrRes.value.data)
       } finally {
         setIsLoading(false)
       }
@@ -46,14 +68,61 @@ export default function LocataireDashboard() {
     load()
   }, [])
 
+  const due = Number(current?.balance ?? current?.amount_due) || 0
+  const aPayer = due > 0.005
+
+  const quickLinks = [
+    { icon: CreditCard, label: 'Payer mon loyer', to: '/locataire/payer', color: 'bg-blue-50 text-blue-600' },
+    { icon: Wallet, label: 'Ma comptabilité', to: '/locataire/paiements', color: 'bg-green-50 text-green-600' },
+    { icon: FileText, label: 'Mes documents', to: '/locataire/documents', color: 'bg-purple-50 text-purple-600' },
+    { icon: MessageSquare, label: 'Mes démarches', to: '/locataire/demarches', color: 'bg-amber-50 text-amber-600' },
+    { icon: Megaphone, label: 'Signaler', to: '/locataire/signaler', color: 'bg-red-50 text-red-600' },
+    { icon: Bell, label: 'Avis d\'échéance', to: '/locataire/avis-echeances', color: 'bg-sky-50 text-sky-600' },
+  ]
+
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Mon espace</h1>
         <p className="text-gray-500 text-sm mt-1">
           Bonjour, <span className="font-medium text-gray-700">{user?.full_name}</span>
-          {' '}— {format(today, 'd MMMM yyyy', { locale: fr })}
         </p>
+      </div>
+
+      {/* Prochaine échéance / solde — bloc d'action principal */}
+      <div className={`rounded-xl border p-5 mb-5 ${aPayer ? 'border-amber-200 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${aPayer ? 'bg-amber-100' : 'bg-green-100'}`}>
+              {aPayer ? <Wallet size={20} className="text-amber-600" /> : <CheckCircle size={20} className="text-green-600" />}
+            </div>
+            <div>
+              {isLoading ? (
+                <p className="text-sm text-gray-400">Chargement…</p>
+              ) : aPayer ? (
+                <>
+                  <p className="text-xs uppercase tracking-wide font-medium text-gray-500">Loyer à régler</p>
+                  <p className="text-2xl font-bold text-red-600 leading-tight">{fmtEuro(due)}</p>
+                  {lease?.payment_day && (
+                    <p className="text-xs text-gray-500 mt-0.5">Échéance le {lease.payment_day} du mois</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-gray-800">Vous êtes à jour</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Aucun loyer à régler pour le moment</p>
+                </>
+              )}
+            </div>
+          </div>
+          <Button
+            variant={aPayer ? 'primary' : 'secondary'}
+            onClick={() => navigate('/locataire/payer')}
+            leftIcon={<CreditCard size={16} />}
+          >
+            {aPayer ? 'Payer mon loyer' : 'Voir mes paiements'}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
@@ -178,12 +247,108 @@ export default function LocataireDashboard() {
         </div>
       </div>
 
+      {/* Quittance récente · Suivi des demandes · Mon gestionnaire */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
+        {/* Quittance récente */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+            <Receipt size={15} className="text-green-600" />
+            Quittance récente
+          </h2>
+          {isLoading ? (
+            <p className="text-sm text-gray-400">Chargement…</p>
+          ) : !lastQuittance ? (
+            <p className="text-sm text-gray-400">Aucune quittance disponible pour le moment.</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Période</span>
+                <span className="font-medium text-gray-900">{lastQuittance.period_label}</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                fullWidth
+                leftIcon={<Download size={14} />}
+                onClick={() => paymentsApi.downloadQuittance(lastQuittance.id,
+                  docFilename('quittance', { tenant: lastQuittance.tenant_full_name, property: lastQuittance.property_name, month: lastQuittance.period_month, year: lastQuittance.period_year }))}
+              >
+                Télécharger la quittance
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Suivi des demandes */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+            <MessageSquare size={15} className="text-amber-600" />
+            Mes demandes en cours
+          </h2>
+          <div className="space-y-2">
+            <button
+              onClick={() => navigate('/locataire/demarches')}
+              className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+            >
+              <span className="text-sm text-gray-700 flex items-center gap-2"><MessageSquare size={14} className="text-amber-600" /> Démarches</span>
+              <span className="flex items-center gap-2">
+                {openTickets > 0
+                  ? <StatusBadge label={`${openTickets} en cours`} variant="yellow" />
+                  : <span className="text-xs text-gray-400">À jour</span>}
+                <ArrowRight size={13} className="text-gray-400" />
+              </span>
+            </button>
+            <button
+              onClick={() => navigate('/locataire/signaler')}
+              className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+            >
+              <span className="text-sm text-gray-700 flex items-center gap-2"><Megaphone size={14} className="text-red-600" /> Signalements</span>
+              <span className="flex items-center gap-2">
+                {openSignalements > 0
+                  ? <StatusBadge label={`${openSignalements} en cours`} variant="red" />
+                  : <span className="text-xs text-gray-400">Aucun</span>}
+                <ArrowRight size={13} className="text-gray-400" />
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Mon gestionnaire */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+            <Building2 size={15} className="text-blue-600" />
+            Mon gestionnaire
+          </h2>
+          {isLoading ? (
+            <p className="text-sm text-gray-400">Chargement…</p>
+          ) : !manager ? (
+            <p className="text-sm text-gray-400">Coordonnées non disponibles.</p>
+          ) : (
+            <div className="space-y-2.5 text-sm">
+              <p className="font-medium text-gray-900">{manager.full_name}</p>
+              {manager.email && (
+                <a href={`mailto:${manager.email}`} className="flex items-center gap-2 text-gray-600 hover:text-blue-600 break-all">
+                  <Mail size={13} className="text-gray-400 shrink-0" /> {manager.email}
+                </a>
+              )}
+              {manager.phone && (
+                <a href={`tel:${manager.phone.replace(/\s+/g, '')}`} className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
+                  <Phone size={13} className="text-gray-400 shrink-0" /> {manager.phone}
+                </a>
+              )}
+              {manager.address && (
+                <p className="flex items-start gap-2 text-gray-500">
+                  <MapPin size={13} className="text-gray-400 shrink-0 mt-0.5" /> <span className="whitespace-pre-line">{manager.address}</span>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Liens rapides */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-5">
-        {[
-          { icon: CreditCard, label: 'Ma comptabilité', to: '/locataire/paiements', color: 'bg-green-50 text-green-600' },
-          { icon: FileText, label: 'Mes documents', to: '/locataire/documents', color: 'bg-purple-50 text-purple-600' },
-        ].map(item => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mt-5">
+        {quickLinks.map(item => (
           <button
             key={item.to}
             onClick={() => navigate(item.to)}
