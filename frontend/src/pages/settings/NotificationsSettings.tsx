@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react'
-import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { Mail, MessageSquare, Send, CheckCircle, XCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
@@ -105,11 +105,10 @@ export default function NotificationsSettings({ embedded = false }: { embedded?:
             value={to} onChange={e => setTo(e.target.value)}
             placeholder={channel === 'email' ? 'adresse@exemple.fr' : '06 12 34 56 78'}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button onClick={sendTest} disabled={sending}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 shrink-0"
-            style={{ background: BRAND.navy }}>
-            <Send size={15} /> {sending ? 'Envoi…' : 'Tester'}
-          </button>
+          <Button onClick={sendTest} isLoading={sending}
+            className="shrink-0" leftIcon={<Send size={15} />}>
+            {sending ? 'Envoi…' : 'Tester'}
+          </Button>
         </div>
         <p className="text-xs text-gray-400 mt-2">
           Le canal doit être « Actif » ci-dessus. La configuration (clés Brevo) se fait côté serveur.

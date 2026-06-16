@@ -5,6 +5,7 @@ import {
 import { signalementsApi, type Signalement, type ProblemProperty, type SignalementStatus, type SignalementAlert } from '@/api/signalements'
 import { apiClient } from '@/api/client'
 import { Modal } from '@/components/common/Modal'
+import { Button } from '@/components/ui'
 import { getErrorMessage } from '@/utils/errors'
 import { toast } from '@/store/toast'
 import { format } from 'date-fns'
@@ -236,10 +237,10 @@ function SignalementDetail({ s, onClose, onSaved, apiBase }: { s: Signalement; o
     <Modal isOpen onClose={onClose} title={s.category_label} size="lg"
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Fermer</button>
-          <button onClick={save} disabled={saving} className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          <Button variant="secondary" onClick={onClose}>Fermer</Button>
+          <Button onClick={save} disabled={saving}>
             {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
+          </Button>
         </>
       }>
       <div className="space-y-4">

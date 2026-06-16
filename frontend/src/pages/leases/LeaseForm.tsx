@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { UserRound, Plus, X, Building2, Users, FileSignature, Euro } from 'lucide-react'
+import { Button, Input } from '@/components/ui'
 import { Modal } from '@/components/common/Modal'
 import { SectionTitle } from '@/components/common/SectionTitle'
 import { PhoneInput } from '@/components/common/PhoneInput'
@@ -213,13 +214,12 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
       size="xl"
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          <Button variant="secondary" onClick={onClose}>
             Annuler
-          </button>
-          <button onClick={handleSubmit(onSubmit)} disabled={isSubmitting}
-            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          </Button>
+          <Button onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>
             {isSubmitting ? 'Enregistrement...' : isEdit ? 'Enregistrer' : 'Créer le contrat'}
-          </button>
+          </Button>
         </>
       }
     >
@@ -437,7 +437,7 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-6">
               <div>
                 <label className={lbl}>Nom du garant</label>
-                <input {...register('guarantor_name')} className={inp} />
+                <Input {...register('guarantor_name')} />
               </div>
               <div>
                 <label className={lbl}>Téléphone</label>

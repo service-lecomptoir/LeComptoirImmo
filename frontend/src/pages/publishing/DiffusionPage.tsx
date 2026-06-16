@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { Link } from 'react-router-dom'
 import { Megaphone, Plus, Trash2, Pencil, Building2, ChevronRight, ChevronDown, X, Eye } from 'lucide-react'
 import { publishingApi, type PublishPlatform, type PlatformKind, type ListingOverview } from '@/api/publishing'
@@ -145,9 +145,9 @@ export default function DiffusionPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-900">Mes plateformes</h2>
-          <button onClick={openCreate} className="inline-flex items-center gap-1.5 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={{ background: BRAND.navy }}>
-            <Plus size={15} /> Ajouter
-          </button>
+          <Button variant="primary" size="sm" onClick={openCreate} className="gap-1.5 font-semibold" leftIcon={<Plus size={15} />}>
+            Ajouter
+          </Button>
         </div>
 
         {loading ? (
@@ -245,9 +245,9 @@ export default function DiffusionPage() {
               </label>
               <div className="flex justify-end gap-3 pt-1">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Annuler</button>
-                <button type="submit" disabled={saving} className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: BRAND.navy }}>
+                <Button type="submit" variant="primary" isLoading={saving} className="px-5 font-semibold">
                   {saving ? 'Enregistrement…' : 'Enregistrer'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

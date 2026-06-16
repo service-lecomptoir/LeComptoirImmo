@@ -8,6 +8,7 @@ import { onlinePaymentsApi } from '@/api/onlinePayments'
 import { BRAND } from '@/lib/brand'
 import { toast } from '@/store/toast'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { Button } from '@/components/ui'
 import { docFilename } from '@/utils/filename'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -218,14 +219,14 @@ export default function LocatairePayer() {
                   {i.declared ? (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">En attente</span>
                   ) : (
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => declareInst(pl.id, i.seq)}
-                      disabled={declaringInst === `${pl.id}-${i.seq}`}
-                      className="text-xs px-3 py-1.5 rounded-lg text-white font-medium disabled:opacity-50"
-                      style={{ background: BRAND.navy }}
+                      isLoading={declaringInst === `${pl.id}-${i.seq}`}
                     >
-                      {declaringInst === `${pl.id}-${i.seq}` ? '…' : 'Régler'}
-                    </button>
+                      Régler
+                    </Button>
                   )}
                 </div>
               </div>

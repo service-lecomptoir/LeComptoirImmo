@@ -4,6 +4,7 @@ import { paymentsApi } from '@/api/payments'
 import { docFilename } from '@/utils/filename'
 import { formatEuro } from '@/utils/format'
 import type { PaymentListItem } from '@/types/payment'
+import { Button } from '@/components/ui'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -121,13 +122,13 @@ export default function QuittanceList() {
             {payments.length} quittance{payments.length > 1 ? 's' : ''} : {sentCount} envoyée{sentCount > 1 ? 's' : ''}, {unsentCount} en attente
           </p>
         </div>
-        <button
+        <Button
+          variant="success"
           onClick={handleSendAll}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+          leftIcon={<Mail size={15} />}
         >
-          <Mail size={15} />
           Marquer tout envoyé ({unsentCount})
-        </button>
+        </Button>
       </div>
 
       {/* Message succès */}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getErrorMessage } from '@/utils/errors'
 import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt, ListChecks, Check } from 'lucide-react'
 import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice, type BillingStatus, type AvailablePlan, type StripePayment } from '@/api/subscription'
+import { Button, Spinner } from '@/components/ui'
 import { FEATURE_LABELS } from '@/lib/features'
 import { downloadBlob } from '@/utils/download'
 import { toast } from '@/store/toast'
@@ -133,7 +134,7 @@ export default function MonAbonnement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <Spinner size={32} className="text-blue-600" />
       </div>
     )
   }
@@ -227,10 +228,9 @@ export default function MonAbonnement() {
                         <option key={p.id} value={p.id}>{p.name} : {p.monthly_price} €/mois</option>
                       ))}
                     </select>
-                    <button onClick={changePlan} disabled={!newPlanId || changingPlan}
-                      className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                    <Button onClick={changePlan} disabled={!newPlanId || changingPlan}>
                       {changingPlan ? 'Changement…' : 'Changer'}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -464,13 +464,13 @@ export default function MonAbonnement() {
             />
             {resiliationError && <p className="text-xs text-red-600">{resiliationError}</p>}
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                variant="danger"
                 onClick={submitResiliation}
                 disabled={submitting || !reason.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
               >
                 {submitting ? 'Envoi…' : 'Confirmer la demande'}
-              </button>
+              </Button>
               <button
                 onClick={() => { setShowResiliation(false); setReason(''); setResiliationError(null) }}
                 className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"

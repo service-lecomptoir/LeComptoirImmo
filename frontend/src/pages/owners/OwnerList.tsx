@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { formatPhoneDisplay } from '@/utils/format'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Building2, ShieldCheck, Pencil, Trash2, Mail, Phone, Download } from 'lucide-react'
+import { Button } from '@/components/ui'
 import { GenderAvatar } from '@/components/common/GenderAvatar'
 import { ownersApi } from '@/api/owners'
 import { OwnerForm } from './OwnerForm'
@@ -93,19 +94,21 @@ export default function OwnerList() {
         </div>
         <div className="flex items-center gap-3">
           {isManager && <ViewToggle value={view} onChange={setView} />}
-          <button
+          <Button
+            variant="secondary"
             onClick={handleExport}
             disabled={owners.length === 0}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            leftIcon={<Download size={16} />}
+            className="px-3"
           >
-            <Download size={16} /> Exporter
-          </button>
-          <button
+            Exporter
+          </Button>
+          <Button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            leftIcon={<Plus size={16} />}
           >
-            <Plus size={16} /> Nouveau propriétaire
-          </button>
+            Nouveau propriétaire
+          </Button>
         </div>
       </div>
 
@@ -237,12 +240,12 @@ export default function OwnerList() {
 
       {!isLoading && owners.length < total && owners.length < 1000 && (
         <div className="flex justify-center mt-4">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => setLimit(l => Math.min(l + 100, 1000))}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Charger plus ({owners.length} / {total})
-          </button>
+          </Button>
         </div>
       )}
 

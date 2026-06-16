@@ -1,4 +1,5 @@
 import { useRouteError } from 'react-router-dom'
+import { Spinner } from '@/components/ui'
 
 /** Détecte une erreur de chargement de module (chunk obsolète après déploiement). */
 function isChunkError(err: unknown): boolean {
@@ -28,7 +29,7 @@ export function RouteError() {
     }
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-6">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        <Spinner size={32} className="text-blue-600" />
         <p className="text-sm text-gray-500">Mise à jour de l'application… rechargement en cours.</p>
       </div>
     )

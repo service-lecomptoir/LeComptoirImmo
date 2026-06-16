@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { BRAND } from '@/lib/brand'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Calendar, Download, CheckCircle, Clock, AlertCircle, CalendarClock, Send } from 'lucide-react'
 import { avisEcheancesApi, type AvisEcheanceSummary } from '@/api/avis_echeances'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { Button } from '@/components/ui'
 import { docFilename } from '@/utils/filename'
 import { downloadBlob } from '@/utils/download'
 import { toast } from '@/store/toast'
@@ -108,10 +108,10 @@ export default function LocataireAvis() {
                       ) : inst.declared ? (
                         <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 inline-flex items-center gap-1"><Clock size={11} /> En attente de validation</span>
                       ) : (
-                        <button onClick={() => declareInst(p.id, inst.seq)} disabled={declaring === `${p.id}-${inst.seq}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg disabled:opacity-50" style={{ background: BRAND.navy }}>
-                          <Send size={12} /> {declaring === `${p.id}-${inst.seq}` ? 'Envoi…' : 'Déclarer le paiement'}
-                        </button>
+                        <Button variant="primary" size="sm" onClick={() => declareInst(p.id, inst.seq)}
+                          isLoading={declaring === `${p.id}-${inst.seq}`} leftIcon={<Send size={12} />}>
+                          {declaring === `${p.id}-${inst.seq}` ? 'Envoi…' : 'Déclarer le paiement'}
+                        </Button>
                       )}
                     </div>
                   </div>

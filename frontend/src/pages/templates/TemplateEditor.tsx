@@ -8,6 +8,7 @@ import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
 import RichTextEditor, { type RichTextEditorHandle } from '@/components/common/RichTextEditor'
 import AvisBlockEditor from './AvisBlockEditor'
+import { Button } from '@/components/ui'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -362,11 +363,9 @@ function TemplateEditorPanel({ template, onBack, onSaved }: EditorProps) {
           <span className="hidden md:inline">Par défaut</span>
         </label>
 
-        <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 shrink-0 transition-colors">
-          {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+        <Button onClick={handleSave} isLoading={saving} leftIcon={<Save size={14} />} className="gap-1.5 shrink-0">
           <span>Enregistrer</span>
-        </button>
+        </Button>
       </div>
 
       {/* ── Bannière d'erreur ─────────────────────────────────────────────── */}

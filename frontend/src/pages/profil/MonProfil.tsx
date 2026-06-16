@@ -10,6 +10,7 @@ import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
 import { toast } from '@/store/toast'
+import { Input } from '@/components/ui'
 
 function splitName(s?: string | null): { first: string; last: string } {
   const parts = (s ?? '').trim().split(/\s+/).filter(Boolean)
@@ -206,18 +207,18 @@ export default function MonProfil() {
         {isManager ? (
           <div>
             <label className={lbl}>Nom de compte</label>
-            <input className={inp} value={fullName} onChange={e => setFullName(e.target.value)} />
+            <Input value={fullName} onChange={e => setFullName(e.target.value)} />
             <p className="text-xs text-gray-400 mt-1">Affiché dans l'application et sur la plupart des documents.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={lbl}>Prénom</label>
-              <input className={inp} value={firstName} onChange={e => setFirstName(e.target.value)} />
+              <Input value={firstName} onChange={e => setFirstName(e.target.value)} />
             </div>
             <div>
               <label className={lbl}>Nom</label>
-              <input className={inp} value={lastName} onChange={e => setLastName(e.target.value)} />
+              <Input value={lastName} onChange={e => setLastName(e.target.value)} />
             </div>
           </div>
         )}
@@ -244,11 +245,11 @@ export default function MonProfil() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Prénom</label>
-                  <input className={inp} value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)} />
+                  <Input value={ownerFirstName} onChange={e => setOwnerFirstName(e.target.value)} />
                 </div>
                 <div>
                   <label className={lbl}>Nom</label>
-                  <input className={inp} value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)} />
+                  <Input value={ownerLastName} onChange={e => setOwnerLastName(e.target.value)} />
                 </div>
               </div>
             )}
@@ -256,11 +257,11 @@ export default function MonProfil() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Raison sociale</label>
-                  <input className={inp} value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder="Raison sociale" />
+                  <Input value={ownerCompany} onChange={e => setOwnerCompany(e.target.value)} placeholder="Raison sociale" />
                 </div>
                 <div>
                   <label className={lbl}>SIREN / SIRET</label>
-                  <input className={inp} value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="123 456 789" />
+                  <Input value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="123 456 789" />
                 </div>
               </div>
             )}
@@ -269,7 +270,7 @@ export default function MonProfil() {
         )}
         <div>
           <label className={lbl}>Email (identifiant de connexion)</label>
-          <input className={inp} type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
         </div>
         <div>
           <label className={lbl}>Téléphone</label>
@@ -316,7 +317,7 @@ export default function MonProfil() {
               </div>
               <div>
                 <label className={lbl}>Pays</label>
-                <input className={inp} value={country} onChange={e => setCountry(e.target.value)} placeholder="France" />
+                <Input value={country} onChange={e => setCountry(e.target.value)} placeholder="France" />
               </div>
             </div>
           </div>
@@ -368,18 +369,18 @@ export default function MonProfil() {
             </p>
             <div>
               <label className={lbl}>Titulaire du compte</label>
-              <input className={inp} value={bankHolder} onChange={e => setBankHolder(e.target.value)}
+              <Input value={bankHolder} onChange={e => setBankHolder(e.target.value)}
                 placeholder="Nom figurant sur le compte" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
                 <label className={lbl}>IBAN</label>
-                <input className={`${inp} font-mono`} value={iban} onChange={e => setIban(e.target.value)}
+                <Input className="font-mono" value={iban} onChange={e => setIban(e.target.value)}
                   placeholder="FR76 3000 4028 3798 7654 3210 943" />
               </div>
               <div>
                 <label className={lbl}>BIC</label>
-                <input className={`${inp} font-mono`} value={bic} onChange={e => setBic(e.target.value)}
+                <Input className="font-mono" value={bic} onChange={e => setBic(e.target.value)}
                   placeholder="BNPAFRPPXXX" />
               </div>
             </div>
@@ -406,7 +407,7 @@ export default function MonProfil() {
           <div>
             <label className={lbl}>Mot de passe actuel</label>
             <div className="relative">
-              <input className={`${inp} pr-9`} type={showPwd ? 'text' : 'password'} value={currentPassword}
+              <Input className="pr-9" type={showPwd ? 'text' : 'password'} value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)} placeholder="••••••••" />
               <button type="button" onClick={() => setShowPwd(v => !v)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -416,7 +417,7 @@ export default function MonProfil() {
           </div>
           <div>
             <label className={lbl}>Nouveau mot de passe</label>
-            <input className={inp} type={showPwd ? 'text' : 'password'} value={newPassword}
+            <Input type={showPwd ? 'text' : 'password'} value={newPassword}
               onChange={e => setNewPassword(e.target.value)} placeholder="8 caractères min." />
           </div>
         </div>

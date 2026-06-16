@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { formatPhoneDisplay } from '@/utils/format'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -80,13 +80,15 @@ export default function PropertyDetail() {
         </div>
         <div className="flex gap-2">
           {canDiffuser && (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => navigate(`/properties/${property.id}/publish`)}
-              className="flex items-center gap-2 px-3 py-2 border text-sm rounded-lg text-white hover:opacity-90"
-              style={{ background: BRAND.teal, borderColor: BRAND.teal }}
+              className="px-3 py-2 text-sm"
+              leftIcon={<Megaphone size={15} />}
             >
-              <Megaphone size={15} /> Diffuser
-            </button>
+              Diffuser
+            </Button>
           )}
           <button
             onClick={() => setShowEditProp(true)}

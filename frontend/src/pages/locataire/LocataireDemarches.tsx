@@ -3,6 +3,7 @@ import { X, Plus, Send, Sparkles, MessageSquare, ChevronDown, CheckCircle, Camer
 import { ticketsApi, type Ticket } from '@/api/tickets'
 import { leaseExitsApi } from '@/api/leaseExits'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { Button, Input } from '@/components/ui'
 import { toast } from '@/store/toast'
 import { getErrorMessage } from '@/utils/errors'
 import { BRAND } from '@/lib/brand'
@@ -139,11 +140,9 @@ export default function LocataireDemarches() {
       {/* Démarches */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-900">Mes échanges</h2>
-        <button onClick={() => setShowNew(true)}
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-white rounded-lg"
-          style={{ background: BRAND.navy }}>
-          <Plus size={15} /> Nouvelle démarche
-        </button>
+        <Button variant="primary" size="md" className="px-3.5" onClick={() => setShowNew(true)} leftIcon={<Plus size={15} />}>
+          Nouvelle démarche
+        </Button>
       </div>
 
       {loading ? (
@@ -251,9 +250,8 @@ export default function LocataireDemarches() {
                 <>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Objet</label>
-                    <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                      placeholder="Ex. Fuite sous l'évier de la cuisine"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+                      placeholder="Ex. Fuite sous l'évier de la cuisine" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Priorité</label>
@@ -293,12 +291,11 @@ export default function LocataireDemarches() {
               )}
             </div>
             <div className="flex justify-end gap-2 mt-5">
-              <button type="button" onClick={() => { setShowNew(false); resetNew() }}
-                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
-              <button type="button" onClick={submitNew} disabled={submitting}
-                className="inline-flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: BRAND.navy }}>
-                <CheckCircle size={15} /> {submitting ? 'Envoi…' : (form.category === 'preavis' ? 'Envoyer le préavis' : 'Envoyer la démarche')}
-              </button>
+              <Button type="button" variant="secondary" onClick={() => { setShowNew(false); resetNew() }}>Annuler</Button>
+              <Button type="button" variant="primary" size="md" className="px-5" onClick={submitNew}
+                isLoading={submitting} leftIcon={<CheckCircle size={15} />}>
+                {submitting ? 'Envoi…' : (form.category === 'preavis' ? 'Envoyer le préavis' : 'Envoyer la démarche')}
+              </Button>
             </div>
           </div>
         </div>

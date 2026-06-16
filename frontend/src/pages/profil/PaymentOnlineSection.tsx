@@ -3,8 +3,7 @@ import { CreditCard, Save, Copy, Check, Plug } from 'lucide-react'
 import { onlinePaymentsApi, type PaymentConfig } from '@/api/onlinePayments'
 import { getErrorMessage } from '@/utils/errors'
 import { toast } from '@/store/toast'
-
-const inp = 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+import { Input } from '@/components/ui'
 
 /** « Mes informations » (gestionnaire) : configuration du paiement du loyer par
  *  carte. Les clés sont propres au compte ; les secrets ne sont jamais réaffichés
@@ -120,7 +119,7 @@ export default function PaymentOnlineSection() {
       {/* Devise (configurable) */}
       <div className="w-32">
         <label className="block text-xs font-medium text-gray-600 mb-1">Devise</label>
-        <input type="text" className={inp} value={currency} maxLength={3}
+        <Input type="text" value={currency} maxLength={3}
           onChange={e => setCurrency(e.target.value.toUpperCase())} placeholder="EUR" />
       </div>
 
@@ -131,13 +130,13 @@ export default function PaymentOnlineSection() {
               <label className="block text-xs font-medium text-gray-600">Clé secrète Stripe (sk_…)</label>
               {setBadge(cfg.stripe.secret_key_set)}
             </div>
-            <input type="password" autoComplete="off" className={inp} value={stripeSecret}
+            <Input type="password" autoComplete="off" value={stripeSecret}
               onChange={e => setStripeSecret(e.target.value)}
               placeholder={cfg.stripe.secret_key_set ? '•••••••• (laisser vide pour conserver)' : 'sk_live_…'} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Clé publique Stripe (pk_…)</label>
-            <input type="text" className={inp} value={stripePub}
+            <Input type="text" value={stripePub}
               onChange={e => setStripePub(e.target.value)} placeholder="pk_live_…" />
           </div>
           <div>
@@ -145,7 +144,7 @@ export default function PaymentOnlineSection() {
               <label className="block text-xs font-medium text-gray-600">Secret de signature du webhook (whsec_…)</label>
               {setBadge(cfg.stripe.webhook_secret_set)}
             </div>
-            <input type="password" autoComplete="off" className={inp} value={stripeWh}
+            <Input type="password" autoComplete="off" value={stripeWh}
               onChange={e => setStripeWh(e.target.value)}
               placeholder={cfg.stripe.webhook_secret_set ? '•••••••• (laisser vide pour conserver)' : 'whsec_…'} />
             <div className="mt-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
@@ -168,13 +167,13 @@ export default function PaymentOnlineSection() {
               <label className="block text-xs font-medium text-gray-600">Clé API SumUp (secret)</label>
               {setBadge(cfg.sumup.api_key_set)}
             </div>
-            <input type="password" autoComplete="off" className={inp} value={sumupApi}
+            <Input type="password" autoComplete="off" value={sumupApi}
               onChange={e => setSumupApi(e.target.value)}
               placeholder={cfg.sumup.api_key_set ? '•••••••• (laisser vide pour conserver)' : 'sup_sk_…'} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Merchant code SumUp</label>
-            <input type="text" className={inp} value={sumupMerchant}
+            <Input type="text" value={sumupMerchant}
               onChange={e => setSumupMerchant(e.target.value)} placeholder="MXXXXXXX" />
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { getErrorMessage } from '@/utils/errors'
 import { X, Send, CheckCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
@@ -70,11 +70,9 @@ export default function SubscriptionModal({ open, onClose }: Props) {
             <p className="text-sm text-gray-500 mb-5">
               Merci ! Notre équipe vous recontacte rapidement pour la mise en place de votre espace.
             </p>
-            <button onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-white rounded-xl"
-              style={{ background: BRAND.navy }}>
+            <Button onClick={onClose} variant="primary" className="rounded-xl">
               Fermer
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="px-6 py-5 space-y-3">

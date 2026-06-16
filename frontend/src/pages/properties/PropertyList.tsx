@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Building2, Pencil, Trash2, AlertTriangle, Lock, Loader2, Download, KeyRound, ChevronRight, ChevronDown } from 'lucide-react'
+import { Button } from '@/components/ui'
 import { propertiesApi } from '@/api/properties'
 import { subscriptionApi, type SubscriptionInfo } from '@/api/subscription'
 import { PropertyForm } from './PropertyForm'
@@ -309,13 +310,15 @@ export default function PropertyList() {
         </div>
         <div className="flex items-center gap-3">
           {canToggleView && <ViewToggle value={view} onChange={setView} />}
-          <button
+          <Button
+            variant="secondary"
             onClick={handleExport}
             disabled={properties.length === 0}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            leftIcon={<Download size={16} />}
+            className="px-3"
           >
-            <Download size={16} /> Exporter
-          </button>
+            Exporter
+          </Button>
           <button
           onClick={handleNew}
           disabled={checkingLicense}
@@ -437,12 +440,12 @@ export default function PropertyList() {
 
       {!isLoading && properties.length < total && properties.length < 1000 && (
         <div className="flex justify-center mt-4">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => setLimit(l => Math.min(l + 100, 1000))}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Charger plus ({properties.length} / {total})
-          </button>
+          </Button>
         </div>
       )}
 

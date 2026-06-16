@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { getErrorMessage } from '@/utils/errors'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -76,10 +77,10 @@ function RelationSection({ leaseId, canEdit }: { leaseId: string; canEdit: boole
           </select>
           <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
             placeholder="Note (facultatif)" className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1" />
-          <button onClick={add} disabled={!form.kind || saving}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: BRAND.navy }}>
-            <Plus size={15} /> Ajouter
-          </button>
+          <Button variant="primary" onClick={add} disabled={!form.kind || saving}
+            className="gap-1 font-semibold" leftIcon={<Plus size={15} />}>
+            Ajouter
+          </Button>
         </div>
       )}
 
@@ -329,14 +330,16 @@ export default function LeaseDetail() {
             <FileDown size={15} /> {pdfLoading ? 'Génération…' : 'Bail non meublé'}
           </button>
           {lease.is_active && (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => navigate(`/sorties?lease=${lease.id}`)}
-              className="flex items-center gap-2 px-3 py-2 border text-sm rounded-lg text-white hover:opacity-90"
-              style={{ background: BRAND.teal, borderColor: BRAND.teal }}
+              className="px-3 py-2 text-sm"
+              leftIcon={<DoorOpen size={15} />}
               title="Préavis, état des lieux de sortie, dépôt de garantie, clôture"
             >
-              <DoorOpen size={15} /> Organiser la sortie
-            </button>
+              Organiser la sortie
+            </Button>
           )}
           {lease.is_active && (
             <button

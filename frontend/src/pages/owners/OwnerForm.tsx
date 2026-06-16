@@ -3,6 +3,7 @@ import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Contact, Phone, Landmark, UserRound, Plus, X } from 'lucide-react'
+import { Button, Input } from '@/components/ui'
 import { SectionTitle } from '@/components/common/SectionTitle'
 import { Modal } from '@/components/common/Modal'
 import { PhoneInput } from '@/components/common/PhoneInput'
@@ -234,16 +235,12 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       size="lg"
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          <Button variant="secondary" onClick={onClose}>
             Annuler
-          </button>
-          <button
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
+          </Button>
+          <Button onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>
             {isSubmitting ? 'Enregistrement...' : isEdit ? 'Enregistrer' : 'Créer'}
-          </button>
+          </Button>
         </>
       }
     >
@@ -404,7 +401,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Pays</label>
-                <input {...register('country')} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="France" />
+                <Input {...register('country')} placeholder="France" />
               </div>
             </div>
           </div>

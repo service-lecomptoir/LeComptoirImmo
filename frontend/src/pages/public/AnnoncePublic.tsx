@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { useParams } from 'react-router-dom'
 import { apiClient } from '@/api/client'
 import { MapPin, Home } from 'lucide-react'
@@ -240,11 +241,11 @@ export default function AnnoncePublic() {
                 <p className="text-sm text-red-600 sm:col-span-2">Échec de l'envoi : vérifiez vos informations puis réessayez.</p>
               )}
               <div className="sm:col-span-2 flex justify-end">
-                <button type="submit" disabled={applyState === 'sending'}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-60"
-                  style={{ background: BRAND.navy }}>
+                <Button type="submit" variant="primary" disabled={applyState === 'sending'}
+                  isLoading={applyState === 'sending'}
+                  className="px-5 py-2.5 rounded-xl font-semibold">
                   {applyState === 'sending' ? 'Envoi…' : 'Envoyer ma candidature'}
-                </button>
+                </Button>
               </div>
             </form>
           )}

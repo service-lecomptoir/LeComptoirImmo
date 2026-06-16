@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useForm } from 'react-hook-form'
 import { toast } from '@/store/toast'
+import { Button, Input } from '@/components/ui'
 
 interface RecordForm {
   amount_paid: number
@@ -688,19 +689,19 @@ export default function PaymentList() {
           size="sm"
           footer={
             <>
-              <button
+              <Button
+                variant="secondary" size="md"
                 onClick={() => setPlanPayment(null)}
-                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary" size="md"
                 onClick={generatePlan}
                 disabled={planBusy || planN < 1 || !planDate || planAmount <= 0}
-                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {planBusy ? 'Création…' : 'Créer le plan'}
-              </button>
+              </Button>
             </>
           }
         >
@@ -737,10 +738,9 @@ export default function PaymentList() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Première échéance *</label>
-              <input
+              <Input
                 type="date" value={planDate}
                 onChange={e => setPlanDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <p className="text-xs text-gray-500">
@@ -759,19 +759,19 @@ export default function PaymentList() {
           size="sm"
           footer={
             <>
-              <button
+              <Button
+                variant="secondary" size="md"
                 onClick={() => { setRecordingId(null); reset() }}
-                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
               >
                 Annuler
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary" size="md"
                 onClick={handleSubmit(handleRecord)}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
-              </button>
+              </Button>
             </>
           }
         >
@@ -784,20 +784,18 @@ export default function PaymentList() {
           <form className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Montant encaissé (€) *</label>
-              <input
+              <Input
                 type="number"
                 step="0.01"
                 min="0.01"
                 {...register('amount_paid')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Date de réception *</label>
-              <input
+              <Input
                 type="date"
                 {...register('payment_date')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -814,9 +812,8 @@ export default function PaymentList() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-              <input
+              <Input
                 {...register('notes')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </form>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { Eye, EyeOff, Lock, ShieldCheck, LogOut } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -107,11 +108,10 @@ export function ForcePasswordChange() {
           </Field>
           {mismatch && <p className="text-xs text-red-600 -mt-2">Les deux mots de passe ne correspondent pas.</p>}
 
-          <button type="submit" disabled={!canSubmit}
-            className="w-full py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition"
-            style={{ background: BRAND.navy }}>
+          <Button type="submit" variant="primary" fullWidth disabled={!canSubmit}
+            isLoading={saving} className="py-2.5 font-semibold">
             {saving ? 'Enregistrement…' : 'Définir mon mot de passe'}
-          </button>
+          </Button>
         </form>
 
         <button onClick={logout}

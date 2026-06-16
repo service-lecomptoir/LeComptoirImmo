@@ -11,6 +11,7 @@ import { tenantsApi } from '@/api/tenants'
 import { ownersApi } from '@/api/owners'
 import { Modal } from '@/components/common/Modal'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { Button } from '@/components/ui'
 import type { User, Role } from '@/types/auth'
 import { useAuthStore } from '@/store/authStore'
 import { getErrorMessage } from '@/utils/errors'
@@ -310,16 +311,15 @@ export default function AdminUsers() {
             <p className="text-sm text-gray-500">Comptes de connexion (propriétaires, locataires)</p>
           </div>
         </div>
-        <button
+        <Button
           onClick={() => {
             const defaultRole = me?.role === 'gestionnaire_proprio' ? 'locataire' : 'proprietaire'
             setShowCreate(true); setFormError(null); setLinkFicheId(''); createForm.reset({ role: defaultRole as Role })
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          leftIcon={<Plus size={16} />}
         >
-          <Plus size={16} />
           Nouvel utilisateur
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -542,13 +542,12 @@ export default function AdminUsers() {
             >
               Annuler
             </button>
-            <button
+            <Button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               {submitting ? 'Création…' : 'Créer'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>
@@ -666,13 +665,12 @@ export default function AdminUsers() {
             >
               Annuler
             </button>
-            <button
+            <Button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
               {submitting ? 'Enregistrement…' : 'Enregistrer'}
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui'
 import { formatPhoneDisplay } from '@/utils/format'
 import { apiClient } from '@/api/client'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
@@ -217,10 +218,9 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
               className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">
               Annuler
             </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            <Button type="submit" disabled={saving} className="flex-1">
               {saving ? 'Sauvegarde...' : 'Enregistrer'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -283,13 +283,12 @@ export default function ContactList() {
           <h1 className="text-2xl font-bold text-gray-900">Carnet d'adresses</h1>
           <p className="text-sm text-gray-500 mt-1">Prestataires, notaires, assureurs…</p>
         </div>
-        <button
+        <Button
           onClick={() => { setEditContact(null); setShowModal(true) }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          leftIcon={<Plus size={16} />}
         >
-          <Plus size={16} />
           Nouveau contact
-        </button>
+        </Button>
       </div>
 
       {/* Filtres */}

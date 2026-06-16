@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { formatPhoneDisplay } from '@/utils/format'
 import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2, Sparkles } from 'lucide-react'
 import { apiClient } from '@/api/client'
@@ -140,11 +140,10 @@ export default function CandidaturesPage() {
             Lecture seule
           </span>
         ) : (
-          <button onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white self-start"
-            style={{ background: BRAND.navy }}>
-            <Plus size={16} /> Ajouter un dossier
-          </button>
+          <Button variant="primary" onClick={() => setShowForm(true)}
+            className="rounded-xl font-semibold self-start" leftIcon={<Plus size={16} />}>
+            Ajouter un dossier
+          </Button>
         )}
       </div>
 
@@ -422,10 +421,10 @@ export default function CandidaturesPage() {
               <div className="sm:col-span-2 flex justify-end gap-3 pt-1">
                 <button type="button" onClick={() => setShowForm(false)}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Annuler</button>
-                <button type="submit" disabled={busy}
-                  className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: BRAND.navy }}>
+                <Button type="submit" variant="primary" isLoading={busy}
+                  className="px-5 font-semibold">
                   {busy ? 'Enregistrement…' : 'Ajouter'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

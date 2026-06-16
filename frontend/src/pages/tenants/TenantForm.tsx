@@ -3,6 +3,7 @@ import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { UserRound, Plus, X, Contact, Phone, Briefcase, FileText } from 'lucide-react'
+import { Button, Input } from '@/components/ui'
 import { Modal } from '@/components/common/Modal'
 import { SectionTitle } from '@/components/common/SectionTitle'
 import { PhoneInput } from '@/components/common/PhoneInput'
@@ -248,16 +249,12 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       size="lg"
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          <Button variant="secondary" onClick={onClose}>
             Annuler
-          </button>
-          <button
-            onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
+          </Button>
+          <Button onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>
             {isSubmitting ? 'Enregistrement...' : isEdit ? 'Enregistrer' : 'Créer'}
-          </button>
+          </Button>
         </>
       }
     >
@@ -353,10 +350,9 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   SIREN / SIRET<span className="text-red-500 ml-0.5">*</span>
                 </label>
-                <input
+                <Input
                   {...register('siret')}
                   placeholder="123 456 789 00012"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {errors.siret && <p className="mt-1 text-xs text-red-600">{errors.siret.message as string}</p>}
               </div>

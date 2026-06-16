@@ -4,6 +4,7 @@ import {
   Camera, Clock, Send, X, MapPin,
 } from 'lucide-react'
 import { signalementsApi, type Signalement, type SignalementCategory, type SignalementUrgency } from '@/api/signalements'
+import { Button, Input } from '@/components/ui'
 import { getErrorMessage } from '@/utils/errors'
 import { toast } from '@/store/toast'
 import { format } from 'date-fns'
@@ -137,8 +138,7 @@ export default function LocataireSignaler() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-2 flex items-center gap-1"><Clock size={13} /> Date et heure</label>
-            <input type="datetime-local" value={occurredAt} onChange={e => setOccurredAt(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <Input type="datetime-local" value={occurredAt} onChange={e => setOccurredAt(e.target.value)} />
           </div>
         </div>
 
@@ -168,10 +168,9 @@ export default function LocataireSignaler() {
         </div>
 
         <div className="flex justify-end">
-          <button onClick={submit} disabled={submitting}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
-            <Send size={15} /> {submitting ? 'Envoi…' : 'Envoyer le signalement'}
-          </button>
+          <Button onClick={submit} disabled={submitting} leftIcon={<Send size={15} />} className="disabled:opacity-60">
+            {submitting ? 'Envoi…' : 'Envoyer le signalement'}
+          </Button>
         </div>
       </div>
 

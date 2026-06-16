@@ -6,6 +6,7 @@ import { paymentsApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { docFilename } from '@/utils/filename'
 import { exportCsv } from '@/utils/exportCsv'
+import { Button } from '@/components/ui'
 import { BRAND } from '@/lib/brand'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -183,13 +184,15 @@ export default function LocatairePaiements() {
             <SectionAvatar />
             <h2 className="text-lg font-bold text-gray-900">Mon compte</h2>
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="md"
+            className="flex-shrink-0"
             onClick={() => navigate('/locataire/payer')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
-            style={{ background: BRAND.navy }}
+            leftIcon={<Wallet size={15} />}
           >
-            <Wallet size={15} /> Payer
-          </button>
+            Payer
+          </Button>
         </div>
         <div className="px-5 py-10 flex items-center justify-center text-center" style={{ background: '#F0F9FA' }}>
           <p className="text-base">
@@ -210,13 +213,15 @@ export default function LocatairePaiements() {
             <h2 className="text-lg font-bold text-gray-900">Ma comptabilité</h2>
           </div>
           {entries.length > 0 && (
-            <button
+            <Button
+              variant="primary"
+              size="md"
+              className="flex-shrink-0"
               onClick={handleExport}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
-              style={{ background: BRAND.navy }}
+              leftIcon={<Download size={15} />}
             >
-              <Download size={15} /> Exporter
-            </button>
+              Exporter
+            </Button>
           )}
         </div>
         {isLoading ? (

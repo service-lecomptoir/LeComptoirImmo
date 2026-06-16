@@ -11,6 +11,7 @@ import { getErrorMessage } from '@/utils/errors'
 import { leasesApi } from '@/api/leases'
 import { paymentsApi } from '@/api/payments'
 import { avisEcheancesApi } from '@/api/avis_echeances'
+import { Button } from '@/components/ui'
 
 const apiBase = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -414,13 +415,15 @@ export default function LocataireDocuments() {
               {docs.length} document{docs.length > 1 ? 's' : ''}
             </span>
             {cat.uploadable && (
-              <button
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={e => { e.stopPropagation(); handleUploadClick(cat.key) }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                leftIcon={<Upload size={11} />}
+                className="gap-1.5"
               >
-                <Upload size={11} />
                 Ajouter
-              </button>
+              </Button>
             )}
             {isOpen
               ? <ChevronDown size={16} className="text-gray-400" />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Upload, Image as ImageIcon, Send, Clock, EyeOff, Save, ExternalLink, Eye, TrendingUp, Trash2, Sparkles } from 'lucide-react'
 import { publishingApi, uploadPropertyPhoto, type Listing, type PublishPlatform } from '@/api/publishing'
@@ -295,10 +295,10 @@ export default function PropertyPublish() {
         </div>
 
         <div className="flex justify-end">
-          <button onClick={save} disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: BRAND.navy }}>
-            <Save size={15} /> {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
+          <Button variant="primary" onClick={save} isLoading={saving}
+            className="font-semibold" leftIcon={<Save size={15} />}>
+            {saving ? 'Enregistrement…' : 'Enregistrer'}
+          </Button>
         </div>
       </div>
 
@@ -306,10 +306,10 @@ export default function PropertyPublish() {
       <div className="bg-white rounded-xl border border-gray-200 p-6 mt-5">
         <h2 className="text-sm font-semibold text-gray-900 mb-3">Publication</h2>
         <div className="flex flex-wrap items-end gap-3">
-          <button onClick={onPublish} disabled={busy}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60" style={{ background: BRAND.teal }}>
-            <Send size={15} /> Publier maintenant
-          </button>
+          <Button variant="primary" onClick={onPublish} disabled={busy}
+            className="font-semibold" leftIcon={<Send size={15} />}>
+            Publier maintenant
+          </Button>
           <div className="flex items-end gap-2">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Programmer</label>

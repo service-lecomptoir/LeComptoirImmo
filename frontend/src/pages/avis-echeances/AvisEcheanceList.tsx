@@ -13,6 +13,7 @@ import { downloadBlob } from '@/utils/download'
 import { isMultiMonth } from '@/utils/period'
 import { useAuthStore } from '@/store/authStore'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { Button } from '@/components/ui'
 import type { Lease } from '@/types/lease'
 
 const MONTHS = [
@@ -91,13 +92,12 @@ function EditAplModal({
         </div>
         {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+          <Button variant="secondary" onClick={onClose}>
             Annuler
-          </button>
-          <button onClick={handle} disabled={loading}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          </Button>
+          <Button onClick={handle} disabled={loading}>
             {loading ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -195,13 +195,12 @@ function EditAvisModal({
         </div>
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
         <div className="flex justify-end gap-2 mt-4">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+          <Button variant="secondary" onClick={onClose}>
             Annuler
-          </button>
-          <button onClick={handle} disabled={loading}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          </Button>
+          <Button onClick={handle} disabled={loading}>
             {loading ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -340,13 +339,12 @@ function GenerateModal({
         </div>
 
         <div className="flex justify-end gap-3 mt-6">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+          <Button variant="secondary" onClick={onClose}>
             Annuler
-          </button>
-          <button onClick={handleSubmit} disabled={loading}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          </Button>
+          <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Génération…' : 'Générer'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -420,9 +418,9 @@ function BulkGenerateModal({
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{error}</p>}
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+          <Button variant="secondary" onClick={onClose}>
             Annuler
-          </button>
+          </Button>
           <button
             onClick={handleSubmit}
             disabled={loading}
@@ -552,13 +550,9 @@ export default function AvisEcheanceList() {
               <RefreshCw size={15} />
               Génération mensuelle
             </button>
-            <button
-              onClick={() => setShowGenerate(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
-            >
-              <Plus size={15} />
+            <Button onClick={() => setShowGenerate(true)} leftIcon={<Plus size={15} />}>
               Générer un avis
-            </button>
+            </Button>
           </div>
         )}
       </div>

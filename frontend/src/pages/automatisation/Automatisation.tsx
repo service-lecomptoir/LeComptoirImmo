@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { schedulerApi, avisEcheancesApi } from '@/api/avis_echeances'
 import NotificationsSettings from '@/pages/settings/NotificationsSettings'
+import { Button } from '@/components/ui'
 
 const RULE_TYPES = [
   { value: 'avis_echeance', label: "Avis d'échéance", icon: Calendar, color: 'blue' },
@@ -275,10 +276,9 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
               className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">
               Annuler
             </button>
-            <button type="submit" disabled={saving}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+            <Button type="submit" variant="primary" size="md" disabled={saving} className="flex-1 font-medium">
               {saving ? 'Sauvegarde...' : 'Enregistrer'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -384,11 +384,10 @@ function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
                 className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">
                 Annuler
               </button>
-              <button type="submit" disabled={sending}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-                <Send size={14} />
+              <Button type="submit" variant="primary" size="md" disabled={sending}
+                className="flex-1 font-medium" leftIcon={<Send size={14} />}>
                 {sending ? 'Envoi...' : 'Envoyer'}
-              </button>
+              </Button>
             </div>
           </form>
         )}
@@ -544,13 +543,13 @@ export default function Automatisation() {
             <Send size={16} />
             Communication groupée
           </button>
-          <button
+          <Button
             onClick={() => { setEditRule(null); setShowRuleModal(true) }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+            variant="primary" size="md" className="font-medium"
+            leftIcon={<Plus size={16} />}
           >
-            <Plus size={16} />
             Nouvelle règle
-          </button>
+          </Button>
         </div>
       </div>
 

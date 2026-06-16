@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { formatPhoneDisplay } from '@/utils/format'
 import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { Wrench, Plus, Pencil, Trash2, X } from 'lucide-react'
 import { entretiensApi, prestatairesApi, type Entretien, type Prestataire } from '@/api/entretiens'
 import { format } from 'date-fns'
@@ -183,14 +184,14 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
           <p className="text-gray-500 text-sm mt-1">Planification, prestataires et suivi</p>
         </div>
         {!readOnly && tab === 'liste' && (
-          <button
+          <Button
+            variant="primary"
             onClick={() => { setShowForm(true); setEditId(null); setForm(DEFAULT_FORM) }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{ background: BRAND.navy }}
+            className="rounded-xl font-semibold"
+            leftIcon={<Plus size={16} />}
           >
-            <Plus size={16} />
             Nouvel entretien
-          </button>
+          </Button>
         )}
       </div>
 
@@ -222,11 +223,10 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
         <div>
           {!readOnly && (
             <div className="mb-4 flex justify-end">
-              <button onClick={() => setShowPrestForm(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white"
-                style={{ background: BRAND.navy }}>
-                <Plus size={16} /> Ajouter un prestataire
-              </button>
+              <Button variant="primary" onClick={() => setShowPrestForm(true)}
+                className="rounded-xl font-semibold" leftIcon={<Plus size={16} />}>
+                Ajouter un prestataire
+              </Button>
             </div>
           )}
           {showPrestForm && !readOnly && (
@@ -261,9 +261,8 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                 <div className="col-span-2 flex gap-3 justify-end">
                   <button type="button" onClick={() => setShowPrestForm(false)}
                     className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg">Annuler</button>
-                  <button type="submit" disabled={isSavingPrest}
-                    className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60"
-                    style={{ background: BRAND.navy }}>{isSavingPrest ? 'Enregistrement…' : 'Enregistrer'}</button>
+                  <Button type="submit" variant="primary" isLoading={isSavingPrest}
+                    className="px-5 font-semibold">{isSavingPrest ? 'Enregistrement…' : 'Enregistrer'}</Button>
                 </div>
               </form>
             </div>
@@ -376,9 +375,8 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                 <div className="col-span-2 flex gap-3 justify-end">
                   <button type="button" onClick={() => { setShowForm(false); setEditId(null) }}
                     className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg">Annuler</button>
-                  <button type="submit" disabled={isSaving}
-                    className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60"
-                    style={{ background: BRAND.navy }}>{isSaving ? 'Enregistrement…' : editId ? 'Modifier' : 'Créer'}</button>
+                  <Button type="submit" variant="primary" isLoading={isSaving}
+                    className="px-5 font-semibold">{isSaving ? 'Enregistrement…' : editId ? 'Modifier' : 'Créer'}</Button>
                 </div>
               </form>
             </div>

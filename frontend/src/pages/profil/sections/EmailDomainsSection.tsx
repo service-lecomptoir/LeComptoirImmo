@@ -3,8 +3,7 @@ import { AtSign, AlertTriangle, Plus, X } from 'lucide-react'
 import { usersApi, type EmailDomain } from '@/api/users'
 import { getErrorMessage } from '@/utils/errors'
 import { toast } from '@/store/toast'
-
-const inp = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+import { Input } from '@/components/ui'
 
 /** Domaines e-mail autorisés pour l'envoi des communications. Section autonome. */
 export default function EmailDomainsSection() {
@@ -76,8 +75,7 @@ export default function EmailDomainsSection() {
       {domainErr && <p className="text-xs text-red-600">{domainErr}</p>}
 
       <div className="flex gap-2">
-        <input
-          className={inp}
+        <Input
           value={newDomain}
           onChange={e => setNewDomain(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addDomain() } }}

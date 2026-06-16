@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { BRAND } from '@/lib/brand'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Building2, Banknote, AlertCircle } from 'lucide-react'
 import { apiClient } from '@/api/client'
+import { Button } from '@/components/ui'
 
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -151,14 +151,17 @@ export default function LocatairePayerForm() {
         </div>
       )}
 
-      <button
+      <Button
+        variant="primary"
+        size="md"
+        fullWidth
+        className="py-3.5 rounded-xl"
         onClick={handleDeclare}
-        disabled={isSending || !amount || amount <= 0}
-        className="w-full py-3.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40"
-        style={{ background: BRAND.navy }}
+        disabled={!amount || amount <= 0}
+        isLoading={isSending}
       >
-        {isSending ? 'Envoi…' : `Déclarer le paiement de ${fmtEuro(amount)}`}
-      </button>
+        {`Déclarer le paiement de ${fmtEuro(amount)}`}
+      </Button>
       <p className="text-xs text-gray-400 text-center mt-2">
         En déclarant, vous informez votre gestionnaire. Le règlement reste « en attente » jusqu'à sa validation.
       </p>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { useSearchParams, Link } from 'react-router-dom'
 import { DoorOpen, Plus, X, Trash2, CheckCircle2, ArrowLeftRight, Wallet } from 'lucide-react'
 import { leaseExitsApi, type LeaseExit, type Deduction } from '@/api/leaseExits'
@@ -143,11 +144,10 @@ export default function SortiesPage() {
             Préavis, état des lieux de sortie, comparaison avec l'entrée, décompte du dépôt de garantie et clôture du dossier.
           </p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white self-start"
-          style={{ background: BRAND.navy }}>
-          <Plus size={16} /> Nouvelle sortie
-        </button>
+        <Button variant="primary" onClick={() => setShowCreate(true)}
+          className="rounded-xl font-semibold self-start" leftIcon={<Plus size={16} />}>
+          Nouvelle sortie
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -355,12 +355,12 @@ export default function SortiesPage() {
                       Passer au décompte
                     </button>
                   )}
-                  <button onClick={close} disabled={busy || !selected.departure_date}
+                  <Button variant="primary" onClick={close} disabled={busy || !selected.departure_date}
                     title={!selected.departure_date ? 'Renseignez la date de départ' : undefined}
-                    className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50"
-                    style={{ background: BRAND.teal }}>
-                    <CheckCircle2 size={15} /> Clôturer (résilier le bail)
-                  </button>
+                    className="ml-auto font-semibold"
+                    leftIcon={<CheckCircle2 size={15} />}>
+                    Clôturer (résilier le bail)
+                  </Button>
                 </div>
               ) : (
                 <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-600">
@@ -399,10 +399,10 @@ export default function SortiesPage() {
               <div className="flex justify-end gap-3">
                 <button type="button" onClick={() => setShowCreate(false)}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Annuler</button>
-                <button type="submit" disabled={busy || !createLease}
-                  className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60" style={{ background: BRAND.navy }}>
+                <Button type="submit" variant="primary" disabled={busy || !createLease} isLoading={busy}
+                  className="px-5 font-semibold">
                   {busy ? 'Ouverture…' : 'Ouvrir le dossier'}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

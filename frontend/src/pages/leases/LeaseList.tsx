@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search, FileText, Filter, Building2, Download } from 'lucide-react'
+import { Button } from '@/components/ui'
 import { leasesApi } from '@/api/leases'
 import { LeaseForm } from './LeaseForm'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -75,19 +76,21 @@ export default function LeaseList() {
         </div>
         <div className="flex items-center gap-3">
           {canToggleView && <ViewToggle value={view} onChange={setView} />}
-          <button
+          <Button
+            variant="secondary"
             onClick={handleExport}
             disabled={leases.length === 0}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            leftIcon={<Download size={16} />}
+            className="px-3"
           >
-            <Download size={16} /> Exporter
-          </button>
-          <button
+            Exporter
+          </Button>
+          <Button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            leftIcon={<Plus size={16} />}
           >
-            <Plus size={16} /> Nouveau contrat
-          </button>
+            Nouveau contrat
+          </Button>
         </div>
       </div>
 
@@ -226,12 +229,12 @@ export default function LeaseList() {
 
       {!isLoading && leases.length < total && leases.length < 1000 && (
         <div className="flex justify-center mt-4">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => setLimit(l => Math.min(l + 100, 1000))}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Charger plus ({leases.length} / {total})
-          </button>
+          </Button>
         </div>
       )}
 

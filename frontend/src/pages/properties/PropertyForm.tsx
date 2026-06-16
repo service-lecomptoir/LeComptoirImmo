@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { UserRound, Plus, X, AlertTriangle, Building2, MapPin, Ruler, Sparkles, FileText, Home, Store, Boxes } from 'lucide-react'
+import { Button, Input } from '@/components/ui'
 import { Modal } from '@/components/common/Modal'
 import { SectionTitle } from '@/components/common/SectionTitle'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
@@ -264,13 +265,12 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       size="md"
       footer={
         <>
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          <Button variant="secondary" onClick={onClose}>
             Annuler
-          </button>
-          <button onClick={handleSubmit(onSubmit)} disabled={isSubmitting}
-            className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          </Button>
+          <Button onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>
             {isSubmitting ? 'Enregistrement...' : isEdit ? 'Enregistrer' : 'Créer'}
-          </button>
+          </Button>
         </>
       }
     >
@@ -285,7 +285,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
         <div>
           <div className="mb-4">
             <label className={lbl}>Nom du bien <span className="text-red-500">*</span></label>
-            <input {...register('name')} className={inp} placeholder="ex. Résidence Les Acacias, Appt 3B..." />
+            <Input {...register('name')} placeholder="ex. Résidence Les Acacias, Appt 3B..." />
             {errors.name && <p className={err}>{errors.name.message}</p>}
           </div>
           <label className={lbl}>Type de bien <span className="text-red-500">*</span></label>
@@ -333,7 +333,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
             </div>
             <div>
               <label className={lbl}>Complément d'adresse</label>
-              <input {...register('address2')} className={inp} placeholder="Appartement 11, Bât. B, étage 3…" />
+              <Input {...register('address2')} placeholder="Appartement 11, Bât. B, étage 3…" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
@@ -370,7 +370,7 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
               </div>
               <div>
                 <label className={lbl}>Pays</label>
-                <input {...register('country')} className={inp} />
+                <Input {...register('country')} />
               </div>
             </div>
           </div>

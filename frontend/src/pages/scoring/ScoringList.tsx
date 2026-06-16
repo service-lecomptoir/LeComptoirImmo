@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { ShieldCheck, X, Plus, Trash2, TrendingUp, AlertTriangle, KeyRound, ChevronRight, ChevronDown, Sparkles } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import {
@@ -147,10 +148,10 @@ function DetailPanel({ tenantId, onClose, onChanged }: { tenantId: string; onClo
                     </select>
                     <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                       placeholder="Note (facultatif)" className="border border-gray-200 rounded-lg px-3 py-2 text-sm flex-1" />
-                    <button onClick={addEvent} disabled={!form.kind || saving}
-                      className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50" style={{ background: BRAND.navy }}>
-                      <Plus size={15} /> Ajouter
-                    </button>
+                    <Button variant="primary" onClick={addEvent} disabled={!form.kind || saving}
+                      className="gap-1 font-semibold" leftIcon={<Plus size={15} />}>
+                      Ajouter
+                    </Button>
                   </div>
                   {detail.relationship_events.length === 0 ? (
                     <p className="text-sm text-gray-400">Aucun événement enregistré.</p>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { BRAND } from '@/lib/brand'
+import { Button } from '@/components/ui'
 import { BookText, Download, Search } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { exportCsv } from '@/utils/exportCsv'
@@ -131,11 +131,11 @@ export default function ComptabiliteGestion() {
           </p>
         </div>
         {filtered.length > 0 && (
-          <button onClick={handleExport}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium text-white flex-shrink-0"
-            style={{ background: BRAND.navy }}>
-            <Download size={15} /> Exporter
-          </button>
+          <Button variant="primary" onClick={handleExport}
+            className="px-3.5 flex-shrink-0"
+            leftIcon={<Download size={15} />}>
+            Exporter
+          </Button>
         )}
       </div>
 

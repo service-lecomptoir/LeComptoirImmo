@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getErrorMessage } from '@/utils/errors'
 import { Plus, Pencil, Trash2, Tag, Euro, Phone, Image, Check, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Button } from '@/components/ui'
 import { offersApi, OFFER_CATEGORIES } from '@/api/offers'
 import type { Offer, OfferCreate } from '@/api/offers'
 
@@ -66,9 +67,9 @@ function OfferForm({
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100">Annuler</button>
-        <button onClick={handle} disabled={saving} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+        <Button onClick={handle} disabled={saving} variant="primary" size="md">
           {saving ? <span className="animate-spin">⏳</span> : <Check size={14} />} Enregistrer
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -140,9 +141,9 @@ export default function OffersManager() {
           <p className="text-sm text-gray-500 mt-1">Publiez des offres visibles par vos locataires</p>
         </div>
         {!creating && (
-          <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-            <Plus size={15} /> Nouvelle offre
-          </button>
+          <Button onClick={() => setCreating(true)} variant="primary" size="md" leftIcon={<Plus size={15} />}>
+            Nouvelle offre
+          </Button>
         )}
       </div>
 
