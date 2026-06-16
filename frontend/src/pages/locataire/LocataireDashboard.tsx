@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Home, CreditCard, FileText, ArrowRight, Download, Wallet, CheckCircle,
-  Receipt, MessageSquare, Megaphone, Bell, Building2, Mail, Phone, MapPin,
+  Receipt, MessagesSquare, Megaphone, Bell, Building2, Mail, Phone, MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { apiClient } from '@/api/client'
@@ -75,7 +75,7 @@ export default function LocataireDashboard() {
     { icon: CreditCard, label: 'Payer mon loyer', to: '/locataire/payer', color: 'bg-blue-50 text-blue-600' },
     { icon: Wallet, label: 'Ma comptabilité', to: '/locataire/paiements', color: 'bg-green-50 text-green-600' },
     { icon: FileText, label: 'Mes documents', to: '/locataire/documents', color: 'bg-purple-50 text-purple-600' },
-    { icon: MessageSquare, label: 'Mes démarches', to: '/locataire/demarches', color: 'bg-amber-50 text-amber-600' },
+    { icon: MessagesSquare, label: 'Mes démarches', to: '/locataire/demarches', color: 'bg-amber-50 text-amber-600' },
     { icon: Megaphone, label: 'Signaler', to: '/locataire/signaler', color: 'bg-red-50 text-red-600' },
     { icon: Bell, label: 'Avis d\'échéance', to: '/locataire/avis-echeances', color: 'bg-sky-50 text-sky-600' },
   ]
@@ -282,7 +282,7 @@ export default function LocataireDashboard() {
         {/* Suivi des demandes */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
-            <MessageSquare size={15} className="text-amber-600" />
+            <MessagesSquare size={15} className="text-amber-600" />
             Mes demandes en cours
           </h2>
           <div className="space-y-2">
@@ -290,7 +290,7 @@ export default function LocataireDashboard() {
               onClick={() => navigate('/locataire/demarches')}
               className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
             >
-              <span className="text-sm text-gray-700 flex items-center gap-2"><MessageSquare size={14} className="text-amber-600" /> Démarches</span>
+              <span className="text-sm text-gray-700 flex items-center gap-2"><MessagesSquare size={14} className="text-amber-600" /> Démarches</span>
               <span className="flex items-center gap-2">
                 {openTickets > 0
                   ? <StatusBadge label={`${openTickets} en cours`} variant="yellow" />
