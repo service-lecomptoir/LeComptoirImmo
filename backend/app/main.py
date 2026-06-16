@@ -82,8 +82,21 @@ async def lifespan(app: FastAPI):
     # Seede les règles avis/quittance/rappels/relances pour les gestionnaires qui
     # n'en ont aucune → les envois automatiques continuent, pilotés par les règles.
     try:
+        from sqlalchemy import text as _text
         from app.services.automation_engine import backfill_default_rules, backfill_default_content, backfill_rule_types
         async with AsyncSessionLocal() as _db:
+            # Plusieurs workers uvicorn exécutent ce backfill au boot. On sérialise
+            # avec un verrou transactionnel Postgres pour éviter que deux workers
+            # insèrent en même temps les mêmes règles (sinon doublons).
+            await _db.execute(_text("SELECT pg_advisory_xact_lock(741258)"))
+            # Nettoyage des doublons des nouveaux types déjà créés par une course
+            # multi-workers (garde le plus ancien par gestionnaire + type).
+            await _db.execute(_text(
+                "DELETE FROM automation_rules a USING automation_rules b "
+                "WHERE a.created_by = b.created_by AND a.rule_type = b.rule_type "
+                "AND a.rule_type IN ('revision_loyer','revision_charges','taxe_om','rapport_mensuel') "
+                "AND (a.created_at, a.ctid) > (b.created_at, b.ctid)"
+            ))
             nr = await backfill_default_rules(_db)
             # Nouveaux types (révisions loyer/charges, taxe OM, rapport mensuel) sur
             # les comptes existants, sans recréer des règles supprimées.
