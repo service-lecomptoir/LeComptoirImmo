@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getErrorMessage } from '@/utils/errors'
 import { TrendingUp, RefreshCw, Plus, CheckCircle2, KeyRound, ChevronDown, ChevronUp, Receipt, Pencil, Trash2, X, FileDown, Landmark, HeartHandshake } from 'lucide-react'
 import { actualisationApi, type IrlIndexItem, type RevisionRow } from '@/api/actualisation'
+import { leasesApi } from '@/api/leases'
 import ChargesPanel from './ChargesPanel'
 
 const fmtEuro = (n: number | null) =>
@@ -122,8 +123,26 @@ export default function Actualisation() {
     } finally { setBusyId(null) }
   }
 
+  const pendingWarn = (r: RevisionRow) =>
+    r.pending_rent != null
+      ? `\n\n⚠ Une réévaluation de loyer est déjà programmée (${fmtEuro(r.pending_rent)}${r.pending_rent_date ? ` au ${fmtDateFr(r.pending_rent_date)}` : ''}). Elle sera remplacée.`
+      : ''
+
+  const cancelPendingRent = async (r: RevisionRow) => {
+    if (!r.pending_rent_id) return
+    if (!confirm(`Annuler la réévaluation de loyer programmée pour ${r.tenant_full_name} (${fmtEuro(r.pending_rent)}${r.pending_rent_date ? ` au ${fmtDateFr(r.pending_rent_date)}` : ''}) ?`)) return
+    setBusyId(r.lease_id)
+    try {
+      await leasesApi.deleteRentRevision(r.lease_id, r.pending_rent_id)
+      flash(`Réévaluation de loyer annulée pour ${r.tenant_full_name}.`)
+      load()
+    } catch (e: any) {
+      alert(getErrorMessage(e, "Annulation impossible"))
+    } finally { setBusyId(null) }
+  }
+
   const apply = async (r: RevisionRow) => {
-    if (!confirm(`Appliquer la révision du loyer de ${r.tenant_full_name} : ${fmtEuro(r.current_rent)} → ${fmtEuro(r.proposed_rent)}, à compter du ${fmtDateFr(effectiveDate)} ?`)) return
+    if (!confirm(`Appliquer la révision du loyer de ${r.tenant_full_name} : ${fmtEuro(r.current_rent)} → ${fmtEuro(r.proposed_rent)}, à compter du ${fmtDateFr(effectiveDate)} ?${pendingWarn(r)}`)) return
     setBusyId(r.lease_id)
     try {
       await actualisationApi.applyRevision(r.lease_id, effectiveDate)
@@ -136,8 +155,8 @@ export default function Actualisation() {
 
   const amiableRent = async (r: RevisionRow) => {
     const input = window.prompt(
-      `Réévaluation amiable du loyer de ${r.tenant_full_name} (actuel ${fmtEuro(r.current_rent)}).\nNouveau loyer convenu (€) :`,
-      String(r.current_rent))
+      `Réévaluation amiable du loyer de ${r.tenant_full_name} (actuel ${fmtEuro(r.current_rent)}).${pendingWarn(r)}\n\nNouveau loyer convenu (€) :`,
+      String(r.pending_rent ?? r.current_rent))
     if (input == null) return
     const val = parseFloat(input.replace(',', '.'))
     if (isNaN(val) || val < 0) { alert('Montant invalide'); return }
@@ -367,6 +386,24 @@ export default function Actualisation() {
                         )}
                       </div>
                     </div>
+
+                    {/* Réévaluation de loyer déjà programmée (non appliquée) */}
+                    {r.pending_rent != null && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
+                        <span>
+                          Réévaluation programmée : <strong>{fmtEuro(r.pending_rent)}</strong>
+                          {r.pending_rent_date && <> à compter du <strong>{fmtDateFr(r.pending_rent_date)}</strong></>}.
+                        </span>
+                        <button
+                          onClick={() => cancelPendingRent(r)}
+                          disabled={busyId === r.lease_id}
+                          className="ml-auto inline-flex items-center gap-1 text-red-600 hover:text-red-800 disabled:opacity-50"
+                          title="Annuler la réévaluation programmée">
+                          <Trash2 size={13} /> Annuler
+                        </button>
+                      </div>
+                    )}
 
                     {/* Action */}
                     <div className="mt-2">

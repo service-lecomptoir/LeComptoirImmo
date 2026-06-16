@@ -25,6 +25,9 @@ export interface RevisionRow {
   next_revision_date: string
   revision_due: boolean
   start_date: string
+  pending_rent: number | null
+  pending_rent_id: string | null
+  pending_rent_date: string | null
 }
 
 export interface ChargeLastRegul {
@@ -49,6 +52,9 @@ export interface ChargeRow {
   default_period_end: string
   provisions_paid_12m: number
   last_regularization: ChargeLastRegul | null
+  pending_charges: number | null
+  pending_charges_id: string | null
+  pending_charges_date: string | null
 }
 
 export interface ChargePreview {

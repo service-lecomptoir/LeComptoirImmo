@@ -121,6 +121,11 @@ async def _row(db: AsyncSession, lease: Lease) -> dict:
     if base and base > 0 and latest is not None:
         proposed = round(current_rent * float(latest.value) / base, 2)
     nrd = _next_revision_date(lease)
+    # Réévaluation de loyer déjà programmée (non encore appliquée) → visible sur la ligne.
+    from app.services.rent_revision_service import RentRevisionService
+    revs = await RentRevisionService.list_for_lease(db, lease.id)
+    today = date.today()
+    pend = next((r for r in revs if r.kind == "rent" and not r.applied and r.effective_date > today), None)
     return {
         "lease_id": str(lease.id),
         "tenant_full_name": lease.tenant.full_name if lease.tenant else "",
@@ -137,6 +142,10 @@ async def _row(db: AsyncSession, lease: Lease) -> dict:
         "next_revision_date": nrd.isoformat(),
         "revision_due": date.today() >= nrd,
         "start_date": lease.start_date.isoformat(),
+        # Révision programmée (loyer)
+        "pending_rent": float(pend.amount) if pend else None,
+        "pending_rent_id": str(pend.id) if pend else None,
+        "pending_rent_date": pend.effective_date.isoformat() if pend else None,
     }
 
 
@@ -362,6 +371,11 @@ async def _charge_row(db: AsyncSession, lease: Lease) -> dict:
         .order_by(ChargeRegularization.applied_at.desc())
         .limit(1)
     )).scalar_one_or_none()
+    # Réévaluation de charges déjà programmée (non appliquée) → visible sur la ligne.
+    from app.services.rent_revision_service import RentRevisionService
+    revs = await RentRevisionService.list_for_lease(db, lease.id)
+    today = date.today()
+    pend = next((r for r in revs if r.kind == "charges" and not r.applied and r.effective_date > today), None)
     return {
         "lease_id": str(lease.id),
         "tenant_full_name": lease.tenant.full_name if lease.tenant else "",
@@ -372,6 +386,9 @@ async def _charge_row(db: AsyncSession, lease: Lease) -> dict:
         "default_period_start": start.isoformat(),
         "default_period_end": end.isoformat(),
         "provisions_paid_12m": provisions,
+        "pending_charges": float(pend.amount) if pend else None,
+        "pending_charges_id": str(pend.id) if pend else None,
+        "pending_charges_date": pend.effective_date.isoformat() if pend else None,
         "last_regularization": None if not last else {
             "id": str(last.id),
             "period_start": last.period_start.isoformat(),

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { getErrorMessage } from '@/utils/errors'
 import { KeyRound, RefreshCw, Calculator, CheckCircle2, Pencil, Trash2, X, FileDown, HeartHandshake } from 'lucide-react'
 import { actualisationApi, type ChargeRow, type ChargePreview } from '@/api/actualisation'
+import { leasesApi } from '@/api/leases'
 
 const fmtEuro = (n: number | null | undefined) =>
   n == null ? '—' : n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
@@ -80,6 +81,24 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
     } finally { setBusyId(null) }
   }
 
+  const pendingWarn = (row: ChargeRow) =>
+    row.pending_charges != null
+      ? `\n\n⚠ Une réévaluation de charges est déjà programmée (${fmtEuro(row.pending_charges)}${row.pending_charges_date ? ` au ${fmtDate(row.pending_charges_date)}` : ''}). Elle sera remplacée.`
+      : ''
+
+  const cancelPendingCharges = async (row: ChargeRow) => {
+    if (!row.pending_charges_id) return
+    if (!confirm(`Annuler la réévaluation de charges programmée pour ${row.tenant_full_name} (${fmtEuro(row.pending_charges)}${row.pending_charges_date ? ` au ${fmtDate(row.pending_charges_date)}` : ''}) ?`)) return
+    setBusyId(row.lease_id)
+    try {
+      await leasesApi.deleteRentRevision(row.lease_id, row.pending_charges_id)
+      flash(`Réévaluation de charges annulée pour ${row.tenant_full_name}.`)
+      load()
+    } catch (e: any) {
+      alert(getErrorMessage(e, 'Annulation impossible'))
+    } finally { setBusyId(null) }
+  }
+
   const apply = async (row: ChargeRow) => {
     const f = forms[row.lease_id]
     const real = parseFloat(f?.real)
@@ -91,7 +110,8 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
       : 'aucun solde'
     const verb = f.editRegId ? 'Modifier' : 'Appliquer'
     if (!confirm(`${verb} la régularisation des charges de ${row.tenant_full_name} ?\n` +
-      `Nouvelle provision mensuelle : ${fmtEuro(newMonthly)}\nSolde : ${soldeTxt}`)) return
+      `Nouvelle provision mensuelle : ${fmtEuro(newMonthly)}\nSolde : ${soldeTxt}` +
+      (f.editRegId ? '' : pendingWarn(row)))) return
     setBusyId(row.lease_id)
     try {
       const payload = {
@@ -158,8 +178,8 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
 
   const amiableProvision = async (r: ChargeRow) => {
     const input = window.prompt(
-      `Réévaluation amiable de la provision pour charges de ${r.tenant_full_name} (actuelle ${fmtEuro(r.current_monthly_provision)}).\nNouvelle provision mensuelle convenue (€) :`,
-      String(r.current_monthly_provision))
+      `Réévaluation amiable de la provision pour charges de ${r.tenant_full_name} (actuelle ${fmtEuro(r.current_monthly_provision)}).${pendingWarn(r)}\n\nNouvelle provision mensuelle convenue (€) :`,
+      String(r.pending_charges ?? r.current_monthly_provision))
     if (input == null) return
     const val = parseFloat(input.replace(',', '.'))
     if (isNaN(val) || val < 0) { alert('Montant invalide'); return }
@@ -214,6 +234,22 @@ export default function ChargesPanel({ flash }: { flash: (m: string) => void }) 
               const bal = f?.preview?.balance
               return (
                 <div key={r.lease_id} className="px-5 py-3">
+                  {r.pending_charges != null && (
+                    <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      <CheckCircle2 size={14} className="text-amber-600 shrink-0" />
+                      <span>
+                        Réévaluation programmée : <strong>{fmtEuro(r.pending_charges)}</strong>
+                        {r.pending_charges_date && <> à compter du <strong>{fmtDate(r.pending_charges_date)}</strong></>}.
+                      </span>
+                      <button
+                        onClick={() => cancelPendingCharges(r)}
+                        disabled={busyId === r.lease_id}
+                        className="ml-auto inline-flex items-center gap-1 text-red-600 hover:text-red-800 disabled:opacity-50"
+                        title="Annuler la réévaluation programmée">
+                        <Trash2 size={13} /> Annuler
+                      </button>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-medium text-gray-900">{r.tenant_full_name}</p>
