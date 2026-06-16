@@ -63,6 +63,12 @@ function defaultSignature(ruleType: string): string {
     ? SIGNATURE_CONTENTIEUX : SIGNATURE_GESTION
 }
 
+// Règles dont le destinataire principal (À) est le gestionnaire et non le
+// locataire : le champ CC est alors vide par défaut (le gestionnaire est déjà
+// destinataire), alors que les règles locataire mettent le gestionnaire en CC.
+const GESTIONNAIRE_RULES = ['rapport_mensuel']
+const isGestionnaireRule = (t: string) => GESTIONNAIRE_RULES.includes(t)
+
 interface Log {
   id: string
   channel: string
@@ -73,29 +79,38 @@ interface Log {
 }
 
 function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: () => void, onSaved: () => void }) {
+  const myEmail = useAuthStore(s => s.user?.email) || ''
+  const initialType = rule?.rule_type || 'avis_echeance'
   const [form, setForm] = useState({
     name: rule?.name || '',
-    rule_type: rule?.rule_type || 'avis_echeance',
+    rule_type: initialType,
     trigger_days: rule?.trigger_days ?? 5,
     channel: rule?.channel || 'email',
     subject: rule?.subject || '',
     body_template: rule?.body_template || '',
     is_active: rule?.is_active ?? true,
-    cc_emails: rule?.cc_emails || '',
-    signature: rule?.signature || defaultSignature(rule?.rule_type || 'avis_echeance'),
+    // Règle existante : on respecte la valeur enregistrée. Nouvelle règle :
+    // CC = gestionnaire pour une règle locataire, vide pour une règle gestionnaire.
+    cc_emails: rule ? (rule.cc_emails || '') : (isGestionnaireRule(initialType) ? '' : myEmail),
+    signature: rule?.signature || defaultSignature(initialType),
   })
   const [saving, setSaving] = useState(false)
-  const myEmail = useAuthStore(s => s.user?.email) || ''
 
   // Change le type ET ajuste la signature par défaut tant qu'elle n'a pas été
   // personnalisée (vide ou égale à l'une des signatures standard).
   const selectType = (value: string) => {
-    setForm(f => ({
-      ...f,
-      rule_type: value,
-      signature: (!f.signature.trim() || KNOWN_SIGNATURES.includes(f.signature.trim()))
-        ? defaultSignature(value) : f.signature,
-    }))
+    setForm(f => {
+      // Le CC suit le type tant qu'il n'a pas été personnalisé (vide ou = mon e-mail).
+      const cc = f.cc_emails.trim()
+      const ccAuto = cc === '' || cc === myEmail
+      return {
+        ...f,
+        rule_type: value,
+        signature: (!f.signature.trim() || KNOWN_SIGNATURES.includes(f.signature.trim()))
+          ? defaultSignature(value) : f.signature,
+        cc_emails: ccAuto ? (isGestionnaireRule(value) ? '' : myEmail) : f.cc_emails,
+      }
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -193,7 +208,7 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
                     <span className="text-sm text-gray-500">Le {day} de chaque mois, sur le mois écoulé.</span>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">
-                    Destinataire : adresse(s) du champ « Copie (CC) » ci-dessous, sinon votre e-mail de gestionnaire.
+                    Envoyé à vous (gestionnaire) ; ajoutez des destinataires en copie via le champ « Cc » ci-dessous.
                   </p>
                 </div>
               )
@@ -248,6 +263,14 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
           {(form.channel === 'email' || form.channel === 'email_sms') && (
             <div>
               <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 shrink-0">Adresse :</label>
+                <div className="flex-1 border rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600">
+                  {isGestionnaireRule(form.rule_type)
+                    ? `Vous (gestionnaire)${myEmail ? ` : ${myEmail}` : ''}`
+                    : 'Le(s) locataire(s) concerné(s)'}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
                 <label className="text-sm font-medium text-gray-700 shrink-0">Cc :</label>
                 <input type="email" list="cc-suggestions" inputMode="email" autoComplete="email"
                   className="flex-1 border rounded-lg px-3 py-2 text-sm"
@@ -258,15 +281,14 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
                   {myEmail && <option value={myEmail} />}
                 </datalist>
               </div>
-              <div className="flex items-center gap-2 mt-1.5">
-                {myEmail && form.cc_emails.trim() !== myEmail && (
+              {myEmail && form.cc_emails.trim() !== myEmail && (
+                <div className="mt-1.5">
                   <button type="button" onClick={() => setForm({ ...form, cc_emails: myEmail })}
                     className="text-xs text-blue-600 hover:underline">
                     + Me mettre en copie ({myEmail})
                   </button>
-                )}
-                <p className="text-xs text-gray-400">Laisser vide pour n'envoyer qu'au locataire. Plusieurs adresses : séparées par des virgules.</p>
-              </div>
+                </div>
+              )}
 
               <div className="mt-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Signature (service)</label>

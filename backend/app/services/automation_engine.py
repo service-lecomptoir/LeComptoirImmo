@@ -716,7 +716,7 @@ async def _compute_manager_stats(db, manager_id, year: int, month: int) -> str:
 
 async def _run_rapport_mensuel(db, rule, today: date) -> int:
     """Envoie le rapport mensuel si `today.day == rule.trigger_days` (1 fois/mois),
-    sur le mois écoulé, au destinataire configuré (cc_emails) ou au gestionnaire."""
+    sur le mois écoulé, au gestionnaire (et en copie aux adresses CC de la règle)."""
     from datetime import timedelta
     from app.models.user import User
     if int(rule.trigger_days or 1) != today.day:
@@ -727,10 +727,9 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
     dedup = f"rapport_mensuel:{manager_id}:{year}-{month:02d}"
     if await _already_sent(db, dedup):
         return 0
-    recipient = (_rule_cc(rule) or "").split(",")[0].strip()
-    if not recipient:
-        mgr = await db.get(User, manager_id)
-        recipient = getattr(mgr, "email", None)
+    # Destinataire principal = le gestionnaire ; le champ CC sert de copies.
+    mgr = await db.get(User, manager_id)
+    recipient = getattr(mgr, "email", None)
     if not recipient:
         return 0
     period = f"{_MONTHS_FR[month]} {year}"
@@ -741,7 +740,7 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
     from app.services.email_service import send_email
     sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
     ok = await send_email(to=recipient, subject=subject, html_body=body_html + (sig_html or ""),
-                          inline_logo=logo, inline_logo_subtype=logo_sub)
+                          cc=_rule_cc(rule), inline_logo=logo, inline_logo_subtype=logo_sub)
     if ok:
         await _log(db, rule=rule, tenant_id=None, lease_id=None, channel="email",
                    recipient=recipient, subject=subject, body=body_html, status="sent", dedup_key=dedup)
