@@ -671,7 +671,7 @@ export default function TemplateEditor() {
 
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Atelier de modèles</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Atelier de documents</h1>
         <p className="text-sm text-gray-500 mt-1">
           Personnalisez vos documents&nbsp;: {DOC_LIST_SENTENCE} en cliquant sur l'un des modèles ci-dessous.
         </p>

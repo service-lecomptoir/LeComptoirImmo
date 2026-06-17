@@ -66,7 +66,7 @@ export const FEATURE_LABELS: Record<string, string> = {
   quittances: 'Quittances de loyer',
   actualisation: 'Révision des loyers et charges',
   automatisation: 'Communication et automatisation',
-  templates: 'Atelier de modèles',
+  templates: 'Atelier de documents',
   diffusion: 'Publication des annonces',
   candidatures: 'Gestion des candidatures',
   sortie_locataire: 'Sortie du locataire',

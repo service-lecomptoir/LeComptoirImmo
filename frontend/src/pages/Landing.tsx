@@ -34,7 +34,7 @@ const FEATURES = [
   { icon: FileCheck, title: 'Quittances de loyer', text: 'Quittances PDF à votre charte, prêtes à envoyer au locataire.' },
   { icon: TrendingUp, title: 'Actualisation IRL & charges', text: 'Révision annuelle des loyers (IRL) et régularisation des charges.' },
   { icon: Zap, title: 'Automatisation', text: 'Tâches récurrentes automatisées pour gagner un temps précieux.' },
-  { icon: PenSquare, title: 'Atelier de modèles', text: 'Vos modèles de documents personnalisés (logo, en-tête, mentions).' },
+  { icon: PenSquare, title: 'Atelier de documents', text: 'Vos modèles de documents personnalisés (logo, en-tête, mentions).' },
   { icon: MessageSquare, title: 'Messages & incidents', text: 'Échangez avec vos locataires et suivez les incidents et entretiens.' },
   { icon: Calculator, title: 'Finances & liasse fiscale', text: 'Performance par bien, revenus et liasse fiscale en un clic.' },
 ]
