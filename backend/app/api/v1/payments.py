@@ -493,8 +493,15 @@ async def list_payments(
 
     # ── Propriétaire / Gestionnaire-Propriétaire ──────────────────────────────
     elif role in (Role.PROPRIETAIRE, Role.GESTIONNAIRE_PROPRIO):
+        from sqlalchemy import or_
+        # Le gestionnaire-propriétaire voit AUSSI les biens qu'il a créés (cohérent
+        # avec l'isolation par created_by) : une fiche propriétaire sans compte de
+        # connexion laisse owner_user_id NULL, sinon il ne verrait aucun paiement.
+        owner_cond = (Property.owner_user_id == current_user.id)
+        if role == Role.GESTIONNAIRE_PROPRIO:
+            owner_cond = or_(owner_cond, Property.created_by == current_user.id)
         props = (await db.execute(
-            select(Property).where(Property.owner_user_id == current_user.id)
+            select(Property).where(owner_cond)
         )).scalars().all()
         prop_ids = [p.id for p in props]
         if not prop_ids:
@@ -572,8 +579,14 @@ async def comptabilite_ledger(
     if is_mandataire:
         lease_ids = await agency_lease_ids(db, current_user)
     elif role in (Role.GESTIONNAIRE_PROPRIO, Role.PROPRIETAIRE):
+        from sqlalchemy import or_
+        owner_cond = (Property.owner_user_id == current_user.id)
+        if role == Role.GESTIONNAIRE_PROPRIO:
+            # Inclut les biens créés par le GP (fiche propriétaire sans compte →
+            # owner_user_id NULL), cohérent avec l'isolation par created_by.
+            owner_cond = or_(owner_cond, Property.created_by == current_user.id)
         prop_ids = (await db.execute(
-            select(Property.id).where(Property.owner_user_id == current_user.id)
+            select(Property.id).where(owner_cond)
         )).scalars().all()
         lease_ids = set((await db.execute(
             select(Lease.id).where(Lease.property_id.in_(prop_ids))

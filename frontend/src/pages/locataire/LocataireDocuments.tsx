@@ -266,10 +266,11 @@ export default function LocataireDocuments() {
       const r = await fetch(`${apiBase}/api/v1/documents/${doc.id}/download`, {
         headers: authHeaders(),
       })
+      if (!r.ok) { setUploadError('Document indisponible. Réessayez plus tard.'); return }
       const blob = await r.blob()
       downloadBlob(blob, doc.file_name ?? 'document')
     } catch {
-      // silently ignore
+      setUploadError('Téléchargement impossible (erreur réseau).')
     }
   }
 
@@ -277,10 +278,11 @@ export default function LocataireDocuments() {
     try {
       const token = localStorage.getItem('access_token')
       const r = await fetch(avisEcheancesApi.pdfUrl(a.id), { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) { setUploadError("Avis indisponible au téléchargement."); return }
       const blob = await r.blob()
       downloadBlob(blob, docFilename('avis_echeance', { tenant: a.tenant_full_name, property: a.property_name, month: a.period_month, year: a.period_year }))
     } catch {
-      // silently ignore
+      setUploadError('Téléchargement impossible (erreur réseau).')
     }
   }
 

@@ -53,13 +53,16 @@ export default function LocataireAvis() {
   const downloadPlanPdf = (p: ApurementPlan) =>
     apurementApi.downloadPdf(p.id, docFilename('plan_apurement', { tenant: p.tenant_name || '', property: p.property_name || '' }))
 
-  const downloadPdf = (a: AvisEcheanceSummary) => {
-    const token = localStorage.getItem('access_token')
-    fetch(avisEcheancesApi.pdfUrl(a.id), { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.blob())
-      .then(blob => {
-        downloadBlob(blob, docFilename('avis_echeance', { tenant: a.tenant_full_name, property: a.property_name, month: a.period_month, year: a.period_year }))
-      })
+  const downloadPdf = async (a: AvisEcheanceSummary) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      const r = await fetch(avisEcheancesApi.pdfUrl(a.id), { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.ok) { toast.error('Avis indisponible au téléchargement.'); return }
+      const blob = await r.blob()
+      downloadBlob(blob, docFilename('avis_echeance', { tenant: a.tenant_full_name, property: a.property_name, month: a.period_month, year: a.period_year }))
+    } catch {
+      toast.error('Téléchargement impossible (erreur réseau).')
+    }
   }
 
   return (
