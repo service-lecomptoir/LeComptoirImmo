@@ -25,6 +25,7 @@ const schema = z.object({
   siret: z.string().optional(),
   email: z.string().min(1, 'Email requis').email('Email invalide'),
   phone: z.string().optional(),
+  language: z.string().optional(),
   birth_date: z.string().optional(),
   birth_place: z.string().optional(),
   national_id: z.string().optional(),
@@ -139,6 +140,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       siret: tenant.siret ?? '',
       email: tenant.email ?? '',
       phone: tenant.phone ?? '',
+      language: (tenant as any).language ?? 'fr',
       birth_date: tenant.birth_date ?? '',
       birth_place: tenant.birth_place ?? '',
       national_id: tenant.national_id ?? '',
@@ -146,7 +148,7 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       employer_phone: tenant.employer_phone ?? '',
       notes: tenant.notes ?? '',
       user_id: tenant.user_id ?? '',
-    } : { tenant_type: 'person' },
+    } : { tenant_type: 'person', language: 'fr' },
   })
 
   const tenantType = watch('tenant_type')
@@ -399,6 +401,18 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <TenantField label="Email" name="email" type="email" required register={register} errors={errors} />
             <PhoneField label="Téléphone" value={watch('phone') || ''} onChange={v => setValue('phone', v)} />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Langue des courriers</label>
+              <select {...register('language')}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-navy">
+                <option value="fr">Français</option>
+                <option value="en">Anglais</option>
+                <option value="pt-BR">Portugais (Brésil)</option>
+                <option value="ht">Créole haïtien</option>
+                <option value="srn">Sranan Tongo</option>
+              </select>
+              <p className="text-xs text-gray-400 mt-1">Langue des courriers automatiques envoyés à ce locataire.</p>
+            </div>
           </div>
         </div>
 

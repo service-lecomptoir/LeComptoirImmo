@@ -17,6 +17,7 @@ class TenantCreate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     phone2: Optional[str] = None
+    language: Optional[str] = "fr"  # langue des courriers (fr/en/pt-BR/ht/srn)
     employer: Optional[str] = None
     employer_phone: Optional[str] = None
     monthly_income: Optional[float] = None
@@ -55,6 +56,7 @@ class TenantUpdate(BaseModel):
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
     phone2: Optional[str] = None
+    language: Optional[str] = None
     employer: Optional[str] = None
     employer_phone: Optional[str] = None
     monthly_income: Optional[float] = None
@@ -78,6 +80,7 @@ class TenantResponse(BaseModel):
     email: Optional[str]
     phone: Optional[str]
     phone2: Optional[str]
+    language: Optional[str] = "fr"
     employer: Optional[str]
     employer_phone: Optional[str]
     monthly_income: Optional[float]

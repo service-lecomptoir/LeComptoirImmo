@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
-import { useAuthStore } from '@/store/authStore'
 import {
-  Zap, Trash2, Edit2, ToggleLeft, ToggleRight,
+  Zap, Trash2, ToggleLeft, ToggleRight,
   Mail, MessageSquare, Bell, Calendar,
   CheckCircle, Clock, AlertTriangle, Users, RefreshCw,
 } from 'lucide-react'
 import NotificationsSettings from '@/pages/settings/NotificationsSettings'
 import { Button } from '@/components/ui'
+import CommunicationLibrary from './CommunicationLibrary'
 
 const RULE_TYPES = [
   { value: 'avis_echeance', label: "Avis d'échéance", icon: Calendar, color: 'blue' },
@@ -22,21 +22,6 @@ const RULE_TYPES = [
   { value: 'rapport_mensuel', label: 'Rapport mensuel de gestion', icon: Clock, color: 'purple' },
   { value: 'communication_groupee', label: 'Communication groupée', icon: Users, color: 'purple' },
 ]
-
-const CHANNELS = [
-  { value: 'email', label: 'Email', icon: Mail },
-  { value: 'sms', label: 'SMS', icon: MessageSquare },
-  { value: 'email_sms', label: 'Email + SMS', icon: Mail },
-]
-
-const RULE_COLORS: Record<string, string> = {
-  blue: 'bg-blue-50 text-blue-700 border-blue-200',
-  green: 'bg-green-50 text-green-700 border-green-200',
-  red: 'bg-red-50 text-red-700 border-red-200',
-  orange: 'bg-orange-50 text-orange-700 border-orange-200',
-  purple: 'bg-purple-50 text-purple-700 border-purple-200',
-  gray: 'bg-gray-50 text-gray-700 border-gray-200',
-}
 
 interface Rule {
   id: string
@@ -58,21 +43,6 @@ interface Rule {
   signature?: string | null
 }
 
-// Signature (service) par défaut selon le type : contentieux pour les impayés,
-// gestion locative pour le reste.
-const SIGNATURE_CONTENTIEUX = 'Service contentieux'
-const SIGNATURE_GESTION = 'Service Gestion Locative'
-const KNOWN_SIGNATURES = [SIGNATURE_CONTENTIEUX, SIGNATURE_GESTION]
-function defaultSignature(ruleType: string): string {
-  return ['rappel_impaye', 'relance_1', 'relance_2'].includes(ruleType)
-    ? SIGNATURE_CONTENTIEUX : SIGNATURE_GESTION
-}
-
-// Règles dont le destinataire principal (À) est le gestionnaire et non le
-// locataire : le champ CC est alors vide par défaut (le gestionnaire est déjà
-// destinataire), alors que les règles locataire mettent le gestionnaire en CC.
-const GESTIONNAIRE_RULES = ['rapport_mensuel']
-const isGestionnaireRule = (t: string) => GESTIONNAIRE_RULES.includes(t)
 
 interface Log {
   id: string
@@ -83,271 +53,6 @@ interface Log {
   sent_at: string
 }
 
-function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: () => void, onSaved: () => void }) {
-  const myEmail = useAuthStore(s => s.user?.email) || ''
-  const initialType = rule?.rule_type || 'avis_echeance'
-  const [form, setForm] = useState({
-    name: rule?.name || '',
-    rule_type: initialType,
-    trigger_days: rule?.trigger_days ?? 5,
-    channel: rule?.channel || 'email',
-    subject: rule?.subject || '',
-    body_template: rule?.body_template || '',
-    is_active: rule?.is_active ?? true,
-    // Règle existante : on respecte la valeur enregistrée. Nouvelle règle :
-    // CC = gestionnaire pour une règle locataire, vide pour une règle gestionnaire.
-    cc_emails: rule ? (rule.cc_emails || '') : (isGestionnaireRule(initialType) ? '' : myEmail),
-    signature: rule?.signature || defaultSignature(initialType),
-  })
-  const [saving, setSaving] = useState(false)
-
-  // Change le type ET ajuste la signature par défaut tant qu'elle n'a pas été
-  // personnalisée (vide ou égale à l'une des signatures standard).
-  const selectType = (value: string) => {
-    setForm(f => {
-      // Le CC suit le type tant qu'il n'a pas été personnalisé (vide ou = mon e-mail).
-      const cc = f.cc_emails.trim()
-      const ccAuto = cc === '' || cc === myEmail
-      return {
-        ...f,
-        rule_type: value,
-        signature: (!f.signature.trim() || KNOWN_SIGNATURES.includes(f.signature.trim()))
-          ? defaultSignature(value) : f.signature,
-        cc_emails: ccAuto ? (isGestionnaireRule(value) ? '' : myEmail) : f.cc_emails,
-      }
-    })
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      if (rule?.id) {
-        await apiClient.patch(`/automation/rules/${rule.id}`, form)
-      } else {
-        await apiClient.post('/automation/rules', form)
-      }
-      onSaved()
-      onClose()
-    } catch {
-      // erreur affichée par l'intercepteur (toast) — la modale reste ouverte
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">
-            {rule ? 'Modifier la règle' : 'Nouvelle règle d\'automatisation'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nom de la règle *</label>
-            <input required className="w-full border rounded-lg px-3 py-2 text-sm" value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type d'automatisation</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {RULE_TYPES.map(t => {
-                const Icon = t.icon
-                return (
-                  <button key={t.value} type="button"
-                    onClick={() => selectType(t.value)}
-                    className={`flex items-center gap-2 p-2.5 rounded-lg border text-xs transition-all ${
-                      form.rule_type === t.value
-                        ? `${RULE_COLORS[t.color]} font-medium`
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon size={14} />
-                    {t.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {(() => {
-            const isAvis = form.rule_type === 'avis_echeance'
-            const isReminder = ['rappel_impaye', 'relance_1', 'relance_2'].includes(form.rule_type)
-            const isEvent = form.rule_type === 'quittance'
-            const isManual = form.rule_type === 'communication_groupee'
-            const isRevision = ['revision_loyer', 'revision_charges'].includes(form.rule_type)
-            const isTaxe = form.rule_type === 'taxe_om'
-            const isRapport = form.rule_type === 'rapport_mensuel'
-            if (isEvent) return (
-              <p className="text-sm text-gray-500">
-                La quittance est envoyée automatiquement dès qu'un mois est intégralement réglé (aucun délai à régler).
-              </p>
-            )
-            if (isManual) return (
-              <p className="text-sm text-gray-500">Communication ponctuelle, déclenchée manuellement (aucun délai).</p>
-            )
-            if (isRevision) return (
-              <p className="text-sm text-gray-500">
-                Envoyé automatiquement au locataire dès qu'une revalorisation {form.rule_type === 'revision_loyer' ? 'du loyer' : 'des charges'} est programmée (aucun délai à régler).
-              </p>
-            )
-            if (isTaxe) return (
-              <p className="text-sm text-gray-500">
-                Envoyé automatiquement au locataire lorsqu'une taxe d'ordures ménagères est déclarée à payer (aucun délai à régler).
-              </p>
-            )
-            if (isRapport) {
-              const day = Math.min(28, Math.max(1, form.trigger_days || 1))
-              return (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jour d'envoi (1 à 28)</label>
-                  <div className="flex items-center gap-3">
-                    <input type="number" min={1} max={28}
-                      className="w-24 border rounded-lg px-3 py-2 text-sm text-center"
-                      value={day}
-                      onChange={e => setForm({ ...form, trigger_days: Math.min(28, Math.max(1, parseInt(e.target.value) || 1)) })} />
-                    <span className="text-sm text-gray-500">Le {day} de chaque mois, sur le mois écoulé.</span>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Envoyé à vous (gestionnaire) ; ajoutez des destinataires en copie via le champ « Cc » ci-dessous.
-                  </p>
-                </div>
-              )
-            }
-            const d = Math.abs(form.trigger_days || 0)
-            const dir = isAvis ? 'avant' : 'après'
-            return (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {isAvis ? "Délai (jours avant l'échéance)" : "Délai (jours après l'échéance)"}
-                </label>
-                <div className="flex items-center gap-3">
-                  <input type="number" min={0} max={60}
-                    className="w-24 border rounded-lg px-3 py-2 text-sm text-center"
-                    value={d}
-                    onChange={e => setForm({ ...form, trigger_days: Math.abs(parseInt(e.target.value) || 0) })} />
-                  <span className="text-sm text-gray-500">
-                    {d === 0 ? "Le jour de l'échéance" : `${d} jour${d > 1 ? 's' : ''} ${dir} l'échéance`}
-                  </span>
-                </div>
-                {isReminder && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Envoyé tant que le loyer reste impayé après ce délai.
-                  </p>
-                )}
-              </div>
-            )
-          })()}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Canal d'envoi</label>
-            <div className="flex gap-2">
-              {CHANNELS.map(ch => {
-                const Icon = ch.icon
-                return (
-                  <button key={ch.value} type="button"
-                    onClick={() => setForm({ ...form, channel: ch.value })}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
-                      form.channel === ch.value
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Icon size={14} />
-                    {ch.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {(form.channel === 'email' || form.channel === 'email_sms') && (
-            <div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700 shrink-0">Adresse :</label>
-                <div className="flex-1 border rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600">
-                  {isGestionnaireRule(form.rule_type)
-                    ? `Vous (gestionnaire)${myEmail ? ` : ${myEmail}` : ''}`
-                    : 'Le(s) locataire(s) concerné(s)'}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <label className="text-sm font-medium text-gray-700 shrink-0">Cc :</label>
-                <input type="email" list="cc-suggestions" inputMode="email" autoComplete="email"
-                  className="flex-1 border rounded-lg px-3 py-2 text-sm"
-                  placeholder="ici l'adresse email"
-                  value={form.cc_emails}
-                  onChange={e => setForm({ ...form, cc_emails: e.target.value })} />
-                <datalist id="cc-suggestions">
-                  {myEmail && <option value={myEmail} />}
-                </datalist>
-              </div>
-              {myEmail && form.cc_emails.trim() !== myEmail && (
-                <div className="mt-1.5">
-                  <button type="button" onClick={() => setForm({ ...form, cc_emails: myEmail })}
-                    className="text-xs text-blue-600 hover:underline">
-                    + Me mettre en copie ({myEmail})
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Signature (service)</label>
-                <input list="signature-suggestions" className="w-full border rounded-lg px-3 py-2 text-sm"
-                  placeholder="ex : Service Gestion Locative"
-                  value={form.signature}
-                  onChange={e => setForm({ ...form, signature: e.target.value })} />
-                <datalist id="signature-suggestions">
-                  <option value={SIGNATURE_GESTION} />
-                  <option value={SIGNATURE_CONTENTIEUX} />
-                </datalist>
-                <p className="text-xs text-gray-400 mt-1">
-                  Affichée en signature de l'e-mail, avec votre logo et la mention d'envoi automatique.
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Objet du message</label>
-            <input className="w-full border rounded-lg px-3 py-2 text-sm"
-              placeholder="ex: Avis d'échéance - {{month}}"
-              value={form.subject}
-              onChange={e => setForm({ ...form, subject: e.target.value })} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Corps du message</label>
-            <p className="text-xs text-gray-400 mb-1">Variables : {'{{'} tenant_name {'}}'}, {'{{'} period {'}}'}, {'{{'} amount {'}}'}, {'{{'} due_date {'}}'}, {'{{'} balance {'}}'}, {'{{'} property_name {'}}'}. La signature, le logo et la mention automatique sont ajoutés sous le message.</p>
-            <textarea rows={5} className="w-full border rounded-lg px-3 py-2 text-sm font-mono text-xs"
-              value={form.body_template}
-              onChange={e => setForm({ ...form, body_template: e.target.value })} />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="active" checked={form.is_active}
-              onChange={e => setForm({ ...form, is_active: e.target.checked })} />
-            <label htmlFor="active" className="text-sm text-gray-700">Règle active</label>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">
-              Annuler
-            </button>
-            <Button type="submit" variant="primary" size="md" disabled={saving} className="flex-1 font-medium">
-              {saving ? 'Sauvegarde...' : 'Enregistrer'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
 
 // ── Onglet Planificateur : calendrier des automatisations ────────────────────
 // Vue consolidée de QUAND chaque document/message part, éditable au même endroit
@@ -535,13 +240,9 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
 export default function Automatisation() {
   const [rules, setRules] = useState<Rule[]>([])
   const [logs, setLogs] = useState<Log[]>([])
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'scheduler' | 'canaux'>('rules')
-  const [showRuleModal, setShowRuleModal] = useState(false)
-  const [editRule, setEditRule] = useState<Rule | null>(null)
 
   const load = async () => {
-    setLoading(true)
     try {
       const [rulesRes, logsRes] = await Promise.all([
         apiClient.get('/automation/rules'),
@@ -550,29 +251,9 @@ export default function Automatisation() {
       setRules(rulesRes.data)
       setLogs(logsRes.data)
     } catch { }
-    setLoading(false)
   }
 
   useEffect(() => { load() }, [])
-
-  const toggleRule = async (id: string) => {
-    try {
-      await apiClient.post(`/automation/rules/${id}/toggle`)
-      load()
-    } catch {
-      // erreur affichée par l'intercepteur (toast)
-    }
-  }
-
-  const deleteRule = async (id: string) => {
-    if (!confirm('Supprimer cette règle ?')) return
-    try {
-      await apiClient.delete(`/automation/rules/${id}`)
-      load()
-    } catch {
-      // erreur affichée par l'intercepteur (toast)
-    }
-  }
 
   const deleteLog = async (id: string) => {
     if (!confirm('Supprimer cette ligne de l\'historique ?')) return
@@ -584,8 +265,6 @@ export default function Automatisation() {
       // erreur affichée par l'intercepteur (toast)
     }
   }
-
-  const getRuleInfo = (type: string) => RULE_TYPES.find(t => t.value === type)
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -666,75 +345,7 @@ export default function Automatisation() {
         ))}
       </div>
 
-      {activeTab === 'rules' && (
-        <div className="space-y-3">
-          {loading ? (
-            <div className="text-center py-8 text-gray-400">Chargement…</div>
-          ) : rules.length === 0 ? (
-            <div className="text-center py-12 bg-white rounded-xl border">
-              <Zap size={48} className="mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500 mb-2">Aucune règle d'automatisation configurée</p>
-              <button
-                onClick={() => { setEditRule(null); setShowRuleModal(true) }}
-                className="text-blue-600 text-sm hover:underline"
-              >
-                Créer votre première règle
-              </button>
-            </div>
-          ) : (
-            rules.map(rule => {
-              const info = getRuleInfo(rule.rule_type)
-              const Icon = info?.icon || Bell
-              return (
-                <div key={rule.id}
-                  className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${!rule.is_active ? 'opacity-60' : ''}`}
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    info ? RULE_COLORS[info.color].replace('border-', '').replace('text-', 'text-') : 'bg-gray-100'
-                  }`}>
-                    <Icon size={18} />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900 text-sm">{rule.name}</p>
-                      {!rule.is_active && (
-                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Inactive</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {info?.label} · {
-                        rule.trigger_days > 0 ? `${rule.trigger_days}j avant` :
-                        rule.trigger_days < 0 ? `${Math.abs(rule.trigger_days)}j après` : 'Le jour J'
-                      } · {CHANNELS.find(c => c.value === rule.channel)?.label}
-                    </p>
-                    {rule.subject && (
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">"{rule.subject}"</p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => toggleRule(rule.id)} title={rule.is_active ? 'Désactiver' : 'Activer'}>
-                      {rule.is_active
-                        ? <ToggleRight size={24} className="text-green-500" />
-                        : <ToggleLeft size={24} className="text-gray-400" />
-                      }
-                    </button>
-                    <button onClick={() => { setEditRule(rule); setShowRuleModal(true) }}
-                      className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg">
-                      <Edit2 size={14} />
-                    </button>
-                    <button onClick={() => deleteRule(rule.id)}
-                      className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      )}
+      {activeTab === 'rules' && <CommunicationLibrary />}
 
       {activeTab === 'logs' && (
         <div className="bg-white rounded-xl border overflow-hidden">
@@ -803,10 +414,6 @@ export default function Automatisation() {
       {/* Onglet Canaux & tests (état e-mail/SMS, test d'envoi, CC gestionnaire) ── */}
       {activeTab === 'canaux' && (
         <NotificationsSettings embedded />
-      )}
-
-      {showRuleModal && (
-        <RuleModal rule={editRule} onClose={() => setShowRuleModal(false)} onSaved={load} />
       )}
     </div>
   )

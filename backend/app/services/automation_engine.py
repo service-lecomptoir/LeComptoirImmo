@@ -43,6 +43,37 @@ def _rule_cc(rule) -> Optional[str]:
     return ", ".join(parts) or None
 
 
+async def _msg_templates(db, rule, tenant_lang: Optional[str] = None):
+    """(subject_tmpl, body_tmpl, sms_tmpl) à utiliser : contenu du modèle de courrier
+    SÉLECTIONNÉ (onglet Communication) dans la langue du locataire si disponible
+    (repli fr), sinon les champs de la règle. Onglet Communication = contenu ;
+    onglet Automatisation = pilotage."""
+    subj = getattr(rule, "subject", None)
+    body = getattr(rule, "body_template", None)
+    sms = getattr(rule, "body_template", None)
+    try:
+        from app.models.message_template import MessageTemplate
+        tpl = (await db.execute(
+            select(MessageTemplate).where(
+                MessageTemplate.gestionnaire_id == rule.created_by,
+                MessageTemplate.rule_type == rule.rule_type,
+                MessageTemplate.is_active.is_(True),
+                MessageTemplate.is_selected.is_(True),
+            ).limit(1)
+        )).scalar_one_or_none()
+        content = getattr(tpl, "content", None) if tpl else None
+        if content:
+            lang = (tenant_lang or "fr")
+            block = content.get(lang) or content.get("fr") or next(iter(content.values()), None)
+            if isinstance(block, dict):
+                subj = (block.get("subject") or "").strip() or subj
+                body = (block.get("body") or "").strip() or body
+                sms = (block.get("sms") or "").strip() or sms
+    except Exception as exc:  # noqa: BLE001 : le modèle ne doit jamais casser l'envoi
+        logger.warning("[automation] modèle de courrier ignoré (%s): %r", getattr(rule, "rule_type", "?"), exc)
+    return subj, body, sms
+
+
 def _render(template: Optional[str], ctx: dict) -> Optional[str]:
     """Remplace les {{variables}} d'un modèle par les valeurs du contexte."""
     if not template:
@@ -332,8 +363,9 @@ async def _send_avis(db, rule, avis, today: date) -> bool:
         "amount": f"{float(avis.amount_total or 0):.2f} €",
         "due_date": avis.due_date.strftime("%d/%m/%Y") if avis.due_date else "",
     }
-    subject = _render(rule.subject, ctx) or f"Avis d'échéance : {period}"
-    sms_text = _render(rule.body_template, ctx) or (
+    _subj_t, _body_t, _sms_t = await _msg_templates(db, rule, getattr(tenant, "language", "fr"))
+    subject = _render(_subj_t, ctx) or f"Avis d'échéance : {period}"
+    sms_text = _render(_sms_t, ctx) or (
         f"Le Comptoir Immo : votre avis d'échéance {period} "
         f"({ctx['amount']}) est disponible. Échéance le {ctx['due_date']}.")
     # Canal piloté par les interrupteurs Automatisation (send_email / send_sms).
@@ -438,15 +470,16 @@ async def _send_reminder(db, rule, payment, today: date) -> bool:
         "due_date": payment.due_date.strftime("%d/%m/%Y") if payment.due_date else "",
         "property_name": (prop.name if prop else ""),
     }
-    subject = _render(rule.subject, ctx) or f"{label} : loyer {ctx['period']}"
+    _subj_t, _body_t, _sms_t = await _msg_templates(db, rule, getattr(tenant, "language", "fr"))
+    subject = _render(_subj_t, ctx) or f"{label} : loyer {ctx['period']}"
     default_body = (
         f"<p>Bonjour {ctx['tenant_name']},</p>"
         f"<p>Sauf erreur de notre part, le loyer de la période "
         f"<strong>{ctx['period']}</strong> reste impayé (solde dû : "
         f"<strong>{ctx['balance']}</strong>).</p>"
         f"<p>Merci de régulariser dans les meilleurs délais.</p>")
-    body_html = render_rule_body(rule.body_template, ctx) or default_body
-    sms_text = (_render(rule.body_template, ctx) if rule.body_template else None) or (
+    body_html = render_rule_body(_body_t, ctx) or default_body
+    sms_text = (_render(_sms_t, ctx) if _sms_t else None) or (
         f"Le Comptoir Immo : {label.lower()}, loyer {ctx['period']} impaye "
         f"(solde {ctx['balance']}). Merci de regulariser.")
     # Canal piloté par les interrupteurs Automatisation (send_email / send_sms).
@@ -568,8 +601,9 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
         "period": payment.period_label,
         "amount": f"{amount:.2f} €",
     }
-    subject = _render(rule.subject, ctx) or f"Quittance de loyer : {ctx['period']}"
-    sms_text = _render(rule.body_template, ctx) or (
+    _subj_t, _body_t, _sms_t = await _msg_templates(db, rule, getattr(tenant, "language", "fr"))
+    subject = _render(_subj_t, ctx) or f"Quittance de loyer : {ctx['period']}"
+    sms_text = _render(_sms_t, ctx) or (
         f"Le Comptoir Immo : votre quittance {ctx['period']} ({ctx['amount']}) est disponible.")
     # Canal piloté par les interrupteurs Automatisation (send_email / send_sms).
     _do_email = bool(getattr(rule, "send_email", True))
@@ -649,8 +683,9 @@ async def _send_event_to_tenant(db, lease, *, rule_type, ctx_extra, dedup_suffix
         "property_name": getattr(getattr(lease, "parent_property", None), "name", "") or "",
         **ctx_extra,
     }
-    subject = render_subject(rule.subject, ctx) or (_DEFAULT_SUBJECTS.get(rule_type) or "")
-    body_html = render_rule_body(rule.body_template, ctx) or _body_to_html(_render(_DEFAULT_BODIES.get(rule_type), ctx))
+    _subj_t, _body_t, _sms_t = await _msg_templates(db, rule, getattr(tenant, "language", "fr"))
+    subject = render_subject(_subj_t, ctx) or (_DEFAULT_SUBJECTS.get(rule_type) or "")
+    body_html = render_rule_body(_body_t, ctx) or _body_to_html(_render(_DEFAULT_BODIES.get(rule_type), ctx))
     any_sent = False
     if do_email:
         from app.services import mail_signature
@@ -665,7 +700,7 @@ async def _send_event_to_tenant(db, lease, *, rule_type, ctx_extra, dedup_suffix
     if do_sms:
         try:
             from app.services.sms_service import send_sms
-            ok = await send_sms(tenant.phone, subject)
+            ok = await send_sms(tenant.phone, (render_subject(_sms_t, ctx) or subject))
             any_sent = any_sent or ok
         except Exception as exc:  # noqa: BLE001
             logger.warning("[automation] SMS événement %s échec lease=%s: %r", rule_type, lease.id, exc)

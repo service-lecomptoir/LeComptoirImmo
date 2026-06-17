@@ -28,6 +28,7 @@ from app.models.signalement import Signalement
 from app.models.signalement_alert import SignalementAlert
 from app.models.rent_revision import RentRevision
 from app.models.taxe_declaration import TaxeDeclaration
+from app.models.message_template import MessageTemplate
 
 __all__ = [
     "User", "Tenant", "Owner", "Property", "Document",
@@ -37,5 +38,5 @@ __all__ = [
     "ProprietaireMessage", "AuditLog", "IrlIndex", "ChargeRegularization",
     "EmailDomain", "TelegramLink", "PublishPlatform", "Listing",
     "Candidature", "LeaseExit", "ApurementPlan", "Signalement", "SignalementAlert",
-    "RentRevision", "TaxeDeclaration",
+    "RentRevision", "TaxeDeclaration", "MessageTemplate",
 ]

@@ -48,6 +48,9 @@ class Tenant(Base, TimestampMixin):
     phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     phone2: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
 
+    # Langue préférée pour les courriers automatiques (fr/en/pt-BR/ht/srn). Repli fr.
+    language: Mapped[str] = mapped_column(String(8), default="fr", nullable=False)
+
     # ── Situation professionnelle ─────────────────────────────────────────────
     employer: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     employer_phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)

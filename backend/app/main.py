@@ -481,6 +481,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE automation_rules ALTER COLUMN auto_deposit SET DEFAULT TRUE",
         "ALTER TABLE automation_rules ALTER COLUMN send_email SET DEFAULT TRUE",
         "ALTER TABLE automation_rules ALTER COLUMN send_sms SET DEFAULT FALSE",
+        # Langue préférée du locataire (courriers automatiques multilingues).
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS language VARCHAR(8) DEFAULT 'fr'",
         # Initialise le CC des règles existantes avec l'e-mail du gestionnaire
         # créateur (une seule fois : ne touche que les NULL ; un CC vidé = '').
         "UPDATE automation_rules SET cc_emails = (SELECT email FROM users WHERE users.id = automation_rules.created_by) "
