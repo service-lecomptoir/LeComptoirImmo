@@ -599,6 +599,9 @@ async def _apply_column_migrations() -> None:
     ]
     try:
         async with engine.begin() as conn:
+            # Même verrou que le seed (741258) : sérialise migrations DDL et seeds
+            # entre workers uvicorn → évite le deadlock create_all/ALTER vs seed.
+            await conn.execute(text("SELECT pg_advisory_xact_lock(741258)"))
             for sql in migrations:
                 await conn.execute(text(sql))
         logger.info("Migrations colonnes appliquées ✓")
