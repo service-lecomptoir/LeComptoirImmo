@@ -383,7 +383,7 @@ export default function AdminUsers() {
                   </td>
                   <td className="px-4 py-3 text-gray-600 text-center">{u.email}</td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[u.role]}`}>
+                    <span className={`inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[u.role]}`}>
                       {ROLE_LABELS[u.role]}
                     </span>
                   </td>
