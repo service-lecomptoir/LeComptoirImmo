@@ -359,16 +359,16 @@ export default function CandidaturesPage() {
                 <tbody>
                   {compare.candidates.map((c, i) => (
                     <tr key={c.id} className={`border-t border-gray-100 ${i === 0 ? 'bg-emerald-50/60' : ''}`}>
-                      <td className="py-2.5 pr-3">
+                      <td className="py-2.5 pr-3 text-center">
                         <span className="font-medium text-gray-900">{c.full_name}</span>
                         {i === 0 && <span className="ml-2 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">Recommandé</span>}
                         <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full ${(STATUS[c.status] ?? STATUS.nouvelle).cls}`}>{(STATUS[c.status] ?? STATUS.nouvelle).label}</span>
                       </td>
-                      <td className="py-2.5 pr-3">{c.monthly_income != null ? `${c.monthly_income.toLocaleString('fr-FR')} €` : '—'}</td>
-                      <td className="py-2.5 pr-3">{pct(c.metrics.effort_ratio)}</td>
-                      <td className="py-2.5 pr-3">{c.metrics.completeness_pct} %</td>
-                      <td className="py-2.5 pr-3">{c.has_guarantor ? 'Oui' : 'Non'}</td>
-                      <td className="py-2.5 font-bold text-gray-900">{c.metrics.score}</td>
+                      <td className="py-2.5 pr-3 text-center">{c.monthly_income != null ? `${c.monthly_income.toLocaleString('fr-FR')} €` : '—'}</td>
+                      <td className="py-2.5 pr-3 text-center">{pct(c.metrics.effort_ratio)}</td>
+                      <td className="py-2.5 pr-3 text-center">{c.metrics.completeness_pct} %</td>
+                      <td className="py-2.5 pr-3 text-center">{c.has_guarantor ? 'Oui' : 'Non'}</td>
+                      <td className="py-2.5 font-bold text-gray-900 text-center">{c.metrics.score}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -87,13 +87,13 @@ export default function DocumentsCaf() {
 
   const renderRow = (l: LeaseListItem) => (
     <tr key={l.id} className="hover:bg-blue-50/40 transition-colors">
-      <td className="px-6 py-4 text-sm font-medium text-gray-900">{l.tenant_full_name}</td>
-      <td className="px-6 py-4 text-sm text-gray-600">{l.property_name}</td>
-      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-        {l.start_date ? new Date(l.start_date).toLocaleDateString('fr-FR') : '—'}
+      <td className="px-6 py-4 text-sm font-medium text-gray-900 text-center">{l.tenant_full_name}</td>
+      <td className="px-6 py-4 text-sm text-gray-600 text-center">{l.property_name}</td>
+      <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap text-center">
+        {l.start_date ? new Date(l.start_date).toLocaleDateString('fr-FR') : '-'}
       </td>
-      <td className="px-6 py-4">
-        <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+      <td className="px-6 py-4 text-center">
+        <div className="flex flex-col items-center sm:flex-row sm:justify-center gap-2">
           <button
             onClick={() => download(l, 'attestation')}
             disabled={downloading === `${l.id}:attestation`}

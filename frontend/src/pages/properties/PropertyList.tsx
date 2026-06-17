@@ -268,14 +268,14 @@ export default function PropertyList() {
       onClick={() => navigate(`/properties/${prop.id}`)}
       className="hover:bg-gray-50 cursor-pointer transition-colors"
     >
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 text-center">
         <StatusBadge
           label={PROPERTY_TYPE_LABELS[prop.property_type] ?? prop.property_type}
           variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
         />
       </td>
-      <td className="px-4 py-3"><span className="font-medium text-gray-900">{prop.name}</span></td>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 text-center"><span className="font-medium text-gray-900">{prop.name}</span></td>
+      <td className="px-4 py-3 text-center">
         {!isMandataire && prop.owner_name ? <span className="text-gray-700 text-xs">{prop.owner_name}</span> : null}
       </td>
       <td className="px-4 py-3 text-center">
@@ -286,7 +286,7 @@ export default function PropertyList() {
         </span>
       </td>
       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-center gap-1">
           <button onClick={() => openEdit(prop.id)}
             className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors" title="Modifier">
             <Pencil size={14} />
@@ -393,7 +393,7 @@ export default function PropertyList() {
                         <Fragment key={owner}>
                           <tr className="bg-gray-50/70 hover:bg-gray-100 cursor-pointer" onClick={() => toggleOwner(owner)}>
                             <td colSpan={5} className="px-4 py-2">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center justify-center gap-2">
                                 {open ? <ChevronDown size={15} className="text-gray-400 shrink-0" /> : <ChevronRight size={15} className="text-gray-400 shrink-0" />}
                                 <KeyRound size={14} className="text-blue-600 shrink-0" />
                                 <span className="text-sm font-semibold text-gray-900">{owner}</span>

@@ -397,7 +397,7 @@ export default function PaymentList() {
               {payments.map(p => (
                 <Fragment key={p.id}>
                 <tr className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 text-center">
                     <button
                       onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
                       className="inline-flex items-center gap-1.5 text-left hover:text-blue-600"
@@ -409,17 +409,17 @@ export default function PaymentList() {
                       {p.tenant_full_name}
                     </button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <div className="text-sm text-gray-900 whitespace-nowrap">{p.property_name}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                  <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap text-center">
                     {p.period_label}
                     {isMultiMonth(p.period_start, p.period_end) && p.period_range_label && (
                       <div className="text-xs text-gray-500">{p.period_range_label}</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(p.amount_due)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-green-700">
+                  <td className="px-4 py-3 text-sm text-center text-gray-900">{fmtEuro(p.amount_due)}</td>
+                  <td className="px-4 py-3 text-sm text-center text-green-700">
                     {fmtEuro(p.amount_paid + (p.amount_on_plan || 0))}
                     {p.credit_applied != null && p.credit_applied > 0 && (
                       <div className="text-[11px] text-blue-500">dont avance {fmtEuro(p.credit_applied)}</div>
@@ -428,7 +428,7 @@ export default function PaymentList() {
                       <div className="text-[11px] text-amber-600">dont {fmtEuro(p.amount_on_plan!)} par apurement</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-right font-semibold">
+                  <td className="px-4 py-3 text-sm text-center font-semibold">
                     {p.balance > 0 ? (
                       <span className="text-red-600">{fmtEuro(p.balance)}</span>
                     ) : p.amount_paid > p.amount_due ? (
@@ -437,7 +437,7 @@ export default function PaymentList() {
                       <span className="text-gray-400"></span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <StatusBadge
                       label={p.settled_by_plan ? 'Soldé (apurement)' : PAYMENT_STATUS_LABELS[p.status]}
                       variant={p.settled_by_plan ? 'green' : PAYMENT_STATUS_VARIANTS[p.status]}
@@ -452,9 +452,9 @@ export default function PaymentList() {
                   </td>
 
                   {/* Colonne quittance : uniquement si le mois est intégralement payé */}
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     {p.status === 'paid' ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         {/* Télécharger (l'envoi est géré par Communication et automatisation) */}
                         <button
                           onClick={() => handleDownloadQuittance(p)}
@@ -477,8 +477,8 @@ export default function PaymentList() {
                   </td>
 
                   {/* Actions */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 justify-end">
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center gap-1 justify-center">
                       {p.declared_at && ['pending', 'partial', 'late'].includes(p.status) && (
                         <>
                           <button
@@ -594,24 +594,24 @@ export default function PaymentList() {
                 const k = `${pl.id}-${inst.seq}`
                 return (
                   <tr key={`apur-${k}`} className="border-b border-gray-50 hover:bg-amber-50/40">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{pl.tenant_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{pl.property_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900 text-center">{pl.tenant_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap text-center">{pl.property_name}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap text-center">
                       Apurement · éch. {inst.seq}
                       <div className="text-xs text-gray-500">{format(new Date(inst.due_date), 'd MMM yyyy', { locale: fr })}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-900">{fmtEuro(inst.amount)}</td>
-                    <td className="px-4 py-3 text-sm text-right text-green-700">{inst.paid ? fmtEuro(inst.amount) : fmtEuro(0)}</td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold">
+                    <td className="px-4 py-3 text-sm text-center text-gray-900">{fmtEuro(inst.amount)}</td>
+                    <td className="px-4 py-3 text-sm text-center text-green-700">{inst.paid ? fmtEuro(inst.amount) : fmtEuro(0)}</td>
+                    <td className="px-4 py-3 text-sm text-center font-semibold">
                       {inst.paid ? <span className="text-gray-400"></span> : <span className="text-red-600">{fmtEuro(inst.amount)}</span>}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       <StatusBadge label={inst.paid ? 'Payé' : "Appel d'apurement"} variant={inst.paid ? 'green' : 'yellow'} dot />
                       {inst.declared && !inst.paid && (
                         <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">Déclaré</div>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       {inst.paid && (
                         <button
                           onClick={() => apurementApi.downloadInstallmentQuittance(pl.id, inst.seq, `quittance_apurement_echeance_${inst.seq}.pdf`)}
@@ -620,8 +620,8 @@ export default function PaymentList() {
                         ><FileDown size={14} /></button>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1 justify-end">
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center gap-1 justify-center">
                         {!inst.paid && (
                           <button
                             onClick={() => validateInst(pl.id, inst.seq)}

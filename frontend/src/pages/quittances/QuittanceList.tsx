@@ -158,13 +158,13 @@ export default function QuittanceList() {
             ) : (
               payments.map(p => (
                 <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{p.tenant_full_name}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap text-center">{p.tenant_full_name}</td>
+                  <td className="px-4 py-3 text-center">
                     <div className="text-sm text-gray-900 whitespace-nowrap">{p.property_name}</div>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">{p.period_label}</td>
-                  <td className="px-4 py-3 text-sm text-right text-gray-900 whitespace-nowrap">{fmtEuro(p.amount_due)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-green-700 font-medium whitespace-nowrap">
+                  <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap text-center">{p.period_label}</td>
+                  <td className="px-4 py-3 text-sm text-center text-gray-900 whitespace-nowrap">{fmtEuro(p.amount_due)}</td>
+                  <td className="px-4 py-3 text-sm text-center text-green-700 font-medium whitespace-nowrap">
                     {/* Payé effectif = règlement direct + part couverte par un plan
                         d'apurement (cohérent avec la quittance PDF). */}
                     {fmtEuro(p.amount_paid + (p.amount_on_plan || 0))}
@@ -176,7 +176,7 @@ export default function QuittanceList() {
                   </td>
 
                   {/* Date de génération de la quittance */}
-                  <td className="px-4 py-3 text-xs whitespace-nowrap">
+                  <td className="px-4 py-3 text-xs whitespace-nowrap text-center">
                     {p.quittance_generated_at ? (
                       <span className="text-blue-600 font-medium">
                         {format(new Date(p.quittance_generated_at), 'd MMM yyyy', { locale: fr })}
@@ -187,8 +187,8 @@ export default function QuittanceList() {
                   </td>
 
                   {/* Action : téléchargement uniquement */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end">
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center">
                       <button
                         onClick={() => handleDownload(p)}
                         disabled={downloadingId === p.id}

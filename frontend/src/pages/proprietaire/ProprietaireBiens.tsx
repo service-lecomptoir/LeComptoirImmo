@@ -266,18 +266,18 @@ export default function ProprietaireBiens() {
                                 key={m.month}
                                 className="text-xs border-b border-gray-100 last:border-0"
                               >
-                                <td className="py-2.5 text-gray-600 font-medium w-10">
+                                <td className="py-2.5 text-gray-600 font-medium w-10 text-center">
                                   {MONTH_LABELS[m.month - 1]}
                                 </td>
-                                <td className="py-2.5 text-right text-gray-500 tabular-nums">
+                                <td className="py-2.5 text-center text-gray-500 tabular-nums">
                                   {fmtEuro(m.expected)}
                                 </td>
-                                <td className={`py-2.5 text-right font-semibold tabular-nums ${
+                                <td className={`py-2.5 text-center font-semibold tabular-nums ${
                                   m.received > 0 ? 'text-green-700' : 'text-gray-300'
                                 }`}>
                                   {m.received > 0 ? fmtEuro(m.received) : ''}
                                 </td>
-                                <td className="py-2.5 text-right">
+                                <td className="py-2.5 text-center">
                                   {ok
                                     ? <CheckCircle2 size={14} className="text-green-500 inline" />
                                     : partial
@@ -294,14 +294,14 @@ export default function ProprietaireBiens() {
                         {/* Total row */}
                         <tfoot>
                           <tr className="text-xs font-bold text-gray-700 border-t-2 border-gray-200">
-                            <td className="pt-2.5 pb-1">Total</td>
-                            <td className="pt-2.5 pb-1 text-right tabular-nums">
+                            <td className="pt-2.5 pb-1 text-center">Total</td>
+                            <td className="pt-2.5 pb-1 text-center tabular-nums">
                               {fmtEuro(perf.ytd_theoretical)}
                             </td>
-                            <td className="pt-2.5 pb-1 text-right text-green-700 tabular-nums">
+                            <td className="pt-2.5 pb-1 text-center text-green-700 tabular-nums">
                               {fmtEuro(perf.ytd_received)}
                             </td>
-                            <td className="pt-2.5 pb-1 text-right">
+                            <td className="pt-2.5 pb-1 text-center">
                               <span className={`font-semibold ${perf.collection_rate >= 90 ? 'text-green-600' : perf.collection_rate >= 65 ? 'text-yellow-600' : 'text-red-500'}`}>
                                 {perf.collection_rate} %
                               </span>

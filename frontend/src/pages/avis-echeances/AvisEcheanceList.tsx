@@ -634,7 +634,7 @@ export default function AvisEcheanceList() {
             <tbody className="divide-y divide-gray-100">
               {avis.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm font-medium text-gray-900">{a.period_label}</p>
                     {isMultiMonth(a.period_start, a.period_end) && a.period_range_label && (
                       <p className="text-xs text-gray-500">{a.period_range_label}</p>
@@ -643,26 +643,26 @@ export default function AvisEcheanceList() {
                       <span className="text-xs text-gray-400">auto</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm font-medium text-gray-900">{a.tenant_full_name}</p>
                     <p className="text-xs text-gray-500">{a.property_name}</p>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm font-semibold text-gray-900">{fmtEuro(a.amount_total)}</p>
                     {a.amount_apl && (
                       <p className="text-xs text-green-600">Aide pers. logement -{fmtEuro(a.amount_apl)}</p>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm text-gray-700">
                       {format(new Date(a.due_date), 'd MMM yyyy', { locale: fr })}
                     </p>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <StatusBadge label={statusLabel(a.status)} variant={statusVariant(a.status)} dot />
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
                       {/* PDF */}
                       <button
                         onClick={() => downloadPdf(a)}

@@ -147,8 +147,8 @@ export default function OwnerList() {
                     onClick={() => navigate(`/owners/${owner.id}`)}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
                         <span className="font-medium text-gray-900">{owner.full_name}</span>
                         {owner.user_id && (
                           <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full" title="Compte propriétaire lié">
@@ -157,11 +157,11 @@ export default function OwnerList() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">
+                    <td className="px-4 py-3 text-gray-500 text-center">
                       {format(new Date(owner.created_at), 'd MMM yyyy', { locale: fr })}
                     </td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => openEdit(owner.id)}
                           className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"

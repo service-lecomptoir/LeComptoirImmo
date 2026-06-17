@@ -105,7 +105,7 @@ export default function ProprietaireRevenus() {
             <tbody className="divide-y divide-gray-100">
               {payments.map((p: any) => (
                 <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm text-gray-900">{p.period_label}</p>
                     {p.payment_date && (
                       <p className="text-xs text-gray-400">
@@ -113,13 +113,13 @@ export default function ProprietaireRevenus() {
                       </p>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm text-gray-900">{p.tenant_full_name ?? ''}</p>
                     <p className="text-xs text-gray-400">{p.property_name ?? ''}</p>
                   </td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-700">{fmtEuro(p.amount_due)}</td>
-                  <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">{fmtEuro(p.amount_paid ?? 0)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center text-sm text-gray-700">{fmtEuro(p.amount_due)}</td>
+                  <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">{fmtEuro(p.amount_paid ?? 0)}</td>
+                  <td className="px-4 py-3 text-center">
                     <StatusBadge
                       label={p.settled_by_plan ? 'Reporté (apurement)' : paymentStatusLabel(p.status)}
                       variant={p.settled_by_plan ? 'blue' : paymentStatusVariant(p.status)}

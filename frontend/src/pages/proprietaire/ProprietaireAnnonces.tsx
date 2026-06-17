@@ -73,18 +73,18 @@ export default function ProprietaireAnnonces() {
                 const st = STATUS[r.status] ?? { label: r.status, cls: 'bg-gray-100 text-gray-600' }
                 return (
                   <tr key={r.property_id} className="hover:bg-blue-50/40 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 text-center">
                       {r.property_name || 'Bien'}
                       {r.title && <span className="block text-xs text-gray-400 font-normal truncate max-w-[260px]">{r.title}</span>}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                    <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap text-center">
                       <span className="inline-flex items-center gap-1.5"><Eye size={13} className="text-gray-400" />{r.views_count}</span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">{fmtDate(r.published_at)}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap text-center">{fmtDate(r.published_at)}</td>
+                    <td className="px-6 py-4 text-center">
                       {r.public_path ? (
                         <a href={`${window.location.origin}${r.public_path}`} target="_blank" rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium whitespace-nowrap">

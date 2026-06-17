@@ -283,11 +283,11 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                 <tbody className="divide-y divide-gray-100">
                   {prestataires.map(p => (
                     <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{p.specialty ?? ''}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{formatPhoneDisplay(p.phone)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{p.email ?? ''}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 text-center">{p.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 text-center">{p.specialty ?? ''}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 text-center">{formatPhoneDisplay(p.phone)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 text-center">{p.email ?? ''}</td>
+                      <td className="px-4 py-3 text-center">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.is_active ? 'text-green-700 bg-green-100' : 'text-gray-500 bg-gray-100'}`}>
                           {p.is_active ? 'Actif' : 'Inactif'}
                         </span>
@@ -418,7 +418,7 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                     const sc = STATUS_CONFIG[e.status] ?? STATUS_CONFIG.planifie
                     return (
                       <tr key={e.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelected(s => s?.id === e.id ? null : e)}>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 text-center">
                           <p className="text-sm font-medium text-gray-900">
                             {e.title}
                             {e.notes?.startsWith('[auto]') && (
@@ -430,19 +430,19 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                           </p>
                           {e.property_label && <p className="text-xs text-gray-400">{e.property_label}</p>}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{TYPE_LABELS[e.type]}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                        <td className="px-4 py-3 text-sm text-gray-600 text-center">{TYPE_LABELS[e.type]}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600 text-center">
                           {format(new Date(e.scheduled_date), 'd MMM yyyy', { locale: fr })}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{e.prestataire_name ?? ''}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{e.cost ? fmtEuro(e.cost) : ''}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 text-sm text-gray-600 text-center">{e.prestataire_name ?? ''}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600 text-center">{e.cost ? fmtEuro(e.cost) : ''}</td>
+                        <td className="px-4 py-3 text-center">
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full"
                             style={{ color: sc.color, background: sc.bg }}>{sc.label}</span>
                         </td>
                         {!readOnly && (
-                          <td className="px-4 py-3">
-                            <div className="flex gap-2" onClick={ev => ev.stopPropagation()}>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex justify-center gap-2" onClick={ev => ev.stopPropagation()}>
                               <button onClick={() => handleEdit(e)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600">
                                 <Pencil size={14} />
                               </button>

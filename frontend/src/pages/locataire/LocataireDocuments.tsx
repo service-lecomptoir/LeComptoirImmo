@@ -429,19 +429,19 @@ export default function LocataireDocuments() {
   // ── Rendu d'une ligne document ────────────────────────────────────────────
   const renderDocRow = (row: DocRow) => (
     <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-      <td className="px-4 py-2.5">
-        <div className="flex items-center gap-2">
+      <td className="px-4 py-2.5 text-center">
+        <div className="flex items-center justify-center gap-2">
           <FileText size={13} className="text-blue-400 shrink-0" />
           <span className="text-sm text-gray-800 truncate max-w-xs">{row.label}</span>
         </div>
       </td>
-      <td className="px-4 py-2.5">
+      <td className="px-4 py-2.5 text-center">
         <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
           {row.typeLabel}
         </span>
       </td>
-      <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">{fmtDate(row.date)}</td>
-      <td className="px-4 py-2.5 text-right">
+      <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap text-center">{fmtDate(row.date)}</td>
+      <td className="px-4 py-2.5 text-center">
         <button
           onClick={row.onDownload}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-blue-600 hover:bg-blue-50 border border-blue-200 transition-colors"

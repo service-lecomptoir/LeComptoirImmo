@@ -334,8 +334,8 @@ export default function LocatairePayer() {
                   const st = STATUT[h.statut]
                   return (
                     <tr key={h.key} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{format(new Date(h.date), 'd MMM yyyy', { locale: fr })}</td>
-                      <td className="px-4 py-3 text-sm text-gray-800">
+                      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap text-center">{format(new Date(h.date), 'd MMM yyyy', { locale: fr })}</td>
+                      <td className="px-4 py-3 text-sm text-gray-800 text-center">
                         <span className="inline-flex items-center gap-2">
                           {h.intitule}
                           {h.payment && (
@@ -351,8 +351,8 @@ export default function LocatairePayer() {
                           )}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-gray-900 whitespace-nowrap">{fmtEuro(h.montant)}</td>
-                      <td className="px-4 py-3"><StatusBadge label={st.label} variant={st.variant} dot /></td>
+                      <td className="px-4 py-3 text-center text-sm font-medium text-gray-900 whitespace-nowrap">{fmtEuro(h.montant)}</td>
+                      <td className="px-4 py-3 text-center"><StatusBadge label={st.label} variant={st.variant} dot /></td>
                     </tr>
                   )
                 })}

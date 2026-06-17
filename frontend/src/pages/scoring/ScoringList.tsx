@@ -236,17 +236,17 @@ export default function ScoringList() {
         <tbody className="divide-y divide-gray-100">
           {items.map(r => (
             <tr key={r.tenant_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelected(r.tenant_id)}>
-              <td className="px-4 py-3"><GradeBadge grade={r.grade} score={r.score} /></td>
-              <td className="px-4 py-3"><p className="text-sm font-medium text-gray-900 whitespace-nowrap">{r.tenant_name}</p></td>
-              <td className="px-4 py-3 text-sm text-gray-500 whitespace-pre-line">{r.property_label ?? '—'}</td>
-              <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{r.effort_rate != null ? `${Math.round(r.effort_rate * 100)}%` : '—'}</td>
-              <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{r.on_time_rate != null ? `${Math.round(r.on_time_rate * 100)}%` : '—'}</td>
-              <td className="px-4 py-3 text-sm">
+              <td className="px-4 py-3 text-center"><GradeBadge grade={r.grade} score={r.score} /></td>
+              <td className="px-4 py-3 text-center"><p className="text-sm font-medium text-gray-900 whitespace-nowrap">{r.tenant_name}</p></td>
+              <td className="px-4 py-3 text-sm text-gray-500 whitespace-pre-line text-center">{r.property_label ?? '—'}</td>
+              <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap text-center">{r.effort_rate != null ? `${Math.round(r.effort_rate * 100)}%` : '—'}</td>
+              <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap text-center">{r.on_time_rate != null ? `${Math.round(r.on_time_rate * 100)}%` : '—'}</td>
+              <td className="px-4 py-3 text-sm text-center">
                 {r.overdue_count > 0
                   ? <span className="text-red-600 font-medium whitespace-nowrap">{r.overdue_count} · {r.outstanding.toLocaleString('fr-FR')} €</span>
                   : <span className="text-gray-400">—</span>}
               </td>
-              <td className="px-4 py-3 text-xs text-gray-500 max-w-[240px]">{r.strategy}</td>
+              <td className="px-4 py-3 text-xs text-gray-500 max-w-[240px] text-center">{r.strategy}</td>
             </tr>
           ))}
         </tbody>

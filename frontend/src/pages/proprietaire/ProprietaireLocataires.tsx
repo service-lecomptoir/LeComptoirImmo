@@ -42,19 +42,19 @@ export default function ProprietaireLocataires() {
             <tbody className="divide-y divide-gray-100">
               {leases.map((l: any) => (
                 <tr key={l.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm font-medium text-gray-900">{l.tenant_full_name}</p>
                     <p className="text-xs text-gray-400">Bail {l.lease_type}</p>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
                       <Home size={13} className="text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-700">{l.property_name}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm font-semibold text-gray-900">
                       {(l.rent_amount + l.charges_amount).toLocaleString('fr-FR', { minimumFractionDigits: 0 })} €
                     </p>
@@ -62,7 +62,7 @@ export default function ProprietaireLocataires() {
                       <p className="text-xs text-green-600">Aide personnelle au logement (tiers-payant)</p>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <p className="text-sm text-gray-700">
                       {l.start_date ? new Date(l.start_date).toLocaleDateString('fr-FR') : ''}
                     </p>

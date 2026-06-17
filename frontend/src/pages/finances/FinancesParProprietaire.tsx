@@ -89,12 +89,12 @@ export default function FinancesParProprietaire({ view }: { view: View }) {
                 <tbody>
                   {fin.revenus.lignes.map((l, i) => (
                     <tr key={i} className="border-t border-gray-100">
-                      <td className="px-3 py-2">{l.period_label}</td>
-                      <td className="px-3 py-2">{l.property_name}</td>
-                      <td className="px-3 py-2">{l.tenant_full_name}</td>
-                      <td className="px-3 py-2 text-right">{fmtEuro(l.amount_due)}</td>
-                      <td className="px-3 py-2 text-right text-green-700">{fmtEuro(l.amount_paid)}</td>
-                      <td className="px-3 py-2"><StatusBadge label={statusLabel(l.status)} variant={statusVariant(l.status)} dot /></td>
+                      <td className="px-3 py-2 text-center">{l.period_label}</td>
+                      <td className="px-3 py-2 text-center">{l.property_name}</td>
+                      <td className="px-3 py-2 text-center">{l.tenant_full_name}</td>
+                      <td className="px-3 py-2 text-center">{fmtEuro(l.amount_due)}</td>
+                      <td className="px-3 py-2 text-center text-green-700">{fmtEuro(l.amount_paid)}</td>
+                      <td className="px-3 py-2 text-center"><StatusBadge label={statusLabel(l.status)} variant={statusVariant(l.status)} dot /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -118,11 +118,11 @@ export default function FinancesParProprietaire({ view }: { view: View }) {
             <tbody>
               {fin.biens.map(b => (
                 <tr key={b.property_id} className="border-t border-gray-100">
-                  <td className="px-3 py-2">{b.property_name}</td>
-                  <td className="px-3 py-2 text-right">{fmtEuro(b.rent + b.charges)}</td>
-                  <td className="px-3 py-2 text-right">{fmtEuro(b.total_du)}</td>
-                  <td className="px-3 py-2 text-right text-green-700">{fmtEuro(b.total_percu)}</td>
-                  <td className="px-3 py-2">{b.is_occupied
+                  <td className="px-3 py-2 text-center">{b.property_name}</td>
+                  <td className="px-3 py-2 text-center">{fmtEuro(b.rent + b.charges)}</td>
+                  <td className="px-3 py-2 text-center">{fmtEuro(b.total_du)}</td>
+                  <td className="px-3 py-2 text-center text-green-700">{fmtEuro(b.total_percu)}</td>
+                  <td className="px-3 py-2 text-center">{b.is_occupied
                     ? <span className="text-xs text-green-700 bg-green-50 rounded-full px-2 py-0.5">Loué</span>
                     : <span className="text-xs text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">Vacant</span>}</td>
                 </tr>

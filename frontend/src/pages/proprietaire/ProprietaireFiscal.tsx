@@ -267,9 +267,9 @@ export default function ProprietaireFiscal() {
                     <tbody className="divide-y">
                       {data.properties.map(p => (
                         <tr key={p.property_id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-900">{p.property_name}</td>
-                          <td className="px-4 py-3 text-gray-500 text-xs">{p.address}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-gray-900">{fmtEur(p.annual_rent)}</td>
+                          <td className="px-4 py-3 font-medium text-gray-900 text-center">{p.property_name}</td>
+                          <td className="px-4 py-3 text-gray-500 text-xs text-center">{p.address}</td>
+                          <td className="px-4 py-3 text-center font-semibold text-gray-900">{fmtEur(p.annual_rent)}</td>
                           <td className="px-4 py-3 text-center">
                             <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
                               {p.active_leases}
@@ -281,7 +281,7 @@ export default function ProprietaireFiscal() {
                     <tfoot className="bg-gray-50 border-t">
                       <tr>
                         <td colSpan={2} className="px-4 py-3 font-bold text-gray-900">Total</td>
-                        <td className="px-4 py-3 text-right font-bold text-blue-700">{fmtEur(data.gross_rent_revenue)}</td>
+                        <td className="px-4 py-3 text-center font-bold text-blue-700">{fmtEur(data.gross_rent_revenue)}</td>
                         <td />
                       </tr>
                     </tfoot>

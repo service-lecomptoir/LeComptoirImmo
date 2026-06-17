@@ -40,17 +40,17 @@ function LedgerTable({ items, showOwner }: { items: Entry[]; showOwner: boolean 
             <tr><td colSpan={cols} className="px-4 py-6 text-center text-sm text-gray-400">Aucune transaction</td></tr>
           ) : items.map((e, i) => (
             <tr key={i} className="hover:bg-gray-50">
-              <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+              <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap text-center">
                 {e.date ? format(new Date(e.date), 'd MMM yyyy', { locale: fr }) : '·'}
               </td>
-              <td className="px-4 py-3 text-sm text-gray-800">
+              <td className="px-4 py-3 text-sm text-gray-800 text-center">
                 {e.logement}
                 {e.logement_ref && <span className="ml-1 text-xs text-gray-400 font-mono">{e.logement_ref}</span>}
               </td>
-              {showOwner && <td className="px-4 py-3 text-sm text-gray-600">{e.proprietaire || '·'}</td>}
-              <td className="px-4 py-3 text-sm text-gray-600">{e.locataire || '·'}</td>
-              <td className="px-4 py-3 text-sm text-gray-800">{e.intitule}</td>
-              <td className={`px-4 py-3 text-right text-sm font-medium whitespace-nowrap ${e.sign === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+              {showOwner && <td className="px-4 py-3 text-sm text-gray-600 text-center">{e.proprietaire || '·'}</td>}
+              <td className="px-4 py-3 text-sm text-gray-600 text-center">{e.locataire || '·'}</td>
+              <td className="px-4 py-3 text-sm text-gray-800 text-center">{e.intitule}</td>
+              <td className={`px-4 py-3 text-center text-sm font-medium whitespace-nowrap ${e.sign === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
                 {e.sign === 'credit' ? `+ ${fmtEuro(e.montant)}` : `− ${fmtEuro(e.montant)}`}
               </td>
             </tr>

@@ -366,18 +366,18 @@ export default function Automatisation() {
               <tbody className="divide-y">
                 {logs.map(log => (
                   <tr key={log.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-xs text-gray-500">
+                    <td className="px-4 py-3 text-xs text-gray-500 text-center">
                       {new Date(log.sent_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       <span className="flex items-center gap-1 text-xs">
                         {log.channel === 'email' ? <Mail size={12} /> : <MessageSquare size={12} />}
                         {log.channel}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-600">{log.recipient}</td>
-                    <td className="px-4 py-3 text-xs text-gray-600 max-w-xs truncate">{log.subject}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-xs text-gray-600 text-center">{log.recipient}</td>
+                    <td className="px-4 py-3 text-xs text-gray-600 max-w-xs truncate text-center">{log.subject}</td>
+                    <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
                         log.status === 'sent' ? 'bg-green-100 text-green-700' :
                         log.status === 'simulated' ? 'bg-blue-100 text-blue-700' :
@@ -387,7 +387,7 @@ export default function Automatisation() {
                         {log.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-center">
                       <button onClick={() => deleteLog(log.id)} title="Supprimer cette ligne"
                         className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
                         <Trash2 size={14} />

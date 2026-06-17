@@ -366,7 +366,7 @@ export default function AdminUsers() {
             <tbody className="divide-y divide-gray-100">
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                         <span className="text-blue-700 text-xs font-semibold">
@@ -381,13 +381,13 @@ export default function AdminUsers() {
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-gray-600 text-center">{u.email}</td>
+                  <td className="px-4 py-3 text-center">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLORS[u.role]}`}>
                       {ROLE_LABELS[u.role]}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                         u.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
@@ -400,15 +400,15 @@ export default function AdminUsers() {
                       )}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-center">
                     <span className={u.last_login_at ? '' : 'text-gray-400 italic'}>{formatLastLogin(u.last_login_at)}</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{formatDate(u.created_at)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-gray-500 text-center">{formatDate(u.created_at)}</td>
+                  <td className="px-4 py-3 text-center">
                     {/* Actions alignées à gauche → chaque icône (envoyer, modifier)
                         se place sous celle des autres lignes ; la corbeille (à droite)
                         n'apparaît que si la suppression est possible (pas son propre compte). */}
-                    <div className="flex items-center justify-start gap-1">
+                    <div className="flex items-center justify-center gap-1">
                       <button
                         onClick={() => sendCredentials(u)}
                         disabled={sendingCredsId === u.id || !u.email}

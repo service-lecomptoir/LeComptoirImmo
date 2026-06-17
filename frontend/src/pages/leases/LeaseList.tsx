@@ -150,17 +150,17 @@ export default function LeaseList() {
                     onClick={() => navigate(`/leases/${lease.id}`)}
                     className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       <span className="text-sm font-medium text-gray-900">{lease.tenant_full_name}</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       <div className="text-sm text-gray-900">{lease.property_name}</div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       <span className="text-xs text-gray-600">{LEASE_TYPE_LABELS[lease.lease_type]}</span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{fmtDate(lease.start_date)}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-sm text-gray-700 text-center">{fmtDate(lease.start_date)}</td>
+                    <td className="px-4 py-3 text-center">
                       <span className="text-sm font-semibold text-gray-900">
                         {fmtEuro(lease.rent_amount + lease.charges_amount)}
                       </span>
@@ -168,7 +168,7 @@ export default function LeaseList() {
                         <div className="text-xs text-green-600">Tiers-payant CAF</div>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 text-center">
                       <StatusBadge
                         label={lease.is_active ? 'Actif' : 'Résilié'}
                         variant={lease.is_active ? 'green' : 'gray'}
