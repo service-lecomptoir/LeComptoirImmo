@@ -30,6 +30,16 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("SELECT 1"))
     logger.info("PostgreSQL OK")
 
+    # ── Sérialisation de TOUTE l'initialisation entre workers uvicorn ──────────
+    # Un seul worker exécute create_all + migrations + seeds + fixups à la fois
+    # (verrou de session Postgres tenu pendant tout l'init) : aucun deadlock DDL/seed
+    # ni doublon. Les autres workers attendent puis ré-exécutent (tout est idempotent).
+    _init_lock_conn = await engine.connect()
+    try:
+        await _init_lock_conn.execute(text("SELECT pg_advisory_lock(741258)"))
+    except Exception as _exc:  # noqa: BLE001 : ne jamais bloquer le démarrage
+        logger.warning(f"Verrou d'initialisation indisponible : {_exc!r}")
+
     # ── Création des tables manquantes (idempotent) ───────────────────────────
     try:
         import app.models  # noqa : importe tous les modèles pour que Base.metadata les connaisse
@@ -61,10 +71,7 @@ async def lifespan(app: FastAPI):
             backfill_all_managers, refresh_default_bodies,
         )
         async with AsyncSessionLocal() as _db:
-            # Même verrou (741258) que les migrations et le seed automatisation :
-            # tous les blocs DDL/seed du boot sont mutuellement exclusifs entre
-            # workers uvicorn (évite doublons ET deadlock document_templates/users).
-            await _db.execute(_text("SELECT pg_advisory_xact_lock(741258)"))
+            # (Sérialisation assurée par le verrou d'init global au démarrage.)
             # Purge des doublons de modèles PAR DÉFAUT (garde le plus ancien par
             # gestionnaire + type), sans toucher aux modèles personnalisés.
             await _db.execute(_text(
@@ -100,10 +107,7 @@ async def lifespan(app: FastAPI):
         from sqlalchemy import text as _text
         from app.services.automation_engine import backfill_default_rules, backfill_default_content, backfill_rule_types
         async with AsyncSessionLocal() as _db:
-            # Plusieurs workers uvicorn exécutent ce backfill au boot. On sérialise
-            # avec un verrou transactionnel Postgres pour éviter que deux workers
-            # insèrent en même temps les mêmes règles (sinon doublons).
-            await _db.execute(_text("SELECT pg_advisory_xact_lock(741258)"))
+            # (Sérialisation assurée par le verrou d'init global au démarrage.)
             # Nettoyage des doublons des nouveaux types déjà créés par une course
             # multi-workers (garde le plus ancien par gestionnaire + type).
             await _db.execute(_text(
@@ -173,6 +177,14 @@ async def lifespan(app: FastAPI):
         avis_day=avis_day, avis_hour=avis_hour, avis_minute=avis_minute,
         reminder_hour=rem_hour, reminder_minute=rem_minute,
     )
+
+    # Libère le verrou d'initialisation (les autres workers peuvent démarrer).
+    try:
+        await _init_lock_conn.execute(text("SELECT pg_advisory_unlock(741258)"))
+    except Exception:  # noqa: BLE001
+        pass
+    finally:
+        await _init_lock_conn.close()
 
     logger.info("Application prête ✓")
     yield
@@ -600,9 +612,7 @@ async def _apply_column_migrations() -> None:
     ]
     try:
         async with engine.begin() as conn:
-            # Même verrou que le seed (741258) : sérialise migrations DDL et seeds
-            # entre workers uvicorn → évite le deadlock create_all/ALTER vs seed.
-            await conn.execute(text("SELECT pg_advisory_xact_lock(741258)"))
+            # (Sérialisation assurée par le verrou d'init global au démarrage.)
             for sql in migrations:
                 await conn.execute(text(sql))
         logger.info("Migrations colonnes appliquées ✓")
