@@ -4,10 +4,9 @@ import { toast } from '@/store/toast'
 import {
   Zap, Trash2, ToggleLeft, ToggleRight,
   Mail, MessageSquare, Bell, Calendar,
-  CheckCircle, Clock, AlertTriangle, Users, RefreshCw,
+  CheckCircle, Clock, AlertTriangle, Users, RefreshCw, Play,
 } from 'lucide-react'
 import NotificationsSettings from '@/pages/settings/NotificationsSettings'
-import { Button } from '@/components/ui'
 import CommunicationLibrary from './CommunicationLibrary'
 
 const RULE_TYPES = [
@@ -177,10 +176,12 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
       <td className={`${td} text-sm text-gray-600 whitespace-nowrap`}>{lastRun}</td>
       <td className={`${td} text-right`}>
         {scheduled
-          ? <Button size="sm" variant="secondary" onClick={runNow} disabled={busy}>
-              <RefreshCw size={12} className={busy ? 'animate-spin' : ''} />
-              Exécuter
-            </Button>
+          ? <button type="button" onClick={runNow} disabled={busy}
+              title="Démarrer maintenant"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50">
+              <Play size={13} className={busy ? 'animate-pulse' : ''} fill="currentColor" />
+              {busy ? '…' : 'Start'}
+            </button>
           : <span className="text-sm text-gray-400">—</span>}
       </td>
     </tr>
@@ -196,7 +197,7 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-2">
         <Calendar size={18} className="text-blue-600" />
-        <h2 className="text-base font-bold text-gray-900">Automatisation des documents</h2>
+        <h2 className="text-base font-bold text-gray-900">Tâche programmée</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
         Pour chaque document, activez ou non : <strong>Générer</strong> (automatiser),
@@ -209,8 +210,8 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
       {items.length === 0 ? (
         <p className="text-sm text-gray-400">Aucune automatisation configurée.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px]">
+        <div>
+          <table className="w-full table-auto text-sm">
             <thead className="bg-gray-50 border-y border-gray-100">
               <tr>
                 <th className={th}>Document</th>
@@ -276,14 +277,14 @@ export default function Automatisation() {
         </div>
       </div>
 
-      {/* Bandeau : les règles pilotent réellement les envois */}
+      {/* Bandeau : les tâches programmées pilotent les envois automatiques */}
       <div className="mb-6 flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100 text-sm text-blue-800">
         <Zap size={16} className="text-blue-600 shrink-0 mt-0.5" />
         <p>
-          Ces règles pilotent <strong>tous les envois automatiques</strong> aux locataires (e-mail / SMS).
-          Les avis sont envoyés selon le délai <em>avant</em> l'échéance ; les rappels et relances, selon le délai
-          <em> après</em> l'échéance tant que le loyer reste impayé ; la quittance part dès qu'un mois est soldé.
-          Le contrôle quotidien est automatique ; « Exécuter maintenant » force un passage immédiat.
+          Les <strong>tâches programmées</strong> pilotent tous les envois automatiques aux locataires (e-mail / SMS).
+          Les avis partent selon le délai <em>avant</em> l'échéance ; les rappels et relances, selon le délai
+          <em> après</em> l'échéance tant que le loyer reste impayé ; la quittance dès qu'un mois est soldé.
+          Le contrôle est automatique ; le bouton « Start » force un passage immédiat.
         </p>
       </div>
 
@@ -296,7 +297,7 @@ export default function Automatisation() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{rules.filter(r => r.is_active).length}</p>
-              <p className="text-xs text-gray-500">Règles actives</p>
+              <p className="text-xs text-gray-500">Tâches actives</p>
             </div>
           </div>
         </div>
@@ -307,7 +308,7 @@ export default function Automatisation() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">{rules.length}</p>
-              <p className="text-xs text-gray-500">Règles totales</p>
+              <p className="text-xs text-gray-500">Tâches totales</p>
             </div>
           </div>
         </div>
@@ -405,7 +406,7 @@ export default function Automatisation() {
 
       {/* Onglet Planificateur ─────────────────────────────────────────── */}
       {activeTab === 'scheduler' && (
-        <div className="max-w-3xl space-y-6">
+        <div className="space-y-6">
           {/* Calendrier : génération + dépôt de chaque document, heure & exécution */}
           <AutomationPlanning rules={rules} onSaved={load} />
         </div>
