@@ -68,6 +68,31 @@ export const paymentsApi = {
     apiClient.post<{ id: string; quittance_generated_at: string; quittance_sent_at: string }>(
       `/payments/${id}/quittance/send`
     ),
+
+  // ── Documents générés à la volée, côté locataire ──────────────────────────
+  locataireRegularizations: () =>
+    apiClient.get<Array<{ id: string; period_start: string | null; period_end: string | null; balance: number; applied_at: string | null }>>(
+      '/payments/locataire/regularizations'
+    ),
+
+  downloadRegularizationPdf: async (regId: string, filename: string) => {
+    const response = await apiClient.get(`/payments/locataire/regularizations/${regId}/pdf`, {
+      responseType: 'blob',
+    })
+    downloadBlob(response.data, filename)
+  },
+
+  locataireRevisions: () =>
+    apiClient.get<Array<{ lease_id: string; property_name: string | null; last_revision_date: string | null }>>(
+      '/payments/locataire/revisions'
+    ),
+
+  downloadRevisionPdf: async (leaseId: string, filename: string) => {
+    const response = await apiClient.get(`/payments/locataire/revisions/${leaseId}/pdf`, {
+      responseType: 'blob',
+    })
+    downloadBlob(response.data, filename)
+  },
 }
 
 export const lettersApi = {

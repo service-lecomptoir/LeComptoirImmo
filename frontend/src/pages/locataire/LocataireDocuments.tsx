@@ -170,6 +170,8 @@ export default function LocataireDocuments() {
   const [leases, setLeases] = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
   const [avis, setAvis] = useState<any[]>([])
+  const [regularizations, setRegularizations] = useState<any[]>([])
+  const [revisions, setRevisions] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   // Toutes les catégories repliées par défaut (l'utilisateur déplie au besoin).
   const [collapsed, setCollapsed] = useState<Set<CategoryKey>>(
@@ -204,11 +206,13 @@ export default function LocataireDocuments() {
   // soient disponibles au bon endroit (« Mes documents »).
   const loadAll = async () => {
     setIsLoading(true)
-    const [, leasesR, paymentsR, avisR] = await Promise.allSettled([
+    const [, leasesR, paymentsR, avisR, regulR, revR] = await Promise.allSettled([
       loadDocs(),
       leasesApi.list({ limit: 50 }),
       paymentsApi.list({ limit: 200 }),
       avisEcheancesApi.list({ limit: 200 }),
+      paymentsApi.locataireRegularizations(),
+      paymentsApi.locataireRevisions(),
     ])
     if (leasesR.status === 'fulfilled') {
       const d: any = leasesR.value.data
@@ -219,6 +223,8 @@ export default function LocataireDocuments() {
       setPayments(d?.items ?? d ?? [])
     }
     if (avisR.status === 'fulfilled') setAvis(avisR.value.data ?? [])
+    if (regulR.status === 'fulfilled') setRegularizations(regulR.value.data ?? [])
+    if (revR.status === 'fulfilled') setRevisions(revR.value.data ?? [])
     setIsLoading(false)
   }
 
@@ -311,6 +317,30 @@ export default function LocataireDocuments() {
         date: a.created_at,
         onDownload: () => downloadAvis(a),
       }))
+    }
+    if (cat.key === 'regularisation_charges') {
+      const virtual = regularizations.map((r: any) => ({
+        id: `regul-${r.id}`,
+        label: `Décompte de régularisation${r.period_end ? ' : ' + format(new Date(r.period_end), 'yyyy', { locale: fr }) : ''}`,
+        typeLabel: 'Régularisation de charges',
+        date: r.applied_at || r.period_end,
+        onDownload: () => paymentsApi.downloadRegularizationPdf(
+          r.id, docFilename('regularisation_charges', { year: r.period_end ? new Date(r.period_end).getFullYear() : undefined }),
+        ),
+      }))
+      return [...virtual, ...stored]
+    }
+    if (cat.key === 'revision_loyer') {
+      const virtual = revisions.map((rv: any) => ({
+        id: `rev-${rv.lease_id}`,
+        label: `Avis de révision de loyer (IRL)${rv.property_name ? ' : ' + rv.property_name : ''}`,
+        typeLabel: 'Révision de loyer',
+        date: rv.last_revision_date,
+        onDownload: () => paymentsApi.downloadRevisionPdf(
+          rv.lease_id, docFilename('revision_loyer', { property: rv.property_name }),
+        ),
+      }))
+      return [...virtual, ...stored]
     }
     return stored
   }

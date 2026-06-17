@@ -170,6 +170,80 @@ async def locataire_regularizations(
     } for r in regs]
 
 
+async def _current_tenant(db: AsyncSession, current_user: User):
+    from sqlalchemy import select
+    from app.models.tenant import Tenant
+    return (await db.execute(
+        select(Tenant).where(Tenant.user_id == current_user.id)
+    )).scalar_one_or_none()
+
+
+@router.get("/locataire/regularizations/{reg_id}/pdf", summary="Décompte de régularisation (locataire)")
+async def locataire_regularization_pdf(
+    reg_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Décompte de régularisation de charges du locataire (généré à la volée)."""
+    from app.core.exceptions import NotFoundException
+    from app.models.charge_regularization import ChargeRegularization
+    tenant = await _current_tenant(db, current_user)
+    reg = await db.get(ChargeRegularization, reg_id) if tenant else None
+    if reg is None or reg.tenant_id != tenant.id:
+        raise NotFoundException("Régularisation introuvable")
+    from app.services.document_blocks_pdf_service import ChargeRegularizationPDFService
+    pdf = await ChargeRegularizationPDFService.generate(db, reg)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="regularisation-charges-{reg_id}.pdf"'})
+
+
+@router.get("/locataire/revisions", summary="Révisions de loyer IRL (locataire)")
+async def locataire_revisions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Baux du locataire éligibles à un avis de révision de loyer IRL (indice
+    de référence configuré). Une ligne par bail, document généré à la volée."""
+    from sqlalchemy import select
+    from app.models.lease import Lease
+    from app.models.property import Property
+    tenant = await _current_tenant(db, current_user)
+    if not tenant:
+        return []
+    leases = (await db.execute(
+        select(Lease).where(Lease.tenant_id == tenant.id,
+                            Lease.irl_base_index.isnot(None))
+    )).scalars().all()
+    out = []
+    for l in leases:
+        prop = await db.get(Property, l.property_id) if l.property_id else None
+        out.append({
+            "lease_id": str(l.id),
+            "property_name": getattr(prop, "name", None),
+            "last_revision_date": l.last_revision_date.isoformat() if l.last_revision_date else None,
+        })
+    return out
+
+
+@router.get("/locataire/revisions/{lease_id}/pdf", summary="Avis de révision IRL (locataire)")
+async def locataire_revision_pdf(
+    lease_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Avis de révision de loyer IRL du locataire (généré à la volée)."""
+    from app.core.exceptions import NotFoundException
+    from app.models.lease import Lease
+    tenant = await _current_tenant(db, current_user)
+    lease = await db.get(Lease, lease_id) if tenant else None
+    if lease is None or lease.tenant_id != tenant.id:
+        raise NotFoundException("Bail introuvable")
+    from app.services.document_blocks_pdf_service import RevisionLoyerPDFService
+    pdf = await RevisionLoyerPDFService.generate(db, lease)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="revision-loyer-{lease_id}.pdf"'})
+
+
 @router.post("/locataire/declare", status_code=201, summary="Déclarer un paiement (locataire)")
 async def locataire_declare_payment(
     data: dict,
