@@ -681,7 +681,7 @@ _MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin",
 
 async def _manager_stats_vars(db, manager_id, year: int, month: int) -> dict:
     """Statistiques du mois (chaînes formatées) : source unique pour le corps de
-    l'e-mail ET le PDF « Rapport de gestion » de la papeterie."""
+    l'e-mail ET le PDF « Rapport de gestion » de l'atelier de documents."""
     v = {
         "period": f"{_MONTHS_FR[month]} {year}",
         "stat_due": "—", "stat_paid": "—", "stat_taux": "—", "stat_unpaid": "—",
@@ -774,7 +774,7 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
     from app.services import mail_signature
     from app.services.email_service import send_email
     sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
-    # Rapport joint en PDF via le modèle « Rapport de gestion » de la papeterie
+    # Rapport joint en PDF via le modèle « Rapport de gestion » de l'atelier de documents
     # (éditable dans les ateliers de modèles). Fail-soft.
     pdf_bytes = pdf_name = None
     try:

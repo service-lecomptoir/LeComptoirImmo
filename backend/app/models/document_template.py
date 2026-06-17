@@ -18,14 +18,14 @@ class TemplateType(str, Enum):
     LETTRE_RELANCE = "lettre_relance"
     PLAN_APUREMENT = "plan_apurement"
     RAPPORT_GESTION = "rapport_gestion"
-    # Types historiques (plus proposés dans la papeterie, conservés pour compat).
+    # Types historiques (plus proposés dans l'atelier de documents, conservés pour compat).
     LETTRE_RESILIATION = "lettre_resiliation"
     CONTRAT_BAIL = "contrat_bail"
     ETAT_DES_LIEUX = "etat_des_lieux"
 
 
-# Ordre d'affichage dans « Ma papeterie » + liste des types proposés.
-PAPETERIE_ORDER = [
+# Ordre d'affichage dans « Atelier de documents » + liste des types proposés.
+ATELIER_ORDER = [
     TemplateType.AVIS_ECHEANCE.value,
     TemplateType.LETTRE_RELANCE.value,
     TemplateType.PLAN_APUREMENT.value,
@@ -61,7 +61,7 @@ class DocumentTemplate(Base, TimestampMixin):
     content_html: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     footer_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Éditeur par blocs (avis d'échéance et autres documents de la papeterie) :
+    # Éditeur par blocs (avis d'échéance et autres documents de l'atelier) :
     # liste ordonnée de blocs réordonnables + thème (palette/police). NULL = pas
     # encore migré → on retombe sur le rendu HTML classique (content_html).
     blocks: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)

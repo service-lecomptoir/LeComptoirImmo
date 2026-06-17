@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Génération par BLOCS (mise en page moderne) des documents de la papeterie autres que
+"""Génération par BLOCS (mise en page moderne) des documents de l'atelier autres que
 l'avis d'échéance : quittance, régularisation de charges, révision de loyer,
 décompte de taxes foncières. Réutilise le moteur de blocs et le thème.
 """
@@ -200,7 +200,7 @@ class RapportGestionPDFService:
     @staticmethod
     async def generate(db: AsyncSession, manager_id, year: int, month: int) -> bytes:
         """Rapport mensuel de gestion (réservé gestionnaire) via le modèle de la
-        papeterie « rapport_gestion ». Les statistiques viennent d'automation_engine."""
+        atelier de documents « rapport_gestion ». Les statistiques viennent d'automation_engine."""
         from app.services.automation_engine import _manager_stats_vars
         v = await _manager_stats_vars(db, manager_id, year, month)
         v["today_date"] = _fr_date(_date.today())

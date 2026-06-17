@@ -71,7 +71,7 @@ class User(Base, TimestampMixin):
     signature_mode: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     signature_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     signature_font: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    # « Ma papeterie » : variables épinglées par l'utilisateur, par type de document.
+    # « Atelier de documents » : variables épinglées par l'utilisateur, par type de document.
     # Forme : { "<template_type>": ["{{var}}", …], … }. Null/absent = aucune épingle.
     template_pinned_vars: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 

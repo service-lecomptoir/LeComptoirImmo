@@ -54,9 +54,9 @@ async def list_templates(
     q = q.where(DocumentTemplate.is_active.is_(True))
     result = await db.execute(q)
     items = list(result.scalars().all())
-    # Ne garder que les types proposés dans la papeterie, dans l'ordre voulu.
-    from app.models.document_template import PAPETERIE_ORDER
-    order = {t: i for i, t in enumerate(PAPETERIE_ORDER)}
+    # Ne garder que les types proposés dans l'atelier de documents, dans l'ordre voulu.
+    from app.models.document_template import ATELIER_ORDER
+    order = {t: i for i, t in enumerate(ATELIER_ORDER)}
     items = [t for t in items if t.template_type in order]
     items.sort(key=lambda t: (order[t.template_type], t.name))
     return items

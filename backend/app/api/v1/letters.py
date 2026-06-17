@@ -112,7 +112,7 @@ async def lettre_relance(
         "signature_uri": (getattr(current_user, "signature", None) or ""),
     }
 
-    # Modèle de la papeterie (blocs / thème Foncia) en priorité ; repli .j2 sinon.
+    # Modèle de l'atelier de documents (blocs / thème) en priorité ; repli .j2 sinon.
     html = await render_relance_html(db, payment)
     if not html:
         html = render_template("lettre_relance.html.j2", ctx)

@@ -222,7 +222,7 @@ def civility_greeting(tenant) -> str:
 
 
 async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
-    """Rend la lettre de relance via le template « lettre_relance » de la papeterie
+    """Rend la lettre de relance via le template « lettre_relance » de l'atelier de documents
     (modèle par blocs / thème Foncia) du gestionnaire, en réutilisant le moteur de
     blocs commun à tous les documents. Retourne None si aucun template par blocs
     n'est disponible (→ l'appelant retombe sur le modèle .j2 historique)."""

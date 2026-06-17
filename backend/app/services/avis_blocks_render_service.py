@@ -161,7 +161,7 @@ def default_avis_blocks() -> list[dict]:
     ]
 
 
-# ── Blocs communs (réutilisés par tous les documents de la papeterie) ────────
+# ── Blocs communs (réutilisés par tous les documents de l'atelier) ───────────
 def _common_sidebar() -> dict:
     return {"id": "sidebar", "type": "sidebar", "enabled": True, "props": {
         "sections": [
@@ -215,7 +215,7 @@ def _greeting(intro: str, salutation: str = "{{civility_greeting}},") -> dict:
 
 
 def default_blocks(template_type: str) -> Optional[list[dict]]:
-    """Blocs par défaut selon le type de document de la papeterie."""
+    """Blocs par défaut selon le type de document de l'atelier."""
     if template_type == "avis_echeance":
         return default_avis_blocks()
 

@@ -108,7 +108,7 @@ DEFAULT_TEMPLATES = {
     },
 }
 
-# Types de documents retirés de la papeterie (désactivés au démarrage).
+# Types de documents retirés de l'atelier de documents (désactivés au démarrage).
 _RETIRED_TYPES = [
     TemplateType.LETTRE_RESILIATION.value,
     TemplateType.CONTRAT_BAIL.value, TemplateType.ETAT_DES_LIEUX.value,

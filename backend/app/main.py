@@ -428,7 +428,7 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(120)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(80)",
-        # « Ma papeterie » : variables épinglées par type de document (préférence compte).
+        # « Atelier de documents » : variables épinglées par type de document (préférence compte).
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS template_pinned_vars JSONB",
         # Identité du bailleur sur le compte gestionnaire : société/SCI + SIRET/N° pièce.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_company VARCHAR(200)",
@@ -508,7 +508,7 @@ async def _apply_column_migrations() -> None:
         "DROP TABLE IF EXISTS units",
         # Complément d'adresse du bien (ligne 1 des documents : « APPART 11 »…)
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS address2 VARCHAR(200)",
-        # ── Éditeur « Ma papeterie » par blocs (avis d'échéance, mise en page moderne) ────
+        # ── Éditeur « Atelier de documents » par blocs (avis d'échéance, mise en page moderne) ────
         "ALTER TABLE document_templates ADD COLUMN IF NOT EXISTS blocks JSONB",
         "ALTER TABLE document_templates ADD COLUMN IF NOT EXISTS theme JSONB",
         # Logo du gestionnaire (profil « Mes informations »)

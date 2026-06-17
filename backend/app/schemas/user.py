@@ -37,7 +37,7 @@ class UserUpdate(BaseModel):
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
-    # « Ma papeterie » : variables épinglées par type de document.
+    # « Atelier de documents » : variables épinglées par type de document.
     template_pinned_vars: Optional[dict] = None
     # Signature numérique (data-URL PNG) apposée sur les documents générés.
     signature: Optional[str] = None
@@ -61,7 +61,7 @@ class ProfileUpdate(BaseModel):
     owner_full_name: Optional[str] = None
     owner_company: Optional[str] = None
     owner_national_id: Optional[str] = None
-    # « Ma papeterie » : variables épinglées par type de document.
+    # « Atelier de documents » : variables épinglées par type de document.
     template_pinned_vars: Optional[dict] = None
 
 
