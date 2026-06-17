@@ -755,8 +755,25 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
     from app.services import mail_signature
     from app.services.email_service import send_email
     sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
+    # Rapport joint en PDF (même contenu que le corps de l'e-mail). Fail-soft.
+    pdf_bytes = pdf_name = None
+    try:
+        from app.services.pdf_service import html_to_pdf
+        pdf_html = (
+            "<html><head><meta charset='utf-8'><style>"
+            "body{font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#1a1a1a;}"
+            "h1{font-size:16px;color:#0D2F5C;} h2,h3{font-size:13px;color:#0D2F5C;}"
+            "ul{margin:4px 0 10px 18px;} li{margin:2px 0;}"
+            "</style></head><body>"
+            f"<h1>Rapport de gestion : {period}</h1>{body_html}</body></html>"
+        )
+        pdf_bytes = html_to_pdf(pdf_html)
+        pdf_name = f"rapport-gestion-{year}-{month:02d}.pdf"
+    except Exception as pexc:  # noqa: BLE001
+        logger.warning("[automation] PDF rapport mensuel indisponible mgr=%s: %r", manager_id, pexc)
     ok = await send_email(to=recipient, subject=subject, html_body=body_html + (sig_html or ""),
-                          cc=_rule_cc(rule), inline_logo=logo, inline_logo_subtype=logo_sub)
+                          cc=_rule_cc(rule), inline_logo=logo, inline_logo_subtype=logo_sub,
+                          attachment_bytes=pdf_bytes, attachment_filename=pdf_name)
     if ok:
         await _log(db, rule=rule, tenant_id=None, lease_id=None, channel="email",
                    recipient=recipient, subject=subject, body=body_html, status="sent", dedup_key=dedup)
