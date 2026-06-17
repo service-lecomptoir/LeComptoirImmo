@@ -226,8 +226,7 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
             </thead>
             <tbody>
               {items.map(r => (
-                <PlanningRow key={`${r.id}:${r.trigger_days}:${r.run_hour}:${r.run_minute}:${r.last_run_at}`}
-                  rule={r} onSaved={onSaved} />
+                <PlanningRow key={r.id} rule={r} onSaved={onSaved} />
               ))}
             </tbody>
           </table>

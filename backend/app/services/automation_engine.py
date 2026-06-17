@@ -95,7 +95,9 @@ async def _msg_templates(db, rule, tenant_lang: Optional[str] = None):
         content = getattr(tpl, "content", None) if tpl else None
         if content:
             lang = (tenant_lang or "fr")
-            block = content.get(lang) or content.get("fr") or next(iter(content.values()), None)
+            # Langue du locataire, sinon repli français ; jamais une langue
+            # arbitraire (sinon → contenu de la règle = français par défaut).
+            block = content.get(lang) or content.get("fr")
             if isinstance(block, dict):
                 subj = (block.get("subject") or "").strip() or subj
                 body = (block.get("body") or "").strip() or body
@@ -709,9 +711,15 @@ async def _send_event_to_tenant(db, lease, *, rule_type, ctx_extra, dedup_suffix
     dedup = f"{rule_type}:{lease.id}:{dedup_suffix}:{rule.id}"
     if await _already_sent(db, dedup):
         return False
+    # Nom du bien via une requête explicite : `lease.parent_property` est une
+    # relation lazy → son accès déclencherait un lazy-load interdit en async.
+    prop = None
+    if getattr(lease, "property_id", None):
+        from app.models.property import Property
+        prop = await db.get(Property, lease.property_id)
     ctx = {
         "tenant_name": tenant.full_name or "",
-        "property_name": getattr(getattr(lease, "parent_property", None), "name", "") or "",
+        "property_name": getattr(prop, "name", "") or "",
         **ctx_extra,
     }
     _subj_t, _body_t, _sms_t = await _msg_templates(db, rule, getattr(tenant, "language", "fr"))
@@ -880,8 +888,14 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
         pdf_name = f"rapport-gestion-{year}-{month:02d}.pdf"
     except Exception as pexc:  # noqa: BLE001
         logger.warning("[automation] PDF rapport mensuel indisponible mgr=%s: %r", manager_id, pexc)
+    # CC = adresses de la règle MAIS jamais le destinataire principal (le rapport
+    # part déjà « To » au gestionnaire → éviter un doublon To == Cc).
+    cc_rapport = ", ".join(
+        p for p in [s.strip() for s in (_rule_cc(rule) or "").split(",")]
+        if p and p.lower() != (recipient or "").lower()
+    ) or None
     ok = await send_email(to=recipient, subject=subject, html_body=body_html + (sig_html or ""),
-                          cc=_rule_cc(rule), inline_logo=logo, inline_logo_subtype=logo_sub,
+                          cc=cc_rapport, inline_logo=logo, inline_logo_subtype=logo_sub,
                           attachment_bytes=pdf_bytes, attachment_filename=pdf_name)
     if ok:
         await _log(db, rule=rule, tenant_id=None, lease_id=None, channel="email",
