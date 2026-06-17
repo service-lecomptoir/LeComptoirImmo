@@ -44,6 +44,7 @@ interface Rule {
   rule_type: string
   trigger_days: number
   run_hour?: number
+  run_minute?: number
   last_run_at?: string | null
   channel: string
   subject?: string
@@ -475,33 +476,36 @@ function planKind(t: string): 'before' | 'after' | 'day' | 'event' | 'hide' {
   return 'event'
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
 function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
   const info = RULE_TYPES.find(t => t.value === rule.rule_type)
   const Icon = info?.icon || Clock
   const kind = planKind(rule.rule_type)
   const base = Math.abs(rule.trigger_days || 0)
   const baseHour = rule.run_hour ?? 8
+  const baseMin = rule.run_minute ?? 0
   const [val, setVal] = useState(base)
   const [hour, setHour] = useState(baseHour)
+  const [minute, setMinute] = useState(baseMin)
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
   const [toggling, setToggling] = useState(false)
   const scheduled = kind !== 'event'  // avis / rappel / relance / rapport
-  const dirty = scheduled && (val !== base || hour !== baseHour)
+  const dirty = scheduled && (val !== base || hour !== baseHour || minute !== baseMin)
 
   const save = async () => {
     setSaving(true)
     try {
       const td = kind === 'day' ? Math.min(28, Math.max(1, val)) : Math.max(0, val)
-      await apiClient.patch(`/automation/rules/${rule.id}`,
-        { trigger_days: td, run_hour: Math.min(23, Math.max(0, hour)) })
+      await apiClient.patch(`/automation/rules/${rule.id}`, {
+        trigger_days: td,
+        run_hour: Math.min(23, Math.max(0, hour)),
+        run_minute: Math.min(59, Math.max(0, minute)),
+      })
       toast.success('Planification mise à jour')
       onSaved()
-    } catch {
-      // erreur affichée par l'intercepteur (toast)
-    } finally {
-      setSaving(false)
-    }
+    } catch { /* toast via intercepteur */ } finally { setSaving(false) }
   }
 
   const runNow = async () => {
@@ -510,11 +514,7 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
       const { data } = await apiClient.post(`/automation/rules/${rule.id}/run-now`)
       toast.success(data?.message || `Exécution lancée (${data?.count ?? 0})`)
       onSaved()
-    } catch {
-      // erreur affichée par l'intercepteur (toast)
-    } finally {
-      setRunning(false)
-    }
+    } catch { /* toast via intercepteur */ } finally { setRunning(false) }
   }
 
   const toggle = async () => {
@@ -523,76 +523,81 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
       await apiClient.post(`/automation/rules/${rule.id}/toggle`)
       toast.success(rule.is_active ? 'Automatisation désactivée' : 'Automatisation activée')
       onSaved()
-    } catch {
-      // erreur affichée par l'intercepteur (toast)
-    } finally {
-      setToggling(false)
-    }
+    } catch { /* toast via intercepteur */ } finally { setToggling(false) }
   }
 
   const triggerText = kind === 'event' ? PLAN_EVENT_LABELS[rule.rule_type]
-    : kind === 'before' ? `Généré ${base} jour(s) avant l'échéance`
-    : kind === 'after' ? `Généré ${base} jour(s) après l'échéance, tant qu'impayé`
-    : `Généré le ${base} de chaque mois`
+    : kind === 'before' ? "avant l'échéance"
+    : kind === 'after' ? "après l'échéance"
+    : 'du mois'
   const lastRun = rule.last_run_at
     ? new Date(rule.last_run_at).toLocaleString('fr-FR',
         { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : 'Jamais'
 
+  const td = 'px-3 py-3 align-middle'
   return (
-    <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 py-3 border-b border-gray-100 last:border-0 ${!rule.is_active ? 'opacity-70' : ''}`}>
-      <Icon size={16} className="text-gray-400 shrink-0" />
-      <div className="flex-1 min-w-[180px]">
-        <p className="text-sm font-medium text-gray-800">{info?.label || rule.rule_type}</p>
-        <p className="text-xs text-gray-400">{triggerText}</p>
-        <p className="text-xs text-gray-400">Dernière exécution : {lastRun}</p>
-      </div>
-
-      {scheduled && (
-        <>
+    <tr className={`border-b border-gray-100 last:border-0 ${!rule.is_active ? 'opacity-70' : ''}`}>
+      <td className={td}>
+        <div className="flex items-center gap-2">
+          <Icon size={15} className="text-gray-400 shrink-0" />
+          <span className="text-sm font-medium text-gray-800">{info?.label || rule.rule_type}</span>
+        </div>
+      </td>
+      <td className={td}>
+        {scheduled ? (
           <div className="flex items-center gap-1.5">
             {kind === 'day' && <span className="text-xs text-gray-500">Le</span>}
-            <input type="number"
-              min={kind === 'day' ? 1 : 0} max={kind === 'day' ? 28 : 60}
-              value={val}
-              onChange={e => setVal(parseInt(e.target.value) || 0)}
-              className="w-14 border rounded-lg px-2 py-1.5 text-sm text-center"
-              title="Délai de génération" />
-            <span className="text-xs text-gray-500 whitespace-nowrap">
-              {kind === 'before' ? "j. avant" : kind === 'after' ? "j. après" : 'du mois'}
-            </span>
+            <input type="number" min={kind === 'day' ? 1 : 0} max={kind === 'day' ? 28 : 60}
+              value={val} onChange={e => setVal(parseInt(e.target.value) || 0)}
+              className="w-14 border rounded-lg px-2 py-1.5 text-sm text-center" />
+            <span className="text-xs text-gray-500 whitespace-nowrap">{triggerText}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">à</span>
-            <input type="number" min={0} max={23} value={hour}
-              onChange={e => setHour(parseInt(e.target.value) || 0)}
-              className="w-14 border rounded-lg px-2 py-1.5 text-sm text-center"
-              title="Heure d'exécution" />
-            <span className="text-xs text-gray-500">h</span>
-          </div>
-          {dirty
+        ) : (
+          <span className="text-sm text-gray-500">{triggerText}</span>
+        )}
+      </td>
+      <td className={td}>
+        {scheduled ? (
+          <input type="time"
+            value={`${pad2(hour)}:${pad2(minute)}`}
+            onChange={e => {
+              const [h, m] = e.target.value.split(':')
+              setHour(parseInt(h) || 0); setMinute(parseInt(m) || 0)
+            }}
+            className="border rounded-lg px-2 py-1.5 text-sm" />
+        ) : (
+          <span className="text-sm text-gray-400">—</span>
+        )}
+      </td>
+      <td className={`${td} text-sm text-gray-600 whitespace-nowrap`}>{lastRun}</td>
+      <td className={`${td} text-right`}>
+        {scheduled ? (
+          dirty
             ? <Button size="sm" variant="primary" onClick={save} disabled={saving}>
                 {saving ? '…' : 'Enregistrer'}
               </Button>
             : <Button size="sm" variant="secondary" onClick={runNow} disabled={running}>
                 <RefreshCw size={12} className={running ? 'animate-spin' : ''} />
                 {running ? '…' : 'Exécuter'}
-              </Button>}
-        </>
-      )}
-
-      {/* Interrupteur Actif/Inactif : aucune automatisation ne part sans accord. */}
-      <button type="button" onClick={toggle} disabled={toggling}
-        className="flex items-center gap-1.5 shrink-0 ml-auto"
-        title={rule.is_active ? 'Désactiver cette automatisation' : 'Activer cette automatisation'}>
-        {rule.is_active
-          ? <ToggleRight size={26} className="text-green-600" />
-          : <ToggleLeft size={26} className="text-gray-400" />}
-        <span className={`text-xs font-medium ${rule.is_active ? 'text-green-700' : 'text-gray-400'}`}>
-          {rule.is_active ? 'Actif' : 'Inactif'}
-        </span>
-      </button>
-    </div>
+              </Button>
+        ) : (
+          <span className="text-sm text-gray-400">—</span>
+        )}
+      </td>
+      <td className={`${td} text-right`}>
+        <button type="button" onClick={toggle} disabled={toggling}
+          className="inline-flex items-center gap-1.5"
+          title={rule.is_active ? 'Désactiver' : 'Activer'}>
+          {rule.is_active
+            ? <ToggleRight size={24} className="text-green-600" />
+            : <ToggleLeft size={24} className="text-gray-400" />}
+          <span className={`text-xs font-medium ${rule.is_active ? 'text-green-700' : 'text-gray-400'}`}>
+            {rule.is_active ? 'Actif' : 'Inactif'}
+          </span>
+        </button>
+      </td>
+    </tr>
   )
 }
 
@@ -600,23 +605,43 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
   const items = rules
     .filter(r => planKind(r.rule_type) !== 'hide')
     .sort((a, b) => PLAN_ORDER.indexOf(a.rule_type) - PLAN_ORDER.indexOf(b.rule_type))
+  const th = 'px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-2">
         <Calendar size={18} className="text-blue-600" />
-        <h2 className="text-base font-bold text-gray-900">Génération des documents</h2>
+        <h2 className="text-base font-bold text-gray-900">Auto Génération des documents</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
         Génération automatique de chaque document et dépôt sur le compte du locataire. Réglez le
-        délai et l'heure d'exécution, lancez « Exécuter » à la demande, et suivez la dernière
+        délai et l'heure d'exécution (hh:mm), lancez « Exécuter » à la demande, et suivez la dernière
         exécution. Chaque ligne a un interrupteur Actif/Inactif : rien ne part sans votre accord.
         Les éléments « à l'événement » sont générés au moment de l'action (paiement, déclaration).
-        L'envoi des e-mails (avec le document en pièce jointe) se règle dans l'onglet « Règles ».
+        L'envoi des e-mails (document en pièce jointe) se règle dans l'onglet « Communication ».
       </p>
       {items.length === 0 ? (
-        <p className="text-sm text-gray-400">Aucune règle d'automatisation.</p>
+        <p className="text-sm text-gray-400">Aucune automatisation configurée.</p>
       ) : (
-        <div>{items.map(r => <PlanningRow key={`${r.id}:${r.trigger_days}:${r.run_hour}:${r.last_run_at}`} rule={r} onSaved={onSaved} />)}</div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px]">
+            <thead className="bg-gray-50 border-y border-gray-100">
+              <tr>
+                <th className={th}>Document</th>
+                <th className={th}>Déclenchement</th>
+                <th className={th}>Heure</th>
+                <th className={th}>Dernière exécution</th>
+                <th className={`${th} text-right`}>Action</th>
+                <th className={`${th} text-right`}>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(r => (
+                <PlanningRow key={`${r.id}:${r.trigger_days}:${r.run_hour}:${r.run_minute}:${r.last_run_at}`}
+                  rule={r} onSaved={onSaved} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
@@ -779,9 +804,9 @@ export default function Automatisation() {
       {/* Tabs */}
       <div className="flex border-b mb-6">
         {([
-          { key: 'rules', label: 'Règles' },
+          { key: 'rules', label: 'Communication' },
           { key: 'logs', label: 'Historique des envois' },
-          { key: 'scheduler', label: 'Planificateur' },
+          { key: 'scheduler', label: 'Auto Génération' },
           { key: 'canaux', label: 'Canaux & tests' },
         ] as const).map(tab => (
           <button key={tab.key}

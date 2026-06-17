@@ -91,21 +91,21 @@ async def _job_generate_monthly_avis() -> None:
 
 
 async def _job_run_automation_rules() -> None:
-    """Chaque heure : exécute les règles dont l'heure d'exécution (run_hour, réglée
-    dans l'onglet Planification) correspond à l'heure courante (Europe/Paris).
-    SEUL émetteur automatique."""
+    """Toutes les 5 min : exécute les automatisations dont l'heure d'exécution
+    (hh:mm, réglée dans l'onglet Auto Génération) est atteinte ce jour, une fois
+    par jour. Heure de référence = Europe/Paris. SEUL émetteur automatique."""
     from datetime import datetime
     from zoneinfo import ZoneInfo
     from app.database import AsyncSessionLocal
     from app.services import automation_engine
 
-    hour = datetime.now(ZoneInfo("Europe/Paris")).hour
+    now = datetime.now(ZoneInfo("Europe/Paris"))
     async with AsyncSessionLocal() as db:
         try:
-            summary = await automation_engine.run_all(db, date.today(), hour=hour)
+            summary = await automation_engine.run_all(db, now.date(), now=now)
             await db.commit()
             if summary:
-                logger.info(f"[Scheduler] Règles d'automatisation ({hour}h) : {summary}")
+                logger.info(f"[Scheduler] Auto Génération {now:%H:%M} : {summary}")
         except Exception as exc:
             logger.error(f"[Scheduler] run_automation_rules error: {exc}")
 
@@ -227,7 +227,7 @@ def start_scheduler(
     )
     scheduler.add_job(
         _job_run_automation_rules,
-        CronTrigger(minute=5),  # toutes les heures à :05 ; filtre par run_hour de chaque règle
+        CronTrigger(minute="*/5"),  # toutes les 5 min ; chaque règle tourne 1×/jour à son hh:mm
         id="run_automation_rules",
         replace_existing=True,
         misfire_grace_time=3600,

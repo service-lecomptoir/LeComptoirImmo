@@ -10,6 +10,7 @@ class AutomationRuleCreate(BaseModel):
     rule_type: RuleType
     trigger_days: int = 5
     run_hour: int = 8
+    run_minute: int = 0
     channel: Channel = Channel.EMAIL
     subject: Optional[str] = None
     body_template: Optional[str] = None
@@ -26,6 +27,7 @@ class AutomationRuleUpdate(BaseModel):
     name: Optional[str] = None
     trigger_days: Optional[int] = None
     run_hour: Optional[int] = None
+    run_minute: Optional[int] = None
     channel: Optional[Channel] = None
     subject: Optional[str] = None
     body_template: Optional[str] = None
@@ -41,6 +43,7 @@ class AutomationRuleResponse(BaseModel):
     rule_type: RuleType
     trigger_days: int
     run_hour: int = 8
+    run_minute: int = 0
     last_run_at: Optional[datetime] = None
     channel: Channel
     subject: Optional[str] = None

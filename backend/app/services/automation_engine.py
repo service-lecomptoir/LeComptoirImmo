@@ -796,12 +796,12 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
 # ── Boucle principale (planifiée quotidiennement) ─────────────────────────────
 
 async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=None,
-                  only_rule_id=None, hour: Optional[int] = None) -> dict:
+                  only_rule_id=None, now=None) -> dict:
     """Exécute les règles actives (hors quittance = événementiel, et hors
     communication groupée = manuelle). Filtres : ``manager_id`` (un gestionnaire),
-    ``only_rule_id`` (une seule règle, pour « Exécuter maintenant »), ``hour``
-    (planificateur horaire : ne traite que les règles dont run_hour == hour).
-    Renvoie {rule_type: count}."""
+    ``only_rule_id`` (une seule règle, pour « Exécuter maintenant »), ``now``
+    (planificateur : ne traite que les règles dont l'heure hh:mm est atteinte ce
+    jour et qui n'ont pas déjà tourné aujourd'hui). Renvoie {rule_type: count}."""
     from datetime import datetime, timezone
     from app.models.automation import AutomationRule
     today = today or date.today()
@@ -811,13 +811,22 @@ async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=Non
     if only_rule_id is not None:
         q = q.where(AutomationRule.id == only_rule_id)
     rules = (await db.execute(q)).scalars().all()
+    stamp = now or datetime.now(timezone.utc)
     summary: dict = {}
     for rule in rules:
         if not rule.created_by:
             continue
-        # Planificateur horaire : ne traiter que les règles dont l'heure correspond.
-        if hour is not None and int(getattr(rule, "run_hour", 8) or 8) != hour:
-            continue
+        # Planificateur : l'heure hh:mm doit être atteinte aujourd'hui ET la règle
+        # ne doit pas avoir déjà tourné ce jour (rattrapage robuste, 1×/jour).
+        if now is not None:
+            sched = int(rule.run_hour or 0) * 60 + int(getattr(rule, "run_minute", 0) or 0)
+            if (now.hour * 60 + now.minute) < sched:
+                continue
+            lr = rule.last_run_at
+            if lr is not None:
+                lr_local = lr.astimezone(now.tzinfo) if (now.tzinfo and lr.tzinfo) else lr
+                if lr_local.date() == now.date():
+                    continue
         try:
             if rule.rule_type == "avis_echeance":
                 n = await _run_avis_rule(db, rule, today)
@@ -827,7 +836,7 @@ async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=Non
                 n = await _run_rapport_mensuel(db, rule, today)
             else:
                 continue  # quittance / révisions / taxe_om = événementiels ; communication_groupee = manuel
-            rule.last_run_at = datetime.now(timezone.utc)
+            rule.last_run_at = stamp
             if n:
                 summary[rule.rule_type] = summary.get(rule.rule_type, 0) + n
         except Exception as exc:  # noqa: BLE001 : une règle ne bloque pas les autres

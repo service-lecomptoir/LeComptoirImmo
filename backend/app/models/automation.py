@@ -46,9 +46,10 @@ class AutomationRule(Base, TimestampMixin):
     # Déclenchement : X jours avant/après
     trigger_days: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
 
-    # Heure d'exécution quotidienne (0-23) de cette automatisation (génération /
-    # traitement), réglée dans l'onglet Planification.
+    # Heure:minute d'exécution quotidienne de cette automatisation (génération /
+    # traitement), réglée dans l'onglet Auto Génération (format hh:mm).
     run_hour: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    run_minute: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Dernière exécution automatique ou manuelle (« Exécuter maintenant »).
     last_run_at: Mapped[Optional[datetime]] = mapped_column(
