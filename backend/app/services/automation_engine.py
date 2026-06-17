@@ -795,19 +795,28 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
 
 # ── Boucle principale (planifiée quotidiennement) ─────────────────────────────
 
-async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=None) -> dict:
+async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=None,
+                  only_rule_id=None, hour: Optional[int] = None) -> dict:
     """Exécute les règles actives (hors quittance = événementiel, et hors
-    communication groupée = manuelle). Si ``manager_id`` est fourni, limite aux
-    règles de ce gestionnaire (déclenchement manuel). Renvoie {rule_type: count}."""
+    communication groupée = manuelle). Filtres : ``manager_id`` (un gestionnaire),
+    ``only_rule_id`` (une seule règle, pour « Exécuter maintenant »), ``hour``
+    (planificateur horaire : ne traite que les règles dont run_hour == hour).
+    Renvoie {rule_type: count}."""
+    from datetime import datetime, timezone
     from app.models.automation import AutomationRule
     today = today or date.today()
     q = select(AutomationRule).where(AutomationRule.is_active.is_(True))
     if manager_id is not None:
         q = q.where(AutomationRule.created_by == manager_id)
+    if only_rule_id is not None:
+        q = q.where(AutomationRule.id == only_rule_id)
     rules = (await db.execute(q)).scalars().all()
     summary: dict = {}
     for rule in rules:
         if not rule.created_by:
+            continue
+        # Planificateur horaire : ne traiter que les règles dont l'heure correspond.
+        if hour is not None and int(getattr(rule, "run_hour", 8) or 8) != hour:
             continue
         try:
             if rule.rule_type == "avis_echeance":
@@ -818,6 +827,7 @@ async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=Non
                 n = await _run_rapport_mensuel(db, rule, today)
             else:
                 continue  # quittance / révisions / taxe_om = événementiels ; communication_groupee = manuel
+            rule.last_run_at = datetime.now(timezone.utc)
             if n:
                 summary[rule.rule_type] = summary.get(rule.rule_type, 0) + n
         except Exception as exc:  # noqa: BLE001 : une règle ne bloque pas les autres

@@ -46,6 +46,15 @@ class AutomationRule(Base, TimestampMixin):
     # Déclenchement : X jours avant/après
     trigger_days: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
 
+    # Heure d'exécution quotidienne (0-23) de cette automatisation (génération /
+    # traitement), réglée dans l'onglet Planification.
+    run_hour: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+
+    # Dernière exécution automatique ou manuelle (« Exécuter maintenant »).
+    last_run_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Canal d'envoi
     channel: Mapped[str] = mapped_column(String(20), default="email", nullable=False)
 

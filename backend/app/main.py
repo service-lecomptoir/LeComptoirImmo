@@ -461,6 +461,9 @@ async def _apply_column_migrations() -> None:
         "CREATE INDEX IF NOT EXISTS ix_communication_logs_dedup_key ON communication_logs (dedup_key)",
         # Automatisation : CC (gestionnaire) par règle.
         "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS cc_emails VARCHAR(500)",
+        # Planification : heure d'exécution quotidienne + horodatage de dernière exécution.
+        "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS run_hour INTEGER DEFAULT 8",
+        "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ",
         # Initialise le CC des règles existantes avec l'e-mail du gestionnaire
         # créateur (une seule fois : ne touche que les NULL ; un CC vidé = '').
         "UPDATE automation_rules SET cc_emails = (SELECT email FROM users WHERE users.id = automation_rules.created_by) "

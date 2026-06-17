@@ -151,6 +151,53 @@ async def run_rules_now(
     return {"sent": total, "detail": summary}
 
 
+@router.post("/rules/{rule_id}/run-now")
+async def run_rule_now(
+    rule_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """« Exécuter maintenant » d'une automatisation depuis l'onglet Planification :
+    génère/traite immédiatement le type concerné et horodate la dernière exécution.
+    Les types événementiels (quittance, révisions, taxe) ne se déclenchent qu'à
+    l'action correspondante : pas d'exécution planifiable."""
+    from datetime import datetime, timezone, date as _date
+    rule = await db.get(AutomationRule, rule_id)
+    if not rule:
+        raise HTTPException(status_code=404, detail="Règle introuvable")
+    await _check_rule_access(rule, current_user, db)
+
+    if rule.rule_type == "avis_echeance":
+        # Génération + dépôt des avis du mois courant (l'envoi reste piloté par la règle).
+        from app.services.avis_echeance_service import AvisEcheanceService
+        today = _date.today()
+        prop_ids = None
+        if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
+            from app.models.property import Property
+            prop_ids = list((await db.execute(
+                select(Property.id).where(Property.created_by == current_user.id)
+            )).scalars().all())
+        count = await AvisEcheanceService.generate_monthly_all(
+            db, today.year, today.month, property_ids=prop_ids)
+        rule.last_run_at = datetime.now(timezone.utc)
+        await db.commit()
+        return {"ran": rule.rule_type, "count": count,
+                "message": f"{count} avis d'échéance généré(s) et déposé(s)."}
+
+    if rule.rule_type in ("rappel_impaye", "relance_1", "relance_2", "rapport_mensuel"):
+        from app.services import automation_engine
+        summary = await automation_engine.run_all(
+            db, manager_id=rule.created_by, only_rule_id=rule.id)
+        await db.commit()
+        return {"ran": rule.rule_type, "count": sum(summary.values()) if summary else 0,
+                "detail": summary}
+
+    raise HTTPException(
+        status_code=400,
+        detail="Type événementiel : se déclenche automatiquement à l'action "
+               "(paiement, déclaration). Pas d'exécution à planifier.")
+
+
 # ── Logs de communication ─────────────────────────────────────────────────────
 
 @router.get("/logs", response_model=List[CommunicationLogResponse])

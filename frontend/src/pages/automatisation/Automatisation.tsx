@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react'
-import { getErrorMessage } from '@/utils/errors'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
 import { useAuthStore } from '@/store/authStore'
 import {
   Zap, Plus, Trash2, Edit2, ToggleLeft, ToggleRight,
   Mail, MessageSquare, Bell, Calendar, Send,
-  CheckCircle, Clock, AlertTriangle, Users, Settings, RefreshCw,
+  CheckCircle, Clock, AlertTriangle, Users, RefreshCw,
 } from 'lucide-react'
-import { schedulerApi, avisEcheancesApi } from '@/api/avis_echeances'
 import NotificationsSettings from '@/pages/settings/NotificationsSettings'
 import { Button } from '@/components/ui'
 
@@ -45,6 +43,8 @@ interface Rule {
   name: string
   rule_type: string
   trigger_days: number
+  run_hour?: number
+  last_run_at?: string | null
   channel: string
   subject?: string
   body_template?: string
@@ -480,22 +480,40 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
   const Icon = info?.icon || Clock
   const kind = planKind(rule.rule_type)
   const base = Math.abs(rule.trigger_days || 0)
+  const baseHour = rule.run_hour ?? 8
   const [val, setVal] = useState(base)
+  const [hour, setHour] = useState(baseHour)
   const [saving, setSaving] = useState(false)
+  const [running, setRunning] = useState(false)
   const [toggling, setToggling] = useState(false)
-  const dirty = kind !== 'event' && val !== base
+  const scheduled = kind !== 'event'  // avis / rappel / relance / rapport
+  const dirty = scheduled && (val !== base || hour !== baseHour)
 
   const save = async () => {
     setSaving(true)
     try {
       const td = kind === 'day' ? Math.min(28, Math.max(1, val)) : Math.max(0, val)
-      await apiClient.patch(`/automation/rules/${rule.id}`, { trigger_days: td })
+      await apiClient.patch(`/automation/rules/${rule.id}`,
+        { trigger_days: td, run_hour: Math.min(23, Math.max(0, hour)) })
       toast.success('Planification mise à jour')
       onSaved()
     } catch {
       // erreur affichée par l'intercepteur (toast)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const runNow = async () => {
+    setRunning(true)
+    try {
+      const { data } = await apiClient.post(`/automation/rules/${rule.id}/run-now`)
+      toast.success(data?.message || `Exécution lancée (${data?.count ?? 0})`)
+      onSaved()
+    } catch {
+      // erreur affichée par l'intercepteur (toast)
+    } finally {
+      setRunning(false)
     }
   }
 
@@ -513,42 +531,59 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
   }
 
   const triggerText = kind === 'event' ? PLAN_EVENT_LABELS[rule.rule_type]
-    : kind === 'before' ? `Envoyé ${base} jour(s) avant l'échéance`
-    : kind === 'after' ? `Envoyé ${base} jour(s) après l'échéance, tant qu'impayé`
-    : `Envoyé le ${base} de chaque mois`
+    : kind === 'before' ? `Généré ${base} jour(s) avant l'échéance`
+    : kind === 'after' ? `Généré ${base} jour(s) après l'échéance, tant qu'impayé`
+    : `Généré le ${base} de chaque mois`
+  const lastRun = rule.last_run_at
+    ? new Date(rule.last_run_at).toLocaleString('fr-FR',
+        { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : 'Jamais'
 
   return (
-    <div className={`flex items-center gap-3 py-3 border-b border-gray-100 last:border-0 ${!rule.is_active ? 'opacity-70' : ''}`}>
+    <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 py-3 border-b border-gray-100 last:border-0 ${!rule.is_active ? 'opacity-70' : ''}`}>
       <Icon size={16} className="text-gray-400 shrink-0" />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-[180px]">
         <p className="text-sm font-medium text-gray-800">{info?.label || rule.rule_type}</p>
         <p className="text-xs text-gray-400">{triggerText}</p>
+        <p className="text-xs text-gray-400">Dernière exécution : {lastRun}</p>
       </div>
 
-      {kind !== 'event' && (
-        <div className="flex items-center gap-2">
-          {kind === 'day' && <span className="text-xs text-gray-500">Le</span>}
-          <input type="number"
-            min={kind === 'day' ? 1 : 0} max={kind === 'day' ? 28 : 60}
-            value={val}
-            onChange={e => setVal(parseInt(e.target.value) || 0)}
-            className="w-16 border rounded-lg px-2 py-1.5 text-sm text-center" />
-          <span className="text-xs text-gray-500 whitespace-nowrap">
-            {kind === 'before' ? "j. avant"
-              : kind === 'after' ? "j. après"
-              : 'du mois'}
-          </span>
-          {dirty && (
-            <Button size="sm" variant="primary" onClick={save} disabled={saving}>
-              {saving ? '…' : 'Enregistrer'}
-            </Button>
-          )}
-        </div>
+      {scheduled && (
+        <>
+          <div className="flex items-center gap-1.5">
+            {kind === 'day' && <span className="text-xs text-gray-500">Le</span>}
+            <input type="number"
+              min={kind === 'day' ? 1 : 0} max={kind === 'day' ? 28 : 60}
+              value={val}
+              onChange={e => setVal(parseInt(e.target.value) || 0)}
+              className="w-14 border rounded-lg px-2 py-1.5 text-sm text-center"
+              title="Délai de génération" />
+            <span className="text-xs text-gray-500 whitespace-nowrap">
+              {kind === 'before' ? "j. avant" : kind === 'after' ? "j. après" : 'du mois'}
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500">à</span>
+            <input type="number" min={0} max={23} value={hour}
+              onChange={e => setHour(parseInt(e.target.value) || 0)}
+              className="w-14 border rounded-lg px-2 py-1.5 text-sm text-center"
+              title="Heure d'exécution" />
+            <span className="text-xs text-gray-500">h</span>
+          </div>
+          {dirty
+            ? <Button size="sm" variant="primary" onClick={save} disabled={saving}>
+                {saving ? '…' : 'Enregistrer'}
+              </Button>
+            : <Button size="sm" variant="secondary" onClick={runNow} disabled={running}>
+                <RefreshCw size={12} className={running ? 'animate-spin' : ''} />
+                {running ? '…' : 'Exécuter'}
+              </Button>}
+        </>
       )}
 
       {/* Interrupteur Actif/Inactif : aucune automatisation ne part sans accord. */}
       <button type="button" onClick={toggle} disabled={toggling}
-        className="flex items-center gap-1.5 shrink-0 ml-1"
+        className="flex items-center gap-1.5 shrink-0 ml-auto"
         title={rule.is_active ? 'Désactiver cette automatisation' : 'Activer cette automatisation'}>
         {rule.is_active
           ? <ToggleRight size={26} className="text-green-600" />
@@ -569,17 +604,19 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-2">
         <Calendar size={18} className="text-blue-600" />
-        <h2 className="text-base font-bold text-gray-900">Calendrier des automatisations</h2>
+        <h2 className="text-base font-bold text-gray-900">Génération des documents</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
-        Quand chaque document ou message part automatiquement, et son interrupteur Actif/Inactif :
-        rien ne part sans votre accord. Modifiez le délai puis « Enregistrer » ; les éléments « à
-        l'événement » partent au moment de l'action (paiement, déclaration) mais restent activables ou non.
+        Génération automatique de chaque document et dépôt sur le compte du locataire. Réglez le
+        délai et l'heure d'exécution, lancez « Exécuter » à la demande, et suivez la dernière
+        exécution. Chaque ligne a un interrupteur Actif/Inactif : rien ne part sans votre accord.
+        Les éléments « à l'événement » sont générés au moment de l'action (paiement, déclaration).
+        L'envoi des e-mails (avec le document en pièce jointe) se règle dans l'onglet « Règles ».
       </p>
       {items.length === 0 ? (
         <p className="text-sm text-gray-400">Aucune règle d'automatisation.</p>
       ) : (
-        <div>{items.map(r => <PlanningRow key={`${r.id}:${r.trigger_days}`} rule={r} onSaved={onSaved} />)}</div>
+        <div>{items.map(r => <PlanningRow key={`${r.id}:${r.trigger_days}:${r.run_hour}:${r.last_run_at}`} rule={r} onSaved={onSaved} />)}</div>
       )}
     </div>
   )
@@ -594,57 +631,6 @@ export default function Automatisation() {
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [editRule, setEditRule] = useState<Rule | null>(null)
 
-  // ── Scheduler state ──────────────────────────────────────────────────────────
-  const [schedulerDay, setSchedulerDay] = useState(1)
-  const [schedulerHour, setSchedulerHour] = useState(7)
-  const [schedulerMinute, setSchedulerMinute] = useState(30)
-  const [schedulerNextRun, setSchedulerNextRun] = useState<string | null>(null)
-  const [schedulerSaving, setSchedulerSaving] = useState(false)
-  const [schedulerMsg, setSchedulerMsg] = useState('')
-  const [generatingBulk, setGeneratingBulk] = useState(false)
-  const [bulkMsg, setBulkMsg] = useState('')
-
-  const loadScheduler = async () => {
-    try {
-      const { data } = await schedulerApi.getConfig()
-      setSchedulerDay(data.day)
-      setSchedulerHour(data.hour)
-      setSchedulerMinute(data.minute)
-      setSchedulerNextRun(data.next_run)
-    } catch {}
-  }
-
-  const saveScheduler = async () => {
-    setSchedulerSaving(true); setSchedulerMsg('')
-    try {
-      const { data } = await schedulerApi.updateConfig({ day: schedulerDay, hour: schedulerHour, minute: schedulerMinute })
-      setSchedulerNextRun(data.next_run)
-      setSchedulerMsg('Configuration enregistrée et scheduler mis à jour.')
-      setTimeout(() => setSchedulerMsg(''), 4000)
-    } catch (e: any) {
-      setSchedulerMsg('Erreur : ' + (getErrorMessage(e, 'inconnue')))
-    } finally {
-      setSchedulerSaving(false)
-    }
-  }
-
-  const triggerBulkNow = async () => {
-    const now = new Date()
-    setGeneratingBulk(true); setBulkMsg('')
-    try {
-      const { data } = await avisEcheancesApi.generateMonthly({
-        period_year: now.getFullYear(),
-        period_month: now.getMonth() + 1,
-      })
-      setBulkMsg(data.message)
-      setTimeout(() => setBulkMsg(''), 5000)
-    } catch (e: any) {
-      setBulkMsg('Erreur : ' + (getErrorMessage(e, 'inconnue')))
-    } finally {
-      setGeneratingBulk(false)
-    }
-  }
-
   const load = async () => {
     setLoading(true)
     try {
@@ -658,7 +644,7 @@ export default function Automatisation() {
     setLoading(false)
   }
 
-  useEffect(() => { load(); loadScheduler() }, [])
+  useEffect(() => { load() }, [])
 
   const toggleRule = async (id: string) => {
     try {
@@ -939,128 +925,9 @@ export default function Automatisation() {
 
       {/* Onglet Planificateur ─────────────────────────────────────────── */}
       {activeTab === 'scheduler' && (
-        <div className="max-w-2xl space-y-6">
-
-          {/* Config scheduler */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <Settings size={18} className="text-blue-600" />
-              <h2 className="text-base font-bold text-gray-900">Planification automatique des avis</h2>
-            </div>
-            <p className="text-sm text-gray-500 mb-5">
-              Le planificateur génère automatiquement les avis d'échéance pour tous les baux actifs chaque mois
-              à l'heure configurée. Seuls les baux sans avis existant pour la période sont traités.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Jour du mois</label>
-                <select
-                  value={schedulerDay}
-                  onChange={e => setSchedulerDay(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-400 mt-1">1 à 28 (sûr pour tous les mois)</p>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Heure</label>
-                <select
-                  value={schedulerHour}
-                  onChange={e => setSchedulerHour(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {Array.from({ length: 24 }, (_, i) => i).map(h => (
-                    <option key={h} value={h}>{String(h).padStart(2, '0')}h</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Minute</label>
-                <select
-                  value={schedulerMinute}
-                  onChange={e => setSchedulerMinute(Number(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {[0, 15, 30, 45].map(m => (
-                    <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {schedulerNextRun && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 flex items-center gap-2">
-                <Clock size={14} className="text-blue-500 shrink-0" />
-                <span className="text-sm text-blue-700">
-                  Prochaine exécution :{' '}
-                  <span className="font-semibold">
-                    {new Date(schedulerNextRun).toLocaleDateString('fr-FR', {
-                      weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </span>
-                </span>
-              </div>
-            )}
-
-            {schedulerMsg && (
-              <div className={`mb-4 px-4 py-2 rounded-lg text-sm border ${
-                schedulerMsg.startsWith('Erreur')
-                  ? 'bg-red-50 text-red-700 border-red-200'
-                  : 'bg-green-50 text-green-700 border-green-200'
-              }`}>
-                {schedulerMsg}
-              </div>
-            )}
-
-            <div className="flex justify-end">
-              <button
-                onClick={saveScheduler}
-                disabled={schedulerSaving}
-                className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-              >
-                <Settings size={14} />
-                {schedulerSaving ? 'Enregistrement…' : 'Enregistrer la planification'}
-              </button>
-            </div>
-          </div>
-
-          {/* Calendrier des automatisations (délais éditables) */}
+        <div className="max-w-3xl space-y-6">
+          {/* Calendrier : génération + dépôt de chaque document, heure & exécution */}
           <AutomationPlanning rules={rules} onSaved={load} />
-
-          {/* Déclenchement manuel */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-3">
-              <RefreshCw size={18} className="text-purple-600" />
-              <h2 className="text-base font-bold text-gray-900">Lancer maintenant</h2>
-            </div>
-            <p className="text-sm text-gray-500 mb-4">
-              Génère immédiatement les avis d'échéance pour le mois en cours (
-              {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}).
-              Les baux ayant déjà un avis pour ce mois sont ignorés.
-            </p>
-            {bulkMsg && (
-              <div className={`mb-4 px-4 py-2 rounded-lg text-sm border ${
-                bulkMsg.startsWith('Erreur')
-                  ? 'bg-red-50 text-red-700 border-red-200'
-                  : 'bg-green-50 text-green-700 border-green-200'
-              }`}>
-                {bulkMsg}
-              </div>
-            )}
-            <button
-              onClick={triggerBulkNow}
-              disabled={generatingBulk}
-              className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
-            >
-              <RefreshCw size={14} className={generatingBulk ? 'animate-spin' : ''} />
-              {generatingBulk ? 'Génération en cours…' : 'Générer les avis du mois'}
-            </button>
-          </div>
         </div>
       )}
 

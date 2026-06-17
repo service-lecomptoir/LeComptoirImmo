@@ -91,17 +91,21 @@ async def _job_generate_monthly_avis() -> None:
 
 
 async def _job_run_automation_rules() -> None:
-    """Chaque jour : exécute les règles d'automatisation (avis selon délai,
-    rappels/relances d'impayés). SEUL émetteur automatique."""
+    """Chaque heure : exécute les règles dont l'heure d'exécution (run_hour, réglée
+    dans l'onglet Planification) correspond à l'heure courante (Europe/Paris).
+    SEUL émetteur automatique."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
     from app.database import AsyncSessionLocal
     from app.services import automation_engine
 
+    hour = datetime.now(ZoneInfo("Europe/Paris")).hour
     async with AsyncSessionLocal() as db:
         try:
-            summary = await automation_engine.run_all(db, date.today())
+            summary = await automation_engine.run_all(db, date.today(), hour=hour)
             await db.commit()
             if summary:
-                logger.info(f"[Scheduler] Règles d'automatisation : {summary}")
+                logger.info(f"[Scheduler] Règles d'automatisation ({hour}h) : {summary}")
         except Exception as exc:
             logger.error(f"[Scheduler] run_automation_rules error: {exc}")
 
@@ -223,7 +227,7 @@ def start_scheduler(
     )
     scheduler.add_job(
         _job_run_automation_rules,
-        CronTrigger(hour=8, minute=5),
+        CronTrigger(minute=5),  # toutes les heures à :05 ; filtre par run_hour de chaque règle
         id="run_automation_rules",
         replace_existing=True,
         misfire_grace_time=3600,
