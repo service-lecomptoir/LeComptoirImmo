@@ -61,9 +61,10 @@ async def lifespan(app: FastAPI):
             backfill_all_managers, refresh_default_bodies,
         )
         async with AsyncSessionLocal() as _db:
-            # Sérialise le seed entre workers uvicorn (sinon doublons de modèles par
-            # défaut au 1er boot d'un nouveau type → scalar_one_or_none casse au rendu).
-            await _db.execute(_text("SELECT pg_advisory_xact_lock(741259)"))
+            # Même verrou (741258) que les migrations et le seed automatisation :
+            # tous les blocs DDL/seed du boot sont mutuellement exclusifs entre
+            # workers uvicorn (évite doublons ET deadlock document_templates/users).
+            await _db.execute(_text("SELECT pg_advisory_xact_lock(741258)"))
             # Purge des doublons de modèles PAR DÉFAUT (garde le plus ancien par
             # gestionnaire + type), sans toucher aux modèles personnalisés.
             await _db.execute(_text(
