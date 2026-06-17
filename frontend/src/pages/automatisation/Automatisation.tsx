@@ -3,8 +3,8 @@ import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
 import { useAuthStore } from '@/store/authStore'
 import {
-  Zap, Plus, Trash2, Edit2, ToggleLeft, ToggleRight,
-  Mail, MessageSquare, Bell, Calendar, Send,
+  Zap, Trash2, Edit2, ToggleLeft, ToggleRight,
+  Mail, MessageSquare, Bell, Calendar,
   CheckCircle, Clock, AlertTriangle, Users, RefreshCw,
 } from 'lucide-react'
 import NotificationsSettings from '@/pages/settings/NotificationsSettings'
@@ -345,116 +345,6 @@ function RuleModal({ rule, onClose, onSaved }: { rule?: Rule | null, onClose: ()
   )
 }
 
-function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState({
-    subject: '',
-    body: '',
-    channel: 'email',
-    all_tenants: true,
-    cc_emails: '',
-  })
-  const [sending, setSending] = useState(false)
-  const [result, setResult] = useState<any>(null)
-  const myEmail = useAuthStore(s => s.user?.email) || ''
-
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSending(true)
-    try {
-      const r = await apiClient.post('/automation/send-group', form)
-      setResult(r.data)
-    } catch {
-      // erreur affichée par l'intercepteur (toast)
-    } finally {
-      setSending(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
-        <div className="border-b px-6 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Communication groupée</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
-        </div>
-        {result ? (
-          <div className="p-6 text-center">
-            <CheckCircle size={48} className="mx-auto text-green-500 mb-3" />
-            <p className="text-lg font-semibold text-gray-900">{result.message}</p>
-            <p className="text-sm text-gray-500 mt-1">{result.sent_count} / {result.total_targets} destinataire{result.total_targets > 1 ? 's' : ''}</p>
-            <button onClick={onClose}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
-              Fermer
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSend} className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Canal</label>
-              <div className="flex gap-2">
-                {CHANNELS.map(ch => (
-                  <button key={ch.value} type="button"
-                    onClick={() => setForm({ ...form, channel: ch.value })}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${
-                      form.channel === ch.value ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600'
-                    }`}
-                  >
-                    {ch.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Objet *</label>
-              <input required className="w-full border rounded-lg px-3 py-2 text-sm" value={form.subject}
-                onChange={e => setForm({ ...form, subject: e.target.value })} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Message *</label>
-              <textarea required rows={6} className="w-full border rounded-lg px-3 py-2 text-sm" value={form.body}
-                onChange={e => setForm({ ...form, body: e.target.value })} />
-            </div>
-            {(form.channel === 'email' || form.channel === 'email_sms') && (
-              <div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 shrink-0">Cc :</label>
-                  <input type="email" list="group-cc-suggestions" inputMode="email" autoComplete="email"
-                    className="flex-1 border rounded-lg px-3 py-2 text-sm"
-                    placeholder="ici l'adresse email"
-                    value={form.cc_emails}
-                    onChange={e => setForm({ ...form, cc_emails: e.target.value })} />
-                  <datalist id="group-cc-suggestions">
-                    {myEmail && <option value={myEmail} />}
-                  </datalist>
-                </div>
-                {myEmail && form.cc_emails.trim() !== myEmail && (
-                  <button type="button" onClick={() => setForm({ ...form, cc_emails: myEmail })}
-                    className="text-xs text-blue-600 hover:underline mt-1.5">
-                    + Me mettre en copie ({myEmail})
-                  </button>
-                )}
-              </div>
-            )}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
-              ⚠️ Ce message sera envoyé à tous les locataires actifs. Vérifiez le contenu avant d'envoyer.
-            </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={onClose}
-                className="flex-1 px-4 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50">
-                Annuler
-              </button>
-              <Button type="submit" variant="primary" size="md" disabled={sending}
-                className="flex-1 font-medium" leftIcon={<Send size={14} />}>
-                {sending ? 'Envoi...' : 'Envoyer'}
-              </Button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // ── Onglet Planificateur : calendrier des automatisations ────────────────────
 // Vue consolidée de QUAND chaque document/message part, éditable au même endroit
 // (le délai est stocké sur la règle). Les types événementiels (quittance,
@@ -610,7 +500,7 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-2">
         <Calendar size={18} className="text-blue-600" />
-        <h2 className="text-base font-bold text-gray-900">Auto Génération des documents</h2>
+        <h2 className="text-base font-bold text-gray-900">Automatisation des documents</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
         Génération automatique de chaque document et dépôt sur le compte du locataire. Réglez le
@@ -653,7 +543,6 @@ export default function Automatisation() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'scheduler' | 'canaux'>('rules')
   const [showRuleModal, setShowRuleModal] = useState(false)
-  const [showGroupModal, setShowGroupModal] = useState(false)
   const [editRule, setEditRule] = useState<Rule | null>(null)
 
   const load = async () => {
@@ -703,53 +592,13 @@ export default function Automatisation() {
 
   const getRuleInfo = (type: string) => RULE_TYPES.find(t => t.value === type)
 
-  const [running, setRunning] = useState(false)
-  const runNow = async () => {
-    setRunning(true)
-    try {
-      const { data } = await apiClient.post('/automation/run')
-      const n = data?.sent ?? 0
-      toast.success(n > 0
-        ? `${n} envoi(s) déclenché(s) par vos règles.`
-        : 'Aucun envoi à effectuer pour le moment (rien d\'éligible).')
-      load()
-    } catch {
-      // toast via intercepteur
-    } finally {
-      setRunning(false)
-    }
-  }
-
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Communication et automatisation</h1>
-          <p className="text-sm text-gray-500 mt-1">Avis d'échéance, quittances, rappels, communications</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={runNow} disabled={running}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={running ? 'animate-spin' : ''} />
-            {running ? 'Exécution…' : 'Exécuter maintenant'}
-          </button>
-          <button
-            onClick={() => setShowGroupModal(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-50"
-          >
-            <Send size={16} />
-            Communication groupée
-          </button>
-          <Button
-            onClick={() => { setEditRule(null); setShowRuleModal(true) }}
-            variant="primary" size="md" className="font-medium"
-            leftIcon={<Plus size={16} />}
-          >
-            Nouvelle règle
-          </Button>
+          <p className="text-sm text-gray-500 mt-1">Modèles de courrier et automatisation des envois</p>
         </div>
       </div>
 
@@ -806,7 +655,7 @@ export default function Automatisation() {
         {([
           { key: 'rules', label: 'Communication' },
           { key: 'logs', label: 'Historique des envois' },
-          { key: 'scheduler', label: 'Auto Génération' },
+          { key: 'scheduler', label: 'Automatisation' },
           { key: 'canaux', label: 'Canaux & tests' },
         ] as const).map(tab => (
           <button key={tab.key}
@@ -963,9 +812,6 @@ export default function Automatisation() {
 
       {showRuleModal && (
         <RuleModal rule={editRule} onClose={() => setShowRuleModal(false)} onSaved={load} />
-      )}
-      {showGroupModal && (
-        <GroupCommunicationModal onClose={() => { setShowGroupModal(false); load() }} />
       )}
     </div>
   )
