@@ -454,6 +454,104 @@ function GroupCommunicationModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Onglet Planificateur : calendrier des automatisations ────────────────────
+// Vue consolidée de QUAND chaque document/message part, éditable au même endroit
+// (le délai est stocké sur la règle). Les types événementiels (quittance,
+// révisions, taxe) ne se planifient pas : ils partent au moment de l'action.
+const PLAN_EVENT_LABELS: Record<string, string> = {
+  quittance: "Dès qu'un mois est intégralement payé",
+  revision_loyer: "Dès qu'une révision du loyer est déclarée",
+  revision_charges: "Dès qu'une révision des charges est déclarée",
+  taxe_om: "Dès qu'une taxe d'ordures ménagères est déclarée",
+}
+const PLAN_ORDER = ['avis_echeance', 'quittance', 'rappel_impaye', 'relance_1',
+  'relance_2', 'revision_loyer', 'revision_charges', 'taxe_om', 'rapport_mensuel']
+
+function planKind(t: string): 'before' | 'after' | 'day' | 'event' | 'hide' {
+  if (t === 'avis_echeance') return 'before'
+  if (['rappel_impaye', 'relance_1', 'relance_2'].includes(t)) return 'after'
+  if (t === 'rapport_mensuel') return 'day'
+  if (t === 'communication_groupee') return 'hide'
+  return 'event'
+}
+
+function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
+  const info = RULE_TYPES.find(t => t.value === rule.rule_type)
+  const Icon = info?.icon || Clock
+  const kind = planKind(rule.rule_type)
+  const base = Math.abs(rule.trigger_days || 0)
+  const [val, setVal] = useState(base)
+  const [saving, setSaving] = useState(false)
+  const dirty = kind !== 'event' && val !== base
+  const save = async () => {
+    setSaving(true)
+    try {
+      const td = kind === 'day' ? Math.min(28, Math.max(1, val)) : Math.max(0, val)
+      await apiClient.patch(`/automation/rules/${rule.id}`, { trigger_days: td })
+      toast.success('Planification mise à jour')
+      onSaved()
+    } catch {
+      // erreur affichée par l'intercepteur (toast)
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div className={`flex items-center gap-3 py-3 border-b border-gray-100 last:border-0 ${!rule.is_active ? 'opacity-60' : ''}`}>
+      <Icon size={16} className="text-gray-400 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800">{info?.label || rule.rule_type}</p>
+        {!rule.is_active && <span className="text-xs text-gray-400">Inactive</span>}
+      </div>
+      {kind === 'event' ? (
+        <span className="text-sm text-gray-500 text-right">{PLAN_EVENT_LABELS[rule.rule_type]}</span>
+      ) : (
+        <div className="flex items-center gap-2">
+          {kind === 'day' && <span className="text-sm text-gray-500">Le</span>}
+          <input type="number"
+            min={kind === 'day' ? 1 : 0} max={kind === 'day' ? 28 : 60}
+            value={val}
+            onChange={e => setVal(parseInt(e.target.value) || 0)}
+            className="w-20 border rounded-lg px-2 py-1.5 text-sm text-center" />
+          <span className="text-sm text-gray-500">
+            {kind === 'before' ? "jours avant l'échéance"
+              : kind === 'after' ? "jours après l'échéance"
+              : 'de chaque mois'}
+          </span>
+          {dirty && (
+            <Button size="sm" variant="primary" onClick={save} disabled={saving}>
+              {saving ? '…' : 'Enregistrer'}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => void }) {
+  const items = rules
+    .filter(r => planKind(r.rule_type) !== 'hide')
+    .sort((a, b) => PLAN_ORDER.indexOf(a.rule_type) - PLAN_ORDER.indexOf(b.rule_type))
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="flex items-center gap-2 mb-2">
+        <Calendar size={18} className="text-blue-600" />
+        <h2 className="text-base font-bold text-gray-900">Calendrier des automatisations</h2>
+      </div>
+      <p className="text-sm text-gray-500 mb-4">
+        Quand chaque document ou message part automatiquement. Modifiez le délai puis « Enregistrer ».
+        Les éléments « à l'événement » partent au moment de l'action (paiement, déclaration) et ne se planifient pas.
+      </p>
+      {items.length === 0 ? (
+        <p className="text-sm text-gray-400">Aucune règle d'automatisation.</p>
+      ) : (
+        <div>{items.map(r => <PlanningRow key={`${r.id}:${r.trigger_days}`} rule={r} onSaved={onSaved} />)}</div>
+      )}
+    </div>
+  )
+}
+
 export default function Automatisation() {
   const [rules, setRules] = useState<Rule[]>([])
   const [logs, setLogs] = useState<Log[]>([])
@@ -897,6 +995,9 @@ export default function Automatisation() {
               </button>
             </div>
           </div>
+
+          {/* Calendrier des automatisations (délais éditables) */}
+          <AutomationPlanning rules={rules} onSaved={load} />
 
           {/* Déclenchement manuel */}
           <div className="bg-white rounded-xl border border-gray-200 p-6">
