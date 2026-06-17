@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { getErrorMessage } from '@/utils/errors'
-import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Mail, Trash2, RefreshCw, ChevronRight, ChevronDown, CalendarClock, Download } from 'lucide-react'
+import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Trash2, RefreshCw, ChevronRight, ChevronDown, CalendarClock, Download } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { docFilename } from '@/utils/filename'
@@ -33,7 +33,6 @@ export default function PaymentList() {
   const [isLoading, setIsLoading] = useState(true)
   const [recordingId, setRecordingId] = useState<string | null>(null)
 
-  const [sendingQuittanceId, setSendingQuittanceId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [validatingId, setValidatingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -157,18 +156,6 @@ export default function PaymentList() {
       fetchPayments(search, filterStatus, filterYear, filterMonth)
     } finally {
       setDownloadingId(null)
-    }
-  }
-
-  const handleSendQuittance = async (p: PaymentListItem) => {
-    setSendingQuittanceId(p.id)
-    try {
-      await paymentsApi.sendQuittance(p.id)
-      setSuccessMsg(`Quittance marquée comme envoyée : ${p.tenant_full_name} (${p.period_label})`)
-      setTimeout(() => setSuccessMsg(''), 4000)
-      fetchPayments(search, filterStatus, filterYear, filterMonth)
-    } finally {
-      setSendingQuittanceId(null)
     }
   }
 
@@ -468,7 +455,7 @@ export default function PaymentList() {
                   <td className="px-4 py-3">
                     {p.status === 'paid' ? (
                       <div className="flex items-center gap-2">
-                        {/* Télécharger */}
+                        {/* Télécharger (l'envoi est géré par Communication et automatisation) */}
                         <button
                           onClick={() => handleDownloadQuittance(p)}
                           disabled={downloadingId === p.id}
@@ -481,33 +468,9 @@ export default function PaymentList() {
                           }
                         </button>
 
-                        {/* Envoyer / marquer envoyée */}
-                        <button
-                          onClick={() => handleSendQuittance(p)}
-                          disabled={sendingQuittanceId === p.id}
-                          title={p.quittance_sent_at
-                            ? `Marquée envoyée le ${format(new Date(p.quittance_sent_at), 'd MMM yyyy', { locale: fr })}`
-                            : 'Marquer la quittance comme envoyée'}
-                          className={`p-1.5 rounded disabled:opacity-50 transition-colors ${
-                            p.quittance_sent_at
-                              ? 'text-green-600 bg-green-50 hover:bg-green-100'
-                              : 'text-gray-400 hover:bg-gray-100 hover:text-blue-600'
-                          }`}
-                        >
-                          {sendingQuittanceId === p.id
-                            ? <RefreshCw size={14} className="animate-spin" />
-                            : p.quittance_sent_at
-                              ? <CheckCircle2 size={14} />
-                              : <Mail size={14} />
-                          }
-                        </button>
-
                         {/* Disponible = consultable par le locataire dans son espace */}
-                        {p.quittance_generated_at && !p.quittance_sent_at && (
+                        {p.quittance_generated_at && (
                           <span className="text-xs text-green-600 whitespace-nowrap" title="Consultable par le locataire dans son espace">Disponible</span>
-                        )}
-                        {p.quittance_sent_at && (
-                          <span className="text-xs text-green-600 whitespace-nowrap" title="Quittance marquée comme envoyée">Envoyée</span>
                         )}
                       </div>
                     ) : null}
