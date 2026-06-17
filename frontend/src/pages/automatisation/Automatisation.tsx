@@ -46,6 +46,10 @@ interface Rule {
   run_hour?: number
   run_minute?: number
   last_run_at?: string | null
+  auto_generate?: boolean
+  auto_deposit?: boolean
+  send_email?: boolean
+  send_sms?: boolean
   channel: string
   subject?: string
   body_template?: string
@@ -368,6 +372,20 @@ function planKind(t: string): 'before' | 'after' | 'day' | 'event' | 'hide' {
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
+// Petit interrupteur de cellule (une option d'automatisation), sauvegarde immédiate.
+function CellToggle({ on, disabled, busy, onToggle }: {
+  on: boolean, disabled?: boolean, busy?: boolean, onToggle: () => void
+}) {
+  if (disabled) return <span className="text-sm text-gray-300">—</span>
+  return (
+    <button type="button" onClick={onToggle} disabled={busy}
+      className="inline-flex disabled:opacity-50">
+      {on ? <ToggleRight size={24} className="text-green-600" />
+          : <ToggleLeft size={24} className="text-gray-300" />}
+    </button>
+  )
+}
+
 function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
   const info = RULE_TYPES.find(t => t.value === rule.rule_type)
   const Icon = info?.icon || Clock
@@ -378,42 +396,31 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
   const [val, setVal] = useState(base)
   const [hour, setHour] = useState(baseHour)
   const [minute, setMinute] = useState(baseMin)
-  const [saving, setSaving] = useState(false)
-  const [running, setRunning] = useState(false)
-  const [toggling, setToggling] = useState(false)
+  const [busy, setBusy] = useState(false)
   const scheduled = kind !== 'event'  // avis / rappel / relance / rapport
+  const isRapport = rule.rule_type === 'rapport_mensuel'  // gestionnaire only (pas de dépôt/SMS)
   const dirty = scheduled && (val !== base || hour !== baseHour || minute !== baseMin)
 
-  const save = async () => {
-    setSaving(true)
+  const patch = async (body: Record<string, any>) => {
+    setBusy(true)
     try {
-      const td = kind === 'day' ? Math.min(28, Math.max(1, val)) : Math.max(0, val)
-      await apiClient.patch(`/automation/rules/${rule.id}`, {
-        trigger_days: td,
-        run_hour: Math.min(23, Math.max(0, hour)),
-        run_minute: Math.min(59, Math.max(0, minute)),
-      })
-      toast.success('Planification mise à jour')
+      await apiClient.patch(`/automation/rules/${rule.id}`, body)
       onSaved()
-    } catch { /* toast via intercepteur */ } finally { setSaving(false) }
+    } catch { /* toast via intercepteur */ } finally { setBusy(false) }
+  }
+  const saveTiming = () => {
+    if (!dirty) return
+    const td = kind === 'day' ? Math.min(28, Math.max(1, val)) : Math.max(0, val)
+    patch({ trigger_days: td, run_hour: Math.min(23, Math.max(0, hour)), run_minute: Math.min(59, Math.max(0, minute)) })
   }
 
   const runNow = async () => {
-    setRunning(true)
+    setBusy(true)
     try {
       const { data } = await apiClient.post(`/automation/rules/${rule.id}/run-now`)
       toast.success(data?.message || `Exécution lancée (${data?.count ?? 0})`)
       onSaved()
-    } catch { /* toast via intercepteur */ } finally { setRunning(false) }
-  }
-
-  const toggle = async () => {
-    setToggling(true)
-    try {
-      await apiClient.post(`/automation/rules/${rule.id}/toggle`)
-      toast.success(rule.is_active ? 'Automatisation désactivée' : 'Automatisation activée')
-      onSaved()
-    } catch { /* toast via intercepteur */ } finally { setToggling(false) }
+    } catch { /* toast via intercepteur */ } finally { setBusy(false) }
   }
 
   const triggerText = kind === 'event' ? PLAN_EVENT_LABELS[rule.rule_type]
@@ -426,8 +433,9 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
     : 'Jamais'
 
   const td = 'px-3 py-3 align-middle'
+  const tdc = 'px-2 py-3 align-middle text-center'
   return (
-    <tr className={`border-b border-gray-100 last:border-0 ${!rule.is_active ? 'opacity-70' : ''}`}>
+    <tr className="border-b border-gray-100 last:border-0">
       <td className={td}>
         <div className="flex items-center gap-2">
           <Icon size={15} className="text-gray-400 shrink-0" />
@@ -439,7 +447,7 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
           <div className="flex items-center gap-1.5">
             {kind === 'day' && <span className="text-xs text-gray-500">Le</span>}
             <input type="number" min={kind === 'day' ? 1 : 0} max={kind === 'day' ? 28 : 60}
-              value={val} onChange={e => setVal(parseInt(e.target.value) || 0)}
+              value={val} onChange={e => setVal(parseInt(e.target.value) || 0)} onBlur={saveTiming}
               className="w-14 border rounded-lg px-2 py-1.5 text-sm text-center" />
             <span className="text-xs text-gray-500 whitespace-nowrap">{triggerText}</span>
           </div>
@@ -449,43 +457,26 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
       </td>
       <td className={td}>
         {scheduled ? (
-          <input type="time"
-            value={`${pad2(hour)}:${pad2(minute)}`}
-            onChange={e => {
-              const [h, m] = e.target.value.split(':')
-              setHour(parseInt(h) || 0); setMinute(parseInt(m) || 0)
-            }}
+          <input type="time" value={`${pad2(hour)}:${pad2(minute)}`}
+            onChange={e => { const [h, m] = e.target.value.split(':'); setHour(parseInt(h) || 0); setMinute(parseInt(m) || 0) }}
+            onBlur={saveTiming}
             className="border rounded-lg px-2 py-1.5 text-sm" />
         ) : (
           <span className="text-sm text-gray-400">—</span>
         )}
       </td>
+      <td className={tdc}><CellToggle on={rule.auto_generate !== false} busy={busy} onToggle={() => patch({ auto_generate: !(rule.auto_generate !== false) })} /></td>
+      <td className={tdc}><CellToggle on={rule.auto_deposit !== false} disabled={isRapport} busy={busy} onToggle={() => patch({ auto_deposit: !(rule.auto_deposit !== false) })} /></td>
+      <td className={tdc}><CellToggle on={rule.send_email !== false} busy={busy} onToggle={() => patch({ send_email: !(rule.send_email !== false) })} /></td>
+      <td className={tdc}><CellToggle on={!!rule.send_sms} disabled={isRapport} busy={busy} onToggle={() => patch({ send_sms: !rule.send_sms })} /></td>
       <td className={`${td} text-sm text-gray-600 whitespace-nowrap`}>{lastRun}</td>
       <td className={`${td} text-right`}>
-        {scheduled ? (
-          dirty
-            ? <Button size="sm" variant="primary" onClick={save} disabled={saving}>
-                {saving ? '…' : 'Enregistrer'}
-              </Button>
-            : <Button size="sm" variant="secondary" onClick={runNow} disabled={running}>
-                <RefreshCw size={12} className={running ? 'animate-spin' : ''} />
-                {running ? '…' : 'Exécuter'}
-              </Button>
-        ) : (
-          <span className="text-sm text-gray-400">—</span>
-        )}
-      </td>
-      <td className={`${td} text-right`}>
-        <button type="button" onClick={toggle} disabled={toggling}
-          className="inline-flex items-center gap-1.5"
-          title={rule.is_active ? 'Désactiver' : 'Activer'}>
-          {rule.is_active
-            ? <ToggleRight size={24} className="text-green-600" />
-            : <ToggleLeft size={24} className="text-gray-400" />}
-          <span className={`text-xs font-medium ${rule.is_active ? 'text-green-700' : 'text-gray-400'}`}>
-            {rule.is_active ? 'Actif' : 'Inactif'}
-          </span>
-        </button>
+        {scheduled
+          ? <Button size="sm" variant="secondary" onClick={runNow} disabled={busy}>
+              <RefreshCw size={12} className={busy ? 'animate-spin' : ''} />
+              Exécuter
+            </Button>
+          : <span className="text-sm text-gray-400">—</span>}
       </td>
     </tr>
   )
@@ -503,25 +494,29 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
         <h2 className="text-base font-bold text-gray-900">Automatisation des documents</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
-        Génération automatique de chaque document et dépôt sur le compte du locataire. Réglez le
-        délai et l'heure d'exécution (hh:mm), lancez « Exécuter » à la demande, et suivez la dernière
-        exécution. Chaque ligne a un interrupteur Actif/Inactif : rien ne part sans votre accord.
-        Les éléments « à l'événement » sont générés au moment de l'action (paiement, déclaration).
-        L'envoi des e-mails (document en pièce jointe) se règle dans l'onglet « Communication ».
+        Pour chaque document, activez ou non : <strong>Générer</strong> (automatiser),
+        <strong> Déposer</strong> (sur le compte du locataire), <strong>E-mail</strong> (avec le
+        document en pièce jointe) et <strong>SMS</strong>. Réglez le délai et l'heure (hh:mm) pour
+        les types planifiés ; les types « à l'événement » se déclenchent à l'action (paiement,
+        déclaration). Rien ne part sans votre accord. Le contenu des courriers se règle dans l'onglet
+        « Communication ».
       </p>
       {items.length === 0 ? (
         <p className="text-sm text-gray-400">Aucune automatisation configurée.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px]">
+          <table className="w-full min-w-[860px]">
             <thead className="bg-gray-50 border-y border-gray-100">
               <tr>
                 <th className={th}>Document</th>
                 <th className={th}>Déclenchement</th>
                 <th className={th}>Heure</th>
+                <th className={`${th} text-center`}>Générer</th>
+                <th className={`${th} text-center`}>Déposer</th>
+                <th className={`${th} text-center`}>E-mail</th>
+                <th className={`${th} text-center`}>SMS</th>
                 <th className={th}>Dernière exécution</th>
                 <th className={`${th} text-right`}>Action</th>
-                <th className={`${th} text-right`}>Statut</th>
               </tr>
             </thead>
             <tbody>

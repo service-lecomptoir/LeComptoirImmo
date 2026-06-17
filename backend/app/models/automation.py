@@ -56,8 +56,15 @@ class AutomationRule(Base, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
 
-    # Canal d'envoi
+    # Canal d'envoi (hérité ; remplacé par les interrupteurs send_email/send_sms).
     channel: Mapped[str] = mapped_column(String(20), default="email", nullable=False)
+
+    # Options d'automatisation (onglet Automatisation), activables/désactivables :
+    # génération du document, dépôt sur le compte locataire, envoi e-mail, envoi SMS.
+    auto_generate: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    auto_deposit: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    send_email: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    send_sms: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Contenu personnalisé
     subject: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)

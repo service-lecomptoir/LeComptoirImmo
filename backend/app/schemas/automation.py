@@ -12,6 +12,10 @@ class AutomationRuleCreate(BaseModel):
     run_hour: int = 8
     run_minute: int = 0
     channel: Channel = Channel.EMAIL
+    auto_generate: bool = True
+    auto_deposit: bool = True
+    send_email: bool = True
+    send_sms: bool = False
     subject: Optional[str] = None
     body_template: Optional[str] = None
     is_active: bool = True
@@ -29,6 +33,10 @@ class AutomationRuleUpdate(BaseModel):
     run_hour: Optional[int] = None
     run_minute: Optional[int] = None
     channel: Optional[Channel] = None
+    auto_generate: Optional[bool] = None
+    auto_deposit: Optional[bool] = None
+    send_email: Optional[bool] = None
+    send_sms: Optional[bool] = None
     subject: Optional[str] = None
     body_template: Optional[str] = None
     is_active: Optional[bool] = None
@@ -46,6 +54,10 @@ class AutomationRuleResponse(BaseModel):
     run_minute: int = 0
     last_run_at: Optional[datetime] = None
     channel: Channel
+    auto_generate: bool = True
+    auto_deposit: bool = True
+    send_email: bool = True
+    send_sms: bool = False
     subject: Optional[str] = None
     body_template: Optional[str] = None
     is_active: bool

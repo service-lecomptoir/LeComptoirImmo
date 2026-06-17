@@ -465,6 +465,22 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS run_hour INTEGER DEFAULT 8",
         "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS run_minute INTEGER DEFAULT 0",
         "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ",
+        # Options d'automatisation par règle (générer / déposer / e-mail / SMS).
+        # Colonnes ajoutées en NULL puis backfillées UNE SEULE FOIS depuis « channel »
+        # (le WHERE ... IS NULL ne matche plus aux boots suivants → aucun écrasement
+        # des interrupteurs réglés ensuite par le gestionnaire).
+        "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS auto_generate BOOLEAN",
+        "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS auto_deposit BOOLEAN",
+        "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS send_email BOOLEAN",
+        "ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS send_sms BOOLEAN",
+        "UPDATE automation_rules SET auto_generate = TRUE WHERE auto_generate IS NULL",
+        "UPDATE automation_rules SET auto_deposit = TRUE WHERE auto_deposit IS NULL",
+        "UPDATE automation_rules SET send_email = (channel IN ('email','email_sms')) WHERE send_email IS NULL",
+        "UPDATE automation_rules SET send_sms = (channel IN ('sms','email_sms')) WHERE send_sms IS NULL",
+        "ALTER TABLE automation_rules ALTER COLUMN auto_generate SET DEFAULT TRUE",
+        "ALTER TABLE automation_rules ALTER COLUMN auto_deposit SET DEFAULT TRUE",
+        "ALTER TABLE automation_rules ALTER COLUMN send_email SET DEFAULT TRUE",
+        "ALTER TABLE automation_rules ALTER COLUMN send_sms SET DEFAULT FALSE",
         # Initialise le CC des règles existantes avec l'e-mail du gestionnaire
         # créateur (une seule fois : ne touche que les NULL ; un CC vidé = '').
         "UPDATE automation_rules SET cc_emails = (SELECT email FROM users WHERE users.id = automation_rules.created_by) "

@@ -336,7 +336,11 @@ async def _send_avis(db, rule, avis, today: date) -> bool:
     sms_text = _render(rule.body_template, ctx) or (
         f"Le Comptoir Immo : votre avis d'échéance {period} "
         f"({ctx['amount']}) est disponible. Échéance le {ctx['due_date']}.")
-    channel = (rule.channel or "email")
+    # Canal piloté par les interrupteurs Automatisation (send_email / send_sms).
+    _do_email = bool(getattr(rule, "send_email", True))
+    _do_sms = bool(getattr(rule, "send_sms", False))
+    channel = ("email_sms" if (_do_email and _do_sms)
+               else "email" if _do_email else "sms" if _do_sms else "none")
     cc = _rule_cc(rule)
 
     any_sent = False
@@ -445,7 +449,11 @@ async def _send_reminder(db, rule, payment, today: date) -> bool:
     sms_text = (_render(rule.body_template, ctx) if rule.body_template else None) or (
         f"Le Comptoir Immo : {label.lower()}, loyer {ctx['period']} impaye "
         f"(solde {ctx['balance']}). Merci de regulariser.")
-    channel = (rule.channel or "email")
+    # Canal piloté par les interrupteurs Automatisation (send_email / send_sms).
+    _do_email = bool(getattr(rule, "send_email", True))
+    _do_sms = bool(getattr(rule, "send_sms", False))
+    channel = ("email_sms" if (_do_email and _do_sms)
+               else "email" if _do_email else "sms" if _do_sms else "none")
     cc = _rule_cc(rule)
     from app.services import mail_signature
     sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, rule.created_by, rule.signature)
@@ -544,8 +552,8 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
             AutomationRule.is_active.is_(True),
         ).limit(1)
     )).scalar_one_or_none()
-    if rule is None:
-        return False  # pas de règle active → pas d'envoi (aucune boîte noire)
+    if rule is None or not bool(getattr(rule, "auto_generate", True)):
+        return False  # pas de règle active / type non automatisé → pas d'envoi auto
 
     dedup = f"quittance:{payment.id}:{rule.id}"
     if await _already_sent(db, dedup):
@@ -563,7 +571,11 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
     subject = _render(rule.subject, ctx) or f"Quittance de loyer : {ctx['period']}"
     sms_text = _render(rule.body_template, ctx) or (
         f"Le Comptoir Immo : votre quittance {ctx['period']} ({ctx['amount']}) est disponible.")
-    channel = (rule.channel or "email")
+    # Canal piloté par les interrupteurs Automatisation (send_email / send_sms).
+    _do_email = bool(getattr(rule, "send_email", True))
+    _do_sms = bool(getattr(rule, "send_sms", False))
+    channel = ("email_sms" if (_do_email and _do_sms)
+               else "email" if _do_email else "sms" if _do_sms else "none")
     cc = _rule_cc(rule)
     from app.services import mail_signature
     sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
@@ -619,10 +631,15 @@ async def _send_event_to_tenant(db, lease, *, rule_type, ctx_extra, dedup_suffix
     from app.models.tenant import Tenant
     manager_id = getattr(lease, "created_by", None)
     rule = await _active_rule(db, manager_id, rule_type)
-    if rule is None:
-        return False
+    if rule is None or not bool(getattr(rule, "auto_generate", True)):
+        return False  # type non automatisé → géré au clic
     tenant = await db.get(Tenant, getattr(lease, "tenant_id", None))
-    if tenant is None or not getattr(tenant, "email", None):
+    if tenant is None:
+        return False
+    # Canaux pilotés par les interrupteurs Automatisation de la règle.
+    do_email = bool(getattr(rule, "send_email", True)) and bool(getattr(tenant, "email", None))
+    do_sms = bool(getattr(rule, "send_sms", False)) and bool(getattr(tenant, "phone", None))
+    if not (do_email or do_sms):
         return False
     dedup = f"{rule_type}:{lease.id}:{dedup_suffix}:{rule.id}"
     if await _already_sent(db, dedup):
@@ -634,18 +651,30 @@ async def _send_event_to_tenant(db, lease, *, rule_type, ctx_extra, dedup_suffix
     }
     subject = render_subject(rule.subject, ctx) or (_DEFAULT_SUBJECTS.get(rule_type) or "")
     body_html = render_rule_body(rule.body_template, ctx) or _body_to_html(_render(_DEFAULT_BODIES.get(rule_type), ctx))
-    from app.services import mail_signature
-    from app.services.email_service import send_email
-    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
-    ok = await send_email(
-        to=tenant.email, subject=subject, html_body=body_html + (sig_html or ""),
-        cc=_rule_cc(rule), inline_logo=logo, inline_logo_subtype=logo_sub,
-        attachment_bytes=pdf_bytes, attachment_filename=pdf_name,
-    )
-    if ok:
-        await _log(db, rule=rule, tenant_id=tenant.id, lease_id=lease.id, channel="email",
-                   recipient=tenant.email, subject=subject, body=body_html, status="sent", dedup_key=dedup)
-    return ok
+    any_sent = False
+    if do_email:
+        from app.services import mail_signature
+        from app.services.email_service import send_email
+        sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
+        ok = await send_email(
+            to=tenant.email, subject=subject, html_body=body_html + (sig_html or ""),
+            cc=_rule_cc(rule), inline_logo=logo, inline_logo_subtype=logo_sub,
+            attachment_bytes=pdf_bytes, attachment_filename=pdf_name,
+        )
+        any_sent = any_sent or ok
+    if do_sms:
+        try:
+            from app.services.sms_service import send_sms
+            ok = await send_sms(tenant.phone, subject)
+            any_sent = any_sent or ok
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[automation] SMS événement %s échec lease=%s: %r", rule_type, lease.id, exc)
+    if any_sent:
+        await _log(db, rule=rule, tenant_id=tenant.id, lease_id=lease.id,
+                   channel=("email_sms" if (do_email and do_sms) else "email" if do_email else "sms"),
+                   recipient=getattr(tenant, "email", None) or getattr(tenant, "phone", None),
+                   subject=subject, body=body_html, status="sent", dedup_key=dedup)
+    return any_sent
 
 
 async def send_revision_email(db, lease, *, kind, old_amount, new_amount, effective_date,
@@ -756,6 +785,8 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
     from app.models.user import User
     if int(rule.trigger_days or 1) != today.day:
         return 0
+    if not bool(getattr(rule, "send_email", True)):
+        return 0  # rapport = e-mail au gestionnaire ; pas d'e-mail → rien à faire
     last_prev = today.replace(day=1) - timedelta(days=1)
     year, month = last_prev.year, last_prev.month
     manager_id = rule.created_by
@@ -815,6 +846,10 @@ async def run_all(db: AsyncSession, today: Optional[date] = None, manager_id=Non
     summary: dict = {}
     for rule in rules:
         if not rule.created_by:
+            continue
+        # Interrupteur maître « Générer » : si off, ce type n'est pas automatisé
+        # (génération manuelle au clic dans les écrans dédiés).
+        if not bool(getattr(rule, "auto_generate", True)):
             continue
         # Planificateur : l'heure hh:mm doit être atteinte aujourd'hui ET la règle
         # ne doit pas avoir déjà tourné ce jour (rattrapage robuste, 1×/jour).

@@ -161,13 +161,14 @@ async def locataire_regularizations(
         .where(ChargeRegularization.tenant_id == tenant.id)
         .order_by(ChargeRegularization.period_end.desc())
     )).scalars().all()
+    cache: dict = {}
     return [{
         "id": str(r.id),
         "period_start": r.period_start.isoformat() if r.period_start else None,
         "period_end": r.period_end.isoformat() if r.period_end else None,
         "balance": float(r.balance or 0),
         "applied_at": r.applied_at.isoformat() if r.applied_at else None,
-    } for r in regs]
+    } for r in regs if await _deposit_on(db, r.created_by, "revision_charges", cache)]
 
 
 async def _current_tenant(db: AsyncSession, current_user: User):
@@ -176,6 +177,27 @@ async def _current_tenant(db: AsyncSession, current_user: User):
     return (await db.execute(
         select(Tenant).where(Tenant.user_id == current_user.id)
     )).scalar_one_or_none()
+
+
+async def _deposit_on(db: AsyncSession, manager_id, rule_type: str, cache: dict) -> bool:
+    """Interrupteur « Déposer sur le compte locataire » (onglet Automatisation) du
+    gestionnaire pour ce type de document. True par défaut (aucune règle = visible)."""
+    if not manager_id:
+        return True
+    key = (str(manager_id), rule_type)
+    if key in cache:
+        return cache[key]
+    from sqlalchemy import select
+    from app.models.automation import AutomationRule
+    val = (await db.execute(
+        select(AutomationRule.auto_deposit).where(
+            AutomationRule.created_by == manager_id,
+            AutomationRule.rule_type == rule_type,
+        ).limit(1)
+    )).scalar_one_or_none()
+    enabled = True if val is None else bool(val)
+    cache[key] = enabled
+    return enabled
 
 
 @router.get("/locataire/regularizations/{reg_id}/pdf", summary="Décompte de régularisation (locataire)")
@@ -214,8 +236,10 @@ async def locataire_revisions(
         select(Lease).where(Lease.tenant_id == tenant.id,
                             Lease.irl_base_index.isnot(None))
     )).scalars().all()
-    out = []
+    out, cache = [], {}
     for l in leases:
+        if not await _deposit_on(db, l.created_by, "revision_loyer", cache):
+            continue
         prop = await db.get(Property, l.property_id) if l.property_id else None
         out.append({
             "lease_id": str(l.id),
@@ -259,8 +283,10 @@ async def locataire_taxes(
         select(TaxeDeclaration).where(TaxeDeclaration.tenant_id == tenant.id)
         .order_by(TaxeDeclaration.year.desc())
     )).scalars().all()
+    cache: dict = {}
     return [{"id": str(t.id), "year": t.year, "amount": float(t.teom_amount or 0),
-             "declared_at": t.declared_at.isoformat() if t.declared_at else None} for t in rows]
+             "declared_at": t.declared_at.isoformat() if t.declared_at else None}
+            for t in rows if await _deposit_on(db, t.created_by, "taxe_om", cache)]
 
 
 @router.get("/locataire/taxes/{taxe_id}/pdf", summary="Décompte TEOM (locataire)")
@@ -309,7 +335,7 @@ async def locataire_relances(
     if not tenant:
         return []
     logs = (await db.execute(
-        select(CommunicationLog, AutomationRule.rule_type)
+        select(CommunicationLog, AutomationRule.rule_type, AutomationRule.auto_deposit)
         .join(AutomationRule, CommunicationLog.rule_id == AutomationRule.id)
         .where(CommunicationLog.tenant_id == tenant.id,
                CommunicationLog.status == "sent",
@@ -317,7 +343,9 @@ async def locataire_relances(
         .order_by(CommunicationLog.sent_at.desc())
     )).all()
     out = []
-    for log, rtype in logs:
+    for log, rtype, deposit in logs:
+        if not (deposit if deposit is not None else True):
+            continue  # dépôt locataire désactivé pour ce type
         pid = _payment_id_from_dedup(log.dedup_key)
         if not pid:
             continue
