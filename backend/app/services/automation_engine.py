@@ -43,6 +43,37 @@ def _rule_cc(rule) -> Optional[str]:
     return ", ".join(parts) or None
 
 
+# Signature (service) imposée selon le type : contentieux pour les relances/rappels,
+# gestion locative pour tous les autres envois.
+_CONTENTIEUX_TYPES = {"rappel_impaye", "relance_1", "relance_2"}
+
+
+def _signature_for(rule_type: str) -> str:
+    return "Service contentieux" if rule_type in _CONTENTIEUX_TYPES else "Service Gestion Locative"
+
+
+async def _cc_with_manager(db, rule) -> Optional[str]:
+    """CC de la règle + e-mail du gestionnaire (toujours en copie), dédupliqué."""
+    from app.models.user import User
+    parts: list[str] = []
+    base = _rule_cc(rule)
+    if base:
+        parts.extend(p.strip() for p in base.split(","))
+    mid = getattr(rule, "created_by", None)
+    if mid:
+        u = await db.get(User, mid)
+        email = getattr(u, "email", None)
+        if email:
+            parts.append(email.strip())
+    seen, out = set(), []
+    for p in parts:
+        k = p.lower()
+        if p and k not in seen:
+            seen.add(k)
+            out.append(p)
+    return ", ".join(out) or None
+
+
 async def _msg_templates(db, rule, tenant_lang: Optional[str] = None):
     """(subject_tmpl, body_tmpl, sms_tmpl) à utiliser : contenu du modèle de courrier
     SÉLECTIONNÉ (onglet Communication) dans la langue du locataire si disponible
@@ -373,7 +404,7 @@ async def _send_avis(db, rule, avis, today: date) -> bool:
     _do_sms = bool(getattr(rule, "send_sms", False))
     channel = ("email_sms" if (_do_email and _do_sms)
                else "email" if _do_email else "sms" if _do_sms else "none")
-    cc = _rule_cc(rule)
+    cc = await _cc_with_manager(db, rule)
 
     any_sent = False
     last_err = None
@@ -383,7 +414,7 @@ async def _send_avis(db, rule, avis, today: date) -> bool:
             from app.services.pdf_service import AvisEcheancePDFService
             from app.services.email_service import send_avis_echeance
             from app.services import mail_signature
-            sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, rule.created_by, rule.signature)
+            sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, rule.created_by, _signature_for(rule.rule_type))
             pdf = await AvisEcheancePDFService.generate(db, avis)
             ok = await send_avis_echeance(
                 to=tenant.email, tenant_name=tenant.full_name or tenant.email,
@@ -487,9 +518,9 @@ async def _send_reminder(db, rule, payment, today: date) -> bool:
     _do_sms = bool(getattr(rule, "send_sms", False))
     channel = ("email_sms" if (_do_email and _do_sms)
                else "email" if _do_email else "sms" if _do_sms else "none")
-    cc = _rule_cc(rule)
+    cc = await _cc_with_manager(db, rule)
     from app.services import mail_signature
-    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, rule.created_by, rule.signature)
+    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, rule.created_by, _signature_for(rule.rule_type))
 
     any_sent = False
     last_err = None
@@ -610,9 +641,9 @@ async def send_quittance_for_payment(db: AsyncSession, payment) -> bool:
     _do_sms = bool(getattr(rule, "send_sms", False))
     channel = ("email_sms" if (_do_email and _do_sms)
                else "email" if _do_email else "sms" if _do_sms else "none")
-    cc = _rule_cc(rule)
+    cc = await _cc_with_manager(db, rule)
     from app.services import mail_signature
-    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
+    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, _signature_for(rule.rule_type))
 
     any_sent = False
     if channel in ("email", "email_sms") and getattr(tenant, "email", None):
@@ -690,10 +721,10 @@ async def _send_event_to_tenant(db, lease, *, rule_type, ctx_extra, dedup_suffix
     if do_email:
         from app.services import mail_signature
         from app.services.email_service import send_email
-        sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
+        sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, _signature_for(rule.rule_type))
         ok = await send_email(
             to=tenant.email, subject=subject, html_body=body_html + (sig_html or ""),
-            cc=_rule_cc(rule), inline_logo=logo, inline_logo_subtype=logo_sub,
+            cc=await _cc_with_manager(db, rule), inline_logo=logo, inline_logo_subtype=logo_sub,
             attachment_bytes=pdf_bytes, attachment_filename=pdf_name,
         )
         any_sent = any_sent or ok
@@ -839,7 +870,7 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
     body_html = render_rule_body(rule.body_template, ctx) or _body_to_html(_render(_DEFAULT_BODIES["rapport_mensuel"], ctx))
     from app.services import mail_signature
     from app.services.email_service import send_email
-    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
+    sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, _signature_for(rule.rule_type))
     # Rapport joint en PDF via le modèle « Rapport de gestion » de l'atelier de documents
     # (éditable dans les ateliers de modèles). Fail-soft.
     pdf_bytes = pdf_name = None

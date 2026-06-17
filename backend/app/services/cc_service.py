@@ -74,8 +74,23 @@ async def rule_cc_for_lease(db: AsyncSession, lease_id, *rule_types: str) -> Opt
         return None
     try:
         from app.models.lease import Lease
+        from app.models.user import User
         lease = await db.get(Lease, lease_id)
-        return await rule_cc(db, getattr(lease, "created_by", None), *rule_types) if lease else None
+        mid = getattr(lease, "created_by", None) if lease else None
+        base = await rule_cc(db, mid, *rule_types)
+        # Le gestionnaire est TOUJOURS en copie (exigence : tous les envois).
+        parts = [p.strip() for p in (base or "").split(",") if p.strip()]
+        if mid:
+            u = await db.get(User, mid)
+            if getattr(u, "email", None):
+                parts.append(u.email.strip())
+        seen, out = set(), []
+        for p in parts:
+            k = p.lower()
+            if p and k not in seen:
+                seen.add(k)
+                out.append(p)
+        return ", ".join(out) or None
     except Exception as exc:  # noqa: BLE001
         logger.warning("rule_cc_for_lease(%s) failed: %s", lease_id, exc)
         return None
