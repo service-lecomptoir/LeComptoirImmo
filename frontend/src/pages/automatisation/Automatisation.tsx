@@ -136,19 +136,18 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
         { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : 'Jamais'
 
-  const td = 'px-3 py-3 align-middle'
-  const tdc = 'px-2 py-3 align-middle text-center'
+  const td = 'px-3 py-3 align-middle text-center'
   return (
     <tr className="border-b border-gray-100 last:border-0">
       <td className={td}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <Icon size={15} className="text-gray-400 shrink-0" />
           <span className="text-sm font-medium text-gray-800">{info?.label || rule.rule_type}</span>
         </div>
       </td>
       <td className={td}>
         {scheduled ? (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-center gap-1.5">
             {kind === 'day' && <span className="text-xs text-gray-500">Le</span>}
             <input type="number" min={kind === 'day' ? 1 : 0} max={kind === 'day' ? 28 : 60}
               value={val} onChange={e => setVal(parseInt(e.target.value) || 0)} onBlur={saveTiming}
@@ -164,17 +163,17 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
           <input type="time" value={`${pad2(hour)}:${pad2(minute)}`}
             onChange={e => { const [h, m] = e.target.value.split(':'); setHour(parseInt(h) || 0); setMinute(parseInt(m) || 0) }}
             onBlur={saveTiming}
-            className="border rounded-lg px-2 py-1.5 text-sm" />
+            className="border rounded-lg px-2 py-1.5 text-sm text-center" />
         ) : (
           <span className="text-sm text-gray-400">—</span>
         )}
       </td>
-      <td className={tdc}><CellToggle on={rule.auto_generate !== false} busy={busy} onToggle={() => patch({ auto_generate: !(rule.auto_generate !== false) })} /></td>
-      <td className={tdc}><CellToggle on={rule.auto_deposit !== false} disabled={isRapport} busy={busy} onToggle={() => patch({ auto_deposit: !(rule.auto_deposit !== false) })} /></td>
-      <td className={tdc}><CellToggle on={rule.send_email !== false} busy={busy} onToggle={() => patch({ send_email: !(rule.send_email !== false) })} /></td>
-      <td className={tdc}><CellToggle on={!!rule.send_sms} disabled={isRapport} busy={busy} onToggle={() => patch({ send_sms: !rule.send_sms })} /></td>
+      <td className={td}><CellToggle on={rule.auto_generate !== false} busy={busy} onToggle={() => patch({ auto_generate: !(rule.auto_generate !== false) })} /></td>
+      <td className={td}><CellToggle on={rule.auto_deposit !== false} disabled={isRapport} busy={busy} onToggle={() => patch({ auto_deposit: !(rule.auto_deposit !== false) })} /></td>
+      <td className={td}><CellToggle on={rule.send_email !== false} busy={busy} onToggle={() => patch({ send_email: !(rule.send_email !== false) })} /></td>
+      <td className={td}><CellToggle on={!!rule.send_sms} disabled={isRapport} busy={busy} onToggle={() => patch({ send_sms: !rule.send_sms })} /></td>
       <td className={`${td} text-sm text-gray-600 whitespace-nowrap`}>{lastRun}</td>
-      <td className={`${td} text-right`}>
+      <td className={td}>
         {scheduled
           ? <button type="button" onClick={runNow} disabled={busy}
               title="Démarrer maintenant"
@@ -192,7 +191,7 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
   const items = rules
     .filter(r => planKind(r.rule_type) !== 'hide')
     .sort((a, b) => PLAN_ORDER.indexOf(a.rule_type) - PLAN_ORDER.indexOf(b.rule_type))
-  const th = 'px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide'
+  const th = 'px-3 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide'
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-2">
@@ -217,12 +216,12 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
                 <th className={th}>Document</th>
                 <th className={th}>Déclenchement</th>
                 <th className={th}>Heure</th>
-                <th className={`${th} text-center`}>Générer</th>
-                <th className={`${th} text-center`}>Déposer</th>
-                <th className={`${th} text-center`}>E-mail</th>
-                <th className={`${th} text-center`}>SMS</th>
+                <th className={th}>Générer</th>
+                <th className={th}>Déposer</th>
+                <th className={th}>E-mail</th>
+                <th className={th}>SMS</th>
                 <th className={th}>Dernière exécution</th>
-                <th className={`${th} text-right`}>Action</th>
+                <th className={th}>Action</th>
               </tr>
             </thead>
             <tbody>
