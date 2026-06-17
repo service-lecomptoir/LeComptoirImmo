@@ -9,6 +9,7 @@ import { SectionTitle } from '@/components/common/SectionTitle'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { formatNir, digitsOnly } from '@/utils/format'
 import { getErrorMessage } from '@/utils/errors'
+import { toast } from '@/store/toast'
 import { tenantsApi } from '@/api/tenants'
 import { usersApi } from '@/api/users'
 import type { Tenant } from '@/types/tenant'
@@ -124,7 +125,6 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
   const isEdit = !!tenant
   const [locataireUsers, setLocataireUsers] = useState<User[]>([])
   const [showCreateUser, setShowCreateUser] = useState(false)
-  const [newUserPassword, setNewUserPassword] = useState('')
   const [creatingUser, setCreatingUser] = useState(false)
   const [createUserError, setCreateUserError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -171,12 +171,8 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       ? (companyValue?.trim() || '')
       : `${firstNameValue ?? ''} ${lastNameValue ?? ''}`.trim()
     const email = emailValue?.trim()
-    if (!name || !email || !newUserPassword.trim()) {
-      setCreateUserError('Remplissez le nom/société, l\'email et le mot de passe ci-dessus')
-      return
-    }
-    if (newUserPassword.trim().length < 8) {
-      setCreateUserError('Le mot de passe doit contenir au moins 8 caractères.')
+    if (!name || !email) {
+      setCreateUserError('Remplissez le nom/société et l\'email ci-dessus')
       return
     }
     setCreatingUser(true)
@@ -185,7 +181,6 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       const { data: newUser } = await usersApi.create({
         full_name: name,
         email,
-        password: newUserPassword,
         role: 'locataire',
         // Téléphone repris de la fiche locataire (synchronisé ensuite dans les deux sens).
         phone: watch('phone')?.trim() || undefined,
@@ -193,7 +188,9 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       setLocataireUsers(prev => [...prev, newUser])
       setValue('user_id', newUser.id)
       setShowCreateUser(false)
-      setNewUserPassword('')
+      toast.success(newUser.credentials_email_sent
+        ? `Compte créé. Le mot de passe a été généré et envoyé par e-mail à ${email}.`
+        : 'Compte créé. Mot de passe généré ; envoyez les identifiants depuis Gestion utilisateurs si l\'e-mail n\'est pas parti.')
     } catch (e: any) {
       setCreateUserError(getErrorMessage(e, 'Erreur lors de la création du compte'))
     } finally {
@@ -300,13 +297,9 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
                 </button>
               </div>
               {createUserError && <p className="text-xs text-red-600">{createUserError}</p>}
-              <input
-                value={newUserPassword}
-                onChange={e => setNewUserPassword(e.target.value)}
-                placeholder="Mot de passe *"
-                type="password"
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <p className="text-xs text-gray-500">
+                Le mot de passe est généré automatiquement et envoyé par e-mail au locataire (changement à la 1re connexion).
+              </p>
               <button
                 type="button"
                 onClick={handleCreateUser}
