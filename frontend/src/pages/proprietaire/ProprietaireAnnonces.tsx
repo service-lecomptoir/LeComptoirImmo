@@ -61,11 +61,11 @@ export default function ProprietaireAnnonces() {
           <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Bien</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Vues</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Publiée le</th>
-                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Annonce</th>
+                <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Bien</th>
+                <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Statut</th>
+                <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Vues</th>
+                <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Publiée le</th>
+                <th className="px-6 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Annonce</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">

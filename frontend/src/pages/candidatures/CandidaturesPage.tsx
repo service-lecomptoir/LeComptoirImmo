@@ -348,12 +348,12 @@ export default function CandidaturesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-xs text-gray-400 uppercase tracking-wide text-left">
-                    <th className="py-2 pr-3">Candidat</th>
-                    <th className="py-2 pr-3">Revenus</th>
-                    <th className="py-2 pr-3">Effort</th>
-                    <th className="py-2 pr-3">Dossier</th>
-                    <th className="py-2 pr-3">Garant</th>
-                    <th className="py-2">Score</th>
+                    <th className="py-2 pr-3 text-center">Candidat</th>
+                    <th className="py-2 pr-3 text-center">Revenus</th>
+                    <th className="py-2 pr-3 text-center">Effort</th>
+                    <th className="py-2 pr-3 text-center">Dossier</th>
+                    <th className="py-2 pr-3 text-center">Garant</th>
+                    <th className="py-2 text-center">Score</th>
                   </tr>
                 </thead>
                 <tbody>

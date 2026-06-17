@@ -230,7 +230,7 @@ export default function ScoringList() {
       <table className="w-full min-w-[760px]">
         <thead>
           <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
-            {HEADERS.map(h => <th key={h} className="px-4 py-3 font-medium">{h}</th>)}
+            {HEADERS.map(h => <th key={h} className="px-4 py-3 font-medium text-center">{h}</th>)}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">

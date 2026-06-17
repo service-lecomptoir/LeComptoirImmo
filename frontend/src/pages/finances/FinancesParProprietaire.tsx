@@ -83,7 +83,7 @@ export default function FinancesParProprietaire({ view }: { view: View }) {
                 <thead><tr className="text-left text-xs text-gray-500 uppercase">
                   <th className="px-3 py-2">Période</th><th className="px-3 py-2">Bien</th>
                   <th className="px-3 py-2">Locataire</th>
-                  <th className="px-3 py-2 text-right">Appelé</th><th className="px-3 py-2 text-right">Encaissé</th>
+                  <th className="px-3 py-2 text-center">Appelé</th><th className="px-3 py-2 text-center">Encaissé</th>
                   <th className="px-3 py-2">Statut</th>
                 </tr></thead>
                 <tbody>
@@ -111,8 +111,8 @@ export default function FinancesParProprietaire({ view }: { view: View }) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead><tr className="text-left text-xs text-gray-500 uppercase">
-              <th className="px-3 py-2">Bien</th><th className="px-3 py-2 text-right">Loyer + charges /mois</th>
-              <th className="px-3 py-2 text-right">Appelé {fin.year}</th><th className="px-3 py-2 text-right">Encaissé {fin.year}</th>
+              <th className="px-3 py-2">Bien</th><th className="px-3 py-2 text-center">Loyer + charges /mois</th>
+              <th className="px-3 py-2 text-center">Appelé {fin.year}</th><th className="px-3 py-2 text-center">Encaissé {fin.year}</th>
               <th className="px-3 py-2">Occupation</th>
             </tr></thead>
             <tbody>

@@ -354,12 +354,12 @@ export default function AdminUsers() {
           <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Nom</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Email</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Rôle</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Statut</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Dernière connexion</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-700">Créé le</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-700">Nom</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-700">Email</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-700">Rôle</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-700">Statut</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-700">Dernière connexion</th>
+                <th className="text-center px-4 py-3 font-semibold text-gray-700">Créé le</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>

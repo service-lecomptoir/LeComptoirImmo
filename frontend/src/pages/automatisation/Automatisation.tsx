@@ -355,12 +355,12 @@ export default function Automatisation() {
             <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Date</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Canal</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Destinataire</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Objet</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Statut</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 text-right">Actions</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Date</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Canal</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Destinataire</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Objet</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Statut</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">

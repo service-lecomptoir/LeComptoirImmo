@@ -258,9 +258,9 @@ export default function ProprietaireFiscal() {
                   <table className="w-full min-w-[640px] text-sm">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Bien</th>
-                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-500">Adresse</th>
-                        <th className="text-right px-4 py-3 text-xs font-medium text-gray-500">Loyers {data.year}</th>
+                        <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Bien</th>
+                        <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Adresse</th>
+                        <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Loyers {data.year}</th>
                         <th className="text-center px-4 py-3 text-xs font-medium text-gray-500">Contrats</th>
                       </tr>
                     </thead>

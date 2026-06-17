@@ -249,10 +249,10 @@ export default function ProprietaireBiens() {
                       <table className="w-full min-w-[640px]">
                         <thead>
                           <tr className="text-xs text-gray-400 border-b border-gray-200">
-                            <th className="text-left pb-2 font-medium">Mois</th>
-                            <th className="text-right pb-2 font-medium">Attendu</th>
-                            <th className="text-right pb-2 font-medium">Encaissé</th>
-                            <th className="text-right pb-2 font-medium">Statut</th>
+                            <th className="text-center pb-2 font-medium">Mois</th>
+                            <th className="text-center pb-2 font-medium">Attendu</th>
+                            <th className="text-center pb-2 font-medium">Encaissé</th>
+                            <th className="text-center pb-2 font-medium">Statut</th>
                           </tr>
                         </thead>
                         <tbody>
