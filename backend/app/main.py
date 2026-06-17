@@ -56,10 +56,24 @@ async def lifespan(app: FastAPI):
 
     # ── Modèles par défaut : seed des comptes existants + refonte de mise en page ─
     try:
+        from sqlalchemy import text as _text
         from app.services.document_template_service import (
             backfill_all_managers, refresh_default_bodies,
         )
         async with AsyncSessionLocal() as _db:
+            # Sérialise le seed entre workers uvicorn (sinon doublons de modèles par
+            # défaut au 1er boot d'un nouveau type → scalar_one_or_none casse au rendu).
+            await _db.execute(_text("SELECT pg_advisory_xact_lock(741259)"))
+            # Purge des doublons de modèles PAR DÉFAUT (garde le plus ancien par
+            # gestionnaire + type), sans toucher aux modèles personnalisés.
+            await _db.execute(_text(
+                "DELETE FROM document_templates a USING document_templates b "
+                "WHERE a.gestionnaire_id = b.gestionnaire_id "
+                "AND a.template_type = b.template_type "
+                "AND a.is_default = true AND b.is_default = true "
+                "AND a.gestionnaire_id IS NOT NULL "
+                "AND (a.created_at, a.ctid) > (b.created_at, b.ctid)"
+            ))
             seeded = await backfill_all_managers(_db)
             updated = await refresh_default_bodies(_db)
             await _db.commit()
