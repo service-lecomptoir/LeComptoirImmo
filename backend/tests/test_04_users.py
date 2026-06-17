@@ -75,6 +75,19 @@ class TestUserCreate:
         })
         assert resp.status_code == 403
 
+    async def test_create_user_without_password_autogenerates(self, client, gestionnaire_token):
+        # Sans mot de passe fourni : le serveur en génère un (transparent) et
+        # marque le compte « à changer à la 1re connexion ».
+        resp = await client.post("/api/v1/users", headers=auth(gestionnaire_token), json={
+            "email": f"auto_{uuid.uuid4().hex[:8]}@test.fr",
+            "full_name": "Compte Auto",
+            "role": "locataire",
+        })
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["must_change_password"] is True
+        assert "credentials_email_sent" in body  # champ présent (best-effort)
+
     async def test_create_user_short_password(self, client, admin_token):
         resp = await client.post("/api/v1/users", headers=auth(admin_token), json={
             "email": "short@test.fr",

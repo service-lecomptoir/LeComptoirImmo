@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
-  Users, Plus, Pencil, Trash2, ShieldCheck, CheckCircle, XCircle, Send,
+  Users, Plus, Pencil, Trash2, ShieldCheck, CheckCircle, XCircle, Send, KeyRound,
 } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
@@ -31,7 +31,6 @@ const createUserSchema = z.object({
   first_name: z.string().min(1, 'Prénom requis'),
   last_name: z.string().min(1, 'Nom requis'),
   email: z.string().email('Email invalide'),
-  password: z.string().min(8, 'Mot de passe min 8 caractères'),
   role: z.enum(['locataire', 'proprietaire', 'gestionnaire', 'gestionnaire_proprio', 'admin', 'lecture', 'comptable']),
 })
 
@@ -188,9 +187,11 @@ export default function AdminUsers() {
       }
 
       // 1) Créer le compte utilisateur (le compte ne stocke qu'un full_name).
-      const { data: newUser } = await apiClient.post<User>('/users', {
+      //    Pas de mot de passe : il est auto-généré côté serveur et envoyé par
+      //    e-mail à l'utilisateur (transparent pour le gestionnaire).
+      const { data: newUser } = await apiClient.post<User & { credentials_email_sent?: boolean }>('/users', {
         full_name: joinName(values.first_name, values.last_name),
-        email: values.email, password: values.password, role: values.role,
+        email: values.email, role: values.role,
       })
 
       // 2) Rattacher / créer la fiche correspondante
@@ -212,6 +213,12 @@ export default function AdminUsers() {
         } else {
           await apiClient.put(`/owners/${linkFicheId}`, { user_id: newUser.id })
         }
+      }
+
+      if (newUser.credentials_email_sent) {
+        toast.success(`Compte créé. Le mot de passe a été généré et envoyé par e-mail à ${values.email}.`)
+      } else {
+        toast.success("Compte créé. Mot de passe généré, mais e-mail non envoyé (SMTP indisponible) : utilisez « Envoyer les identifiants » sur la ligne.")
       }
 
       await load()
@@ -495,17 +502,12 @@ export default function AdminUsers() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mot de passe *</label>
-            <input
-              {...createForm.register('password')}
-              type="password"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Min. 8 caractères"
-            />
-            {createForm.formState.errors.password && (
-              <p className="text-red-500 text-xs mt-1">{createForm.formState.errors.password.message}</p>
-            )}
+          <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs text-blue-800">
+            <KeyRound size={14} className="mt-0.5 shrink-0 text-blue-600" />
+            <span>
+              Le mot de passe est généré automatiquement et envoyé par e-mail à l'utilisateur,
+              qui le changera à sa première connexion. Vous n'avez rien à saisir.
+            </span>
           </div>
 
           <div>

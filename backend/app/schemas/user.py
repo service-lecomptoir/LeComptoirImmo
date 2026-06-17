@@ -8,7 +8,9 @@ from app.core.permissions import Role
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    # Le mot de passe est facultatif : s'il est vide, il est auto-généré côté
+    # serveur et envoyé par e-mail à l'utilisateur (transparent pour le gestionnaire).
+    password: Optional[str] = None
     full_name: str
     role: Role = Role.LECTURE
     # Téléphone (repris de la fiche locataire à la création du compte).
@@ -16,7 +18,9 @@ class UserCreate(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def password_strength(cls, v: str) -> str:
+    def password_strength(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v == "":
+            return None
         if len(v) < 8:
             raise ValueError("Le mot de passe doit contenir au moins 8 caractères")
         return v
@@ -122,6 +126,12 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserCreateResponse(UserResponse):
+    """Réponse de création de compte : indique si le mot de passe auto-généré
+    a bien été envoyé par e-mail à l'utilisateur."""
+    credentials_email_sent: bool = False
 
 
 class UserMeResponse(UserResponse):

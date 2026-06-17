@@ -14,7 +14,7 @@ from app.models.user import User
 from app.models.email_domain import EmailDomain
 from app.schemas.user import (
     UserCreate, UserUpdate, UserRoleUpdate,
-    UserPasswordUpdate, AdminPasswordReset, UserResponse
+    UserPasswordUpdate, AdminPasswordReset, UserResponse, UserCreateResponse
 )
 from app.services.user_service import UserService
 
@@ -140,7 +140,7 @@ async def list_users(
     return users
 
 
-@router.post("", response_model=UserResponse, status_code=201, summary="Créer un utilisateur")
+@router.post("", response_model=UserCreateResponse, status_code=201, summary="Créer un utilisateur")
 async def create_user(
     data: UserCreate,
     db: AsyncSession = Depends(get_db),
@@ -181,9 +181,15 @@ async def create_user(
                 detail="Le plan Free ne permet pas de créer des comptes locataire. Faites évoluer votre formule.",
             )
 
+    # Mot de passe transparent pour le gestionnaire : s'il n'en fournit pas, on
+    # en génère un provisoire côté serveur et on l'envoie par e-mail à l'utilisateur.
+    # Compte provisoire dans tous les cas → changement forcé à la 1re connexion.
+    generated_password: Optional[str] = None
+    if not (data.password or "").strip():
+        generated_password = _generate_temp_password(12)
+        data.password = generated_password
+
     # Passer current_user.id pour tracer le créateur (isolation GP).
-    # Le mot de passe est défini par le gestionnaire (communiqué au propriétaire /
-    # locataire) : compte provisoire → changement forcé à la 1re connexion.
     new_user = await UserService.create(
         db, data, created_by=current_user.id, must_change_password=True,
     )
@@ -194,7 +200,26 @@ async def create_user(
         entity_type="user", entity_id=new_user.id,
         details={"email": new_user.email, "role": new_user.role},
     )
-    return new_user
+
+    # Envoi automatique des identifiants (best-effort) quand le mot de passe a été
+    # auto-généré : l'utilisateur reçoit son identifiant + mot de passe provisoire.
+    credentials_email_sent = False
+    if generated_password and (new_user.email or "").strip():
+        try:
+            from app.services.email_service import send_credentials
+            credentials_email_sent = await send_credentials(
+                to=new_user.email, login=new_user.email,
+                password=generated_password, full_name=new_user.full_name,
+            )
+        except Exception as _exc:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).warning(
+                "Envoi identifiants à la création échoué (%s): %s", new_user.id, _exc,
+            )
+
+    resp = UserCreateResponse.model_validate(new_user)
+    resp.credentials_email_sent = credentials_email_sent
+    return resp
 
 
 @router.get("/me", response_model=UserResponse, summary="Mon profil")

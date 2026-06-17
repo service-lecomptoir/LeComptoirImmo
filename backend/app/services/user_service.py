@@ -40,10 +40,17 @@ class UserService:
             if creator is not None:
                 agency_id = creator.agency_id or creator.id
 
+        # Sécurité : un mot de passe vide ne doit jamais aboutir à un compte ouvert.
+        # En pratique l'appelant fournit (ou auto-génère) toujours un mot de passe.
+        raw_password = data.password
+        if not (raw_password or "").strip():
+            import secrets
+            raw_password = secrets.token_urlsafe(16)
+
         from app.services.reference_service import make_ref, user_prefix
         user = User(
             email=data.email,
-            hashed_password=hash_password(data.password),
+            hashed_password=hash_password(raw_password),
             full_name=data.full_name,
             role=data.role,
             phone=(getattr(data, "phone", None) or None),
