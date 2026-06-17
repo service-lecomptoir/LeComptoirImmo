@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, Check, Globe, Mail, MessageSquare, Sparkles } from 'lucide-react'
+import { Plus, Edit2, Trash2, Check, Globe, Mail, MessageSquare, Sparkles, CheckSquare, Square } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
 import { Button } from '@/components/ui'
@@ -219,25 +219,23 @@ export default function CommunicationLibrary() {
                 <div className="divide-y divide-gray-50">
                   {list.map(t => (
                     <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
+                      {/* Case « Utilisé » : coche le modèle envoyé pour ce type. */}
+                      <button type="button" onClick={() => { if (!t.is_selected) select(t.id) }}
+                        title={t.is_selected ? 'Modèle utilisé pour ce type' : 'Utiliser ce modèle'}
+                        className={`flex items-center gap-1.5 shrink-0 ${t.is_selected ? 'text-green-700' : 'text-gray-500 hover:text-green-700'}`}>
+                        {t.is_selected
+                          ? <CheckSquare size={18} className="text-green-600" />
+                          : <Square size={18} className="text-gray-300" />}
+                        <span className="text-xs font-medium">Utilisé</span>
+                      </button>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-800 truncate">{t.name}</span>
-                          {t.is_selected && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200">Utilisé</span>
-                          )}
-                        </div>
+                        <span className="text-sm font-medium text-gray-800 truncate">{t.name}</span>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {Object.keys(t.content || {}).map(code => (
                             <span key={code} className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{LANG_LABEL[code] || code}</span>
                           ))}
                         </div>
                       </div>
-                      {!t.is_selected && (
-                        <button onClick={() => select(t.id)} title="Utiliser ce modèle"
-                          className="text-xs px-2.5 py-1.5 rounded-lg text-green-700 border border-green-200 hover:bg-green-50">
-                          Utiliser
-                        </button>
-                      )}
                       <button onClick={() => setModal({ ruleType: type.value, tpl: t })} title="Modifier"
                         className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg"><Edit2 size={14} /></button>
                       <button onClick={() => del(t.id)} title="Supprimer"
