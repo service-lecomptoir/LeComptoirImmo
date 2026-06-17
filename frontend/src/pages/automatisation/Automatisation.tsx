@@ -482,7 +482,9 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
   const base = Math.abs(rule.trigger_days || 0)
   const [val, setVal] = useState(base)
   const [saving, setSaving] = useState(false)
+  const [toggling, setToggling] = useState(false)
   const dirty = kind !== 'event' && val !== base
+
   const save = async () => {
     setSaving(true)
     try {
@@ -496,27 +498,45 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
       setSaving(false)
     }
   }
+
+  const toggle = async () => {
+    setToggling(true)
+    try {
+      await apiClient.post(`/automation/rules/${rule.id}/toggle`)
+      toast.success(rule.is_active ? 'Automatisation désactivée' : 'Automatisation activée')
+      onSaved()
+    } catch {
+      // erreur affichée par l'intercepteur (toast)
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  const triggerText = kind === 'event' ? PLAN_EVENT_LABELS[rule.rule_type]
+    : kind === 'before' ? `Envoyé ${base} jour(s) avant l'échéance`
+    : kind === 'after' ? `Envoyé ${base} jour(s) après l'échéance, tant qu'impayé`
+    : `Envoyé le ${base} de chaque mois`
+
   return (
-    <div className={`flex items-center gap-3 py-3 border-b border-gray-100 last:border-0 ${!rule.is_active ? 'opacity-60' : ''}`}>
+    <div className={`flex items-center gap-3 py-3 border-b border-gray-100 last:border-0 ${!rule.is_active ? 'opacity-70' : ''}`}>
       <Icon size={16} className="text-gray-400 shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-800">{info?.label || rule.rule_type}</p>
-        {!rule.is_active && <span className="text-xs text-gray-400">Inactive</span>}
+        <p className="text-xs text-gray-400">{triggerText}</p>
       </div>
-      {kind === 'event' ? (
-        <span className="text-sm text-gray-500 text-right">{PLAN_EVENT_LABELS[rule.rule_type]}</span>
-      ) : (
+
+      {kind !== 'event' && (
         <div className="flex items-center gap-2">
-          {kind === 'day' && <span className="text-sm text-gray-500">Le</span>}
+          {kind === 'day' && <span className="text-xs text-gray-500">Le</span>}
           <input type="number"
             min={kind === 'day' ? 1 : 0} max={kind === 'day' ? 28 : 60}
             value={val}
             onChange={e => setVal(parseInt(e.target.value) || 0)}
-            className="w-20 border rounded-lg px-2 py-1.5 text-sm text-center" />
-          <span className="text-sm text-gray-500">
-            {kind === 'before' ? "jours avant l'échéance"
-              : kind === 'after' ? "jours après l'échéance"
-              : 'de chaque mois'}
+            className="w-16 border rounded-lg px-2 py-1.5 text-sm text-center" />
+          <span className="text-xs text-gray-500 whitespace-nowrap">
+            {kind === 'before' ? "j. avant"
+              : kind === 'after' ? "j. après"
+              : 'du mois'}
           </span>
           {dirty && (
             <Button size="sm" variant="primary" onClick={save} disabled={saving}>
@@ -525,6 +545,18 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
           )}
         </div>
       )}
+
+      {/* Interrupteur Actif/Inactif : aucune automatisation ne part sans accord. */}
+      <button type="button" onClick={toggle} disabled={toggling}
+        className="flex items-center gap-1.5 shrink-0 ml-1"
+        title={rule.is_active ? 'Désactiver cette automatisation' : 'Activer cette automatisation'}>
+        {rule.is_active
+          ? <ToggleRight size={26} className="text-green-600" />
+          : <ToggleLeft size={26} className="text-gray-400" />}
+        <span className={`text-xs font-medium ${rule.is_active ? 'text-green-700' : 'text-gray-400'}`}>
+          {rule.is_active ? 'Actif' : 'Inactif'}
+        </span>
+      </button>
     </div>
   )
 }
@@ -540,8 +572,9 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
         <h2 className="text-base font-bold text-gray-900">Calendrier des automatisations</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
-        Quand chaque document ou message part automatiquement. Modifiez le délai puis « Enregistrer ».
-        Les éléments « à l'événement » partent au moment de l'action (paiement, déclaration) et ne se planifient pas.
+        Quand chaque document ou message part automatiquement, et son interrupteur Actif/Inactif :
+        rien ne part sans votre accord. Modifiez le délai puis « Enregistrer » ; les éléments « à
+        l'événement » partent au moment de l'action (paiement, déclaration) mais restent activables ou non.
       </p>
       {items.length === 0 ? (
         <p className="text-sm text-gray-400">Aucune règle d'automatisation.</p>
