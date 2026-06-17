@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Edit2, Trash2, Check, Globe, Mail, MessageSquare } from 'lucide-react'
+import { Plus, Edit2, Trash2, Check, Globe, Mail, MessageSquare, Sparkles } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { toast } from '@/store/toast'
 import { Button } from '@/components/ui'
@@ -42,6 +42,29 @@ function TemplateModal({ ruleType, tpl, onClose, onSaved }: {
   const [name, setName] = useState(tpl?.name || '')
   const [content, setContent] = useState<Record<string, any>>(tpl?.content || { fr: { subject: '', body: '', sms: '' } })
   const [saving, setSaving] = useState(false)
+  const [aiBusy, setAiBusy] = useState(false)
+
+  const aiAssist = async () => {
+    const langs = Object.keys(content)
+    if (langs.length === 0) { toast.error('Cochez au moins une langue.'); return }
+    setAiBusy(true)
+    try {
+      const base = content[langs[0]]?.body || content.fr?.body || ''
+      const { data } = await apiClient.post('/message-templates/ai-assist', {
+        rule_type: ruleType, langs, base_text: base || undefined,
+      })
+      if (data?.content) {
+        setContent((c: Record<string, any>) => {
+          const next = { ...c }
+          for (const [lang, block] of Object.entries(data.content as Record<string, any>)) {
+            next[lang] = { ...next[lang], ...(block as object) }
+          }
+          return next
+        })
+        toast.success(data.source === 'ia' ? 'Contenu proposé par l\'IA' : 'Modèle par défaut appliqué')
+      }
+    } catch { /* toast via intercepteur */ } finally { setAiBusy(false) }
+  }
 
   const langOn = (code: string) => code in content
   const toggleLang = (code: string) => setContent(c => {
@@ -95,6 +118,14 @@ function TemplateModal({ ruleType, tpl, onClose, onSaved }: {
               ))}
             </div>
             <p className="text-xs text-gray-400 mt-1">Variables : {PLACEHOLDERS}</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button onClick={aiAssist} variant="secondary" size="sm" disabled={aiBusy}>
+              <Sparkles size={14} className={aiBusy ? 'animate-pulse' : ''} />
+              {aiBusy ? 'Génération…' : 'Assistance IA (rédiger / traduire)'}
+            </Button>
+            <span className="text-xs text-gray-400">Remplit ou traduit le contenu des langues cochées.</span>
           </div>
 
           {Object.keys(content).map(code => (

@@ -118,11 +118,17 @@ async def lifespan(app: FastAPI):
                 "revision_loyer", "revision_charges", "taxe_om", "rapport_mensuel",
             ])
             nc = await backfill_default_content(_db)
+            # Modèles de courrier multilingues par défaut (« Standard » sélectionné
+            # par type), même verrou pour éviter les doublons entre workers.
+            from app.services.message_template_defaults import backfill_default_message_templates
+            nt = await backfill_default_message_templates(_db)
             await _db.commit()
         if nr:
             logger.info(f"Règles d'automatisation par défaut créées : {nr}")
         if nc:
             logger.info(f"Contenu par défaut (sujet/corps) rempli pour {nc} règle(s)")
+        if nt:
+            logger.info(f"Modèles de courrier multilingues par défaut créés : {nt}")
     except Exception as _exc:
         logger.warning(f"Backfill règles d'automatisation ignoré : {_exc!r}")
 
