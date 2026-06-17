@@ -98,6 +98,14 @@ DEFAULT_TEMPLATES = {
         "blocks": default_blocks("plan_apurement"),
         "theme": DEFAULT_THEME,
     },
+    TemplateType.RAPPORT_GESTION: {
+        "name": "Rapport de gestion",
+        "content_html": """<h2>Rapport de gestion</h2>
+<p>Synthèse de la gestion de votre patrimoine pour la période <strong>{{period}}</strong>.</p>""",
+        "footer_text": "Document généré électroniquement, ne nécessite pas de signature.",
+        "blocks": default_blocks("rapport_gestion"),
+        "theme": DEFAULT_THEME,
+    },
 }
 
 # Types de documents retirés de la papeterie (désactivés au démarrage).

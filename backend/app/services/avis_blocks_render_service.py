@@ -376,6 +376,43 @@ def default_blocks(template_type: str) -> Optional[list[dict]]:
             _common_footer(),
         ]
 
+    if template_type == "rapport_gestion":
+        return [
+            _header("Rapport de gestion", "{{period}}", "GESTION LOCATIVE"),
+            _greeting("Voici la synthèse de la gestion de votre patrimoine pour la "
+                      "période {{period}}.", salutation=""),
+            {"id": "encaissements", "type": "table", "enabled": True, "props": {
+                "heading": "Encaissements et impayés",
+                "columns": [{"label": "", "align": "right"}],
+                "rows": [
+                    {"kind": "data", "label": "Loyers appelés", "cells": ["{{stat_due}}"]},
+                    {"kind": "data", "label": "Loyers encaissés", "cells": ["{{stat_paid}}"]},
+                    {"kind": "data", "label": "Taux de recouvrement", "cells": ["{{stat_taux}}"]},
+                    {"kind": "result", "label": "Impayés du mois", "cells": ["{{stat_unpaid}}"]},
+                ],
+            }},
+            {"id": "parc", "type": "table", "enabled": True, "props": {
+                "heading": "Parc et occupation",
+                "columns": [{"label": "", "align": "right"}],
+                "rows": [
+                    {"kind": "data", "label": "Biens gérés", "cells": ["{{stat_biens}}"]},
+                    {"kind": "data", "label": "Baux actifs", "cells": ["{{stat_actifs}}"]},
+                    {"kind": "data", "label": "Taux d'occupation", "cells": ["{{stat_occ}}"]},
+                    {"kind": "data", "label": "Entrées du mois", "cells": ["{{stat_entrees}}"]},
+                    {"kind": "data", "label": "Sorties du mois", "cells": ["{{stat_sorties}}"]},
+                ],
+            }},
+            {"id": "demandes", "type": "table", "enabled": True, "props": {
+                "heading": "Demandes en cours",
+                "columns": [{"label": "", "align": "right"}],
+                "rows": [
+                    {"kind": "data", "label": "Démarches ouvertes", "cells": ["{{stat_demarches}}"]},
+                    {"kind": "data", "label": "Signalements ouverts", "cells": ["{{stat_signalements}}"]},
+                ],
+            }},
+            _common_footer(),
+        ]
+
     return None
 
 

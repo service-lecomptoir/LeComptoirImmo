@@ -194,3 +194,14 @@ class TaxesFoncieresPDFService:
         })
         return await render_blocks_document(db, getattr(lease, "created_by", None),
                                             "taxes_foncieres", v)
+
+
+class RapportGestionPDFService:
+    @staticmethod
+    async def generate(db: AsyncSession, manager_id, year: int, month: int) -> bytes:
+        """Rapport mensuel de gestion (réservé gestionnaire) via le modèle de la
+        papeterie « rapport_gestion ». Les statistiques viennent d'automation_engine."""
+        from app.services.automation_engine import _manager_stats_vars
+        v = await _manager_stats_vars(db, manager_id, year, month)
+        v["today_date"] = _fr_date(_date.today())
+        return await render_blocks_document(db, manager_id, "rapport_gestion", v)

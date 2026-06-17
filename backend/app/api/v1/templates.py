@@ -134,6 +134,12 @@ async def preview_document_pdf(
         # Taxes foncières (exemple)
         "tax_label": "TAXE ENLÈVEMENT O.M. 2025", "tax_total": f"{eur(178)} €",
         "tax_days": "365", "tax_quote_part": f"{eur(178)} €", "tax_provisions": f"{eur(0)} €",
+        # Rapport de gestion (exemple)
+        "period": f"{_MONTHS_FR[_d.month - 1].capitalize()} {_d.year}",
+        "stat_due": f"{eur(4400)} €", "stat_paid": f"{eur(4180)} €", "stat_taux": "95 %",
+        "stat_unpaid": f"{eur(220)} €", "stat_biens": "6", "stat_actifs": "5",
+        "stat_occ": "83 %", "stat_entrees": "1", "stat_sorties": "0",
+        "stat_demarches": "2", "stat_signalements": "1",
         # Signature (affichée dans l'aperçu, comme le logo).
         "signature_uri": sig_uri,
     }

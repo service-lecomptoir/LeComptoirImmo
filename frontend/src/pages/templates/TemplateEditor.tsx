@@ -26,6 +26,7 @@ const TEMPLATE_TYPES = [
   { value: 'regularisation_charges',  label: 'Régularisation de charges locatives', blurb: 'régularisations de charges' },
   { value: 'revision_loyer',          label: 'Révision loyer',                     blurb: 'révisions de loyer' },
   { value: 'taxes_foncieres',         label: 'Décompte Taxes Foncières',           blurb: 'décomptes de taxes foncières' },
+  { value: 'rapport_gestion',         label: 'Rapport de gestion',                 blurb: 'rapports de gestion' },
 ]
 
 // Énumération « a, b, c et d » construite depuis l'ordre des templates : toute

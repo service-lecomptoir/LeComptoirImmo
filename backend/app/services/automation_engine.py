@@ -679,10 +679,17 @@ _MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin",
               "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
 
 
-async def _compute_manager_stats(db, manager_id, year: int, month: int) -> str:
-    """Synthèse textuelle du mois (encaissements/impayés, parc/occupation, demandes)."""
+async def _manager_stats_vars(db, manager_id, year: int, month: int) -> dict:
+    """Statistiques du mois (chaînes formatées) : source unique pour le corps de
+    l'e-mail ET le PDF « Rapport de gestion » de la papeterie."""
+    v = {
+        "period": f"{_MONTHS_FR[month]} {year}",
+        "stat_due": "—", "stat_paid": "—", "stat_taux": "—", "stat_unpaid": "—",
+        "stat_biens": "—", "stat_actifs": "—", "stat_occ": "—",
+        "stat_entrees": "—", "stat_sorties": "—",
+        "stat_demarches": "—", "stat_signalements": "—",
+    }
     lease_ids = await _manager_lease_ids(db, manager_id)
-    lines: list[str] = []
     try:
         from app.models.payment import Payment
         pays = []
@@ -695,8 +702,8 @@ async def _compute_manager_stats(db, manager_id, year: int, month: int) -> str:
         paid = sum(float(p.amount_paid or 0) for p in pays)
         unpaid = sum(float(getattr(p, "balance", 0) or 0) for p in pays if p.status in ("pending", "partial", "late"))
         taux = (paid / due * 100) if due > 0 else 0
-        lines.append(f"• Loyers encaissés : {paid:.2f} € sur {due:.2f} € appelés (recouvrement {taux:.0f} %)")
-        lines.append(f"• Impayés du mois : {unpaid:.2f} €")
+        v.update(stat_due=f"{due:.2f} €", stat_paid=f"{paid:.2f} €",
+                 stat_taux=f"{taux:.0f} %", stat_unpaid=f"{unpaid:.2f} €")
     except Exception as exc:  # noqa: BLE001
         logger.warning("[rapport] stats encaissements échec: %r", exc)
     try:
@@ -707,8 +714,8 @@ async def _compute_manager_stats(db, manager_id, year: int, month: int) -> str:
         entrees = sum(1 for l in leases if l.start_date and l.start_date.year == year and l.start_date.month == month)
         sorties = sum(1 for l in leases if getattr(l, "end_date", None) and l.end_date.year == year and l.end_date.month == month)
         occ = (len(actifs) / biens * 100) if biens else 0
-        lines.append(f"• Parc : {biens} bien(s), {len(actifs)} bail/baux actif(s) (occupation {occ:.0f} %)")
-        lines.append(f"• Mouvements : {entrees} entrée(s), {sorties} sortie(s)")
+        v.update(stat_biens=str(biens), stat_actifs=str(len(actifs)),
+                 stat_occ=f"{occ:.0f} %", stat_entrees=str(entrees), stat_sorties=str(sorties))
     except Exception as exc:  # noqa: BLE001
         logger.warning("[rapport] stats parc échec: %r", exc)
     try:
@@ -724,10 +731,22 @@ async def _compute_manager_stats(db, manager_id, year: int, month: int) -> str:
                 Signalement.lease_id.in_(lease_ids),
                 Signalement.status.in_(("nouveau", "en_cours")),
             ))).scalars().all())
-        lines.append(f"• Demandes en cours : {t_open} démarche(s), {s_open} signalement(s)")
+        v.update(stat_demarches=str(t_open), stat_signalements=str(s_open))
     except Exception as exc:  # noqa: BLE001
         logger.warning("[rapport] stats demandes échec: %r", exc)
-    return "\n".join(lines) if lines else "Aucune donnée disponible pour cette période."
+    return v
+
+
+async def _compute_manager_stats(db, manager_id, year: int, month: int) -> str:
+    """Synthèse textuelle du mois (corps de l'e-mail), dérivée des mêmes stats."""
+    v = await _manager_stats_vars(db, manager_id, year, month)
+    return "\n".join([
+        f"• Loyers encaissés : {v['stat_paid']} sur {v['stat_due']} appelés (recouvrement {v['stat_taux']})",
+        f"• Impayés du mois : {v['stat_unpaid']}",
+        f"• Parc : {v['stat_biens']} bien(s), {v['stat_actifs']} bail/baux actif(s) (occupation {v['stat_occ']})",
+        f"• Mouvements : {v['stat_entrees']} entrée(s), {v['stat_sorties']} sortie(s)",
+        f"• Demandes en cours : {v['stat_demarches']} démarche(s), {v['stat_signalements']} signalement(s)",
+    ])
 
 
 async def _run_rapport_mensuel(db, rule, today: date) -> int:
@@ -755,19 +774,12 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
     from app.services import mail_signature
     from app.services.email_service import send_email
     sig_html, logo, logo_sub = await mail_signature.build_for_manager(db, manager_id, rule.signature)
-    # Rapport joint en PDF (même contenu que le corps de l'e-mail). Fail-soft.
+    # Rapport joint en PDF via le modèle « Rapport de gestion » de la papeterie
+    # (éditable dans les ateliers de modèles). Fail-soft.
     pdf_bytes = pdf_name = None
     try:
-        from app.services.pdf_service import html_to_pdf
-        pdf_html = (
-            "<html><head><meta charset='utf-8'><style>"
-            "body{font-family:Helvetica,Arial,sans-serif;font-size:12px;color:#1a1a1a;}"
-            "h1{font-size:16px;color:#0D2F5C;} h2,h3{font-size:13px;color:#0D2F5C;}"
-            "ul{margin:4px 0 10px 18px;} li{margin:2px 0;}"
-            "</style></head><body>"
-            f"<h1>Rapport de gestion : {period}</h1>{body_html}</body></html>"
-        )
-        pdf_bytes = html_to_pdf(pdf_html)
+        from app.services.document_blocks_pdf_service import RapportGestionPDFService
+        pdf_bytes = await RapportGestionPDFService.generate(db, manager_id, year, month)
         pdf_name = f"rapport-gestion-{year}-{month:02d}.pdf"
     except Exception as pexc:  # noqa: BLE001
         logger.warning("[automation] PDF rapport mensuel indisponible mgr=%s: %r", manager_id, pexc)
