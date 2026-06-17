@@ -93,6 +93,30 @@ export const paymentsApi = {
     })
     downloadBlob(response.data, filename)
   },
+
+  locataireTaxes: () =>
+    apiClient.get<Array<{ id: string; year: number; amount: number; declared_at: string | null }>>(
+      '/payments/locataire/taxes'
+    ),
+
+  downloadTaxePdf: async (taxeId: string, filename: string) => {
+    const response = await apiClient.get(`/payments/locataire/taxes/${taxeId}/pdf`, {
+      responseType: 'blob',
+    })
+    downloadBlob(response.data, filename)
+  },
+
+  locataireRelances: () =>
+    apiClient.get<Array<{ id: string; payment_id: string; label: string; rule_type: string; sent_at: string | null }>>(
+      '/payments/locataire/relances'
+    ),
+
+  downloadRelancePdf: async (paymentId: string, filename: string) => {
+    const response = await apiClient.get(`/payments/locataire/relances/${paymentId}/pdf`, {
+      responseType: 'blob',
+    })
+    downloadBlob(response.data, filename)
+  },
 }
 
 export const lettersApi = {

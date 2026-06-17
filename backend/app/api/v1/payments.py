@@ -244,6 +244,110 @@ async def locataire_revision_pdf(
                     headers={"Content-Disposition": f'attachment; filename="revision-loyer-{lease_id}.pdf"'})
 
 
+@router.get("/locataire/taxes", summary="Taxes d'ordures ménagères (locataire)")
+async def locataire_taxes(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Déclarations de TEOM du locataire (document généré à la volée)."""
+    from sqlalchemy import select
+    from app.models.taxe_declaration import TaxeDeclaration
+    tenant = await _current_tenant(db, current_user)
+    if not tenant:
+        return []
+    rows = (await db.execute(
+        select(TaxeDeclaration).where(TaxeDeclaration.tenant_id == tenant.id)
+        .order_by(TaxeDeclaration.year.desc())
+    )).scalars().all()
+    return [{"id": str(t.id), "year": t.year, "amount": float(t.teom_amount or 0),
+             "declared_at": t.declared_at.isoformat() if t.declared_at else None} for t in rows]
+
+
+@router.get("/locataire/taxes/{taxe_id}/pdf", summary="Décompte TEOM (locataire)")
+async def locataire_taxe_pdf(
+    taxe_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.core.exceptions import NotFoundException
+    from app.models.taxe_declaration import TaxeDeclaration
+    from app.models.lease import Lease
+    tenant = await _current_tenant(db, current_user)
+    taxe = await db.get(TaxeDeclaration, taxe_id) if tenant else None
+    if taxe is None or taxe.tenant_id != tenant.id:
+        raise NotFoundException("Déclaration introuvable")
+    lease = await db.get(Lease, taxe.lease_id)
+    from app.services.document_blocks_pdf_service import TaxesFoncieresPDFService
+    pdf = await TaxesFoncieresPDFService.generate(db, lease, taxe.year, float(taxe.teom_amount or 0))
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="taxe-ordures-{taxe.year}.pdf"'})
+
+
+def _payment_id_from_dedup(dedup: Optional[str]):
+    """Extrait l'UUID du paiement d'une clé de dédup de relance « type:payment:rule »."""
+    if not dedup:
+        return None
+    parts = dedup.split(":")
+    if len(parts) >= 2:
+        try:
+            return uuid.UUID(parts[1])
+        except (ValueError, AttributeError):
+            return None
+    return None
+
+
+@router.get("/locataire/relances", summary="Relances / rappels reçus (locataire)")
+async def locataire_relances(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lettres de relance / rappels envoyés au locataire (CommunicationLog),
+    régénérables à la volée depuis le paiement concerné."""
+    from sqlalchemy import select
+    from app.models.automation import CommunicationLog, AutomationRule
+    tenant = await _current_tenant(db, current_user)
+    if not tenant:
+        return []
+    logs = (await db.execute(
+        select(CommunicationLog, AutomationRule.rule_type)
+        .join(AutomationRule, CommunicationLog.rule_id == AutomationRule.id)
+        .where(CommunicationLog.tenant_id == tenant.id,
+               CommunicationLog.status == "sent",
+               AutomationRule.rule_type.in_(("rappel_impaye", "relance_1", "relance_2")))
+        .order_by(CommunicationLog.sent_at.desc())
+    )).all()
+    out = []
+    for log, rtype in logs:
+        pid = _payment_id_from_dedup(log.dedup_key)
+        if not pid:
+            continue
+        out.append({
+            "id": str(log.id),
+            "payment_id": str(pid),
+            "label": log.subject or "Relance de loyer",
+            "rule_type": rtype,
+            "sent_at": log.sent_at.isoformat() if log.sent_at else None,
+        })
+    return out
+
+
+@router.get("/locataire/relances/{payment_id}/pdf", summary="Lettre de relance (locataire)")
+async def locataire_relance_pdf(
+    payment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.core.exceptions import NotFoundException
+    tenant = await _current_tenant(db, current_user)
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    if payment is None or not tenant or payment.tenant_id != tenant.id:
+        raise NotFoundException("Relance introuvable")
+    from app.services.pdf_service import build_relance_pdf, relance_filename
+    pdf = await build_relance_pdf(db, payment)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{relance_filename(payment)}"'})
+
+
 @router.post("/locataire/declare", status_code=201, summary="Déclarer un paiement (locataire)")
 async def locataire_declare_payment(
     data: dict,

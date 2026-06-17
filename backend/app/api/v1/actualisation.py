@@ -644,6 +644,22 @@ async def taxes_pdf(
         raise HTTPException(status_code=404, detail="Contrat introuvable")
     await assert_manager_scope(db, current_user, lease.created_by, "ce contrat")
     pdf = await TaxesFoncieresPDFService.generate(db, lease, data.year, data.teom_amount)
+    # Conserve la déclaration (données, pas le PDF) pour la rendre consultable côté
+    # locataire/gestionnaire et régénérable à la volée. Upsert par bail + année.
+    from app.models.taxe_declaration import TaxeDeclaration
+    existing = (await db.execute(select(TaxeDeclaration).where(
+        TaxeDeclaration.lease_id == lease.id, TaxeDeclaration.year == data.year,
+    ))).scalar_one_or_none()
+    if existing:
+        existing.teom_amount = data.teom_amount
+        existing.tenant_id = lease.tenant_id
+    else:
+        db.add(TaxeDeclaration(
+            lease_id=lease.id, tenant_id=lease.tenant_id, year=data.year,
+            teom_amount=data.teom_amount, created_by=current_user.id,
+        ))
+    await db.flush()
+    await db.commit()
     # Mail TEOM au locataire (si la règle « taxe_om » du gestionnaire est active).
     # Best-effort, dédupliqué par bail+année : ne bloque jamais la génération du PDF.
     try:

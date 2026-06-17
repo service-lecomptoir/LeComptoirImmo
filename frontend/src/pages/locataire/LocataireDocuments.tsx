@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   FileText, Download, Upload, ChevronDown, ChevronRight,
-  FileCheck, Home, Shield, RefreshCw, TrendingUp, Trash2, X, Calendar,
+  FileCheck, Home, Shield, RefreshCw, TrendingUp, Trash2, X, Calendar, AlertTriangle,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -48,6 +48,7 @@ type CategoryKey =
   | 'regularisation_charges'
   | 'revision_loyer'
   | 'taxe_ordures'
+  | 'relances'
   | 'personnels'
   | 'autres'
 
@@ -121,6 +122,13 @@ const CATEGORIES: CategoryDef[] = [
     description: "Avis de taxe d'enlèvement des ordures ménagères",
   },
   {
+    key: 'relances',
+    label: 'Relances et rappels',
+    icon: <AlertTriangle size={16} className="text-red-500" />,
+    types: [],
+    description: 'Lettres de relance pour loyer impayé',
+  },
+  {
     key: 'personnels',
     label: 'Documents personnels',
     icon: <FileText size={16} className="text-gray-500" />,
@@ -172,6 +180,8 @@ export default function LocataireDocuments() {
   const [avis, setAvis] = useState<any[]>([])
   const [regularizations, setRegularizations] = useState<any[]>([])
   const [revisions, setRevisions] = useState<any[]>([])
+  const [taxes, setTaxes] = useState<any[]>([])
+  const [relances, setRelances] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   // Toutes les catégories repliées par défaut (l'utilisateur déplie au besoin).
   const [collapsed, setCollapsed] = useState<Set<CategoryKey>>(
@@ -206,13 +216,15 @@ export default function LocataireDocuments() {
   // soient disponibles au bon endroit (« Mes documents »).
   const loadAll = async () => {
     setIsLoading(true)
-    const [, leasesR, paymentsR, avisR, regulR, revR] = await Promise.allSettled([
+    const [, leasesR, paymentsR, avisR, regulR, revR, taxR, relR] = await Promise.allSettled([
       loadDocs(),
       leasesApi.list({ limit: 50 }),
       paymentsApi.list({ limit: 200 }),
       avisEcheancesApi.list({ limit: 200 }),
       paymentsApi.locataireRegularizations(),
       paymentsApi.locataireRevisions(),
+      paymentsApi.locataireTaxes(),
+      paymentsApi.locataireRelances(),
     ])
     if (leasesR.status === 'fulfilled') {
       const d: any = leasesR.value.data
@@ -225,6 +237,8 @@ export default function LocataireDocuments() {
     if (avisR.status === 'fulfilled') setAvis(avisR.value.data ?? [])
     if (regulR.status === 'fulfilled') setRegularizations(regulR.value.data ?? [])
     if (revR.status === 'fulfilled') setRevisions(revR.value.data ?? [])
+    if (taxR.status === 'fulfilled') setTaxes(taxR.value.data ?? [])
+    if (relR.status === 'fulfilled') setRelances(relR.value.data ?? [])
     setIsLoading(false)
   }
 
@@ -341,6 +355,30 @@ export default function LocataireDocuments() {
         ),
       }))
       return [...virtual, ...stored]
+    }
+    if (cat.key === 'taxe_ordures') {
+      const virtual = taxes.map((t: any) => ({
+        id: `taxe-${t.id}`,
+        label: `Taxe d'enlèvement des ordures ménagères ${t.year}`,
+        typeLabel: 'T.E.O.M.',
+        date: t.declared_at,
+        onDownload: () => paymentsApi.downloadTaxePdf(
+          t.id, docFilename('taxe_ordures', { year: t.year }),
+        ),
+      }))
+      return [...virtual, ...stored]
+    }
+    if (cat.key === 'relances') {
+      return relances.map((r: any) => ({
+        id: `relance-${r.id}`,
+        label: r.label || 'Lettre de relance',
+        typeLabel: r.rule_type === 'relance_2' ? 'Mise en demeure'
+          : r.rule_type === 'relance_1' ? 'Relance' : 'Rappel',
+        date: r.sent_at,
+        onDownload: () => paymentsApi.downloadRelancePdf(
+          r.payment_id, docFilename('relance', {}),
+        ),
+      }))
     }
     return stored
   }
