@@ -66,7 +66,16 @@ export default function CandidatureUpload() {
     )
   }
 
-  const allProvided = data.documents.length > 0 && data.documents.every(d => d.provided)
+  const total = data.documents.length
+  const providedCount = data.documents.filter(d => d.provided).length
+  const allProvided = total > 0 && providedCount === total
+
+  const docStatus = (d: { provided: boolean; verified?: boolean }) =>
+    d.verified
+      ? { label: 'Validé', cls: 'bg-emerald-100 text-emerald-700' }
+      : d.provided
+        ? { label: 'Reçu', cls: 'bg-blue-100 text-blue-700' }
+        : { label: 'À fournir', cls: 'bg-amber-100 text-amber-700' }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -96,14 +105,30 @@ export default function CandidatureUpload() {
               </p>
             </div>
 
+            {/* Progression */}
+            {total > 0 && (
+              <div className={`mb-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${allProvided ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+                {allProvided ? <CheckCircle2 size={16} /> : <FileUp size={16} />}
+                <span>
+                  {providedCount} / {total} pièce{total > 1 ? 's' : ''} déposée{providedCount > 1 ? 's' : ''}
+                  {allProvided ? ' : tout est complet, vous pouvez confirmer.' : ' : déposez les pièces restantes.'}
+                </span>
+              </div>
+            )}
+
             <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
-              {data.documents.map(d => (
+              {data.documents.map(d => {
+                const st = docStatus(d)
+                return (
                 <div key={d.key} className="flex items-center justify-between gap-3 px-4 py-3.5">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{d.label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900">{d.label}</p>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${st.cls}`}>{st.label}</span>
+                    </div>
                     {d.provided && (
-                      <p className="text-xs text-emerald-600 flex items-center gap-1 mt-0.5 truncate">
-                        <CheckCircle2 size={12} /> {d.filename || 'Document reçu'}
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 truncate">
+                        <CheckCircle2 size={12} className="text-emerald-500" /> {d.filename || 'Document reçu'}
                       </p>
                     )}
                   </div>
@@ -129,7 +154,8 @@ export default function CandidatureUpload() {
                         : <><UploadCloud size={13} /> Déposer</>}
                   </button>
                 </div>
-              ))}
+                )
+              })}
               {data.documents.length === 0 && (
                 <p className="px-4 py-6 text-sm text-gray-400 text-center">Aucune pièce n'est demandée pour le moment.</p>
               )}

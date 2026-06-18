@@ -123,6 +123,7 @@ async def public_candidature(token: str, db: AsyncSession = Depends(get_db)):
             "key": d.get("key"),
             "label": labels.get(d.get("key"), d.get("key")),
             "provided": bool(d.get("provided")),
+            "verified": bool(d.get("verified")),
             "filename": d.get("filename"),
         }
         for d in (c.docs or []) if d.get("required")

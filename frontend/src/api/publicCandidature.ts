@@ -4,6 +4,7 @@ export interface PublicCandidatureDoc {
   key: string
   label: string
   provided: boolean
+  verified?: boolean
   filename?: string | null
 }
 
