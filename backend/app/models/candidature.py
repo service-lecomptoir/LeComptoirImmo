@@ -16,6 +16,7 @@ CANDIDATURE_DOC_KEYS: list[tuple[str, str]] = [
     ("justificatif_domicile", "Justificatif de domicile"),
     ("contrat_travail", "Contrat de travail / attestation employeur"),
     ("dossier_garant", "Dossier du garant"),
+    ("attestation_caf", "Attestation de paiement CAF"),
 ]
 
 

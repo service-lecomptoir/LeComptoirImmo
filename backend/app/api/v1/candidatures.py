@@ -146,7 +146,9 @@ def _doc_out(d: dict) -> dict:
 
 
 def _out(c: Candidature, rent_ref: Optional[float] = None) -> dict:
-    docs = c.docs or []
+    # Normalise pour l'affichage : inclut les nouvelles pièces standard même pour
+    # les dossiers créés avant leur ajout (sans modifier la base).
+    docs = _ensure_doc_fields(c.docs)
     return {
         "id": c.id,
         "property_id": c.property_id,

@@ -110,14 +110,16 @@ def _base_template(title: str, content: str) -> str:
 <style>
   body {{ font-family: Arial, sans-serif; color: #333; margin: 0; padding: 0; background: #f5f5f5; }}
   .wrapper {{ max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.1); }}
-  .header {{ background: #1e40af; color: #fff; padding: 24px 32px; }}
-  .header h1 {{ margin: 0; font-size: 18px; font-weight: 600; }}
-  .body {{ padding: 28px 32px; }}
-  .footer {{ background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 16px 32px; font-size: 12px; color: #6b7280; text-align: center; }}
+  .topbar {{ height: 6px; background: #0D2F5C; line-height: 6px; font-size: 0; }}
+  .header {{ padding: 22px 32px 6px; }}
+  .header h1 {{ margin: 0; font-size: 18px; font-weight: 600; color: #0D2F5C; }}
+  .body {{ padding: 16px 32px 28px; }}
+  .footer {{ background: #0D2F5C; padding: 16px 32px; font-size: 12px; color: #dbeafe; text-align: center; }}
 </style>
 </head>
 <body>
 <div class="wrapper">
+  <div class="topbar">&nbsp;</div>
   <div class="header"><h1>Le Comptoir Immo : {title}</h1></div>
   <div class="body">{content}</div>
   <div class="footer">Le Comptoir Immo · Gestion locative · Ce message est automatique, merci de ne pas y répondre.</div>
