@@ -89,7 +89,7 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
   const content = BRAND_CONTENT[accountType]
   return (
     <div className="hidden lg:flex lg:w-[52%] relative flex-col justify-between overflow-hidden"
-         style={{ background: 'linear-gradient(145deg, #0D2F5C 0%, #1A4A8A 50%, #0D2F5C 100%)' }}>
+         style={{ background: 'linear-gradient(135deg, #0D2F5C 0%, #1A4A8A 100%)' }}>
 
       {/* Motif géométrique subtil */}
       <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
