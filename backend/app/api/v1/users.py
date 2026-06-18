@@ -96,21 +96,30 @@ async def list_users(
     current_role = Role(current_user.role)
 
     if current_role == Role.GESTIONNAIRE:
-        # Gestionnaire mandataire : proprio/locataires créés par SON agence uniquement.
+        # Gestionnaire mandataire : comptes gérés (propriétaires, locataires,
+        # comptable, lecture…) créés par SON agence. Jamais les comptes de niveau
+        # gestionnaire (dont le sien) : il gère le sien dans « Mes informations ».
         from app.api.v1._isolation import agency_member_ids
         members = await agency_member_ids(db, current_user)
         users = [
             u for u in users
-            if Role(u.role) in _GESTIONNAIRE_ALLOWED_ROLES
+            if Role(u.role) not in _MANAGER_LEVEL_ROLES
             and u.created_by in members
+            and str(u.id) != str(current_user.id)
         ]
     elif current_role == Role.GESTIONNAIRE_PROPRIO:
-        # GP voit lui-même + tous les users qu'il a directement créés (created_by)
+        # GP : uniquement les locataires qu'il a créés. Pas son propre compte
+        # (géré dans « Mes informations »), ni aucun compte de niveau gestionnaire.
         created_rows = (await db.execute(
             select(User.id).where(User.created_by == current_user.id)
         )).scalars().all()
         created_ids = {str(uid) for uid in created_rows}
-        users = [u for u in users if str(u.id) == str(current_user.id) or str(u.id) in created_ids]
+        users = [
+            u for u in users
+            if str(u.id) in created_ids
+            and Role(u.role) not in _MANAGER_LEVEL_ROLES
+            and str(u.id) != str(current_user.id)
+        ]
 
     # Filtre optionnel par rôle
     if role:
