@@ -240,17 +240,22 @@ async def send_visit_invitation(
     candidate_name: str,
     property_ref: str,
     booking_url: str,
+    property_address: Optional[str] = None,
     custom_message: Optional[str] = None,
     cc: Optional[str] = None,
 ) -> bool:
-    """Invitation à réserver un créneau de visite. On n'indique que la RÉFÉRENCE
-    du bien (ni nom, ni adresse) et on mentionne qu'il y a d'autres candidats."""
+    """Invitation à réserver un créneau de visite. On indique la RÉFÉRENCE du bien
+    et son ADRESSE (pour s'y rendre), mais jamais le nom du logement. On mentionne
+    qu'il y a d'autres candidats."""
     intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    addr = (f'<p style="margin:8px 0"><strong>Adresse de la visite :</strong><br>{property_address}</p>'
+            if property_address else "")
     content = f"""
 <p>Bonjour {candidate_name},</p>
 <p>Bonne nouvelle : votre dossier a retenu notre attention pour le bien
 référencé <strong>{property_ref}</strong>. Nous vous proposons de réserver un
 créneau de visite.</p>
+{addr}
 <p><strong>D'autres candidats sont également conviés</strong> : les créneaux sont
 attribués dans l'ordre des réservations, nous vous invitons à choisir le vôtre rapidement.</p>
 {intro}
@@ -262,7 +267,6 @@ attribués dans l'ordre des réservations, nous vous invitons à choisir le vôt
 </p>
 <p style="color:#6b7280;font-size:13px">Si le bouton ne fonctionne pas, copiez ce lien :<br>
 <span style="word-break:break-all">{booking_url}</span></p>
-<p>L'adresse exacte du logement vous sera communiquée après confirmation de votre créneau.</p>
 <p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
 """
     return await send_email(

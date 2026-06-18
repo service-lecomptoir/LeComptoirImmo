@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { CalendarClock, CheckCircle2, Loader2, Users } from 'lucide-react'
+import { CalendarClock, CheckCircle2, Loader2, Users, MapPin } from 'lucide-react'
 import { publicCandidatureApi, type PublicVisits } from '@/api/publicCandidature'
 import { toast } from '@/store/toast'
 
@@ -80,9 +80,16 @@ export default function CandidatureVisit() {
           </p>
         </div>
 
+        {data.property_address && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700">
+            <MapPin size={16} className="mt-0.5 shrink-0 text-gray-400" />
+            <span><span className="font-medium">Adresse de la visite :</span> {data.property_address}</span>
+          </div>
+        )}
+
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
           <Users size={16} className="mt-0.5 shrink-0" />
-          <span>D'autres candidats sont également conviés : les créneaux sont attribués dans l'ordre des réservations. L'adresse exacte vous sera communiquée après confirmation.</span>
+          <span>D'autres candidats sont également conviés : les créneaux sont attribués dans l'ordre des réservations. Choisissez le vôtre rapidement.</span>
         </div>
 
         {booked && (

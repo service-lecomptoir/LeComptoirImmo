@@ -25,6 +25,7 @@ export interface PublicVisitSlot {
 
 export interface PublicVisits {
   property_ref: string | null
+  property_address: string | null
   candidate_name: string
   slots: PublicVisitSlot[]
   booked_slot_id: string | null

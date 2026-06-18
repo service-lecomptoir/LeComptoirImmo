@@ -221,8 +221,10 @@ async def public_candidature_visits(token: str, db: AsyncSession = Depends(get_d
             "duration_min": s.duration_min,
             "remaining": max(0, s.capacity - int(booked)),
         })
+    from app.api.v1.candidatures import format_property_address
     return {
         "property_ref": getattr(prop, "ref_code", None) if prop else None,
+        "property_address": format_property_address(prop),
         "candidate_name": c.full_name,
         "slots": out,
         "booked_slot_id": str(c.visit_slot_id) if c.visit_slot_id else None,

@@ -52,6 +52,19 @@ def candidature_visit_url(token: str) -> str:
     return f"{get_settings().PUBLIC_APP_URL.rstrip('/')}/candidature/{token}/visite"
 
 
+def format_property_address(prop) -> Optional[str]:
+    """Adresse postale du bien (sans le nom du logement) : rue, CP ville, pays."""
+    if prop is None:
+        return None
+    line1 = ", ".join(p for p in [(prop.address or "").strip(), (getattr(prop, "address2", None) or "").strip()] if p)
+    line2 = " ".join(p for p in [(prop.zip_code or "").strip(), (prop.city or "").strip()] if p)
+    country = (getattr(prop, "country", None) or "").strip()
+    if country and country.lower() == "france":
+        country = ""
+    parts = [p for p in [line1, line2, country] if p]
+    return ", ".join(parts) or None
+
+
 # ── Schémas ────────────────────────────────────────────────────────────────────
 class CandidatureIn(BaseModel):
     property_id: uuid.UUID
@@ -596,8 +609,8 @@ async def invite_visit(
     user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     """Envoie au candidat qualifié un e-mail l'invitant à réserver un créneau de
-    visite. L'e-mail mentionne qu'il y a d'autres candidats et n'indique que la
-    RÉFÉRENCE du bien (ni nom ni adresse)."""
+    visite. L'e-mail mentionne qu'il y a d'autres candidats, indique la RÉFÉRENCE
+    et l'ADRESSE du bien (pour s'y rendre), mais jamais le nom du logement."""
     c = await _accessible(db, user, candidature_id)
     if not (c.email or "").strip():
         raise BadRequestException("Ce candidat n'a pas d'adresse e-mail.")
@@ -628,6 +641,7 @@ async def invite_visit(
         email_sent = await send_visit_invitation(
             to=c.email, candidate_name=c.full_name,
             property_ref=prop_ref or "votre dossier", booking_url=url,
+            property_address=format_property_address(prop),
             custom_message=(data.message or "").strip() or None,
             cc=getattr(user, "email", None),
         )
