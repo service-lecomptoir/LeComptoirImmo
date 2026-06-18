@@ -40,10 +40,12 @@ export function GenderAvatar({
         </svg>
       ) : isM ? (
         <svg viewBox="0 0 24 24" fill="currentColor" width={glyph} height={glyph} className={fg}>
-          {/* tête (cheveux courts) */}
-          <circle cx="12" cy="8" r="4" />
-          {/* épaules (carrure) */}
-          <path d="M4 20.8c0-4 3.6-6.4 8-6.4s8 2.4 8 6.4a.5.5 0 0 1-.5.5H4.5a.5.5 0 0 1-.5-.5z" />
+          {/* cheveux courts : calotte large couvrant les tempes, avec une hairline */}
+          <path d="M6.3 10.4V9.1C6.3 5.8 8.8 3.6 12 3.6S17.7 5.8 17.7 9.1V10.4c-.5-1-1.2-1.6-2-1.6H8.3c-.8 0-1.5.6-2 1.6Z" />
+          {/* visage */}
+          <circle cx="12" cy="10.6" r="3.3" />
+          {/* épaules (carrure large) */}
+          <path d="M4 20.8c0-4.2 3.6-6.6 8-6.6s8 2.4 8 6.6a.5.5 0 0 1-.5.5H4.5a.5.5 0 0 1-.5-.5z" />
         </svg>
       ) : (
         <UserRound size={glyph} className={fg} />
