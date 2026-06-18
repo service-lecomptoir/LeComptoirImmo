@@ -16,9 +16,28 @@ export interface PublicCandidature {
   all_provided: boolean
 }
 
+export interface PublicVisitSlot {
+  id: string
+  starts_at: string
+  duration_min: number
+  remaining: number
+}
+
+export interface PublicVisits {
+  property_ref: string | null
+  candidate_name: string
+  slots: PublicVisitSlot[]
+  booked_slot_id: string | null
+}
+
 export const publicCandidatureApi = {
   get: (token: string) =>
     apiClient.get<PublicCandidature>(`/public/candidature/${token}`),
+  getVisits: (token: string) =>
+    apiClient.get<PublicVisits>(`/public/candidature/${token}/visits`),
+  bookVisit: (token: string, slotId: string) =>
+    apiClient.post<{ status: string; starts_at: string }>(
+      `/public/candidature/${token}/visits/${slotId}/book`),
   upload: (token: string, key: string, file: File) => {
     const fd = new FormData()
     fd.append('key', key)

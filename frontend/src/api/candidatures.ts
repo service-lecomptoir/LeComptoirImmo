@@ -39,7 +39,23 @@ export interface Candidature {
   created_at: string
   upload_token?: string | null
   upload_url?: string | null
+  property_ref?: string | null
+  visit_url?: string | null
+  visit_invited?: boolean
+  visit_slot_id?: string | null
+  visit_booked_at?: string | null
   metrics: CandidatureMetrics
+}
+
+export interface VisitSlot {
+  id: string
+  property_id: string
+  starts_at: string
+  duration_min: number
+  capacity: number
+  notes?: string | null
+  booked_count: number
+  remaining: number
 }
 
 export interface CandidatureCreate {
@@ -84,4 +100,17 @@ export const candidaturesApi = {
       `/candidatures/${id}/request-documents`, data,
     ),
   docDownloadUrl: (id: string, key: string) => `/candidatures/${id}/documents/${key}/download`,
+
+  // Visites
+  visitSlots: (propertyId: string) =>
+    apiClient.get<VisitSlot[]>('/candidatures/visit-slots', { params: { property_id: propertyId } }),
+  createVisitSlot: (data: { property_id: string; starts_at: string; duration_min?: number; capacity?: number; notes?: string }) =>
+    apiClient.post<VisitSlot>('/candidatures/visit-slots', data),
+  deleteVisitSlot: (slotId: string) => apiClient.delete(`/candidatures/visit-slots/${slotId}`),
+  inviteVisit: (id: string, data: { message?: string | null }) =>
+    apiClient.post<Candidature & { visit_url: string; email_sent: boolean }>(
+      `/candidatures/${id}/invite-visit`, data,
+    ),
+  accept: (id: string, data: { message?: string | null }) =>
+    apiClient.post<Candidature & { email_sent: boolean }>(`/candidatures/${id}/accept`, data),
 }

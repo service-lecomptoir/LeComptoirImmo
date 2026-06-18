@@ -87,6 +87,7 @@ const DiffusionPage = lazyPage(() => import('@/pages/publishing/DiffusionPage'))
 const PropertyPublish = lazyPage(() => import('@/pages/publishing/PropertyPublish'))
 const AnnoncePublic = lazyPage(() => import('@/pages/public/AnnoncePublic'))
 const CandidatureUpload = lazyPage(() => import('@/pages/public/CandidatureUpload'))
+const CandidatureVisit = lazyPage(() => import('@/pages/public/CandidatureVisit'))
 const CandidaturesPage = lazyPage(() => import('@/pages/candidatures/CandidaturesPage'))
 const SortiesPage = lazyPage(() => import('@/pages/sorties/SortiesPage'))
 const SignalementList = lazyPage(() => import('@/pages/signalements/SignalementList'))
@@ -199,6 +200,15 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<PageLoader />}>
         <CandidatureUpload />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/candidature/:token/visite',
+    errorElement: <RouteError />,
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <CandidatureVisit />
       </Suspense>
     ),
   },

@@ -1,7 +1,8 @@
 import uuid
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Text, Numeric, Boolean, ForeignKey
+from sqlalchemy import String, Text, Numeric, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
@@ -52,6 +53,11 @@ class Candidature(Base, TimestampMixin):
     docs: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     # Jeton public pour le dépôt des pièces par le candidat (lien envoyé par e-mail).
     upload_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    # Visite : créneau réservé par le candidat + date d'invitation envoyée.
+    visit_slot_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("property_visit_slots.id", ondelete="SET NULL"), nullable=True,
+    )
+    visit_invited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # annonce (page publique) | manuel (saisie gestionnaire)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="annonce")

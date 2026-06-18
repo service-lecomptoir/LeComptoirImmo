@@ -329,6 +329,9 @@ async def _apply_column_migrations() -> None:
         # Candidatures : jeton public de dépôt des pièces par le candidat
         "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS upload_token VARCHAR(64)",
         "CREATE INDEX IF NOT EXISTS ix_candidatures_upload_token ON candidatures (upload_token)",
+        # Candidatures : visite (créneau réservé + date d'invitation)
+        "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS visit_slot_id UUID",
+        "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS visit_invited_at TIMESTAMPTZ",
         # Identifiant lisible unique (ref_code) : comptes, propriétaires, biens, locataires.
         # Préfixe selon le type/rôle (GM/GP/UP/UL/AD/CB/LE, PR, BN, LO). Reprise
         # historique des lignes existantes au démarrage (voir _backfill_references).

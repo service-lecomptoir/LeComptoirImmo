@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui'
 import { formatPhoneDisplay } from '@/utils/format'
-import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2, Sparkles, Send, Link2, Download, Copy } from 'lucide-react'
+import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2, Sparkles, Send, Link2, Download, Copy, CalendarClock, UserPlus } from 'lucide-react'
+import { type VisitSlot } from '@/api/candidatures'
 import { apiClient } from '@/api/client'
 import { candidaturesApi, type Candidature, type CandidatureStatus } from '@/api/candidatures'
 import { propertiesApi } from '@/api/properties'
@@ -22,6 +24,7 @@ const STATUS: Record<CandidatureStatus, { label: string; cls: string }> = {
 const pct = (v: number | null | undefined) => (v == null ? '—' : `${Math.round(v * 100)} %`)
 
 export default function CandidaturesPage() {
+  const navigate = useNavigate()
   const [items, setItems] = useState<Candidature[]>([])
   const [props, setProps] = useState<Prop[]>([])
   const [docLabels, setDocLabels] = useState<Record<string, string>>({})
@@ -128,6 +131,78 @@ export default function CandidaturesPage() {
     } catch {
       toast.error('Téléchargement impossible (erreur réseau).')
     }
+  }
+
+  // ── Visites ──
+  const [showVisit, setShowVisit] = useState(false)
+  const [slots, setSlots] = useState<VisitSlot[]>([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [newSlot, setNewSlot] = useState({ starts_at: '', duration_min: '30', capacity: '1' })
+  const [visitMsg, setVisitMsg] = useState('')
+  const [visitBusy, setVisitBusy] = useState(false)
+
+  const openVisit = async (c: Candidature) => {
+    setShowVisit(true)
+    setVisitMsg('')
+    setSlotsLoading(true)
+    try {
+      const r = await candidaturesApi.visitSlots(c.property_id)
+      setSlots(r.data)
+    } catch { /* */ } finally { setSlotsLoading(false) }
+  }
+  const addSlot = async () => {
+    if (!selected || !newSlot.starts_at) return
+    setVisitBusy(true)
+    try {
+      await candidaturesApi.createVisitSlot({
+        property_id: selected.property_id,
+        starts_at: new Date(newSlot.starts_at).toISOString(),
+        duration_min: Number(newSlot.duration_min) || 30,
+        capacity: Number(newSlot.capacity) || 1,
+      })
+      const r = await candidaturesApi.visitSlots(selected.property_id)
+      setSlots(r.data)
+      setNewSlot({ starts_at: '', duration_min: '30', capacity: '1' })
+    } catch { /* */ } finally { setVisitBusy(false) }
+  }
+  const removeSlot = async (slotId: string) => {
+    if (!selected) return
+    try {
+      await candidaturesApi.deleteVisitSlot(slotId)
+      setSlots(prev => prev.filter(s => s.id !== slotId))
+    } catch { /* */ }
+  }
+  const sendVisitInvite = async () => {
+    if (!selected) return
+    setVisitBusy(true)
+    try {
+      const r = await candidaturesApi.inviteVisit(selected.id, { message: visitMsg.trim() || null })
+      setSelected(r.data)
+      setItems(prev => prev.map(c => (c.id === r.data.id ? r.data : c)))
+      setShowVisit(false)
+      toast.success(r.data.email_sent
+        ? `Invitation envoyée à ${selected.email}.`
+        : "Lien généré, mais e-mail non envoyé (SMTP) : copiez le lien de visite.")
+    } catch { /* */ } finally { setVisitBusy(false) }
+  }
+
+  const acceptCandidate = async (c: Candidature) => {
+    setBusy(true)
+    try {
+      const r = await candidaturesApi.accept(c.id, {})
+      setSelected(r.data)
+      setItems(prev => prev.map(x => (x.id === r.data.id ? r.data : x)))
+      toast.success(r.data.email_sent
+        ? "Candidat accepté : e-mail d'acceptation envoyé."
+        : 'Candidat accepté (e-mail non envoyé : SMTP indisponible).')
+    } catch { /* */ } finally { setBusy(false) }
+  }
+
+  const toTenant = (c: Candidature) => {
+    const parts = (c.full_name || '').trim().split(/\s+/)
+    const first_name = parts.shift() || ''
+    const last_name = parts.join(' ')
+    navigate('/tenants', { state: { prefillTenant: { first_name, last_name, email: c.email || '', phone: c.phone || '' } } })
   }
 
   const remove = async (c: Candidature) => {
@@ -377,6 +452,16 @@ export default function CandidaturesPage() {
                   className={`w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none ${readOnly ? 'bg-gray-50 text-gray-600' : ''}`} />
               </div>
 
+              {/* Statut de la visite */}
+              {(selected.visit_booked_at || selected.visit_invited) && (
+                <div className="flex items-center gap-2 text-xs rounded-lg bg-indigo-50 text-indigo-800 px-3 py-2">
+                  <CalendarClock size={14} className="shrink-0" />
+                  {selected.visit_booked_at
+                    ? <span>Visite réservée le <strong>{new Date(selected.visit_booked_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}</strong>.</span>
+                    : <span>Invitation à la visite envoyée. En attente de réservation par le candidat.</span>}
+                </div>
+              )}
+
               {/* Actions de statut */}
               <div className="flex flex-wrap gap-2 pt-1">
                 {!readOnly && (<>
@@ -384,10 +469,20 @@ export default function CandidaturesPage() {
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-100 hover:bg-amber-200 text-amber-800 disabled:opacity-50">
                     <ShieldQuestion size={13} className="inline mr-1" />Mettre en étude
                   </button>
-                  <button onClick={() => patch(selected.id, { status: 'retenue' })} disabled={busy || selected.status === 'retenue'}
-                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 disabled:opacity-50">
-                    <BadgeCheck size={13} className="inline mr-1" />Retenir ce candidat
+                  <button onClick={() => openVisit(selected)} disabled={busy}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-100 hover:bg-indigo-200 text-indigo-800 disabled:opacity-50">
+                    <CalendarClock size={13} className="inline mr-1" />Proposer une visite
                   </button>
+                  <button onClick={() => acceptCandidate(selected)} disabled={busy || selected.status === 'retenue'}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 disabled:opacity-50">
+                    <BadgeCheck size={13} className="inline mr-1" />Accepter le candidat
+                  </button>
+                  {selected.status === 'retenue' && (
+                    <button onClick={() => toTenant(selected)} disabled={busy}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
+                      <UserPlus size={13} className="inline mr-1" />Passer en locataire
+                    </button>
+                  )}
                   <button onClick={() => patch(selected.id, { status: 'refusee' })} disabled={busy || selected.status === 'refusee'}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 disabled:opacity-50">
                     Refuser
@@ -556,6 +651,82 @@ export default function CandidaturesPage() {
                 {requesting ? 'Envoi…' : 'Envoyer la demande'}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale : proposer une visite ── */}
+      {showVisit && selected && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg p-6 max-h-[88vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2"><CalendarClock size={17} /> Proposer une visite</h3>
+              <button onClick={() => setShowVisit(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Définissez des créneaux pour le bien <span className="font-medium text-gray-700">{selected.property_ref || propName[selected.property_id]}</span>,
+              puis invitez le candidat. L'e-mail n'indique que la référence du bien (ni nom ni adresse) et précise qu'il y a d'autres candidats.
+            </p>
+
+            {/* Créneaux existants */}
+            <div className="space-y-1.5 mb-3">
+              {slotsLoading ? (
+                <p className="text-sm text-gray-400">Chargement des créneaux…</p>
+              ) : slots.length === 0 ? (
+                <p className="text-sm text-gray-400">Aucun créneau pour ce bien. Ajoutez-en un ci-dessous.</p>
+              ) : slots.map(s => (
+                <div key={s.id} className="flex items-center justify-between gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+                  <span className="text-gray-700">
+                    {new Date(s.starts_at).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })}
+                    <span className="text-gray-400"> · {s.duration_min} min · {s.booked_count}/{s.capacity} réservé(s)</span>
+                  </span>
+                  <button onClick={() => removeSlot(s.id)} className="text-red-400 hover:text-red-600 shrink-0" title="Supprimer">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Ajout d'un créneau */}
+            <div className="flex flex-wrap items-end gap-2 mb-4 border-t border-gray-100 pt-3">
+              <div className="flex-1 min-w-[180px]">
+                <label className="block text-[11px] text-gray-500 mb-1">Date et heure</label>
+                <input type="datetime-local" value={newSlot.starts_at}
+                  onChange={e => setNewSlot(s => ({ ...s, starts_at: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+              </div>
+              <div className="w-20">
+                <label className="block text-[11px] text-gray-500 mb-1">Durée</label>
+                <input type="number" min="5" step="5" value={newSlot.duration_min}
+                  onChange={e => setNewSlot(s => ({ ...s, duration_min: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+              </div>
+              <div className="w-20">
+                <label className="block text-[11px] text-gray-500 mb-1">Places</label>
+                <input type="number" min="1" value={newSlot.capacity}
+                  onChange={e => setNewSlot(s => ({ ...s, capacity: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm" />
+              </div>
+              <button onClick={addSlot} disabled={visitBusy || !newSlot.starts_at}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50">
+                <Plus size={13} className="inline mr-1" />Ajouter
+              </button>
+            </div>
+
+            <textarea value={visitMsg} onChange={e => setVisitMsg(e.target.value)} rows={2}
+              placeholder="Message au candidat (facultatif)…"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none mb-4" />
+
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowVisit(false)}
+                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Fermer</button>
+              <Button variant="primary" onClick={sendVisitInvite} isLoading={visitBusy}
+                disabled={visitBusy || !selected.email || slots.length === 0}
+                className="px-5 font-semibold" leftIcon={<Send size={15} />}>
+                Inviter à réserver
+              </Button>
+            </div>
+            {!selected.email && <p className="text-xs text-red-600 mt-2 text-right">Ce candidat n'a pas d'e-mail.</p>}
           </div>
         </div>
       )}

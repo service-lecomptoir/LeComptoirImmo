@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { formatPhoneDisplay } from '@/utils/format'
 import { getErrorMessage } from '@/utils/errors'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, Search, UserRound, ShieldCheck, Pencil, Trash2, Mail, Phone, Download } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { tenantsApi } from '@/api/tenants'
@@ -19,8 +19,12 @@ import { useAuthStore } from '@/store/authStore'
 import { ViewToggle } from '@/components/common/ViewToggle'
 import { useViewMode } from '@/hooks/useViewMode'
 
+type TenantPrefill = { first_name?: string; last_name?: string; email?: string; phone?: string }
+
 export default function TenantList() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [prefill, setPrefill] = useState<TenantPrefill | null>(null)
   const [tenants, setTenants] = useState<TenantListItem[]>([])
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
@@ -52,6 +56,16 @@ export default function TenantList() {
     const t = setTimeout(() => fetchTenants(search, limit), 300)
     return () => clearTimeout(t)
   }, [search, limit, fetchTenants])
+
+  // Arrivée depuis « Candidatures » → ouvre le formulaire de création prérempli.
+  useEffect(() => {
+    const pf = (location.state as any)?.prefillTenant as TenantPrefill | undefined
+    if (pf) {
+      setPrefill(pf)
+      setShowForm(true)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location, navigate])
 
   const openEdit = async (id: string) => {
     try {
@@ -260,8 +274,9 @@ export default function TenantList() {
       {/* Modals */}
       {showForm && (
         <TenantForm
-          onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchTenants(search, limit); toast.success('Locataire créé') }}
+          prefill={prefill ?? undefined}
+          onClose={() => { setShowForm(false); setPrefill(null) }}
+          onSaved={() => { setShowForm(false); setPrefill(null); fetchTenants(search, limit); toast.success('Locataire créé') }}
         />
       )}
       {editTenant && (

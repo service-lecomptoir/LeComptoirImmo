@@ -4,6 +4,8 @@ Flux : le gestionnaire sélectionne les pièces et envoie un lien ; le candidat
 dépose ses fichiers via le lien public (sans compte) ; le gestionnaire les
 télécharge et fait évoluer le dossier.
 """
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from tests.conftest import auth
@@ -104,6 +106,54 @@ async def test_request_documents_requires_email(client, db, gestionnaire_user, g
         headers=auth(gestionnaire_token), json={"doc_keys": ["identite"]},
     )
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_visit_invitation_and_booking(client, db, gestionnaire_user, gestionnaire_token):
+    prop = await _make_property(db, gestionnaire_user, name="Bien visite")
+    cand = Candidature(
+        property_id=prop.id, full_name="Paul Visite", email="paul@test.fr",
+        docs=default_docs(), source="manuel", created_by=gestionnaire_user.id,
+    )
+    db.add(cand)
+    await db.commit()
+    cid = str(cand.id)
+    h = auth(gestionnaire_token)
+
+    # Sans créneau : l'invitation est refusée.
+    r0 = await client.post(f"/api/v1/candidatures/{cid}/invite-visit", headers=h, json={})
+    assert r0.status_code == 400
+
+    # Crée un créneau futur (capacité 2).
+    when = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
+    rs = await client.post("/api/v1/candidatures/visit-slots", headers=h, json={
+        "property_id": str(prop.id), "starts_at": when, "duration_min": 30, "capacity": 2,
+    })
+    assert rs.status_code == 201, rs.text
+    slot_id = rs.json()["id"]
+
+    # Invitation OK.
+    ri = await client.post(f"/api/v1/candidatures/{cid}/invite-visit", headers=h, json={})
+    assert ri.status_code == 200, ri.text
+    assert ri.json()["visit_invited"] is True
+    token = ri.json()["upload_token"]
+
+    # Page publique : le créneau est proposé (ref du bien, pas le nom).
+    pv = (await client.get(f"/api/v1/public/candidature/{token}/visits")).json()
+    assert pv["booked_slot_id"] is None
+    assert any(s["id"] == slot_id for s in pv["slots"])
+
+    # Réservation par le candidat.
+    bk = await client.post(f"/api/v1/public/candidature/{token}/visits/{slot_id}/book")
+    assert bk.status_code == 200, bk.text
+
+    db.expire_all()
+    pv2 = (await client.get(f"/api/v1/public/candidature/{token}/visits")).json()
+    assert pv2["booked_slot_id"] == slot_id
+
+    # Acceptation finale.
+    ra = await client.post(f"/api/v1/candidatures/{cid}/accept", headers=h, json={})
+    assert ra.status_code == 200 and ra.json()["status"] == "retenue"
 
 
 @pytest.mark.asyncio

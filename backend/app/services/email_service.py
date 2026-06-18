@@ -235,6 +235,76 @@ dans votre navigateur :<br><span style="word-break:break-all">{upload_url}</span
     )
 
 
+async def send_visit_invitation(
+    to: str,
+    candidate_name: str,
+    property_ref: str,
+    booking_url: str,
+    custom_message: Optional[str] = None,
+    cc: Optional[str] = None,
+) -> bool:
+    """Invitation à réserver un créneau de visite. On n'indique que la RÉFÉRENCE
+    du bien (ni nom, ni adresse) et on mentionne qu'il y a d'autres candidats."""
+    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    content = f"""
+<p>Bonjour {candidate_name},</p>
+<p>Bonne nouvelle : votre dossier a retenu notre attention pour le bien
+référencé <strong>{property_ref}</strong>. Nous vous proposons de réserver un
+créneau de visite.</p>
+<p><strong>D'autres candidats sont également conviés</strong> : les créneaux sont
+attribués dans l'ordre des réservations, nous vous invitons à choisir le vôtre rapidement.</p>
+{intro}
+<p style="margin:20px 0">
+  <a href="{booking_url}" style="display:inline-block;background:#0D2F5C;color:#fff;
+     text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">
+    Choisir un créneau de visite
+  </a>
+</p>
+<p style="color:#6b7280;font-size:13px">Si le bouton ne fonctionne pas, copiez ce lien :<br>
+<span style="word-break:break-all">{booking_url}</span></p>
+<p>L'adresse exacte du logement vous sera communiquée après confirmation de votre créneau.</p>
+<p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
+"""
+    return await send_email(
+        to=to,
+        subject=f"Proposition de visite : bien {property_ref}",
+        html_body=_base_template("Proposition de visite", content),
+        cc=cc,
+    )
+
+
+async def send_candidature_accepted(
+    to: str,
+    candidate_name: str,
+    property_ref: str,
+    custom_message: Optional[str] = None,
+    cc: Optional[str] = None,
+) -> bool:
+    """E-mail d'acceptation d'une candidature, avec les prochaines étapes."""
+    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    content = f"""
+<p>Bonjour {candidate_name},</p>
+<p>Nous avons le plaisir de vous informer que <strong>votre candidature est acceptée</strong>
+pour le bien référencé <strong>{property_ref}</strong>. Félicitations !</p>
+{intro}
+<p><strong>Prochaines étapes :</strong></p>
+<ol style="margin:12px 0;padding-left:20px;color:#374151">
+  <li>Constitution et vérification finale de votre dossier.</li>
+  <li>Préparation et <strong>signature du bail</strong> (un rendez-vous vous sera proposé).</li>
+  <li>Versement du dépôt de garantie et du premier loyer.</li>
+  <li>État des lieux d'entrée et remise des clés.</li>
+</ol>
+<p>Nous reviendrons vers vous très prochainement pour organiser la signature.</p>
+<p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
+"""
+    return await send_email(
+        to=to,
+        subject=f"Votre candidature est acceptée (bien {property_ref})",
+        html_body=_base_template("Candidature acceptée", content),
+        cc=cc,
+    )
+
+
 def build_credentials_email(
     *,
     login: str,

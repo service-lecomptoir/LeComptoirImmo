@@ -192,6 +192,91 @@ async def public_candidature_submit(token: str, db: AsyncSession = Depends(get_d
     return {"status": "submitted"}
 
 
+# ── Réservation de visite par le candidat (lien public) ──────────────────────────
+@router.get("/candidature/{token}/visits", summary="Créneaux de visite proposés (candidat)")
+async def public_candidature_visits(token: str, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import func as _func
+    from datetime import datetime as _dt, timezone as _tz
+    from app.models.property import Property
+    from app.models.candidature import Candidature
+    from app.models.visit import PropertyVisitSlot
+
+    c = await _candidature_by_token(db, token)
+    prop = await db.get(Property, c.property_id)
+    now = _dt.now(_tz.utc)
+    slots = (await db.execute(
+        select(PropertyVisitSlot).where(
+            PropertyVisitSlot.property_id == c.property_id,
+            PropertyVisitSlot.starts_at >= now,
+        ).order_by(PropertyVisitSlot.starts_at)
+    )).scalars().all()
+    out = []
+    for s in slots:
+        booked = (await db.execute(
+            select(_func.count(Candidature.id)).where(Candidature.visit_slot_id == s.id)
+        )).scalar() or 0
+        out.append({
+            "id": str(s.id),
+            "starts_at": s.starts_at.isoformat(),
+            "duration_min": s.duration_min,
+            "remaining": max(0, s.capacity - int(booked)),
+        })
+    return {
+        "property_ref": getattr(prop, "ref_code", None) if prop else None,
+        "candidate_name": c.full_name,
+        "slots": out,
+        "booked_slot_id": str(c.visit_slot_id) if c.visit_slot_id else None,
+    }
+
+
+@router.post("/candidature/{token}/visits/{slot_id}/book", summary="Réserver un créneau de visite")
+async def public_candidature_book_visit(token: str, slot_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import func as _func
+    from datetime import datetime as _dt, timezone as _tz
+    from app.models.property import Property
+    from app.models.candidature import Candidature
+    from app.models.visit import PropertyVisitSlot
+
+    c = await _candidature_by_token(db, token)
+    slot = await db.get(PropertyVisitSlot, slot_id)
+    if not slot or slot.property_id != c.property_id:
+        raise HTTPException(status_code=404, detail="Créneau introuvable")
+    now = _dt.now(_tz.utc)
+    if slot.starts_at < now:
+        raise HTTPException(status_code=400, detail="Ce créneau est déjà passé.")
+    # Place restante (en dehors d'une éventuelle réservation déjà posée par ce candidat).
+    booked = (await db.execute(
+        select(_func.count(Candidature.id)).where(
+            Candidature.visit_slot_id == slot.id, Candidature.id != c.id,
+        )
+    )).scalar() or 0
+    if int(booked) >= slot.capacity:
+        raise HTTPException(status_code=409, detail="Ce créneau est complet.")
+
+    c.visit_slot_id = slot.id
+    await db.commit()
+
+    # Notifier le gestionnaire (best-effort).
+    try:
+        prop = await db.get(Property, c.property_id)
+        mgr = await db.get(User, prop.created_by) if (prop and prop.created_by) else None
+        when = slot.starts_at.strftime("%d/%m/%Y à %H:%M")
+        ref = getattr(prop, "ref_code", None) if prop else None
+        if mgr and getattr(mgr, "email", None):
+            from app.services.email_service import send_email
+            await send_email(
+                to=mgr.email,
+                subject=f"Visite réservée : {c.full_name} ({ref or 'bien'})",
+                html_body=(f"<p><strong>{c.full_name}</strong> a réservé une visite "
+                           f"({ref or 'bien'}) le <strong>{when}</strong>.</p>"
+                           f"<p>Retrouvez le dossier dans « Candidatures ».</p>"),
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Notif réservation visite échouée: %s", exc)
+
+    return {"status": "booked", "starts_at": slot.starts_at.isoformat()}
+
+
 @router.get("/listings/{token}", summary="Page d'annonce publique (sans authentification)")
 async def public_listing(token: str, db: AsyncSession = Depends(get_db)):
     """Annonce publiée d'un bien, accessible par son jeton. 404 si introuvable ou

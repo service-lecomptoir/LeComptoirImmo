@@ -117,11 +117,12 @@ function PhoneField({ label, value, onChange }: { label: string; value: string; 
 
 interface Props {
   tenant?: Tenant
+  prefill?: { first_name?: string; last_name?: string; email?: string; phone?: string }
   onClose: () => void
   onSaved: () => void
 }
 
-export function TenantForm({ tenant, onClose, onSaved }: Props) {
+export function TenantForm({ tenant, prefill, onClose, onSaved }: Props) {
   const isEdit = !!tenant
   const [locataireUsers, setLocataireUsers] = useState<User[]>([])
   const [showCreateUser, setShowCreateUser] = useState(false)
@@ -148,7 +149,13 @@ export function TenantForm({ tenant, onClose, onSaved }: Props) {
       employer_phone: tenant.employer_phone ?? '',
       notes: tenant.notes ?? '',
       user_id: tenant.user_id ?? '',
-    } : { tenant_type: 'person', language: 'fr' },
+    } : {
+      tenant_type: 'person', language: 'fr',
+      first_name: prefill?.first_name ?? '',
+      last_name: prefill?.last_name ?? '',
+      email: prefill?.email ?? '',
+      phone: prefill?.phone ?? '',
+    },
   })
 
   const tenantType = watch('tenant_type')

@@ -14,7 +14,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_role, get_manager_or_owner
@@ -25,6 +25,7 @@ from app.models.candidature import Candidature, CANDIDATURE_DOC_KEYS
 from app.models.property import Property
 from app.models.publishing import Listing
 from app.models.user import User
+from app.models.visit import PropertyVisitSlot
 from app.utils.file_handler import get_file_path
 
 router = APIRouter(prefix="/candidatures", tags=["Candidatures"])
@@ -44,6 +45,11 @@ def default_docs() -> list[dict]:
 def candidature_upload_url(token: str) -> str:
     from app.config import get_settings
     return f"{get_settings().PUBLIC_APP_URL.rstrip('/')}/candidature/{token}"
+
+
+def candidature_visit_url(token: str) -> str:
+    from app.config import get_settings
+    return f"{get_settings().PUBLIC_APP_URL.rstrip('/')}/candidature/{token}/visite"
 
 
 # ── Schémas ────────────────────────────────────────────────────────────────────
@@ -74,6 +80,18 @@ class CandidatureUpdate(BaseModel):
 class RequestDocumentsIn(BaseModel):
     doc_keys: List[str] = Field(..., min_length=1)
     message: Optional[str] = Field(None, max_length=2000)
+
+
+class MessageIn(BaseModel):
+    message: Optional[str] = Field(None, max_length=2000)
+
+
+class VisitSlotIn(BaseModel):
+    property_id: uuid.UUID
+    starts_at: datetime
+    duration_min: int = Field(30, ge=5, le=480)
+    capacity: int = Field(1, ge=1, le=50)
+    notes: Optional[str] = Field(None, max_length=300)
 
 
 # ── Périmètre ──────────────────────────────────────────────────────────────────
@@ -145,13 +163,15 @@ def _doc_out(d: dict) -> dict:
     }
 
 
-def _out(c: Candidature, rent_ref: Optional[float] = None) -> dict:
+def _out(c: Candidature, rent_ref: Optional[float] = None,
+         prop_ref: Optional[str] = None, visit_at=None) -> dict:
     # Normalise pour l'affichage : inclut les nouvelles pièces standard même pour
     # les dossiers créés avant leur ajout (sans modifier la base).
     docs = _ensure_doc_fields(c.docs)
     return {
         "id": c.id,
         "property_id": c.property_id,
+        "property_ref": prop_ref,
         "full_name": c.full_name,
         "email": c.email,
         "phone": c.phone,
@@ -166,6 +186,10 @@ def _out(c: Candidature, rent_ref: Optional[float] = None) -> dict:
         "created_at": c.created_at,
         "upload_token": c.upload_token,
         "upload_url": candidature_upload_url(c.upload_token) if c.upload_token else None,
+        "visit_url": candidature_visit_url(c.upload_token) if c.upload_token else None,
+        "visit_invited": bool(c.visit_invited_at),
+        "visit_slot_id": str(c.visit_slot_id) if c.visit_slot_id else None,
+        "visit_booked_at": visit_at,
         "metrics": _metrics(c, rent_ref),
     }
 
@@ -176,6 +200,18 @@ async def _rent_ref(db: AsyncSession, property_id) -> Optional[float]:
         select(Listing).where(Listing.property_id == property_id)
     )).scalar_one_or_none()
     return float(listing.price) if (listing and listing.price is not None) else None
+
+
+async def _full_out(db: AsyncSession, c: Candidature) -> dict:
+    """Sérialise une candidature avec sa réf. de bien et son créneau de visite."""
+    rent = await _rent_ref(db, c.property_id)
+    prop = await db.get(Property, c.property_id)
+    prop_ref = getattr(prop, "ref_code", None) if prop else None
+    visit_at = None
+    if c.visit_slot_id:
+        slot = await db.get(PropertyVisitSlot, c.visit_slot_id)
+        visit_at = slot.starts_at.isoformat() if slot else None
+    return _out(c, rent, prop_ref, visit_at)
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -197,12 +233,27 @@ async def list_candidatures(
     if status in _STATUSES:
         q = q.where(Candidature.status == status)
     rows = (await db.execute(q)).scalars().all()
-    # Loyer de référence par bien (une requête par bien distinct, volumes faibles)
+    # Loyer + réf. de bien par bien distinct (volumes faibles).
     rents: dict = {}
+    refs: dict = {}
     for c in rows:
         if c.property_id not in rents:
             rents[c.property_id] = await _rent_ref(db, c.property_id)
-    return [_out(c, rents.get(c.property_id)) for c in rows]
+            prop = await db.get(Property, c.property_id)
+            refs[c.property_id] = getattr(prop, "ref_code", None) if prop else None
+    # Créneaux réservés (une requête groupée).
+    slot_ids = [c.visit_slot_id for c in rows if c.visit_slot_id]
+    slot_at: dict = {}
+    if slot_ids:
+        slots = (await db.execute(
+            select(PropertyVisitSlot).where(PropertyVisitSlot.id.in_(slot_ids))
+        )).scalars().all()
+        slot_at = {s.id: s.starts_at.isoformat() for s in slots}
+    return [
+        _out(c, rents.get(c.property_id), refs.get(c.property_id),
+             slot_at.get(c.visit_slot_id) if c.visit_slot_id else None)
+        for c in rows
+    ]
 
 
 @router.post("", status_code=201, summary="Ajouter une candidature (saisie manuelle)")
@@ -230,12 +281,81 @@ async def create_candidature(
     db.add(c)
     await db.commit()
     await db.refresh(c)
-    return _out(c, await _rent_ref(db, c.property_id))
+    return await _full_out(db, c)
 
 
 @router.get("/doc-keys", summary="Checklist standard des pièces")
 async def doc_keys():
     return [{"key": k, "label": lbl} for k, lbl in CANDIDATURE_DOC_KEYS]
+
+
+# ── Créneaux de visite (par bien) ────────────────────────────────────────────────
+async def _slot_out(db: AsyncSession, slot: PropertyVisitSlot) -> dict:
+    booked = (await db.execute(
+        select(func.count(Candidature.id)).where(Candidature.visit_slot_id == slot.id)
+    )).scalar() or 0
+    return {
+        "id": str(slot.id),
+        "property_id": str(slot.property_id),
+        "starts_at": slot.starts_at.isoformat(),
+        "duration_min": slot.duration_min,
+        "capacity": slot.capacity,
+        "notes": slot.notes,
+        "booked_count": int(booked),
+        "remaining": max(0, slot.capacity - int(booked)),
+    }
+
+
+@router.get("/visit-slots", summary="Créneaux de visite d'un bien")
+async def list_visit_slots(
+    property_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_manager_or_owner),
+):
+    ids = await _scope_property_ids(db, user)
+    if ids is not None and property_id not in ids:
+        raise ForbiddenException("Ce bien n'est pas dans votre périmètre.")
+    slots = (await db.execute(
+        select(PropertyVisitSlot).where(PropertyVisitSlot.property_id == property_id)
+        .order_by(PropertyVisitSlot.starts_at)
+    )).scalars().all()
+    return [await _slot_out(db, s) for s in slots]
+
+
+@router.post("/visit-slots", status_code=201, summary="Ajouter un créneau de visite")
+async def create_visit_slot(
+    data: VisitSlotIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    ids = await _scope_property_ids(db, user)
+    if ids is not None and data.property_id not in ids:
+        raise ForbiddenException("Ce bien n'est pas dans votre périmètre.")
+    slot = PropertyVisitSlot(
+        property_id=data.property_id, starts_at=data.starts_at,
+        duration_min=data.duration_min, capacity=data.capacity,
+        notes=(data.notes or "").strip() or None, created_by=user.id,
+    )
+    db.add(slot)
+    await db.commit()
+    await db.refresh(slot)
+    return await _slot_out(db, slot)
+
+
+@router.delete("/visit-slots/{slot_id}", status_code=204, summary="Supprimer un créneau de visite")
+async def delete_visit_slot(
+    slot_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    slot = await db.get(PropertyVisitSlot, slot_id)
+    if not slot:
+        raise NotFoundException("Créneau", str(slot_id))
+    ids = await _scope_property_ids(db, user)
+    if ids is not None and slot.property_id not in ids:
+        raise ForbiddenException("Ce créneau n'est pas dans votre périmètre.")
+    await db.delete(slot)
+    await db.commit()
 
 
 @router.get("/compare/{property_id}", summary="Comparaison des candidatures d'un bien")
@@ -325,7 +445,7 @@ async def get_candidature(
     user: User = Depends(get_manager_or_owner),
 ):
     c = await _accessible(db, user, candidature_id)
-    return _out(c, await _rent_ref(db, c.property_id))
+    return await _full_out(db, c)
 
 
 @router.patch("/{candidature_id}", summary="Mettre à jour une candidature")
@@ -366,7 +486,7 @@ async def update_candidature(
         setattr(c, k, v)
     await db.commit()
     await db.refresh(c)
-    return _out(c, await _rent_ref(db, c.property_id))
+    return await _full_out(db, c)
 
 
 def _ensure_doc_fields(docs: Optional[list]) -> list[dict]:
@@ -442,7 +562,7 @@ async def request_documents(
         import logging
         logging.getLogger(__name__).warning("Demande de pièces non envoyée (%s): %s", candidature_id, exc)
 
-    out = _out(c, await _rent_ref(db, c.property_id))
+    out = await _full_out(db, c)
     out["upload_url"] = url
     out["email_sent"] = email_sent
     return out
@@ -466,6 +586,94 @@ async def download_candidature_doc(
         path,
         filename=doc.get("filename") or f"{key}",
     )
+
+
+@router.post("/{candidature_id}/invite-visit", summary="Inviter le candidat à réserver une visite")
+async def invite_visit(
+    candidature_id: uuid.UUID,
+    data: MessageIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Envoie au candidat qualifié un e-mail l'invitant à réserver un créneau de
+    visite. L'e-mail mentionne qu'il y a d'autres candidats et n'indique que la
+    RÉFÉRENCE du bien (ni nom ni adresse)."""
+    c = await _accessible(db, user, candidature_id)
+    if not (c.email or "").strip():
+        raise BadRequestException("Ce candidat n'a pas d'adresse e-mail.")
+    # Au moins un créneau futur doit exister pour ce bien.
+    now = datetime.now(timezone.utc)
+    future = (await db.execute(
+        select(func.count(PropertyVisitSlot.id)).where(
+            PropertyVisitSlot.property_id == c.property_id,
+            PropertyVisitSlot.starts_at >= now,
+        )
+    )).scalar() or 0
+    if not future:
+        raise BadRequestException(
+            "Ajoutez d'abord au moins un créneau de visite (à venir) pour ce bien."
+        )
+    if not c.upload_token:
+        c.upload_token = secrets.token_urlsafe(24)
+    c.visit_invited_at = now
+    await db.commit()
+    await db.refresh(c)
+
+    prop = await db.get(Property, c.property_id)
+    prop_ref = getattr(prop, "ref_code", None) if prop else None
+    url = candidature_visit_url(c.upload_token)
+    email_sent = False
+    try:
+        from app.services.email_service import send_visit_invitation
+        email_sent = await send_visit_invitation(
+            to=c.email, candidate_name=c.full_name,
+            property_ref=prop_ref or "votre dossier", booking_url=url,
+            custom_message=(data.message or "").strip() or None,
+            cc=getattr(user, "email", None),
+        )
+    except Exception as exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("Invitation visite non envoyée (%s): %s", candidature_id, exc)
+
+    out = await _full_out(db, c)
+    out["visit_url"] = url
+    out["email_sent"] = email_sent
+    return out
+
+
+@router.post("/{candidature_id}/accept", summary="Accepter le candidat (e-mail d'acceptation)")
+async def accept_candidature(
+    candidature_id: uuid.UUID,
+    data: MessageIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Passe le dossier en « retenue » et envoie au candidat un e-mail
+    d'acceptation rappelant les prochaines étapes (signature du bail, etc.)."""
+    c = await _accessible(db, user, candidature_id)
+    c.status = "retenue"
+    await db.commit()
+    await db.refresh(c)
+
+    email_sent = False
+    if (c.email or "").strip():
+        prop = await db.get(Property, c.property_id)
+        prop_ref = getattr(prop, "ref_code", None) if prop else None
+        try:
+            from app.services.email_service import send_candidature_accepted
+            email_sent = await send_candidature_accepted(
+                to=c.email, candidate_name=c.full_name,
+                property_ref=prop_ref or "votre dossier",
+                custom_message=(data.message or "").strip() or None,
+                cc=getattr(user, "email", None),
+            )
+        except Exception as exc:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).warning("E-mail d'acceptation non envoyé (%s): %s", candidature_id, exc)
+
+    out = await _full_out(db, c)
+    out["email_sent"] = email_sent
+    return out
 
 
 @router.delete("/{candidature_id}", status_code=204, summary="Supprimer une candidature")
