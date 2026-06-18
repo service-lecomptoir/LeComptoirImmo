@@ -32,7 +32,8 @@ const schema = z.object({
   national_id: z.string().optional(),
   employer: z.string().optional(),
   employer_phone: z.string().optional(),
-  monthly_income: z.number().positive().optional().or(z.literal('')),
+  // L'input HTML renvoie une chaîne : on coerce en nombre (et on tolère le vide).
+  monthly_income: z.coerce.number().positive().optional().or(z.literal('')),
   income_source: z.string().optional(),
   notes: z.string().optional(),
   user_id: z.string().uuid().optional().or(z.literal('')),
