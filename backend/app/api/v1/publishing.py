@@ -47,7 +47,8 @@ class PlatformOut(BaseModel):
 class ListingIn(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[float] = None      # loyer hors charges
+    charges: Optional[float] = None    # charges mensuelles
     photo_ids: Optional[list[str]] = None
     platform_ids: Optional[list[str]] = None
 
@@ -85,6 +86,7 @@ async def _listing_out(db: AsyncSession, listing: Listing) -> dict:
         "title": listing.title,
         "description": listing.description,
         "price": float(listing.price) if listing.price is not None else None,
+        "charges": float(listing.charges) if listing.charges is not None else None,
         "photo_ids": listing.photo_ids or [],
         "platform_ids": listing.platform_ids or [],
         "status": listing.status,

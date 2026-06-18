@@ -298,6 +298,7 @@ async def _apply_column_migrations() -> None:
         # Publication des annonces : suivi de performance (vues de la page publique)
         "ALTER TABLE listings ADD COLUMN IF NOT EXISTS views_count INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE listings ADD COLUMN IF NOT EXISTS last_viewed_at TIMESTAMPTZ",
+        "ALTER TABLE listings ADD COLUMN IF NOT EXISTS charges NUMERIC(10,2)",
         # Règle d'appel de loyer sur le contrat (période contractuelle / calendrier)
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS rent_call_rule VARCHAR(20) NOT NULL DEFAULT 'calendrier'",
         # Fréquence d'appel du loyer (mensuelle / bimestrielle / trimestrielle / semestrielle / annuelle)

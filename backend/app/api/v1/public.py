@@ -329,6 +329,7 @@ async def public_listing(token: str, db: AsyncSession = Depends(get_db)):
         "can_apply": True,
         "description": listing.description or prop.description,
         "price": float(listing.price) if listing.price is not None else None,
+        "charges": float(listing.charges) if getattr(listing, "charges", None) is not None else None,
         "photos": photos,
         "published_at": listing.published_at,
         "contact_name": contact_name,

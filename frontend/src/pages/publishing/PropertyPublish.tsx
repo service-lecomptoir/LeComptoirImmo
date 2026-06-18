@@ -29,6 +29,7 @@ export default function PropertyPublish() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
+  const [charges, setCharges] = useState('')
   const [photoIds, setPhotoIds] = useState<string[]>([])
   const [platformIds, setPlatformIds] = useState<string[]>([])
 
@@ -37,6 +38,7 @@ export default function PropertyPublish() {
     setTitle(l.title ?? '')
     setDescription(l.description ?? '')
     setPrice(l.price != null ? String(l.price) : '')
+    setCharges(l.charges != null ? String(l.charges) : '')
     setPhotoIds(l.photo_ids ?? [])
     setPlatformIds(l.platform_ids ?? [])
   }
@@ -57,6 +59,7 @@ export default function PropertyPublish() {
     title: title.trim() || null,
     description: description.trim() || null,
     price: price.trim() ? Number(price) : null,
+    charges: charges.trim() ? Number(charges) : null,
     photo_ids: photoIds,
     platform_ids: platformIds,
   })
@@ -224,9 +227,14 @@ export default function PropertyPublish() {
               placeholder="Décrivez le bien, le quartier, les atouts…" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Loyer (€ / mois)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Loyer hors charges (€ / mois)</label>
             <input value={price} onChange={e => setPrice(e.target.value)} type="number" min="0"
               placeholder="950" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Charges (€ / mois)</label>
+            <input value={charges} onChange={e => setCharges(e.target.value)} type="number" min="0"
+              placeholder="50" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
           </div>
         </div>
 

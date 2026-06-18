@@ -23,6 +23,7 @@ export interface Listing {
   title?: string | null
   description?: string | null
   price?: number | null
+  charges?: number | null
   photo_ids: string[]
   platform_ids: string[]
   status: ListingStatus
@@ -50,6 +51,7 @@ export interface ListingSave {
   title?: string | null
   description?: string | null
   price?: number | null
+  charges?: number | null
   photo_ids?: string[]
   platform_ids?: string[]
 }

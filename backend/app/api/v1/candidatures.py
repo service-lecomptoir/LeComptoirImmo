@@ -227,12 +227,25 @@ async def _full_out(db: AsyncSession, c: Candidature) -> dict:
     return _out(c, rent, prop_ref, visit_at)
 
 
+async def _listing_pricing(db: AsyncSession, property_id):
+    """(loyer hors charges, charges) depuis l'annonce du bien."""
+    listing = (await db.execute(
+        select(Listing).where(Listing.property_id == property_id)
+    )).scalar_one_or_none()
+    if not listing:
+        return None, None
+    price = float(listing.price) if listing.price is not None else None
+    charges = float(listing.charges) if getattr(listing, "charges", None) is not None else None
+    return price, charges
+
+
 async def _property_block(db: AsyncSession, prop) -> dict:
     """Descriptif du logement pour les e-mails candidat : adresse, caractéristiques,
-    loyer (jamais le nom du logement). Retourne {ref, address, price, html}."""
+    loyer hors charges + charges + total (jamais le nom du logement).
+    Retourne {ref, address, price, html}."""
     ref = getattr(prop, "ref_code", None) if prop else None
     address = format_property_address(prop)
-    price = await _rent_ref(db, prop.id) if prop else None
+    price, charges = (await _listing_pricing(db, prop.id)) if prop else (None, None)
     chips: list[str] = []
     if prop:
         pt = (getattr(prop, "property_type", None) or "").strip()
@@ -250,7 +263,11 @@ async def _property_block(db: AsyncSession, prop) -> dict:
     if chips:
         rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Caractéristiques :</strong> {" · ".join(chips)}</p>')
     if price is not None:
-        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Loyer :</strong> {price:.0f} € / mois</p>')
+        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Loyer hors charges :</strong> {price:.0f} € / mois</p>')
+    if charges is not None:
+        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Charges :</strong> {charges:.0f} € / mois</p>')
+    if price is not None and charges is not None:
+        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Total :</strong> {price + charges:.0f} € charges comprises / mois</p>')
     html = ""
     if rows:
         html = ('<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;'

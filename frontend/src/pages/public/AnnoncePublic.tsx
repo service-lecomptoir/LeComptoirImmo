@@ -9,6 +9,7 @@ interface PublicListing {
   title?: string | null
   description?: string | null
   price?: number | null
+  charges?: number | null
   photos: string[]
   contact_name?: string | null
   property: {
@@ -155,7 +156,14 @@ export default function AnnoncePublic() {
                 <p className="text-2xl font-bold" style={{ color: BRAND.teal }}>
                   {listing.price.toLocaleString('fr-FR')} €
                 </p>
-                <p className="text-xs text-gray-400">par mois (CC)</p>
+                <p className="text-xs text-gray-400">
+                  {listing.charges != null
+                    ? `hors charges / mois · ${(listing.price + listing.charges).toLocaleString('fr-FR')} € CC`
+                    : 'par mois'}
+                </p>
+                {listing.charges != null && (
+                  <p className="text-xs text-gray-400">+ {listing.charges.toLocaleString('fr-FR')} € de charges</p>
+                )}
               </div>
             )}
           </div>

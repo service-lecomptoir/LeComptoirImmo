@@ -44,7 +44,8 @@ class Listing(Base, TimestampMixin):
     )
     title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    price: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
+    price: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)  # loyer hors charges
+    charges: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)  # charges mensuelles
     # IDs (str) des documents-photos du bien retenus pour l'annonce — ordre conservé.
     photo_ids: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     # IDs (str) des plateformes de diffusion ciblées.

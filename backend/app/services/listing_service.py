@@ -181,6 +181,8 @@ class ListingService:
             listing.description = (v.strip() or None) if isinstance(v, str) else None
         if "price" in fields:
             listing.price = fields["price"]  # None = loyer effacé
+        if "charges" in fields:
+            listing.charges = fields["charges"]  # None = charges effacées
         if fields.get("photo_ids") is not None:
             listing.photo_ids = [str(x) for x in fields["photo_ids"]]
         if fields.get("platform_ids") is not None:
