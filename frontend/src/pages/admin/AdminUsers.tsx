@@ -378,7 +378,7 @@ export default function AdminUsers() {
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-center">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                         <span className="text-blue-700 text-xs font-semibold">
                           {u.full_name?.charAt(0).toUpperCase()}
