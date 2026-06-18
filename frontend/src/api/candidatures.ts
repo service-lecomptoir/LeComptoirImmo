@@ -113,4 +113,8 @@ export const candidaturesApi = {
     ),
   accept: (id: string, data: { message?: string | null }) =>
     apiClient.post<Candidature & { email_sent: boolean }>(`/candidatures/${id}/accept`, data),
+  acknowledge: (id: string, data: { message?: string | null } = {}) =>
+    apiClient.post<Candidature & { email_sent: boolean }>(`/candidatures/${id}/acknowledge`, data),
+  remindVisit: (id: string) =>
+    apiClient.post<Candidature & { email_sent: boolean }>(`/candidatures/${id}/remind-visit`),
 }

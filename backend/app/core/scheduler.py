@@ -191,6 +191,44 @@ async def _job_signalement_noise_reminders() -> None:
             logger.error(f"[Scheduler] signalement_noise_reminders error: {exc}")
 
 
+async def _job_visit_reminders() -> None:
+    """Chaque jour à 9h30 : relance les candidats dont la visite réservée a lieu
+    dans les 48h (une seule fois, voir Candidature.visit_reminded_at)."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import select
+    from app.database import AsyncSessionLocal
+    from app.models.candidature import Candidature
+    from app.models.visit import PropertyVisitSlot
+    from app.api.v1.candidatures import send_candidature_visit_reminder
+
+    async with AsyncSessionLocal() as db:
+        try:
+            now = datetime.now(timezone.utc)
+            horizon = now + timedelta(hours=48)
+            rows = (await db.execute(
+                select(Candidature)
+                .join(PropertyVisitSlot, Candidature.visit_slot_id == PropertyVisitSlot.id)
+                .where(
+                    Candidature.visit_reminded_at.is_(None),
+                    Candidature.status != "refusee",
+                    PropertyVisitSlot.starts_at > now,
+                    PropertyVisitSlot.starts_at <= horizon,
+                )
+            )).scalars().all()
+            n = 0
+            for c in rows:
+                try:
+                    if await send_candidature_visit_reminder(db, c):
+                        n += 1
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(f"[Scheduler] visit reminder {c.id} error: {exc}")
+            await db.commit()
+            if n:
+                logger.info(f"[Scheduler] {n} relance(s) avant visite envoyée(s)")
+        except Exception as exc:
+            logger.error(f"[Scheduler] visit_reminders error: {exc}")
+
+
 def start_scheduler(
     avis_day: int = 1, avis_hour: int = 7, avis_minute: int = 30,
     reminder_hour: int = 8, reminder_minute: int = 0,
@@ -250,6 +288,13 @@ def start_scheduler(
         _job_signalement_noise_reminders,
         CronTrigger(day_of_week="mon", hour=10, minute=0),
         id="signalement_noise_reminders",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        _job_visit_reminders,
+        CronTrigger(hour=9, minute=30),
+        id="visit_reminders",
         replace_existing=True,
         misfire_grace_time=3600,
     )

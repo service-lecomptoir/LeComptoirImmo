@@ -227,6 +227,69 @@ async def _full_out(db: AsyncSession, c: Candidature) -> dict:
     return _out(c, rent, prop_ref, visit_at)
 
 
+async def _property_block(db: AsyncSession, prop) -> dict:
+    """Descriptif du logement pour les e-mails candidat : adresse, caractéristiques,
+    loyer (jamais le nom du logement). Retourne {ref, address, price, html}."""
+    ref = getattr(prop, "ref_code", None) if prop else None
+    address = format_property_address(prop)
+    price = await _rent_ref(db, prop.id) if prop else None
+    chips: list[str] = []
+    if prop:
+        pt = (getattr(prop, "property_type", None) or "").strip()
+        if pt:
+            chips.append(pt.capitalize())
+        if getattr(prop, "typology", None):
+            chips.append(str(prop.typology))
+        if getattr(prop, "area_sqm", None) is not None:
+            chips.append(f"{float(prop.area_sqm):g} m²")
+        if getattr(prop, "furnished", False):
+            chips.append("Meublé")
+    rows = []
+    if address:
+        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Adresse :</strong> {address}</p>')
+    if chips:
+        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Caractéristiques :</strong> {" · ".join(chips)}</p>')
+    if price is not None:
+        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Loyer :</strong> {price:.0f} € / mois</p>')
+    html = ""
+    if rows:
+        html = ('<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;'
+                'margin:16px 0;background:#f9fafb">'
+                '<p style="margin:0 0 6px;font-weight:600;color:#0D2F5C">Le logement</p>'
+                + "".join(rows) + '</div>')
+    return {"ref": ref, "address": address, "price": price, "html": html}
+
+
+def _fmt_when(dt) -> str:
+    """Formate une date/heure (UTC) en heure locale (Europe/Paris) lisible."""
+    try:
+        from zoneinfo import ZoneInfo
+        dt = dt.astimezone(ZoneInfo("Europe/Paris"))
+    except Exception:  # noqa: BLE001
+        pass
+    return dt.strftime("%d/%m/%Y à %Hh%M")
+
+
+async def send_candidature_visit_reminder(db: AsyncSession, c: Candidature) -> bool:
+    """Envoie au candidat la relance avant visite (et marque l'envoi). Réutilisé
+    par le bouton manuel et la relance automatique de la veille."""
+    if not c.visit_slot_id or not (c.email or "").strip():
+        return False
+    slot = await db.get(PropertyVisitSlot, c.visit_slot_id)
+    if not slot:
+        return False
+    prop = await db.get(Property, c.property_id)
+    block = await _property_block(db, prop)
+    from app.services.email_service import send_visit_reminder
+    ok = await send_visit_reminder(
+        to=c.email, candidate_name=c.full_name,
+        property_ref=block["ref"] or "votre dossier",
+        when_str=_fmt_when(slot.starts_at), property_html=block["html"],
+    )
+    c.visit_reminded_at = datetime.now(timezone.utc)
+    return ok
+
+
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 @router.get("", summary="Liste des candidatures")
 async def list_candidatures(
@@ -633,15 +696,15 @@ async def invite_visit(
     await db.refresh(c)
 
     prop = await db.get(Property, c.property_id)
-    prop_ref = getattr(prop, "ref_code", None) if prop else None
+    block = await _property_block(db, prop)
     url = candidature_visit_url(c.upload_token)
     email_sent = False
     try:
         from app.services.email_service import send_visit_invitation
         email_sent = await send_visit_invitation(
             to=c.email, candidate_name=c.full_name,
-            property_ref=prop_ref or "votre dossier", booking_url=url,
-            property_address=format_property_address(prop),
+            property_ref=block["ref"] or "votre dossier", booking_url=url,
+            property_html=block["html"],
             custom_message=(data.message or "").strip() or None,
             cc=getattr(user, "email", None),
         )
@@ -672,12 +735,13 @@ async def accept_candidature(
     email_sent = False
     if (c.email or "").strip():
         prop = await db.get(Property, c.property_id)
-        prop_ref = getattr(prop, "ref_code", None) if prop else None
+        block = await _property_block(db, prop)
         try:
             from app.services.email_service import send_candidature_accepted
             email_sent = await send_candidature_accepted(
                 to=c.email, candidate_name=c.full_name,
-                property_ref=prop_ref or "votre dossier",
+                property_ref=block["ref"] or "votre dossier",
+                property_address=block["address"], property_html=block["html"],
                 custom_message=(data.message or "").strip() or None,
                 cc=getattr(user, "email", None),
             )
@@ -685,6 +749,55 @@ async def accept_candidature(
             import logging
             logging.getLogger(__name__).warning("E-mail d'acceptation non envoyé (%s): %s", candidature_id, exc)
 
+    out = await _full_out(db, c)
+    out["email_sent"] = email_sent
+    return out
+
+
+@router.post("/{candidature_id}/acknowledge", summary="Accuser réception de la candidature")
+async def acknowledge_candidature(
+    candidature_id: uuid.UUID,
+    data: MessageIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Envoie au candidat un e-mail confirmant que sa demande a bien été prise en
+    compte, avec le descriptif du logement (adresse, caractéristiques, loyer)."""
+    c = await _accessible(db, user, candidature_id)
+    if not (c.email or "").strip():
+        raise BadRequestException("Ce candidat n'a pas d'adresse e-mail.")
+    prop = await db.get(Property, c.property_id)
+    block = await _property_block(db, prop)
+    email_sent = False
+    try:
+        from app.services.email_service import send_candidature_acknowledged
+        email_sent = await send_candidature_acknowledged(
+            to=c.email, candidate_name=c.full_name, property_html=block["html"],
+            custom_message=(data.message or "").strip() or None,
+            cc=getattr(user, "email", None),
+        )
+    except Exception as exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("Accusé réception non envoyé (%s): %s", candidature_id, exc)
+    out = await _full_out(db, c)
+    out["email_sent"] = email_sent
+    return out
+
+
+@router.post("/{candidature_id}/remind-visit", summary="Relancer le candidat avant la visite")
+async def remind_visit(
+    candidature_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Relance manuelle avant la visite (rappel date + adresse). Nécessite que le
+    candidat ait réservé un créneau."""
+    c = await _accessible(db, user, candidature_id)
+    if not c.visit_slot_id:
+        raise BadRequestException("Le candidat n'a pas encore réservé de créneau de visite.")
+    email_sent = await send_candidature_visit_reminder(db, c)
+    await db.commit()
+    await db.refresh(c)
     out = await _full_out(db, c)
     out["email_sent"] = email_sent
     return out

@@ -235,27 +235,50 @@ dans votre navigateur :<br><span style="word-break:break-all">{upload_url}</span
     )
 
 
+async def send_candidature_acknowledged(
+    to: str,
+    candidate_name: str,
+    property_html: str = "",
+    custom_message: Optional[str] = None,
+    cc: Optional[str] = None,
+) -> bool:
+    """Accusé de réception d'une candidature (envoyé manuellement par le gestionnaire),
+    décrivant le logement (adresse, caractéristiques, loyer)."""
+    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    content = f"""
+<p>Bonjour {candidate_name},</p>
+<p>Nous vous confirmons que <strong>votre demande de logement a bien été prise en
+compte</strong>. Notre équipe étudie votre dossier et reviendra vers vous.</p>
+{property_html}
+{intro}
+<p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
+"""
+    return await send_email(
+        to=to,
+        subject="Votre demande de logement a bien été prise en compte",
+        html_body=_base_template("Demande prise en compte", content),
+        cc=cc,
+    )
+
+
 async def send_visit_invitation(
     to: str,
     candidate_name: str,
     property_ref: str,
     booking_url: str,
-    property_address: Optional[str] = None,
+    property_html: str = "",
     custom_message: Optional[str] = None,
     cc: Optional[str] = None,
 ) -> bool:
-    """Invitation à réserver un créneau de visite. On indique la RÉFÉRENCE du bien
-    et son ADRESSE (pour s'y rendre), mais jamais le nom du logement. On mentionne
-    qu'il y a d'autres candidats."""
+    """Invitation à réserver un créneau de visite. Décrit le logement (adresse,
+    caractéristiques, loyer) mais jamais le nom du logement, et mentionne qu'il y a
+    d'autres candidats."""
     intro = (f"<p>{custom_message}</p>" if custom_message else "")
-    addr = (f'<p style="margin:8px 0"><strong>Adresse de la visite :</strong><br>{property_address}</p>'
-            if property_address else "")
     content = f"""
 <p>Bonjour {candidate_name},</p>
-<p>Bonne nouvelle : votre dossier a retenu notre attention pour le bien
-référencé <strong>{property_ref}</strong>. Nous vous proposons de réserver un
-créneau de visite.</p>
-{addr}
+<p>Votre dossier a retenu notre attention pour le logement ci-dessous. Nous vous
+proposons de réserver un créneau de visite.</p>
+{property_html}
 <p><strong>D'autres candidats sont également conviés</strong> : les créneaux sont
 attribués dans l'ordre des réservations, nous vous invitons à choisir le vôtre rapidement.</p>
 {intro}
@@ -271,8 +294,32 @@ attribués dans l'ordre des réservations, nous vous invitons à choisir le vôt
 """
     return await send_email(
         to=to,
-        subject=f"Proposition de visite : bien {property_ref}",
-        html_body=_base_template("Proposition de visite", content),
+        subject=f"Confirmation de visite : bien {property_ref}",
+        html_body=_base_template("Confirmation de visite", content),
+        cc=cc,
+    )
+
+
+async def send_visit_reminder(
+    to: str,
+    candidate_name: str,
+    property_ref: str,
+    when_str: str,
+    property_html: str = "",
+    cc: Optional[str] = None,
+) -> bool:
+    """Relance avant la visite : rappelle la date et l'adresse du logement."""
+    content = f"""
+<p>Bonjour {candidate_name},</p>
+<p>Petit rappel : votre <strong>visite est prévue le {when_str}</strong>.</p>
+{property_html}
+<p>En cas d'empêchement, répondez à cet e-mail ou recontactez votre gestionnaire.</p>
+<p>À très bientôt,<br>Le Comptoir Immo · Service Gestion Locative</p>
+"""
+    return await send_email(
+        to=to,
+        subject=f"Rappel : votre visite approche (bien {property_ref})",
+        html_body=_base_template("Rappel de visite", content),
         cc=cc,
     )
 
@@ -281,15 +328,20 @@ async def send_candidature_accepted(
     to: str,
     candidate_name: str,
     property_ref: str,
+    property_address: Optional[str] = None,
+    property_html: str = "",
     custom_message: Optional[str] = None,
     cc: Optional[str] = None,
 ) -> bool:
-    """E-mail d'acceptation d'une candidature, avec les prochaines étapes."""
+    """E-mail d'acceptation d'une candidature, avec les prochaines étapes et le
+    descriptif du logement."""
     intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    where = f"{property_address} ({property_ref})" if property_address else f"bien {property_ref}"
     content = f"""
 <p>Bonjour {candidate_name},</p>
-<p>Nous avons le plaisir de vous informer que <strong>votre candidature est acceptée</strong>
-pour le bien référencé <strong>{property_ref}</strong>. Félicitations !</p>
+<p>Nous avons le plaisir de vous informer que <strong>votre dossier est accepté</strong>
+pour le logement ci-dessous. Félicitations !</p>
+{property_html}
 {intro}
 <p><strong>Prochaines étapes :</strong></p>
 <ol style="margin:12px 0;padding-left:20px;color:#374151">
@@ -303,8 +355,8 @@ pour le bien référencé <strong>{property_ref}</strong>. Félicitations !</p>
 """
     return await send_email(
         to=to,
-        subject=f"Votre candidature est acceptée (bien {property_ref})",
-        html_body=_base_template("Candidature acceptée", content),
+        subject=f"Acceptation de votre dossier sur le logement : {where}",
+        html_body=_base_template("Dossier accepté", content),
         cc=cc,
     )
 

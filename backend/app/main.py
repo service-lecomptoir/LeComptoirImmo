@@ -332,6 +332,7 @@ async def _apply_column_migrations() -> None:
         # Candidatures : visite (créneau réservé + date d'invitation)
         "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS visit_slot_id UUID",
         "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS visit_invited_at TIMESTAMPTZ",
+        "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS visit_reminded_at TIMESTAMPTZ",
         # Identifiant lisible unique (ref_code) : comptes, propriétaires, biens, locataires.
         # Préfixe selon le type/rôle (GM/GP/UP/UL/AD/CB/LE, PR, BN, LO). Reprise
         # historique des lignes existantes au démarrage (voir _backfill_references).

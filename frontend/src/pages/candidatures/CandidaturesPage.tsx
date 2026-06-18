@@ -198,6 +198,28 @@ export default function CandidaturesPage() {
     } catch { /* */ } finally { setBusy(false) }
   }
 
+  const acknowledgeCand = async (c: Candidature) => {
+    setBusy(true)
+    try {
+      const r = await candidaturesApi.acknowledge(c.id)
+      setSelected(r.data)
+      setItems(prev => prev.map(x => (x.id === r.data.id ? r.data : x)))
+      toast.success(r.data.email_sent
+        ? `Accusé de réception envoyé à ${c.email}.`
+        : 'Accusé de réception : e-mail non envoyé (SMTP indisponible).')
+    } catch { /* */ } finally { setBusy(false) }
+  }
+
+  const remindVisitCand = async (c: Candidature) => {
+    setBusy(true)
+    try {
+      const r = await candidaturesApi.remindVisit(c.id)
+      setSelected(r.data)
+      setItems(prev => prev.map(x => (x.id === r.data.id ? r.data : x)))
+      toast.success(r.data.email_sent ? 'Relance de visite envoyée.' : 'Relance : e-mail non envoyé (SMTP indisponible).')
+    } catch { /* */ } finally { setBusy(false) }
+  }
+
   const toTenant = (c: Candidature) => {
     const parts = (c.full_name || '').trim().split(/\s+/)
     const first_name = parts.shift() || ''
@@ -454,17 +476,30 @@ export default function CandidaturesPage() {
 
               {/* Statut de la visite */}
               {(selected.visit_booked_at || selected.visit_invited) && (
-                <div className="flex items-center gap-2 text-xs rounded-lg bg-indigo-50 text-indigo-800 px-3 py-2">
-                  <CalendarClock size={14} className="shrink-0" />
-                  {selected.visit_booked_at
-                    ? <span>Visite réservée le <strong>{new Date(selected.visit_booked_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}</strong>.</span>
-                    : <span>Invitation à la visite envoyée. En attente de réservation par le candidat.</span>}
+                <div className="flex items-center justify-between gap-2 text-xs rounded-lg bg-indigo-50 text-indigo-800 px-3 py-2 flex-wrap">
+                  <span className="flex items-center gap-2">
+                    <CalendarClock size={14} className="shrink-0" />
+                    {selected.visit_booked_at
+                      ? <span>Visite réservée le <strong>{new Date(selected.visit_booked_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })}</strong>.</span>
+                      : <span>Invitation à la visite envoyée. En attente de réservation par le candidat.</span>}
+                  </span>
+                  {!readOnly && selected.visit_booked_at && (
+                    <button onClick={() => remindVisitCand(selected)} disabled={busy}
+                      className="shrink-0 px-2.5 py-1 rounded-lg font-semibold bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">
+                      Relancer avant la visite
+                    </button>
+                  )}
                 </div>
               )}
 
               {/* Actions de statut */}
               <div className="flex flex-wrap gap-2 pt-1">
                 {!readOnly && (<>
+                  <button onClick={() => acknowledgeCand(selected)} disabled={busy || !selected.email}
+                    title={selected.email ? '' : "Ce candidat n'a pas d'e-mail"}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-100 hover:bg-sky-200 text-sky-800 disabled:opacity-50">
+                    <Send size={13} className="inline mr-1" />Accuser réception
+                  </button>
                   <button onClick={() => patch(selected.id, { status: 'en_etude' })} disabled={busy || selected.status === 'en_etude'}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-100 hover:bg-amber-200 text-amber-800 disabled:opacity-50">
                     <ShieldQuestion size={13} className="inline mr-1" />Mettre en étude

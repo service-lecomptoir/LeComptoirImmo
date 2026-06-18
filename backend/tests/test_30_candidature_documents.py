@@ -151,9 +151,31 @@ async def test_visit_invitation_and_booking(client, db, gestionnaire_user, gesti
     pv2 = (await client.get(f"/api/v1/public/candidature/{token}/visits")).json()
     assert pv2["booked_slot_id"] == slot_id
 
+    # Relance avant visite (manuelle) : nécessite un créneau réservé.
+    rr = await client.post(f"/api/v1/candidatures/{cid}/remind-visit", headers=h)
+    assert rr.status_code == 200, rr.text
+    assert "email_sent" in rr.json()
+
+    # Accusé de réception (manuel).
+    rk = await client.post(f"/api/v1/candidatures/{cid}/acknowledge", headers=h, json={})
+    assert rk.status_code == 200, rk.text
+
     # Acceptation finale.
     ra = await client.post(f"/api/v1/candidatures/{cid}/accept", headers=h, json={})
     assert ra.status_code == 200 and ra.json()["status"] == "retenue"
+
+
+@pytest.mark.asyncio
+async def test_remind_visit_requires_booking(client, db, gestionnaire_user, gestionnaire_token):
+    prop = await _make_property(db, gestionnaire_user, name="Bien sans visite")
+    cand = Candidature(
+        property_id=prop.id, full_name="Sans Visite", email="sv@test.fr",
+        docs=default_docs(), source="manuel", created_by=gestionnaire_user.id,
+    )
+    db.add(cand)
+    await db.commit()
+    r = await client.post(f"/api/v1/candidatures/{cand.id}/remind-visit", headers=auth(gestionnaire_token))
+    assert r.status_code == 400
 
 
 @pytest.mark.asyncio
