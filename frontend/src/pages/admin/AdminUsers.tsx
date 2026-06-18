@@ -326,7 +326,7 @@ export default function AdminUsers() {
             <p className="text-sm text-gray-500">
               {me?.role === 'gestionnaire_proprio'
                 ? 'Comptes de connexion locataires'
-                : 'Comptes de connexion (propriétaires, locataires)'}
+                : 'Comptes de connexion (propriétaires, locataires, comptables…)'}
             </p>
           </div>
         </div>
