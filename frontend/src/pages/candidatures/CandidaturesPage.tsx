@@ -1,20 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui'
 import { formatPhoneDisplay } from '@/utils/format'
-import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2, Sparkles } from 'lucide-react'
+import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2, Sparkles, Send, Link2, Download, Copy } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { candidaturesApi, type Candidature, type CandidatureStatus } from '@/api/candidatures'
 import { propertiesApi } from '@/api/properties'
 import { toast } from '@/store/toast'
+import { downloadBlob } from '@/utils/download'
 import { useAuthStore } from '@/store/authStore'
 
 interface Prop { id: string; name: string }
 
 const STATUS: Record<CandidatureStatus, { label: string; cls: string }> = {
-  nouvelle: { label: 'Nouvelle',  cls: 'bg-blue-100 text-blue-700' },
-  en_etude: { label: 'En étude',  cls: 'bg-amber-100 text-amber-700' },
-  retenue:  { label: 'Retenue',   cls: 'bg-emerald-100 text-emerald-700' },
-  refusee:  { label: 'Refusée',   cls: 'bg-gray-200 text-gray-600' },
+  nouvelle:           { label: 'Nouvelle',           cls: 'bg-blue-100 text-blue-700' },
+  documents_demandes: { label: 'Pièces demandées',   cls: 'bg-indigo-100 text-indigo-700' },
+  en_etude:           { label: 'En étude',           cls: 'bg-amber-100 text-amber-700' },
+  retenue:            { label: 'Retenue',            cls: 'bg-emerald-100 text-emerald-700' },
+  refusee:            { label: 'Refusée',            cls: 'bg-gray-200 text-gray-600' },
 }
 
 const pct = (v: number | null | undefined) => (v == null ? '—' : `${Math.round(v * 100)} %`)
@@ -70,6 +72,62 @@ export default function CandidaturesPage() {
   const toggleDoc = (c: Candidature, key: string, field: 'provided' | 'verified') => {
     const docs = c.docs.map(d => d.key === key ? { ...d, [field]: !d[field] } : d)
     patch(c.id, { docs })
+  }
+
+  // ── Demande de pièces (lien d'upload envoyé par e-mail) ──
+  const [showRequest, setShowRequest] = useState(false)
+  const [reqKeys, setReqKeys] = useState<Set<string>>(new Set())
+  const [reqMessage, setReqMessage] = useState('')
+  const [requesting, setRequesting] = useState(false)
+
+  const openRequest = (c: Candidature) => {
+    // Pré-cocher les pièces déjà marquées requises, sinon toutes les non fournies.
+    const required = c.docs.filter(d => d.required).map(d => d.key)
+    const base = required.length ? required : c.docs.filter(d => !d.provided).map(d => d.key)
+    setReqKeys(new Set(base))
+    setReqMessage('')
+    setShowRequest(true)
+  }
+  const toggleReqKey = (key: string) => setReqKeys(prev => {
+    const next = new Set(prev)
+    next.has(key) ? next.delete(key) : next.add(key)
+    return next
+  })
+  const sendRequest = async () => {
+    if (!selected || reqKeys.size === 0) return
+    setRequesting(true)
+    try {
+      const r = await candidaturesApi.requestDocuments(selected.id, {
+        doc_keys: Array.from(reqKeys),
+        message: reqMessage.trim() || null,
+      })
+      setSelected(r.data)
+      setItems(prev => prev.map(c => (c.id === r.data.id ? r.data : c)))
+      setShowRequest(false)
+      toast.success(r.data.email_sent
+        ? `Demande envoyée par e-mail à ${selected.email}.`
+        : "Lien généré. L'e-mail n'a pas pu partir (SMTP) : copiez le lien et transmettez-le au candidat.")
+    } catch { /* intercepteur */ } finally { setRequesting(false) }
+  }
+
+  const copyLink = (url?: string | null) => {
+    if (!url) return
+    navigator.clipboard?.writeText(url)
+    toast.success('Lien copié.')
+  }
+
+  const downloadDoc = async (c: Candidature, key: string, filename?: string | null) => {
+    try {
+      const token = localStorage.getItem('access_token')
+      const base = import.meta.env.VITE_API_URL || ''
+      const r = await fetch(`${base}/api/v1${candidaturesApi.docDownloadUrl(c.id, key)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!r.ok) { toast.error('Pièce indisponible au téléchargement.'); return }
+      downloadBlob(await r.blob(), filename || `${key}`)
+    } catch {
+      toast.error('Téléchargement impossible (erreur réseau).')
+    }
   }
 
   const remove = async (c: Candidature) => {
@@ -260,11 +318,41 @@ export default function CandidaturesPage() {
 
               {/* Checklist des pièces */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">Pièces justificatives</h3>
+                <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                  <h3 className="text-sm font-semibold text-gray-900">Pièces justificatives</h3>
+                  {!readOnly && (
+                    <button onClick={() => openRequest(selected)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 hover:bg-indigo-200 text-indigo-700">
+                      <Send size={12} /> Demander des pièces
+                    </button>
+                  )}
+                </div>
+
+                {/* Lien public de dépôt (si une demande a été émise) */}
+                {selected.upload_url && (
+                  <div className="mb-3 flex items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-xs">
+                    <Link2 size={13} className="text-indigo-600 shrink-0" />
+                    <span className="truncate text-indigo-800 flex-1">{selected.upload_url}</span>
+                    <button onClick={() => copyLink(selected.upload_url)}
+                      className="inline-flex items-center gap-1 text-indigo-700 hover:text-indigo-900 font-semibold shrink-0">
+                      <Copy size={12} /> Copier
+                    </button>
+                  </div>
+                )}
+
                 <ul className="space-y-1.5">
                   {selected.docs.map(d => (
                     <li key={d.key} className="flex items-center justify-between gap-3 text-sm bg-gray-50 rounded-lg px-3 py-2">
-                      <span className="text-gray-700">{docLabels[d.key] ?? d.key}</span>
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="text-gray-700 truncate">{d.label ?? docLabels[d.key] ?? d.key}</span>
+                        {d.required && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 shrink-0">Demandée</span>}
+                        {d.has_file && (
+                          <button onClick={() => downloadDoc(selected, d.key, d.filename)}
+                            className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 shrink-0" title={d.filename || 'Télécharger'}>
+                            <Download size={12} /> Voir
+                          </button>
+                        )}
+                      </span>
                       <span className="flex items-center gap-2 shrink-0">
                         <button onClick={() => toggleDoc(selected, d.key, 'provided')} disabled={busy || readOnly}
                           className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${readOnly ? 'cursor-default' : ''} ${d.provided ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-500'}`}>
@@ -427,6 +515,47 @@ export default function CandidaturesPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale : demander des pièces ── */}
+      {showRequest && selected && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg p-6 max-h-[88vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2"><Send size={17} /> Demander des pièces</h3>
+              <button onClick={() => setShowRequest(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              {selected.email
+                ? <>Un e-mail avec un lien de dépôt sécurisé sera envoyé à <span className="font-medium text-gray-700">{selected.email}</span>.</>
+                : <span className="text-red-600">Ce candidat n'a pas d'e-mail : renseignez-le d'abord (via la fiche) pour pouvoir envoyer la demande.</span>}
+            </p>
+
+            <div className="space-y-1.5 mb-4">
+              {selected.docs.map(d => (
+                <label key={d.key} className="flex items-center gap-2.5 text-sm bg-gray-50 rounded-lg px-3 py-2 cursor-pointer">
+                  <input type="checkbox" checked={reqKeys.has(d.key)} onChange={() => toggleReqKey(d.key)} />
+                  <span className="text-gray-700">{d.label ?? docLabels[d.key] ?? d.key}</span>
+                  {d.provided && <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">déjà fournie</span>}
+                </label>
+              ))}
+            </div>
+
+            <textarea value={reqMessage} onChange={e => setReqMessage(e.target.value)} rows={3}
+              placeholder="Message au candidat (facultatif) : précisions, délai souhaité…"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none mb-4" />
+
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => setShowRequest(false)}
+                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Annuler</button>
+              <Button variant="primary" onClick={sendRequest} isLoading={requesting}
+                disabled={requesting || reqKeys.size === 0 || !selected.email}
+                className="px-5 font-semibold" leftIcon={<Send size={15} />}>
+                {requesting ? 'Envoi…' : 'Envoyer la demande'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

@@ -44,10 +44,13 @@ class Candidature(Base, TimestampMixin):
     message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # ── Dossier ───────────────────────────────────────────────────────────────
-    # nouvelle | en_etude | retenue | refusee
+    # nouvelle | documents_demandes | en_etude | retenue | refusee
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="nouvelle", index=True)
-    # Checklist des pièces : [{key, provided, verified}] (clés : CANDIDATURE_DOC_KEYS).
+    # Checklist des pièces : [{key, required, provided, verified, file_path, filename,
+    # uploaded_at}] (clés : CANDIDATURE_DOC_KEYS).
     docs: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # Jeton public pour le dépôt des pièces par le candidat (lien envoyé par e-mail).
+    upload_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # annonce (page publique) | manuel (saisie gestionnaire)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="annonce")

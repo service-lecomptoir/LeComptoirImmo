@@ -6,30 +6,44 @@ ou saisis manuellement), vérification des pièces justificatives (checklist),
 analyse et comparaison des profils (taux d'effort, complétude, garant) pour
 aider à la sélection du locataire le plus adapté.
 """
+import secrets
 import uuid
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_role, get_manager_or_owner
-from app.core.exceptions import ForbiddenException, NotFoundException
+from app.core.exceptions import BadRequestException, ForbiddenException, NotFoundException
 from app.core.permissions import Role
 from app.database import get_db
 from app.models.candidature import Candidature, CANDIDATURE_DOC_KEYS
 from app.models.property import Property
 from app.models.publishing import Listing
 from app.models.user import User
+from app.utils.file_handler import get_file_path
 
 router = APIRouter(prefix="/candidatures", tags=["Candidatures"])
 
-_STATUSES = ("nouvelle", "en_etude", "retenue", "refusee")
+_STATUSES = ("nouvelle", "documents_demandes", "en_etude", "retenue", "refusee")
+_DOC_LABELS = {k: lbl for k, lbl in CANDIDATURE_DOC_KEYS}
 
 
 def default_docs() -> list[dict]:
-    return [{"key": k, "provided": False, "verified": False} for k, _ in CANDIDATURE_DOC_KEYS]
+    return [
+        {"key": k, "required": False, "provided": False, "verified": False,
+         "file_path": None, "filename": None, "uploaded_at": None}
+        for k, _ in CANDIDATURE_DOC_KEYS
+    ]
+
+
+def candidature_upload_url(token: str) -> str:
+    from app.config import get_settings
+    return f"{get_settings().PUBLIC_APP_URL.rstrip('/')}/candidature/{token}"
 
 
 # ── Schémas ────────────────────────────────────────────────────────────────────
@@ -52,9 +66,14 @@ class CandidatureUpdate(BaseModel):
     monthly_income: Optional[float] = Field(None, ge=0)
     has_guarantor: Optional[bool] = None
     message: Optional[str] = Field(None, max_length=4000)
-    status: Optional[str] = Field(None, pattern="^(nouvelle|en_etude|retenue|refusee)$")
+    status: Optional[str] = Field(None, pattern="^(nouvelle|documents_demandes|en_etude|retenue|refusee)$")
     docs: Optional[list] = None
     notes: Optional[str] = Field(None, max_length=4000)
+
+
+class RequestDocumentsIn(BaseModel):
+    doc_keys: List[str] = Field(..., min_length=1)
+    message: Optional[str] = Field(None, max_length=2000)
 
 
 # ── Périmètre ──────────────────────────────────────────────────────────────────
@@ -112,7 +131,22 @@ def _metrics(c: Candidature, rent_ref: Optional[float]) -> dict:
     }
 
 
+def _doc_out(d: dict) -> dict:
+    """Pièce de la checklist enrichie pour l'affichage gestionnaire."""
+    return {
+        "key": d.get("key"),
+        "label": _DOC_LABELS.get(d.get("key"), d.get("key")),
+        "required": bool(d.get("required")),
+        "provided": bool(d.get("provided")),
+        "verified": bool(d.get("verified")),
+        "filename": d.get("filename"),
+        "uploaded_at": d.get("uploaded_at"),
+        "has_file": bool(d.get("file_path")),
+    }
+
+
 def _out(c: Candidature, rent_ref: Optional[float] = None) -> dict:
+    docs = c.docs or []
     return {
         "id": c.id,
         "property_id": c.property_id,
@@ -124,10 +158,12 @@ def _out(c: Candidature, rent_ref: Optional[float] = None) -> dict:
         "has_guarantor": c.has_guarantor,
         "message": c.message,
         "status": c.status,
-        "docs": c.docs or [],
+        "docs": [_doc_out(d) for d in docs],
         "notes": c.notes,
         "source": c.source,
         "created_at": c.created_at,
+        "upload_token": c.upload_token,
+        "upload_url": candidature_upload_url(c.upload_token) if c.upload_token else None,
         "metrics": _metrics(c, rent_ref),
     }
 
@@ -300,17 +336,130 @@ async def update_candidature(
     c = await _accessible(db, user, candidature_id)
     fields = data.model_dump(exclude_unset=True)
     if "docs" in fields and fields["docs"] is not None:
-        # Ne conserve que les clés connues, avec drapeaux booléens.
+        # Ne conserve que les clés connues, avec drapeaux booléens. Les
+        # métadonnées de fichier déposé (file_path, filename, uploaded_at) et le
+        # drapeau « requis » sont préservés depuis l'existant (jamais écrasés par
+        # l'UI gestionnaire qui ne fait que basculer provided/verified).
         allowed = {k for k, _ in CANDIDATURE_DOC_KEYS}
-        c.docs = [
-            {"key": d.get("key"), "provided": bool(d.get("provided")), "verified": bool(d.get("verified"))}
-            for d in fields.pop("docs") if d.get("key") in allowed
-        ]
+        existing = {d.get("key"): d for d in (c.docs or [])}
+        merged = []
+        for d in fields.pop("docs"):
+            key = d.get("key")
+            if key not in allowed:
+                continue
+            ex = existing.get(key, {})
+            merged.append({
+                "key": key,
+                "required": bool(d.get("required", ex.get("required", False))),
+                "provided": bool(d.get("provided")),
+                "verified": bool(d.get("verified")),
+                "file_path": ex.get("file_path"),
+                "filename": ex.get("filename"),
+                "uploaded_at": ex.get("uploaded_at"),
+            })
+        c.docs = merged
     for k, v in fields.items():
         setattr(c, k, v)
     await db.commit()
     await db.refresh(c)
     return _out(c, await _rent_ref(db, c.property_id))
+
+
+def _ensure_doc_fields(docs: Optional[list]) -> list[dict]:
+    """Normalise une checklist (anciens dossiers sans les champs récents)."""
+    by_key = {d.get("key"): d for d in (docs or [])}
+    out = []
+    for k, _ in CANDIDATURE_DOC_KEYS:
+        d = by_key.get(k, {})
+        out.append({
+            "key": k,
+            "required": bool(d.get("required")),
+            "provided": bool(d.get("provided")),
+            "verified": bool(d.get("verified")),
+            "file_path": d.get("file_path"),
+            "filename": d.get("filename"),
+            "uploaded_at": d.get("uploaded_at"),
+        })
+    return out
+
+
+@router.post("/{candidature_id}/request-documents", summary="Demander des pièces au candidat")
+async def request_documents(
+    candidature_id: uuid.UUID,
+    data: RequestDocumentsIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Marque les pièces sélectionnées comme requises, génère (si besoin) un lien
+    public de dépôt, passe le dossier en « documents demandés » et envoie au
+    candidat un e-mail avec la liste et le lien. Le gestionnaire est mis en copie."""
+    c = await _accessible(db, user, candidature_id)
+    if not (c.email or "").strip():
+        raise BadRequestException(
+            "Ce candidat n'a pas d'adresse e-mail : renseignez-la pour lui envoyer la demande."
+        )
+    allowed = {k for k, _ in CANDIDATURE_DOC_KEYS}
+    selected = [k for k in data.doc_keys if k in allowed]
+    if not selected:
+        raise BadRequestException("Sélectionnez au moins une pièce connue.")
+
+    docs = _ensure_doc_fields(c.docs)
+    for d in docs:
+        if d["key"] in selected:
+            d["required"] = True
+    c.docs = docs
+
+    if not c.upload_token:
+        c.upload_token = secrets.token_urlsafe(24)
+    if c.status not in ("retenue", "refusee"):
+        c.status = "documents_demandes"
+
+    await db.commit()
+    await db.refresh(c)
+
+    url = candidature_upload_url(c.upload_token)
+    labels = [_DOC_LABELS[k] for k in selected]
+    email_sent = False
+    try:
+        from app.services.email_service import send_candidature_documents_request
+        email_sent = await send_candidature_documents_request(
+            to=c.email,
+            candidate_name=c.full_name,
+            property_name=(await db.get(Property, c.property_id)).name if c.property_id else "votre bien",
+            doc_labels=labels,
+            upload_url=url,
+            manager_name=getattr(user, "full_name", None),
+            custom_message=(data.message or "").strip() or None,
+            cc=getattr(user, "email", None),
+        )
+    except Exception as exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("Demande de pièces non envoyée (%s): %s", candidature_id, exc)
+
+    out = _out(c, await _rent_ref(db, c.property_id))
+    out["upload_url"] = url
+    out["email_sent"] = email_sent
+    return out
+
+
+@router.get("/{candidature_id}/documents/{key}/download", summary="Télécharger une pièce déposée")
+async def download_candidature_doc(
+    candidature_id: uuid.UUID,
+    key: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_manager_or_owner),
+):
+    c = await _accessible(db, user, candidature_id)
+    doc = next((d for d in (c.docs or []) if d.get("key") == key), None)
+    if not doc or not doc.get("file_path"):
+        raise NotFoundException("Pièce", key)
+    path = get_file_path(doc["file_path"])
+    if not path:
+        raise NotFoundException("Fichier", key)
+    return FileResponse(
+        path,
+        filename=doc.get("filename") or f"{key}",
+    )
 
 
 @router.delete("/{candidature_id}", status_code=204, summary="Supprimer une candidature")

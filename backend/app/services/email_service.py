@@ -195,6 +195,44 @@ async def send_quittance(
     )
 
 
+async def send_candidature_documents_request(
+    to: str,
+    candidate_name: str,
+    property_name: str,
+    doc_labels: list[str],
+    upload_url: str,
+    manager_name: Optional[str] = None,
+    custom_message: Optional[str] = None,
+    cc: Optional[str] = None,
+) -> bool:
+    """Demande de pièces justificatives à un candidat, avec le lien sécurisé de
+    dépôt. Le candidat n'a pas de compte : il dépose ses pièces via ce lien."""
+    items = "".join(f"<li>{lbl}</li>" for lbl in doc_labels) or "<li>Pièces du dossier</li>"
+    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    content = f"""
+<p>Bonjour {candidate_name},</p>
+<p>Dans le cadre de votre candidature pour <strong>{property_name}</strong>, nous vous
+remercions de bien vouloir nous transmettre les pièces suivantes :</p>
+<ul style="margin:12px 0;padding-left:20px;color:#374151">{items}</ul>
+{intro}
+<p style="margin:20px 0">
+  <a href="{upload_url}" style="display:inline-block;background:#0D2F5C;color:#fff;
+     text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">
+    Déposer mes documents
+  </a>
+</p>
+<p style="color:#6b7280;font-size:13px">Si le bouton ne fonctionne pas, copiez ce lien
+dans votre navigateur :<br><span style="word-break:break-all">{upload_url}</span></p>
+<p>Cordialement,<br>{manager_name or "Le Comptoir Immo · Service Gestion Locative"}</p>
+"""
+    return await send_email(
+        to=to,
+        subject=f"Votre candidature : pièces à fournir ({property_name})",
+        html_body=_base_template("Pièces justificatives demandées", content),
+        cc=cc,
+    )
+
+
 def build_credentials_email(
     *,
     login: str,

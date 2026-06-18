@@ -326,6 +326,9 @@ async def _apply_column_migrations() -> None:
         # Période réellement couverte par un loyer (multi-mois selon la fréquence)
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_start DATE",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS period_end DATE",
+        # Candidatures : jeton public de dépôt des pièces par le candidat
+        "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS upload_token VARCHAR(64)",
+        "CREATE INDEX IF NOT EXISTS ix_candidatures_upload_token ON candidatures (upload_token)",
         # Identifiant lisible unique (ref_code) : comptes, propriétaires, biens, locataires.
         # Préfixe selon le type/rôle (GM/GP/UP/UL/AD/CB/LE, PR, BN, LO). Reprise
         # historique des lignes existantes au démarrage (voir _backfill_references).

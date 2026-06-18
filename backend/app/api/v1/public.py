@@ -7,8 +7,9 @@ aucune lecture/écriture directe des tables alice_*.
 """
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Optional, List
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +97,95 @@ async def create_subscription_request(
     )
     background.add_task(_notify_team, data, composed)
     return {"status": "received"}
+
+
+# ── Dépôt des pièces par un candidat (lien public, sans authentification) ────────
+async def _candidature_by_token(db: AsyncSession, token: str):
+    from app.models.candidature import Candidature
+    c = (await db.execute(
+        select(Candidature).where(Candidature.upload_token == token)
+    )).scalar_one_or_none()
+    if not c or c.status == "refusee":
+        raise HTTPException(status_code=404, detail="Lien introuvable ou expiré")
+    return c
+
+
+@router.get("/candidature/{token}", summary="Pièces demandées à un candidat (lien public)")
+async def public_candidature(token: str, db: AsyncSession = Depends(get_db)):
+    from app.models.property import Property
+    from app.models.candidature import CANDIDATURE_DOC_KEYS
+
+    c = await _candidature_by_token(db, token)
+    labels = {k: lbl for k, lbl in CANDIDATURE_DOC_KEYS}
+    prop = await db.get(Property, c.property_id)
+    requested = [
+        {
+            "key": d.get("key"),
+            "label": labels.get(d.get("key"), d.get("key")),
+            "provided": bool(d.get("provided")),
+            "filename": d.get("filename"),
+        }
+        for d in (c.docs or []) if d.get("required")
+    ]
+    return {
+        "candidate_name": c.full_name,
+        "property_name": prop.name if prop else "le bien",
+        "status": c.status,
+        "documents": requested,
+        "all_provided": bool(requested) and all(d["provided"] for d in requested),
+    }
+
+
+@router.post("/candidature/{token}/upload", summary="Déposer une pièce (candidat)")
+async def public_candidature_upload(
+    token: str,
+    key: str = Form(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.utils.file_handler import save_file
+    c = await _candidature_by_token(db, token)
+    docs = list(c.docs or [])
+    target = next((d for d in docs if d.get("key") == key and d.get("required")), None)
+    if target is None:
+        raise HTTPException(status_code=400, detail="Cette pièce n'est pas demandée.")
+
+    file_path, _size = await save_file(file, entity_type="candidature", entity_id=str(c.id))
+    target["provided"] = True
+    target["file_path"] = file_path
+    target["filename"] = file.filename
+    target["uploaded_at"] = datetime.now(timezone.utc).isoformat()
+    # Réassignation pour déclencher la mise à jour JSONB.
+    c.docs = docs
+    await db.commit()
+    return {"status": "uploaded", "key": key, "filename": file.filename}
+
+
+@router.post("/candidature/{token}/submit", summary="Confirmer le dépôt des pièces (candidat)")
+async def public_candidature_submit(token: str, db: AsyncSession = Depends(get_db)):
+    """Le candidat indique avoir transmis ses pièces : notifie le gestionnaire."""
+    from app.models.property import Property
+    c = await _candidature_by_token(db, token)
+    try:
+        prop = await db.get(Property, c.property_id)
+        mgr = await db.get(User, prop.created_by) if (prop and prop.created_by) else None
+        pname = prop.name if prop else "votre bien"
+        if mgr and getattr(mgr, "email", None):
+            from app.services.email_service import send_email
+            await send_email(
+                to=mgr.email,
+                subject=f"Pièces transmises : {c.full_name} ({pname})",
+                html_body=(f"<p><strong>{c.full_name}</strong> a transmis ses pièces justificatives "
+                           f"pour <strong>{pname}</strong>.</p>"
+                           f"<p>Vous pouvez les consulter et mettre le dossier à l'étude dans « Candidatures ».</p>"),
+            )
+        if mgr and getattr(mgr, "phone", None):
+            from app.services.sms_service import send_sms
+            await send_sms(mgr.phone,
+                           f"Le Comptoir Immo : {c.full_name} a transmis ses pièces ({pname}).")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Notif dépôt pièces échouée: %s", exc)
+    return {"status": "submitted"}
 
 
 @router.get("/listings/{token}", summary="Page d'annonce publique (sans authentification)")

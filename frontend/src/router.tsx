@@ -86,6 +86,7 @@ const DocumentsCaf = lazyPage(() => import('@/pages/documents-caf/DocumentsCaf')
 const DiffusionPage = lazyPage(() => import('@/pages/publishing/DiffusionPage'))
 const PropertyPublish = lazyPage(() => import('@/pages/publishing/PropertyPublish'))
 const AnnoncePublic = lazyPage(() => import('@/pages/public/AnnoncePublic'))
+const CandidatureUpload = lazyPage(() => import('@/pages/public/CandidatureUpload'))
 const CandidaturesPage = lazyPage(() => import('@/pages/candidatures/CandidaturesPage'))
 const SortiesPage = lazyPage(() => import('@/pages/sorties/SortiesPage'))
 const SignalementList = lazyPage(() => import('@/pages/signalements/SignalementList'))
@@ -189,6 +190,15 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<PageLoader />}>
         <AnnoncePublic />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/candidature/:token',
+    errorElement: <RouteError />,
+    element: (
+      <Suspense fallback={<PageLoader />}>
+        <CandidatureUpload />
       </Suspense>
     ),
   },

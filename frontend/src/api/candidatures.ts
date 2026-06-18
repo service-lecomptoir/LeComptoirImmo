@@ -1,11 +1,16 @@
 import { apiClient } from './client'
 
-export type CandidatureStatus = 'nouvelle' | 'en_etude' | 'retenue' | 'refusee'
+export type CandidatureStatus = 'nouvelle' | 'documents_demandes' | 'en_etude' | 'retenue' | 'refusee'
 
 export interface CandidatureDoc {
   key: string
+  label?: string
+  required?: boolean
   provided: boolean
   verified: boolean
+  filename?: string | null
+  uploaded_at?: string | null
+  has_file?: boolean
 }
 
 export interface CandidatureMetrics {
@@ -32,6 +37,8 @@ export interface Candidature {
   notes?: string | null
   source: 'annonce' | 'manuel' | string
   created_at: string
+  upload_token?: string | null
+  upload_url?: string | null
   metrics: CandidatureMetrics
 }
 
@@ -72,4 +79,9 @@ export const candidaturesApi = {
     apiClient.get<{ rent_reference: number | null; candidates: Candidature[] }>(
       `/candidatures/compare/${propertyId}`,
     ),
+  requestDocuments: (id: string, data: { doc_keys: string[]; message?: string | null }) =>
+    apiClient.post<Candidature & { upload_url: string; email_sent: boolean }>(
+      `/candidatures/${id}/request-documents`, data,
+    ),
+  docDownloadUrl: (id: string, key: string) => `/candidatures/${id}/documents/${key}/download`,
 }
