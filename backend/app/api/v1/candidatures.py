@@ -358,6 +358,8 @@ async def update_candidature(
                 "uploaded_at": ex.get("uploaded_at"),
             })
         c.docs = merged
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(c, "docs")
     for k, v in fields.items():
         setattr(c, k, v)
     await db.commit()
@@ -408,6 +410,8 @@ async def request_documents(
         if d["key"] in selected:
             d["required"] = True
     c.docs = docs
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(c, "docs")
 
     if not c.upload_token:
         c.upload_token = secrets.token_urlsafe(24)

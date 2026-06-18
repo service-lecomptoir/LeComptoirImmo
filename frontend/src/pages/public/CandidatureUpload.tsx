@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { CheckCircle2, FileUp, Loader2, ShieldCheck, UploadCloud } from 'lucide-react'
 import { publicCandidatureApi, type PublicCandidature } from '@/api/publicCandidature'
 import { toast } from '@/store/toast'
+import { getErrorMessage } from '@/utils/errors'
 
 const NAVY = '#0D2F5C'
 
@@ -12,6 +13,7 @@ export default function CandidatureUpload() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const inputs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -28,13 +30,19 @@ export default function CandidatureUpload() {
   const onPick = async (key: string, file?: File) => {
     if (!file || !token) return
     setUploadingKey(key)
+    setErrors(e => { const n = { ...e }; delete n[key]; return n })
     try {
       await publicCandidatureApi.upload(token, key, file)
       const r = await publicCandidatureApi.get(token)
       setData(r.data)
       toast.success('Document reçu.')
-    } catch {
-      toast.error('Envoi impossible. Vérifiez le format (PDF, image, Word) et la taille (max 20 Mo).')
+    } catch (err) {
+      const reason = getErrorMessage(
+        err,
+        'Format ou taille non acceptés (PDF, image, Word, Excel ; 20 Mo max).',
+      )
+      setErrors(e => ({ ...e, [key]: reason }))
+      toast.error(reason)
     } finally {
       setUploadingKey(null)
     }
@@ -130,6 +138,9 @@ export default function CandidatureUpload() {
                       <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 truncate">
                         <CheckCircle2 size={12} className="text-emerald-500" /> {d.filename || 'Document reçu'}
                       </p>
+                    )}
+                    {errors[d.key] && (
+                      <p className="text-xs text-red-600 mt-0.5">{errors[d.key]}</p>
                     )}
                   </div>
                   <input

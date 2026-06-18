@@ -145,8 +145,9 @@ async def public_candidature_upload(
     db: AsyncSession = Depends(get_db),
 ):
     from app.utils.file_handler import save_file
+    from sqlalchemy.orm.attributes import flag_modified
     c = await _candidature_by_token(db, token)
-    docs = list(c.docs or [])
+    docs = [dict(d) for d in (c.docs or [])]  # copie profonde (nouveaux dicts)
     target = next((d for d in docs if d.get("key") == key and d.get("required")), None)
     if target is None:
         raise HTTPException(status_code=400, detail="Cette pièce n'est pas demandée.")
@@ -156,8 +157,10 @@ async def public_candidature_upload(
     target["file_path"] = file_path
     target["filename"] = file.filename
     target["uploaded_at"] = datetime.now(timezone.utc).isoformat()
-    # Réassignation pour déclencher la mise à jour JSONB.
+    # Réassignation + flag_modified : sans cela, la mutation JSONB n'est pas
+    # détectée par SQLAlchemy et le dépôt n'est pas persisté.
     c.docs = docs
+    flag_modified(c, "docs")
     await db.commit()
     return {"status": "uploaded", "key": key, "filename": file.filename}
 

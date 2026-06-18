@@ -62,9 +62,14 @@ async def test_request_documents_full_flow(client, db, gestionnaire_user, gestio
     )
     assert ur.status_code == 200, ur.text
 
-    # 4) La page publique reflète le dépôt.
-    docs2 = (await client.get(f"/api/v1/public/candidature/{token}")).json()["documents"]
-    assert next(d for d in docs2 if d["key"] == "identite")["provided"] is True
+    # 4) La page publique reflète le dépôt. On expire l'identity map pour forcer
+    #    une relecture depuis la base : garantit que la mutation JSONB a bien été
+    #    PERSISTÉE (et pas seulement visible via l'objet en mémoire).
+    db.expire_all()
+    pub = (await client.get(f"/api/v1/public/candidature/{token}")).json()
+    idd = next(d for d in pub["documents"] if d["key"] == "identite")
+    assert idd["provided"] is True, "le dépôt n'a pas été persisté"
+    assert pub["all_provided"] is False  # avis_imposition manque encore
 
     # 5) Le gestionnaire télécharge la pièce déposée.
     dl = await client.get(
