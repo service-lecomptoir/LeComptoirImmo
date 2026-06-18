@@ -665,7 +665,7 @@ export default function CandidaturesPage() {
             </div>
             <p className="text-xs text-gray-500 mb-4">
               Définissez des créneaux pour le bien <span className="font-medium text-gray-700">{selected.property_ref || propName[selected.property_id]}</span>,
-              puis invitez le candidat. L'e-mail n'indique que la référence du bien (ni nom ni adresse) et précise qu'il y a d'autres candidats.
+              puis invitez le candidat. L'e-mail indique la référence et l'adresse du bien (pour s'y rendre), jamais le nom du logement, et précise qu'il y a d'autres candidats.
             </p>
 
             {/* Créneaux existants */}
