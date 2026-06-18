@@ -228,14 +228,26 @@ async def _full_out(db: AsyncSession, c: Candidature) -> dict:
 
 
 async def _listing_pricing(db: AsyncSession, property_id):
-    """(loyer hors charges, charges) depuis l'annonce du bien."""
+    """(loyer hors charges, charges) du bien : depuis l'annonce en priorité, sinon
+    repli sur le bail le plus récent du bien (utile pour une candidature sans
+    annonce publiée)."""
     listing = (await db.execute(
         select(Listing).where(Listing.property_id == property_id)
-    )).scalar_one_or_none()
-    if not listing:
-        return None, None
-    price = float(listing.price) if listing.price is not None else None
-    charges = float(listing.charges) if getattr(listing, "charges", None) is not None else None
+        .order_by(Listing.created_at.desc())
+    )).scalars().first()
+    price = float(listing.price) if (listing and listing.price is not None) else None
+    charges = float(listing.charges) if (listing and getattr(listing, "charges", None) is not None) else None
+    if price is None:
+        from app.models.lease import Lease
+        lease = (await db.execute(
+            select(Lease).where(Lease.property_id == property_id)
+            .order_by(Lease.created_at.desc())
+        )).scalars().first()
+        if lease is not None:
+            if lease.rent_amount is not None:
+                price = float(lease.rent_amount)
+            if charges is None and lease.charges_amount is not None:
+                charges = float(lease.charges_amount)
     return price, charges
 
 
