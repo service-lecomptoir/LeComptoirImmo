@@ -323,7 +323,11 @@ export default function AdminUsers() {
           <ShieldCheck size={24} className="text-gray-700" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Gestion des utilisateurs</h1>
-            <p className="text-sm text-gray-500">Comptes de connexion (propriétaires, locataires)</p>
+            <p className="text-sm text-gray-500">
+              {me?.role === 'gestionnaire_proprio'
+                ? 'Comptes de connexion locataires'
+                : 'Comptes de connexion (propriétaires, locataires)'}
+            </p>
           </div>
         </div>
         <Button
