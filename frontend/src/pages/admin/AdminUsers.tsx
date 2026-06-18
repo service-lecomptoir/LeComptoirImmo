@@ -411,11 +411,13 @@ export default function AdminUsers() {
                     <span className={u.last_login_at ? '' : 'text-gray-400 italic'}>{formatLastLogin(u.last_login_at)}</span>
                   </td>
                   <td className="px-4 py-3 text-gray-500 text-center">{formatDate(u.created_at)}</td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3">
                     {/* Actions alignées à gauche → chaque icône (envoyer, modifier)
                         se place sous celle des autres lignes ; la corbeille (à droite)
-                        n'apparaît que si la suppression est possible (pas son propre compte). */}
-                    <div className="flex items-center justify-center gap-1">
+                        n'apparaît que si la suppression est possible (pas son propre compte).
+                        Le nombre d'icônes variant d'une ligne à l'autre, un centrage
+                        décalerait les icônes : on garde un alignement à gauche fixe. */}
+                    <div className="flex items-center justify-start gap-1">
                       <button
                         onClick={() => sendCredentials(u)}
                         disabled={sendingCredsId === u.id || !u.email}
