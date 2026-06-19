@@ -1,156 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Landmark, Search, Loader2, CalendarClock, ExternalLink, ChevronRight, ChevronDown, KeyRound, Send, Inbox, Upload, Trash2, Settings2, Eye } from 'lucide-react'
+import { Landmark, Search, Loader2, CalendarClock, ExternalLink, ChevronRight, ChevronDown, KeyRound, Send, Inbox, Eye } from 'lucide-react'
 import { leasesApi } from '@/api/leases'
 import type { LeaseListItem } from '@/types/lease'
 import { toast } from '@/store/toast'
 import { useAuthStore } from '@/store/authStore'
-import { cafApi, type CafDocType, type CafTemplateInfo, type CafDataKey } from '@/api/caf'
+import { cafApi, type CafDocType } from '@/api/caf'
 import { getErrorMessage } from '@/utils/errors'
 
 const CAF_PARTENAIRES_URL = 'https://partenaires.caf.fr/cnafappli/authentificationpartenaireappli/dist/#/connexion'
-const DOC_TYPES: { value: CafDocType; label: string }[] = [
-  { value: 'attestation', label: 'Attestation de loyer' },
-  { value: 'tiers_payant', label: 'Formulaire tiers payant' },
-]
-
-// ─── Gestionnaire des modèles PDF officiels (upload + mapping + signature) ──────
-function TemplateManager() {
-  const [templates, setTemplates] = useState<Record<CafDocType, CafTemplateInfo> | null>(null)
-  const [keys, setKeys] = useState<CafDataKey[]>([])
-  const [busy, setBusy] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
-
-  const load = () => cafApi.templates().then(r => setTemplates(r.data)).catch(() => {})
-  useEffect(() => { load(); cafApi.dataKeys().then(r => setKeys(r.data)).catch(() => {}) }, [])
-
-  const upload = async (dt: CafDocType, file: File) => {
-    setBusy(`up:${dt}`)
-    try {
-      await cafApi.upload(dt, file)
-      toast.success('PDF officiel téléversé. Vérifiez le mapping des champs.')
-      await load()
-    } catch (e) { toast.error(getErrorMessage(e, 'Téléversement impossible')) }
-    finally { setBusy(null) }
-  }
-
-  const setMap = (dt: CafDocType, field: string, key: string) => {
-    setTemplates(prev => {
-      if (!prev) return prev
-      const t = { ...prev[dt] }
-      const fm = { ...(t.field_map || {}) }
-      if (key) fm[field] = key; else delete fm[field]
-      t.field_map = fm
-      return { ...prev, [dt]: t }
-    })
-  }
-  const setSign = (dt: CafDocType, patch: Partial<CafTemplateInfo>) => {
-    setTemplates(prev => prev ? { ...prev, [dt]: { ...prev[dt], ...patch } } : prev)
-  }
-
-  const saveMapping = async (dt: CafDocType) => {
-    if (!templates) return
-    const t = templates[dt]
-    setBusy(`map:${dt}`)
-    try {
-      await cafApi.saveMapping(dt, {
-        field_map: t.field_map || {},
-        sign_page: t.sign_page, sign_x_mm: t.sign_x_mm, sign_y_mm: t.sign_y_mm, sign_w_mm: t.sign_w_mm,
-      })
-      toast.success('Mapping enregistré.')
-      await load()
-    } catch (e) { toast.error(getErrorMessage(e, 'Enregistrement impossible')) }
-    finally { setBusy(null) }
-  }
-
-  const remove = async (dt: CafDocType) => {
-    if (!confirm('Supprimer ce modèle PDF officiel ? Le document généré standard sera de nouveau utilisé.')) return
-    setBusy(`del:${dt}`)
-    try { await cafApi.remove(dt); toast.success('Modèle supprimé.'); await load() }
-    catch { toast.error('Suppression impossible') } finally { setBusy(null) }
-  }
-
-  return (
-    <div className="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-2 px-5 py-4 text-left">
-        <Settings2 size={18} className="text-blue-600 shrink-0" />
-        <span className="text-sm font-semibold text-gray-900">Modèles PDF officiels CAF (remplir vos CERFA)</span>
-        <span className="ml-auto text-xs text-gray-400">{open ? 'Masquer' : 'Configurer'}</span>
-        {open ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
-      </button>
-      {open && (
-        <div className="px-5 pb-5 space-y-6 border-t border-gray-100 pt-4">
-          <p className="text-xs text-gray-500 -mt-1">
-            Téléversez le PDF officiel de la CAF (formulaire remplissable), associez ses champs à vos données,
-            puis générez le document rempli et signé. Sans modèle téléversé, le document généré standard est utilisé.
-          </p>
-          {!templates ? <Loader2 className="animate-spin text-blue-600" size={20} /> :
-            DOC_TYPES.map(({ value: dt, label }) => {
-              const t = templates[dt]
-              return (
-                <div key={dt} className="rounded-xl border border-gray-200 p-4">
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <h3 className="text-sm font-semibold text-gray-800">{label}</h3>
-                    <div className="flex items-center gap-2">
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer">
-                        <Upload size={13} /> {t.has_template ? 'Remplacer le PDF' : 'Téléverser le PDF'}
-                        <input type="file" accept="application/pdf" className="hidden"
-                          onChange={e => { const f = e.target.files?.[0]; if (f) upload(dt, f); e.currentTarget.value = '' }} />
-                      </label>
-                      {t.has_template && (
-                        <button onClick={() => remove(dt)} disabled={busy === `del:${dt}`}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={14} /></button>
-                      )}
-                    </div>
-                  </div>
-                  {!t.has_template ? (
-                    <p className="text-xs text-gray-400">Aucun PDF officiel téléversé : document généré standard utilisé.</p>
-                  ) : t.fields.length === 0 ? (
-                    <p className="text-xs text-amber-600">Ce PDF ne contient pas de champs de formulaire remplissables. Choisissez un PDF officiel « formulaire » de la CAF.</p>
-                  ) : (
-                    <>
-                      <p className="text-xs text-gray-500 mb-2">{t.original_filename} · {t.fields.length} champ(s). Associez chaque champ à une donnée :</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-                        {t.fields.map(field => (
-                          <div key={field} className="flex items-center gap-2">
-                            <span className="text-xs text-gray-600 truncate flex-1" title={field}>{field}</span>
-                            <select value={t.field_map?.[field] || ''} onChange={e => setMap(dt, field, e.target.value)}
-                              className="text-xs border border-gray-200 rounded-lg px-2 py-1 max-w-[55%]">
-                              <option value="">— ignorer —</option>
-                              {keys.map(k => <option key={k.key} value={k.key}>{k.label}</option>)}
-                            </select>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap items-end gap-3 mt-4 pt-3 border-t border-gray-100">
-                        <span className="text-xs font-medium text-gray-600">Signature :</span>
-                        <label className="text-xs text-gray-500">Page<input type="number" min={1} value={t.sign_page}
-                          onChange={e => setSign(dt, { sign_page: parseInt(e.target.value) || 1 })}
-                          className="ml-1 w-14 border border-gray-200 rounded px-1.5 py-1" /></label>
-                        <label className="text-xs text-gray-500">X(mm)<input type="number" value={t.sign_x_mm}
-                          onChange={e => setSign(dt, { sign_x_mm: parseInt(e.target.value) || 0 })}
-                          className="ml-1 w-16 border border-gray-200 rounded px-1.5 py-1" /></label>
-                        <label className="text-xs text-gray-500">Y(mm)<input type="number" value={t.sign_y_mm}
-                          onChange={e => setSign(dt, { sign_y_mm: parseInt(e.target.value) || 0 })}
-                          className="ml-1 w-16 border border-gray-200 rounded px-1.5 py-1" /></label>
-                        <label className="text-xs text-gray-500">Largeur(mm)<input type="number" value={t.sign_w_mm}
-                          onChange={e => setSign(dt, { sign_w_mm: parseInt(e.target.value) || 10 })}
-                          className="ml-1 w-16 border border-gray-200 rounded px-1.5 py-1" /></label>
-                        <button onClick={() => saveMapping(dt)} disabled={busy === `map:${dt}`}
-                          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                          {busy === `map:${dt}` ? <Loader2 size={13} className="animate-spin" /> : null} Enregistrer le mapping
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-gray-400 mt-1.5">Astuce : Y se mesure depuis le bas de la page. La signature provient de « Mes options ».</p>
-                    </>
-                  )}
-                </div>
-              )
-            })}
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function DocumentsCaf() {
   const [leases, setLeases] = useState<LeaseListItem[]>([])
@@ -302,7 +159,11 @@ export default function DocumentsCaf() {
         </div>
       )}
 
-      <TemplateManager />
+      <p className="text-sm text-gray-500 mb-6 max-w-2xl">
+        Sélectionnez un contrat : l'attestation de loyer et le formulaire tiers payant sont pré-remplis à
+        partir des informations du bailleur, du locataire et du bail, et signés. Vous pouvez les consulter,
+        les envoyer au locataire ou les déposer dans son espace.
+      </p>
 
       <div className="relative mb-5 max-w-md">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />

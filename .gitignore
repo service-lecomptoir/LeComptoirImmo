@@ -2,6 +2,9 @@
 # Garde-fou : aucun dossier alice/ ne doit réapparaître dans ce dépôt.
 /alice/
 
+# ── Fichiers locaux de calibration CAF (PDF officiels, jamais committés) ──────
+backend/_cerfa/
+
 # ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
