@@ -456,15 +456,19 @@ async def apply_to_listing(token: str, data: PublicApplicationIn, db: AsyncSessi
     # chaque dossier reçoit une réponse immédiate et professionnelle. Best-effort.
     try:
         if (c.email or "").strip():
-            from app.api.v1.candidatures import _apply_branding, _property_block
+            from app.api.v1.candidatures import _apply_branding, _property_block, _cand_overrides
             from app.services.email_service import send_candidature_acknowledged
-            _mgr = await db.get(User, listing.created_by) if listing.created_by else None
             _prop = await db.get(Property, listing.property_id)
             _block = await _property_block(db, _prop)
-            _apply_branding(_mgr)
-            await send_candidature_acknowledged(
-                to=c.email, candidate_name=c.full_name, property_html=_block["html"],
-            )
+            _ov = await _cand_overrides(db, listing.created_by, "candidature_accuse", c, _block)
+            if _ov["active"]:  # le gestionnaire peut couper l'accusé de réception auto
+                _mgr = await db.get(User, listing.created_by) if listing.created_by else None
+                _apply_branding(_mgr)
+                await send_candidature_acknowledged(
+                    to=c.email, candidate_name=c.full_name, property_html=_block["html"],
+                    subject_override=_ov["subject"], body_html_override=_ov["body_html"],
+                    signature_override=_ov["signature"],
+                )
     except Exception as _exc:  # noqa: BLE001
         import logging
         logging.getLogger(__name__).warning("Accusé réception auto échoué: %s", _exc)

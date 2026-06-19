@@ -25,6 +25,13 @@ class RuleType(str, Enum):
     TAXE_OM = "taxe_om"
     # Rapport mensuel de gestion (envoi planifié, jour = trigger_days)
     RAPPORT_MENSUEL = "rapport_mensuel"
+    # Communications de candidature (event-driven, e-mail au candidat)
+    CANDIDATURE_ACCUSE = "candidature_accuse"
+    CANDIDATURE_PIECES = "candidature_pieces"
+    CANDIDATURE_VISITE = "candidature_visite"
+    CANDIDATURE_RELANCE_VISITE = "candidature_relance_visite"
+    CANDIDATURE_ACCEPTATION = "candidature_acceptation"
+    CANDIDATURE_REFUS = "candidature_refus"
 
 
 class Channel(str, Enum):

@@ -21,6 +21,12 @@ const RULE_TYPES = [
   { value: 'taxe_om', label: "Taxe d'ordures ménagères", icon: Trash2, color: 'gray' },
   { value: 'rapport_mensuel', label: 'Rapport mensuel de gestion', icon: Clock, color: 'purple' },
   { value: 'communication_groupee', label: 'Communication groupée', icon: Users, color: 'purple' },
+  { value: 'candidature_accuse', label: 'Candidature : accusé de réception', icon: CheckCircle, color: 'blue' },
+  { value: 'candidature_pieces', label: 'Candidature : demande de pièces', icon: Mail, color: 'blue' },
+  { value: 'candidature_visite', label: 'Candidature : invitation à visiter', icon: Calendar, color: 'indigo' },
+  { value: 'candidature_relance_visite', label: 'Candidature : rappel de visite', icon: Bell, color: 'orange' },
+  { value: 'candidature_acceptation', label: 'Candidature : acceptation', icon: CheckCircle, color: 'green' },
+  { value: 'candidature_refus', label: 'Candidature : refus', icon: AlertTriangle, color: 'gray' },
 ]
 
 interface Rule {
@@ -63,9 +69,17 @@ const PLAN_EVENT_LABELS: Record<string, string> = {
   revision_loyer: "Dès qu'une révision du loyer est déclarée",
   revision_charges: "Dès qu'une révision des charges est déclarée",
   taxe_om: "Dès qu'une taxe d'ordures ménagères est déclarée",
+  candidature_accuse: "Dès qu'une candidature est déposée (envoi auto)",
+  candidature_pieces: "Quand vous demandez des pièces au candidat",
+  candidature_visite: "Quand vous invitez le candidat à visiter",
+  candidature_relance_visite: "La veille de la visite (envoi auto)",
+  candidature_acceptation: "Quand vous acceptez le candidat",
+  candidature_refus: "Quand vous refusez le candidat",
 }
 const PLAN_ORDER = ['avis_echeance', 'quittance', 'rappel_impaye', 'relance_1',
-  'relance_2', 'revision_loyer', 'revision_charges', 'taxe_om', 'rapport_mensuel']
+  'relance_2', 'revision_loyer', 'revision_charges', 'taxe_om', 'rapport_mensuel',
+  'candidature_accuse', 'candidature_pieces', 'candidature_visite',
+  'candidature_relance_visite', 'candidature_acceptation', 'candidature_refus']
 
 function planKind(t: string): 'before' | 'after' | 'day' | 'event' | 'hide' {
   if (t === 'avis_echeance') return 'before'

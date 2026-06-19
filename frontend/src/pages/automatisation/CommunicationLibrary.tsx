@@ -15,6 +15,12 @@ const COMM_TYPES = [
   { value: 'revision_loyer', label: 'Révision du loyer' },
   { value: 'revision_charges', label: 'Révision des charges' },
   { value: 'taxe_om', label: "Taxe d'ordures ménagères" },
+  { value: 'candidature_accuse', label: 'Candidature : accusé de réception' },
+  { value: 'candidature_pieces', label: 'Candidature : demande de pièces' },
+  { value: 'candidature_visite', label: 'Candidature : invitation à visiter' },
+  { value: 'candidature_relance_visite', label: 'Candidature : rappel de visite' },
+  { value: 'candidature_acceptation', label: 'Candidature : acceptation' },
+  { value: 'candidature_refus', label: 'Candidature : refus' },
 ]
 const LANGS = [
   { code: 'fr', label: 'Français' },

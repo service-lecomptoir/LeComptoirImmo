@@ -169,6 +169,13 @@ _DEFAULT_RULES = [
     ("taxe_om", "Taxe d'ordures ménagères", "email", 0, _GL),
     # Rapport mensuel : trigger_days = jour d'envoi (1er par défaut)
     ("rapport_mensuel", "Rapport mensuel de gestion", "email", 1, _GL),
+    # Communications de candidature (événementielles ; e-mail au candidat)
+    ("candidature_accuse", "Candidature : accusé de réception", "email", 0, _GL),
+    ("candidature_pieces", "Candidature : demande de pièces", "email", 0, _GL),
+    ("candidature_visite", "Candidature : invitation à visiter", "email", 0, _GL),
+    ("candidature_relance_visite", "Candidature : rappel de visite", "email", 0, _GL),
+    ("candidature_acceptation", "Candidature : acceptation", "email", 0, _GL),
+    ("candidature_refus", "Candidature : refus", "email", 0, _GL),
 ]
 
 # Sujet et corps PAR DÉFAUT, ÉDITABLES dans la règle (rien en boîte noire).
@@ -184,6 +191,12 @@ _DEFAULT_SUBJECTS = {
     "revision_charges": "Révision de vos provisions pour charges à compter du {{effective_date}}",
     "taxe_om": "Taxe d'enlèvement des ordures ménagères {{year}}",
     "rapport_mensuel": "Votre rapport de gestion : {{period}}",
+    "candidature_accuse": "Votre demande de logement a bien été prise en compte",
+    "candidature_pieces": "Votre dossier de location : pièces à fournir",
+    "candidature_visite": "Confirmation de visite : bien {{property_ref}}",
+    "candidature_relance_visite": "Rappel : votre visite approche (bien {{property_ref}})",
+    "candidature_acceptation": "Votre dossier de location est accepté",
+    "candidature_refus": "Réponse à votre candidature",
 }
 _DEFAULT_BODIES = {
     "avis_echeance": (
@@ -238,6 +251,40 @@ _DEFAULT_BODIES = {
         "Voici la synthèse de votre gestion locative pour {{period}} :\n\n"
         "{{stats}}\n"
         "Bonne journée."
+    ),
+    # Candidature (placeholders : {{candidate_name}} {{property_ref}} {{when}} {{doc_list}}).
+    "candidature_accuse": (
+        "Bonjour {{candidate_name}},\n\n"
+        "Nous vous confirmons que votre demande de logement a bien été prise en compte. "
+        "Notre équipe étudie votre dossier et reviendra vers vous rapidement."
+    ),
+    "candidature_pieces": (
+        "Bonjour {{candidate_name}},\n\n"
+        "Pour étudier votre dossier de location, merci de nous transmettre les pièces "
+        "listées ci-dessous via le lien sécurisé."
+    ),
+    "candidature_visite": (
+        "Bonjour {{candidate_name}},\n\n"
+        "Votre dossier a retenu notre attention pour le logement ci-dessous. Nous vous "
+        "proposons de réserver un créneau de visite. D'autres candidats sont également "
+        "conviés : les créneaux sont attribués dans l'ordre des réservations."
+    ),
+    "candidature_relance_visite": (
+        "Bonjour {{candidate_name}},\n\n"
+        "Petit rappel : votre visite est prévue le {{when}}. En cas d'empêchement, "
+        "répondez à cet e-mail ou recontactez votre gestionnaire."
+    ),
+    "candidature_acceptation": (
+        "Bonjour {{candidate_name}},\n\n"
+        "Nous avons le plaisir de vous informer que votre dossier est accepté pour le "
+        "logement ci-dessous. Félicitations !"
+    ),
+    "candidature_refus": (
+        "Bonjour {{candidate_name}},\n\n"
+        "Nous vous remercions de l'intérêt porté à ce logement. Après étude attentive des "
+        "candidatures reçues, nous sommes au regret de vous informer que votre dossier n'a "
+        "pas été retenu cette fois-ci. Nous conservons vos coordonnées et vous souhaitons "
+        "une pleine réussite dans vos démarches."
     ),
 }
 

@@ -309,15 +309,23 @@ async def send_candidature_documents_request(
     manager_name: Optional[str] = None,
     custom_message: Optional[str] = None,
     cc: Optional[str] = None,
+    subject_override: Optional[str] = None,
+    body_html_override: Optional[str] = None,
+    signature_override: Optional[str] = None,
 ) -> bool:
     """Demande de pièces justificatives à un candidat, avec le lien sécurisé de
-    dépôt. Le candidat n'a pas de compte : il dépose ses pièces via ce lien."""
+    dépôt. Le candidat n'a pas de compte : il dépose ses pièces via ce lien.
+    `*_override` (depuis la règle Communication) priment sur le contenu par défaut."""
     items = "".join(f"<li>{lbl}</li>" for lbl in doc_labels) or "<li>Pièces du dossier</li>"
     intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    head = body_html_override or (
+        f"<p>Bonjour {candidate_name},</p>"
+        f"<p>Dans le cadre de votre candidature pour <strong>{property_name}</strong>, nous vous "
+        f"remercions de bien vouloir nous transmettre les pièces suivantes :</p>"
+    )
+    sig = signature_override or manager_name or "Le Comptoir Immo · Service Gestion Locative"
     content = f"""
-<p>Bonjour {candidate_name},</p>
-<p>Dans le cadre de votre candidature pour <strong>{property_name}</strong>, nous vous
-remercions de bien vouloir nous transmettre les pièces suivantes :</p>
+{head}
 <ul style="margin:12px 0;padding-left:20px;color:#374151">{items}</ul>
 {intro}
 <p style="margin:20px 0">
@@ -328,11 +336,11 @@ remercions de bien vouloir nous transmettre les pièces suivantes :</p>
 </p>
 <p style="color:#6b7280;font-size:13px">Si le bouton ne fonctionne pas, copiez ce lien
 dans votre navigateur :<br><span style="word-break:break-all">{upload_url}</span></p>
-<p>Cordialement,<br>{manager_name or "Le Comptoir Immo · Service Gestion Locative"}</p>
+<p>Cordialement,<br>{sig}</p>
 """
     return await send_email(
         to=to,
-        subject=f"Votre candidature : pièces à fournir ({property_name})",
+        subject=subject_override or f"Votre candidature : pièces à fournir ({property_name})",
         html_body=_base_template("Pièces justificatives demandées", content),
         cc=cc,
     )
@@ -344,21 +352,28 @@ async def send_candidature_acknowledged(
     property_html: str = "",
     custom_message: Optional[str] = None,
     cc: Optional[str] = None,
+    subject_override: Optional[str] = None,
+    body_html_override: Optional[str] = None,
+    signature_override: Optional[str] = None,
 ) -> bool:
-    """Accusé de réception d'une candidature (envoyé manuellement par le gestionnaire),
-    décrivant le logement (adresse, caractéristiques, loyer)."""
+    """Accusé de réception d'une candidature, décrivant le logement (adresse,
+    caractéristiques, loyer). `*_override` priment (règle Communication)."""
     intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    head = body_html_override or (
+        f"<p>Bonjour {candidate_name},</p>"
+        f"<p>Nous vous confirmons que <strong>votre demande de logement a bien été prise en "
+        f"compte</strong>. Notre équipe étudie votre dossier et reviendra vers vous.</p>"
+    )
+    sig = signature_override or "Le Comptoir Immo · Service Gestion Locative"
     content = f"""
-<p>Bonjour {candidate_name},</p>
-<p>Nous vous confirmons que <strong>votre demande de logement a bien été prise en
-compte</strong>. Notre équipe étudie votre dossier et reviendra vers vous.</p>
+{head}
 {property_html}
 {intro}
-<p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
+<p>Cordialement,<br>{sig}</p>
 """
     return await send_email(
         to=to,
-        subject="Votre demande de logement a bien été prise en compte",
+        subject=subject_override or "Votre demande de logement a bien été prise en compte",
         html_body=_base_template("Demande prise en compte", content),
         cc=cc,
     )
@@ -372,15 +387,22 @@ async def send_visit_invitation(
     property_html: str = "",
     custom_message: Optional[str] = None,
     cc: Optional[str] = None,
+    subject_override: Optional[str] = None,
+    body_html_override: Optional[str] = None,
+    signature_override: Optional[str] = None,
 ) -> bool:
     """Invitation à réserver un créneau de visite. Décrit le logement (adresse,
     caractéristiques, loyer) mais jamais le nom du logement, et mentionne qu'il y a
-    d'autres candidats."""
+    d'autres candidats. `*_override` priment (règle Communication)."""
     intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    head = body_html_override or (
+        f"<p>Bonjour {candidate_name},</p>"
+        f"<p>Votre dossier a retenu notre attention pour le logement ci-dessous. Nous vous "
+        f"proposons de réserver un créneau de visite.</p>"
+    )
+    sig = signature_override or "Le Comptoir Immo · Service Gestion Locative"
     content = f"""
-<p>Bonjour {candidate_name},</p>
-<p>Votre dossier a retenu notre attention pour le logement ci-dessous. Nous vous
-proposons de réserver un créneau de visite.</p>
+{head}
 {property_html}
 <p><strong>D'autres candidats sont également conviés</strong> : les créneaux sont
 attribués dans l'ordre des réservations, nous vous invitons à choisir le vôtre rapidement.</p>
@@ -393,11 +415,11 @@ attribués dans l'ordre des réservations, nous vous invitons à choisir le vôt
 </p>
 <p style="color:#6b7280;font-size:13px">Si le bouton ne fonctionne pas, copiez ce lien :<br>
 <span style="word-break:break-all">{booking_url}</span></p>
-<p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
+<p>Cordialement,<br>{sig}</p>
 """
     return await send_email(
         to=to,
-        subject=f"Confirmation de visite : bien {property_ref}",
+        subject=subject_override or f"Confirmation de visite : bien {property_ref}",
         html_body=_base_template("Confirmation de visite", content),
         cc=cc,
     )
@@ -410,18 +432,26 @@ async def send_visit_reminder(
     when_str: str,
     property_html: str = "",
     cc: Optional[str] = None,
+    subject_override: Optional[str] = None,
+    body_html_override: Optional[str] = None,
+    signature_override: Optional[str] = None,
 ) -> bool:
-    """Relance avant la visite : rappelle la date et l'adresse du logement."""
+    """Relance avant la visite : rappelle la date et l'adresse du logement.
+    `*_override` priment (règle Communication)."""
+    head = body_html_override or (
+        f"<p>Bonjour {candidate_name},</p>"
+        f"<p>Petit rappel : votre <strong>visite est prévue le {when_str}</strong>.</p>"
+    )
+    sig = signature_override or "Le Comptoir Immo · Service Gestion Locative"
     content = f"""
-<p>Bonjour {candidate_name},</p>
-<p>Petit rappel : votre <strong>visite est prévue le {when_str}</strong>.</p>
+{head}
 {property_html}
 <p>En cas d'empêchement, répondez à cet e-mail ou recontactez votre gestionnaire.</p>
-<p>À très bientôt,<br>Le Comptoir Immo · Service Gestion Locative</p>
+<p>À très bientôt,<br>{sig}</p>
 """
     return await send_email(
         to=to,
-        subject=f"Rappel : votre visite approche (bien {property_ref})",
+        subject=subject_override or f"Rappel : votre visite approche (bien {property_ref})",
         html_body=_base_template("Rappel de visite", content),
         cc=cc,
     )
@@ -435,15 +465,22 @@ async def send_candidature_accepted(
     property_html: str = "",
     custom_message: Optional[str] = None,
     cc: Optional[str] = None,
+    subject_override: Optional[str] = None,
+    body_html_override: Optional[str] = None,
+    signature_override: Optional[str] = None,
 ) -> bool:
     """E-mail d'acceptation d'une candidature, avec les prochaines étapes et le
-    descriptif du logement."""
+    descriptif du logement. `*_override` priment (règle Communication)."""
     intro = (f"<p>{custom_message}</p>" if custom_message else "")
     where = f"{property_address} ({property_ref})" if property_address else f"bien {property_ref}"
+    head = body_html_override or (
+        f"<p>Bonjour {candidate_name},</p>"
+        f"<p>Nous avons le plaisir de vous informer que <strong>votre dossier est accepté</strong> "
+        f"pour le logement ci-dessous. Félicitations !</p>"
+    )
+    sig = signature_override or "Le Comptoir Immo · Service Gestion Locative"
     content = f"""
-<p>Bonjour {candidate_name},</p>
-<p>Nous avons le plaisir de vous informer que <strong>votre dossier est accepté</strong>
-pour le logement ci-dessous. Félicitations !</p>
+{head}
 {property_html}
 {intro}
 <p><strong>Prochaines étapes :</strong></p>
@@ -454,11 +491,11 @@ pour le logement ci-dessous. Félicitations !</p>
   <li>État des lieux d'entrée et remise des clés.</li>
 </ol>
 <p>Nous reviendrons vers vous très prochainement pour organiser la signature.</p>
-<p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
+<p>Cordialement,<br>{sig}</p>
 """
     return await send_email(
         to=to,
-        subject=f"Acceptation de votre dossier sur le logement : {where}",
+        subject=subject_override or f"Acceptation de votre dossier sur le logement : {where}",
         html_body=_base_template("Dossier accepté", content),
         cc=cc,
     )
@@ -470,26 +507,34 @@ async def send_candidature_rejected(
     property_ref: str = "",
     custom_message: Optional[str] = None,
     cc: Optional[str] = None,
+    subject_override: Optional[str] = None,
+    body_html_override: Optional[str] = None,
+    signature_override: Optional[str] = None,
 ) -> bool:
     """E-mail de réponse négative courtoise : informe le candidat que son dossier
-    n'a pas été retenu, sans détailler de motif (et sans critère discriminatoire)."""
+    n'a pas été retenu, sans détailler de motif (et sans critère discriminatoire).
+    `*_override` priment (règle Communication)."""
     intro = (f"<p>{custom_message}</p>" if custom_message else "")
     bien = f" pour le bien {property_ref}" if property_ref else ""
+    head = body_html_override or (
+        f"<p>Bonjour {candidate_name},</p>"
+        f"<p>Nous vous remercions de l'intérêt que vous avez porté à ce logement et du temps "
+        f"consacré à votre dossier{bien}.</p>"
+        f"<p>Après étude attentive des candidatures reçues, nous sommes au regret de vous "
+        f"informer que <strong>votre dossier n'a pas été retenu</strong> cette fois-ci.</p>"
+        f"<p>Nous conservons vos coordonnées et ne manquerons pas de vous recontacter si un "
+        f"bien correspondant à votre recherche se libère. Nous vous souhaitons une pleine "
+        f"réussite dans vos démarches.</p>"
+    )
+    sig = signature_override or "Le Comptoir Immo · Service Gestion Locative"
     content = f"""
-<p>Bonjour {candidate_name},</p>
-<p>Nous vous remercions de l'intérêt que vous avez porté à ce logement et du temps
-consacré à votre dossier{bien}.</p>
-<p>Après étude attentive des candidatures reçues, nous sommes au regret de vous
-informer que <strong>votre dossier n'a pas été retenu</strong> cette fois-ci.</p>
+{head}
 {intro}
-<p>Nous conservons vos coordonnées et ne manquerons pas de vous recontacter si un
-bien correspondant à votre recherche se libère. Nous vous souhaitons une pleine
-réussite dans vos démarches.</p>
-<p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
+<p>Cordialement,<br>{sig}</p>
 """
     return await send_email(
         to=to,
-        subject="Réponse à votre candidature",
+        subject=subject_override or "Réponse à votre candidature",
         html_body=_base_template("Réponse à votre candidature", content),
         cc=cc,
     )

@@ -61,6 +61,20 @@ def candidature_visit_url(token: str) -> str:
     return f"{get_settings().PUBLIC_APP_URL.rstrip('/')}/candidature/{token}/visite"
 
 
+async def _cand_overrides(db, gestionnaire_id, rule_type: str, c, block: Optional[dict] = None,
+                          when: Optional[str] = None) -> dict:
+    """Résout l'e-mail candidat depuis la règle Communication du gestionnaire
+    (objet/corps/signature personnalisés + interrupteur on/off)."""
+    from app.services import candidature_comm
+    ctx = {
+        "candidate_name": c.full_name,
+        "property_ref": (block or {}).get("ref") or "",
+        "property_address": (block or {}).get("address") or "",
+        "when": when or "",
+    }
+    return await candidature_comm.resolve(db, gestionnaire_id, rule_type, ctx)
+
+
 def format_property_address(prop) -> Optional[str]:
     """Adresse postale du bien (sans le nom du logement) : rue, CP ville, pays."""
     if prop is None:
@@ -308,9 +322,10 @@ def _fmt_when(dt) -> str:
     return dt.strftime("%d/%m/%Y à %Hh%M")
 
 
-async def send_candidature_visit_reminder(db: AsyncSession, c: Candidature) -> bool:
+async def send_candidature_visit_reminder(db: AsyncSession, c: Candidature, respect_active: bool = False) -> bool:
     """Envoie au candidat la relance avant visite (et marque l'envoi). Réutilisé
-    par le bouton manuel et la relance automatique de la veille."""
+    par le bouton manuel et la relance automatique de la veille. `respect_active`
+    (relance AUTO) : ne pas envoyer si le gestionnaire a coupé la règle."""
     if not c.visit_slot_id or not (c.email or "").strip():
         return False
     slot = await db.get(PropertyVisitSlot, c.visit_slot_id)
@@ -318,13 +333,20 @@ async def send_candidature_visit_reminder(db: AsyncSession, c: Candidature) -> b
         return False
     prop = await db.get(Property, c.property_id)
     block = await _property_block(db, prop)
+    mgr_id = prop.created_by if (prop and prop.created_by) else None
+    ov = await _cand_overrides(db, mgr_id, "candidature_relance_visite", c, block,
+                               when=_fmt_when(slot.starts_at))
+    if respect_active and not ov["active"]:
+        return False
     from app.services.email_service import send_visit_reminder
-    mgr = await db.get(User, prop.created_by) if (prop and prop.created_by) else None
+    mgr = await db.get(User, mgr_id) if mgr_id else None
     _apply_branding(mgr)
     ok = await send_visit_reminder(
         to=c.email, candidate_name=c.full_name,
         property_ref=block["ref"] or "votre dossier",
         when_str=_fmt_when(slot.starts_at), property_html=block["html"],
+        subject_override=ov["subject"], body_html_override=ov["body_html"],
+        signature_override=ov["signature"],
     )
     c.visit_reminded_at = datetime.now(timezone.utc)
     return ok
@@ -664,6 +686,7 @@ async def request_documents(
     email_sent = False
     try:
         from app.services.email_service import send_candidature_documents_request
+        ov = await _cand_overrides(db, user.id, "candidature_pieces", c)
         _apply_branding(user)
         email_sent = await send_candidature_documents_request(
             to=c.email,
@@ -674,6 +697,8 @@ async def request_documents(
             manager_name=getattr(user, "full_name", None),
             custom_message=(data.message or "").strip() or None,
             cc=getattr(user, "email", None),
+            subject_override=ov["subject"], body_html_override=ov["body_html"],
+            signature_override=ov["signature"],
         )
     except Exception as exc:  # noqa: BLE001
         import logging
@@ -742,6 +767,7 @@ async def invite_visit(
     email_sent = False
     try:
         from app.services.email_service import send_visit_invitation
+        ov = await _cand_overrides(db, user.id, "candidature_visite", c, block)
         _apply_branding(user)
         email_sent = await send_visit_invitation(
             to=c.email, candidate_name=c.full_name,
@@ -749,6 +775,8 @@ async def invite_visit(
             property_html=block["html"],
             custom_message=(data.message or "").strip() or None,
             cc=getattr(user, "email", None),
+            subject_override=ov["subject"], body_html_override=ov["body_html"],
+            signature_override=ov["signature"],
         )
     except Exception as exc:  # noqa: BLE001
         import logging
@@ -780,6 +808,7 @@ async def accept_candidature(
         block = await _property_block(db, prop)
         try:
             from app.services.email_service import send_candidature_accepted
+            ov = await _cand_overrides(db, user.id, "candidature_acceptation", c, block)
             _apply_branding(user)
             email_sent = await send_candidature_accepted(
                 to=c.email, candidate_name=c.full_name,
@@ -787,6 +816,8 @@ async def accept_candidature(
                 property_address=block["address"], property_html=block["html"],
                 custom_message=(data.message or "").strip() or None,
                 cc=getattr(user, "email", None),
+                subject_override=ov["subject"], body_html_override=ov["body_html"],
+                signature_override=ov["signature"],
             )
         except Exception as exc:  # noqa: BLE001
             import logging
@@ -817,12 +848,15 @@ async def reject_candidature(
         block = await _property_block(db, prop)
         try:
             from app.services.email_service import send_candidature_rejected
+            ov = await _cand_overrides(db, user.id, "candidature_refus", c, block)
             _apply_branding(user)
             email_sent = await send_candidature_rejected(
                 to=c.email, candidate_name=c.full_name,
                 property_ref=block["ref"] or "",
                 custom_message=(data.message or "").strip() or None,
                 cc=getattr(user, "email", None),
+                subject_override=ov["subject"], body_html_override=ov["body_html"],
+                signature_override=ov["signature"],
             )
         except Exception as exc:  # noqa: BLE001
             import logging
@@ -850,11 +884,14 @@ async def acknowledge_candidature(
     email_sent = False
     try:
         from app.services.email_service import send_candidature_acknowledged
+        ov = await _cand_overrides(db, user.id, "candidature_accuse", c, block)
         _apply_branding(user)
         email_sent = await send_candidature_acknowledged(
             to=c.email, candidate_name=c.full_name, property_html=block["html"],
             custom_message=(data.message or "").strip() or None,
             cc=getattr(user, "email", None),
+            subject_override=ov["subject"], body_html_override=ov["body_html"],
+            signature_override=ov["signature"],
         )
     except Exception as exc:  # noqa: BLE001
         import logging

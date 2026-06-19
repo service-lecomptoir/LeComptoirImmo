@@ -218,7 +218,7 @@ async def _job_visit_reminders() -> None:
             n = 0
             for c in rows:
                 try:
-                    if await send_candidature_visit_reminder(db, c):
+                    if await send_candidature_visit_reminder(db, c, respect_active=True):
                         n += 1
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(f"[Scheduler] visit reminder {c.id} error: {exc}")

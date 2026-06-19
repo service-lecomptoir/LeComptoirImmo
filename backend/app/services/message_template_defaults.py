@@ -17,6 +17,12 @@ TYPE_PLACEHOLDERS: Dict[str, str] = {
     "revision_loyer": "{{tenant_name}} {{old_amount}} {{new_amount}} {{effective_date}} {{property_name}}",
     "revision_charges": "{{tenant_name}} {{old_amount}} {{new_amount}} {{effective_date}} {{property_name}}",
     "taxe_om": "{{tenant_name}} {{year}} {{amount}} {{property_name}}",
+    "candidature_accuse": "{{candidate_name}} {{property_ref}}",
+    "candidature_pieces": "{{candidate_name}} {{property_ref}}",
+    "candidature_visite": "{{candidate_name}} {{property_ref}}",
+    "candidature_relance_visite": "{{candidate_name}} {{property_ref}} {{when}}",
+    "candidature_acceptation": "{{candidate_name}} {{property_ref}} {{property_address}}",
+    "candidature_refus": "{{candidate_name}} {{property_ref}}",
 }
 
 # content[type][lang] = {subject, body, sms}
@@ -158,6 +164,49 @@ DEFAULTS: Dict[str, Dict[str, Dict[str, str]]] = {
                 "sms": "Le Comptoir Immo: doti-belasti {{year}}: {{amount}}."},
     },
 }
+
+
+def _fr_only(subject: str, body: str, sms: str = "") -> Dict[str, Dict[str, str]]:
+    """Modèle français seul (les candidats n'ont pas de langue : repli fr)."""
+    return {"fr": {"subject": subject, "body": body, "sms": sms}}
+
+
+# Communications de candidature (français ; adressées au candidat, pas au locataire).
+DEFAULTS.update({
+    "candidature_accuse": _fr_only(
+        "Votre demande de logement a bien été prise en compte",
+        "Bonjour {{candidate_name}},\n\nNous vous confirmons que votre demande de logement a bien "
+        "été prise en compte. Notre équipe étudie votre dossier et reviendra vers vous rapidement.",
+    ),
+    "candidature_pieces": _fr_only(
+        "Votre dossier de location : pièces à fournir",
+        "Bonjour {{candidate_name}},\n\nPour étudier votre dossier de location, merci de nous "
+        "transmettre les pièces listées ci-dessous via le lien sécurisé.",
+    ),
+    "candidature_visite": _fr_only(
+        "Confirmation de visite : bien {{property_ref}}",
+        "Bonjour {{candidate_name}},\n\nVotre dossier a retenu notre attention pour le logement "
+        "ci-dessous. Nous vous proposons de réserver un créneau de visite. D'autres candidats sont "
+        "également conviés : les créneaux sont attribués dans l'ordre des réservations.",
+    ),
+    "candidature_relance_visite": _fr_only(
+        "Rappel : votre visite approche (bien {{property_ref}})",
+        "Bonjour {{candidate_name}},\n\nPetit rappel : votre visite est prévue le {{when}}. En cas "
+        "d'empêchement, répondez à cet e-mail ou recontactez votre gestionnaire.",
+    ),
+    "candidature_acceptation": _fr_only(
+        "Votre dossier de location est accepté",
+        "Bonjour {{candidate_name}},\n\nNous avons le plaisir de vous informer que votre dossier "
+        "est accepté pour le logement ci-dessous. Félicitations !",
+    ),
+    "candidature_refus": _fr_only(
+        "Réponse à votre candidature",
+        "Bonjour {{candidate_name}},\n\nNous vous remercions de l'intérêt porté à ce logement. "
+        "Après étude attentive des candidatures reçues, nous sommes au regret de vous informer que "
+        "votre dossier n'a pas été retenu cette fois-ci. Nous conservons vos coordonnées et vous "
+        "souhaitons une pleine réussite dans vos démarches.",
+    ),
+})
 
 
 def default_content(rule_type: str) -> Dict[str, Any]:
