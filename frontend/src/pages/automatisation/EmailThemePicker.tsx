@@ -31,25 +31,25 @@ function Medallion({ onDark, logoUrl, dim = 26 }: { onDark: boolean; logoUrl?: s
   return <div style={{ ...style, fontSize: dim * 0.38, fontWeight: 700, lineHeight: `${dim}px`, textAlign: 'center' }}>LC</div>
 }
 
-/** Mini-aperçu d'e-mail (en-tête + corps + pied) selon le thème, avec le logo réel. */
-function Preview({ theme, logoUrl }: { theme: Theme; logoUrl?: string | null }) {
+/** Mini-aperçu d'e-mail (en-tête + corps + pied) selon le thème, avec le logo + nom de compte réels. */
+function Preview({ theme, logoUrl, brand }: { theme: Theme; logoUrl?: string | null; brand: string }) {
   const bandLeft = (bg: string, sub: string) => (
     <div style={{ background: bg, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
       <Medallion onDark logoUrl={logoUrl} />
-      <div><div style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div><div style={{ color: sub, fontSize: 9 }}>Gestion locative</div></div>
+      <div><div style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>{brand}</div><div style={{ color: sub, fontSize: 9 }}>Gestion locative</div></div>
     </div>
   )
   let head: React.ReactNode
   if (theme === 'epure') head = (
     <div style={{ background: '#fff', borderBottom: `3px solid ${NAVY}`, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
       <Medallion onDark={false} logoUrl={logoUrl} />
-      <div><div style={{ color: NAVY, fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div><div style={{ color: '#64748b', fontSize: 9 }}>Gestion locative</div></div>
+      <div><div style={{ color: NAVY, fontSize: 11, fontWeight: 600 }}>{brand}</div><div style={{ color: '#64748b', fontSize: 9 }}>Gestion locative</div></div>
     </div>
   )
   else if (theme === 'epure_center') head = (
     <div style={{ background: '#fff', borderBottom: `3px solid ${GOLD}`, padding: '10px', textAlign: 'center' }}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}><Medallion onDark={false} logoUrl={logoUrl} /></div>
-      <div style={{ color: NAVY, fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div>
+      <div style={{ color: NAVY, fontSize: 11, fontWeight: 600 }}>{brand}</div>
       <div style={{ color: '#94a3b8', fontSize: 8, letterSpacing: '.04em' }}>GESTION LOCATIVE</div>
     </div>
   )
@@ -58,7 +58,7 @@ function Preview({ theme, logoUrl }: { theme: Theme; logoUrl?: string | null }) 
   else head = (
     <div style={{ background: NAVY, borderBottom: `3px solid ${GOLD}`, padding: '10px', textAlign: 'center' }}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}><Medallion onDark logoUrl={logoUrl} /></div>
-      <div style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div>
+      <div style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>{brand}</div>
       <div style={{ color: '#a9c2e8', fontSize: 8, letterSpacing: '.04em' }}>GESTION LOCATIVE</div>
     </div>
   )
@@ -72,7 +72,7 @@ function Preview({ theme, logoUrl }: { theme: Theme; logoUrl?: string | null }) 
         <div style={{ fontWeight: 600, color: NAVY, marginBottom: 3 }}>Vos accès à votre espace</div>
         Bonjour Jean, votre espace est prêt…
       </div>
-      <div style={{ ...foot, padding: '7px 10px', fontSize: 8, textAlign: 'center' }}>Le Comptoir Immo · Gestion locative</div>
+      <div style={{ ...foot, padding: '7px 10px', fontSize: 8, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brand} · Gestion locative</div>
     </div>
   )
 }
@@ -82,6 +82,7 @@ export default function EmailThemePicker() {
   const setUser = useAuthStore(s => s.setUser)
   const current = (user?.email_theme as Theme) || 'marine_center'
   const logoUrl = user?.logo_url || null
+  const brand = (user?.full_name || '').trim() || 'Le Comptoir Immo'
   const [busy, setBusy] = useState<Theme | null>(null)
 
   const choose = async (theme: Theme) => {
@@ -109,7 +110,7 @@ export default function EmailThemePicker() {
           return (
             <button key={t.key} onClick={() => choose(t.key)} disabled={busy === t.key}
               className={`text-left rounded-xl border-2 p-3 transition-colors ${active ? 'border-blue-600 bg-blue-50/40' : 'border-gray-200 hover:border-gray-300'} disabled:opacity-60`}>
-              <Preview theme={t.key} logoUrl={logoUrl} />
+              <Preview theme={t.key} logoUrl={logoUrl} brand={brand} />
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm font-semibold text-gray-900">{t.name}</span>
                 {active && <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700"><Check size={13} /> Actif</span>}

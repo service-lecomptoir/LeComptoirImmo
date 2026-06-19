@@ -16,19 +16,23 @@ _NAVY = "#0D2F5C"
 _GOLD = "#C9A227"
 _TEAL = "#1F7A6B"
 
+_DEFAULT_BRAND = "Le Comptoir Immo"
 _ctx_theme: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar("email_theme", default=None)
 _ctx_logo_bytes: "contextvars.ContextVar[Optional[bytes]]" = contextvars.ContextVar("email_logo_bytes", default=None)
 _ctx_logo_sub: "contextvars.ContextVar[str]" = contextvars.ContextVar("email_logo_sub", default="png")
+_ctx_brand: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar("email_brand", default=None)
 
 
 def set_branding(theme: Optional[str] = None, logo: Optional[bytes] = None,
-                 logo_subtype: str = "png") -> None:
-    """Pose l'apparence des e-mails rendus ensuite dans le même contexte : thème +
-    logo du gestionnaire (octets). Le logo est affiché dans l'en-tête et attaché
-    automatiquement par ``send_email`` (cid:managerlogo). À appeler juste avant l'envoi."""
+                 logo_subtype: str = "png", brand_name: Optional[str] = None) -> None:
+    """Pose l'apparence des e-mails rendus ensuite dans le même contexte : thème,
+    logo du gestionnaire (octets), et nom du compte affiché dans l'en-tête/pied
+    (« Mes informations »). Le logo est attaché automatiquement par ``send_email``
+    (cid:managerlogo). À appeler juste avant l'envoi."""
     _ctx_theme.set(theme if theme in EMAIL_THEMES else DEFAULT_EMAIL_THEME)
     _ctx_logo_bytes.set(logo or None)
     _ctx_logo_sub.set(logo_subtype or "png")
+    _ctx_brand.set((brand_name or "").strip() or None)
 
 
 async def send_email(
@@ -147,20 +151,19 @@ def _avatar_html(*, on_dark: bool, has_logo: bool, dim: int = 44) -> str:
             f'line-height:{dim}px;text-align:center">LC</div>')
 
 
-def _band_header(bg: str, sub_color: str, title: str, has_logo: bool) -> str:
+def _band_header(bg: str, sub_color: str, title: str, has_logo: bool, brand: str) -> str:
     """En-tête bandeau coloré, logo à gauche (marine_band / teal_band)."""
     return (
         f'<tr><td style="background:{bg};padding:18px 28px">'
         f'<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
         f'<td style="padding-right:13px">{_avatar_html(on_dark=True, has_logo=has_logo, dim=44)}</td>'
-        f'<td><div style="color:#fff;font-size:17px;font-weight:bold">Le Comptoir Immo</div>'
+        f'<td><div style="color:#fff;font-size:17px;font-weight:bold">{brand}</div>'
         f'<div style="color:{sub_color};font-size:12px">Gestion locative · {title}</div></td>'
         f'</tr></table></td></tr>'
     )
 
 
-def _email_header(title: str, theme: str, has_logo: bool) -> str:
-    brand = "Le Comptoir Immo"
+def _email_header(title: str, theme: str, has_logo: bool, brand: str) -> str:
     if theme == "epure":
         return (
             f'<tr><td style="background:#ffffff;border-bottom:3px solid {_NAVY};padding:18px 28px">'
@@ -179,9 +182,9 @@ def _email_header(title: str, theme: str, has_logo: bool) -> str:
             f'<div style="color:#64748b;font-size:13px;margin-top:6px">{title}</div></td></tr>'
         )
     if theme == "marine_band":
-        return _band_header(_NAVY, "#a9c2e8", title, has_logo)
+        return _band_header(_NAVY, "#a9c2e8", title, has_logo, brand)
     if theme == "teal_band":
-        return _band_header(_TEAL, "#cdeae3", title, has_logo)
+        return _band_header(_TEAL, "#cdeae3", title, has_logo, brand)
     # marine_center (défaut)
     return (
         f'<tr><td style="background:{_NAVY};border-bottom:3px solid {_GOLD};padding:22px 28px;text-align:center">'
@@ -192,8 +195,8 @@ def _email_header(title: str, theme: str, has_logo: bool) -> str:
     )
 
 
-def _email_footer(theme: str) -> str:
-    txt = "Le Comptoir Immo · Gestion locative · Ce message est automatique, merci de ne pas y répondre."
+def _email_footer(theme: str, brand: str) -> str:
+    txt = f"{brand} · Gestion locative · Ce message est automatique, merci de ne pas y répondre."
     if theme in ("epure", "epure_center"):
         return (f'<tr><td style="background:#f4f6fb;border-top:1px solid #e5e7eb;padding:14px 28px;'
                 f'text-align:center;font-size:12px;color:#94a3b8">{txt}</td></tr>')
@@ -209,6 +212,7 @@ def _base_template(title: str, content: str) -> str:
     if theme not in EMAIL_THEMES:
         theme = DEFAULT_EMAIL_THEME
     has_logo = _ctx_logo_bytes.get() is not None
+    brand = _ctx_brand.get() or _DEFAULT_BRAND
     return f"""
 <!DOCTYPE html>
 <html lang="fr">
@@ -217,9 +221,9 @@ def _base_template(title: str, content: str) -> str:
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5">
 <tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e5e7eb">
-{_email_header(title, theme, has_logo)}
+{_email_header(title, theme, has_logo, brand)}
 <tr><td style="padding:24px 28px;color:#334155;font-size:14px;line-height:1.7">{content}</td></tr>
-{_email_footer(theme)}
+{_email_footer(theme, brand)}
 </table>
 </td></tr>
 </table>

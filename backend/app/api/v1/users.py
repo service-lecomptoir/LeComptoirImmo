@@ -219,7 +219,8 @@ async def create_user(
             from app.services.mail_signature import read_logo
             # Apparence (thème + logo) du gestionnaire créateur.
             _logo, _sub = read_logo(getattr(current_user, "logo_path", None))
-            set_branding(getattr(current_user, "email_theme", None), logo=_logo, logo_subtype=_sub)
+            set_branding(getattr(current_user, "email_theme", None), logo=_logo, logo_subtype=_sub,
+                         brand_name=getattr(current_user, "full_name", None))
             credentials_email_sent = await send_credentials(
                 to=new_user.email, login=new_user.email,
                 password=generated_password, full_name=new_user.full_name,
@@ -411,7 +412,8 @@ async def send_user_credentials(
         from app.services.email_service import send_credentials, set_branding
         from app.services.mail_signature import read_logo
         _logo, _sub = read_logo(getattr(current_user, "logo_path", None))
-        set_branding(getattr(current_user, "email_theme", None), logo=_logo, logo_subtype=_sub)
+        set_branding(getattr(current_user, "email_theme", None), logo=_logo, logo_subtype=_sub,
+                     brand_name=getattr(current_user, "full_name", None))
         email_sent = await send_credentials(
             to=target.email, login=target.email,
             password=temp_password, full_name=target.full_name,

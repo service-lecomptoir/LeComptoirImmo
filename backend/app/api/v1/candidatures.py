@@ -52,7 +52,8 @@ def _apply_branding(manager) -> None:
     from app.services.email_service import set_branding
     from app.services.mail_signature import read_logo
     logo, sub = read_logo(getattr(manager, "logo_path", None))
-    set_branding(getattr(manager, "email_theme", None), logo=logo, logo_subtype=sub)
+    set_branding(getattr(manager, "email_theme", None), logo=logo, logo_subtype=sub,
+                 brand_name=getattr(manager, "full_name", None))
 
 
 def candidature_visit_url(token: str) -> str:
