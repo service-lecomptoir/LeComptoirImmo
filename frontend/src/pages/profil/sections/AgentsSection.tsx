@@ -77,9 +77,9 @@ export default function AgentsSection() {
 
       <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { emoji: '📊', name: 'Agent Comptable', desc: 'Impayés, encaissements, quittances.' },
-          { emoji: '🛡️', name: 'Agent Sécurité', desc: 'Démarches, incidents, conflits de voisinage.' },
-          { emoji: '🗂️', name: 'Agent Administratif', desc: 'Biens, locataires, contrats, entretiens.' },
+          { emoji: '📊', name: 'Agent Comptable', desc: 'Impayés et ancienneté, encaissements, taux de recouvrement, échéances à venir, quittances.' },
+          { emoji: '🛡️', name: 'Agent Sécurité', desc: 'Démarches et incidents, signalements de la résidence (bruit, sécurité, ascenseur…), voisinage.' },
+          { emoji: '🗂️', name: 'Agent Administratif', desc: 'Biens occupés/vacants, contrats, baux à échéance, candidatures et visites, entretiens.' },
         ].map(a => (
           <li key={a.name} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
             <div className="text-lg">{a.emoji}</div>
