@@ -351,7 +351,7 @@ export default function MonProfil() {
               </div>
             </div>
             <p className="text-xs text-gray-400 mt-1">
-              Apparaît en haut à gauche de vos documents (avis d'échéance…). Format conseillé : PNG/JPG, ~170×64 px.
+              Apparaît en haut à gauche de vos documents (avis d'échéance…). Format conseillé : PNG/JPG, 160×80 px.
               S'il n'y a pas de logo, l'emplacement reste vide.
             </p>
           </div>
