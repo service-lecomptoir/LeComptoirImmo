@@ -4,6 +4,7 @@ import { Button } from '@/components/ui'
 import { useParams } from 'react-router-dom'
 import { apiClient } from '@/api/client'
 import { MapPin, Home } from 'lucide-react'
+import { LogoMark } from '@/components/common/Logo'
 
 interface PublicListing {
   title?: string | null
@@ -112,7 +113,7 @@ export default function AnnoncePublic() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: BRAND.navy }}>LC</div>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: BRAND.navy }}><LogoMark size={17} className="text-white" /></div>
           <span className="font-semibold text-gray-900 text-sm">Le Comptoir Immo</span>
         </div>
       </header>

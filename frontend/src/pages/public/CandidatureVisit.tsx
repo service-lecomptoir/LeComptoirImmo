@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { CalendarClock, CheckCircle2, Loader2, Users, MapPin } from 'lucide-react'
 import { publicCandidatureApi, type PublicVisits } from '@/api/publicCandidature'
 import { toast } from '@/store/toast'
+import { LogoMark } from '@/components/common/Logo'
 
 const NAVY = '#0D2F5C'
 
@@ -66,7 +67,7 @@ export default function CandidatureVisit() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: NAVY }}>LC</div>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: NAVY }}><LogoMark size={17} className="text-white" /></div>
           <span className="font-semibold text-gray-900 text-sm">Le Comptoir Immo</span>
         </div>
       </header>

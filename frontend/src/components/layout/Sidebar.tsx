@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { featureForPath, isFeatureAllowed } from '@/lib/features'
 import { navForRole, proprioSectionForPath, type NavItem } from '@/lib/navigation'
+import { LogoMark } from '@/components/common/Logo'
 import { getDayMoment, formatLongDate } from '@/lib/dayMoment'
 import { leasesApi } from '@/api/leases'
 import { propertiesApi } from '@/api/properties'
@@ -288,7 +289,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       <div className="px-6 py-5 border-b border-gray-700">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xs">LC</span>
+            <LogoMark size={20} className="text-white" />
           </div>
           <div>
             <p className="text-white font-semibold text-sm">Le Comptoir Immo</p>
