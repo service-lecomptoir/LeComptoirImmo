@@ -27,6 +27,37 @@ logger = logging.getLogger(__name__)
 # Clés canoniques : dérivées du catalogue unique (app/core/feature_catalog.py).
 from app.core.feature_catalog import FEATURE_KEYS  # noqa: F401  (réexport)
 
+# Fonctionnalité « propriétaire » d'un type de règle d'automatisation. Sert à
+# masquer/seeder les règles selon le plan : une règle n'est pertinente que si la
+# fonctionnalité qu'elle sert est incluse. Les e-mails de candidature, eux,
+# fonctionnent en repli sur leur modèle standard même sans le module Communication
+# (cf. candidature_comm.resolve). rule_type absent ⇒ toujours autorisé.
+RULE_TYPE_FEATURE = {
+    "avis_echeance": "avis_echeances",
+    "quittance": "quittances",
+    "rappel_impaye": "payments",
+    "relance_1": "payments",
+    "relance_2": "payments",
+    "revision_loyer": "actualisation",
+    "revision_charges": "actualisation",
+    "taxe_om": "actualisation",
+    "rapport_mensuel": "finances",
+    "candidature_accuse": "candidatures",
+    "candidature_pieces": "candidatures",
+    "candidature_visite": "candidatures",
+    "candidature_relance_visite": "candidatures",
+    "candidature_acceptation": "candidatures",
+    "candidature_refus": "candidatures",
+}
+
+
+def rule_type_allowed(rule_type: str, feats) -> bool:
+    """Vrai si le type de règle est pertinent pour le plan (feats=None ⇒ tout)."""
+    if feats is None:
+        return True
+    feat = RULE_TYPE_FEATURE.get(rule_type)
+    return feat is None or feat in feats
+
 _MANAGER_ROLES = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
 
 

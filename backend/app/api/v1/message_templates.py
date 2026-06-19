@@ -79,7 +79,11 @@ async def list_templates(
     if rule_type:
         q = q.where(MessageTemplate.rule_type == rule_type)
     q = q.order_by(MessageTemplate.rule_type, MessageTemplate.name)
-    return list((await db.execute(q)).scalars().all())
+    rows = list((await db.execute(q)).scalars().all())
+    # Masquer les modèles dont la fonctionnalité n'est pas incluse au plan.
+    from app.core.features import get_plan_features, rule_type_allowed
+    feats = await get_plan_features(db, current_user.id)
+    return [t for t in rows if rule_type_allowed(t.rule_type, feats)]
 
 
 @router.post("", response_model=MTResponse, status_code=status.HTTP_201_CREATED)

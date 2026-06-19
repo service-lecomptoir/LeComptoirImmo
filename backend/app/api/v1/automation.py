@@ -60,7 +60,12 @@ async def list_rules(
         q = q.where(AutomationRule.rule_type == rule_type)
     q = q.order_by(AutomationRule.rule_type, AutomationRule.trigger_days)
     result = await db.execute(q)
-    return list(result.scalars().all())
+    rules = list(result.scalars().all())
+    # Masquer les règles dont la fonctionnalité n'est pas incluse au plan
+    # (ex. règles candidature si le gestionnaire n'a pas « Gestion des candidatures »).
+    from app.core.features import get_plan_features, rule_type_allowed
+    feats = await get_plan_features(db, current_user.id)
+    return [r for r in rules if rule_type_allowed(r.rule_type, feats)]
 
 
 @router.post("/rules", response_model=AutomationRuleResponse, status_code=status.HTTP_201_CREATED)
