@@ -5,42 +5,66 @@ import { toast } from '@/store/toast'
 import { useAuthStore } from '@/store/authStore'
 import type { User } from '@/types/auth'
 
-type Theme = 'marine_center' | 'marine_band' | 'epure'
+type Theme = 'marine_center' | 'marine_band' | 'epure' | 'teal_band' | 'epure_center'
 
 const NAVY = '#0D2F5C'
 const GOLD = '#C9A227'
+const TEAL = '#1F7A6B'
 
 const THEMES: { key: Theme; name: string; desc: string }[] = [
   { key: 'marine_center', name: 'Marine centré', desc: 'En-tête marine, logo centré, filet doré. Premium.' },
   { key: 'marine_band', name: 'Bandeau marine', desc: 'En-tête marine, logo à gauche. Corporate.' },
-  { key: 'epure', name: 'Épuré clair', desc: 'En-tête blanc, logo en tuile, filet marine. Léger.' },
+  { key: 'teal_band', name: 'Bandeau sarcelle', desc: 'En-tête vert sarcelle de marque, logo à gauche.' },
+  { key: 'epure_center', name: 'Épuré centré', desc: 'En-tête blanc, logo centré, filet doré. Élégant.' },
+  { key: 'epure', name: 'Épuré clair', desc: 'En-tête blanc, logo à gauche, filet marine. Léger.' },
 ]
 
-/** Mini-aperçu d'e-mail (en-tête + corps + pied) selon le thème. */
-function Preview({ theme }: { theme: Theme }) {
-  const monoDark = (
-    <div style={{ width: 26, height: 26, borderRadius: 999, background: 'rgba(255,255,255,.18)', color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: '26px', textAlign: 'center' }}>LC</div>
+function Medallion({ onDark, logoUrl, dim = 26 }: { onDark: boolean; logoUrl?: string | null; dim?: number }) {
+  if (logoUrl) {
+    return <div style={{ width: dim, height: dim, borderRadius: 6, background: '#fff', padding: 2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <img src={logoUrl} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+    </div>
+  }
+  const style: React.CSSProperties = onDark
+    ? { width: dim, height: dim, borderRadius: 999, background: 'rgba(255,255,255,.18)', color: '#fff' }
+    : { width: dim, height: dim, borderRadius: 6, background: NAVY, color: '#fff' }
+  return <div style={{ ...style, fontSize: dim * 0.38, fontWeight: 700, lineHeight: `${dim}px`, textAlign: 'center' }}>LC</div>
+}
+
+/** Mini-aperçu d'e-mail (en-tête + corps + pied) selon le thème, avec le logo réel. */
+function Preview({ theme, logoUrl }: { theme: Theme; logoUrl?: string | null }) {
+  const bandLeft = (bg: string, sub: string) => (
+    <div style={{ background: bg, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <Medallion onDark logoUrl={logoUrl} />
+      <div><div style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div><div style={{ color: sub, fontSize: 9 }}>Gestion locative</div></div>
+    </div>
   )
-  const head = theme === 'epure' ? (
+  let head: React.ReactNode
+  if (theme === 'epure') head = (
     <div style={{ background: '#fff', borderBottom: `3px solid ${NAVY}`, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ width: 24, height: 24, borderRadius: 6, background: NAVY, color: '#fff', fontSize: 9, fontWeight: 700, lineHeight: '24px', textAlign: 'center' }}>LC</div>
+      <Medallion onDark={false} logoUrl={logoUrl} />
       <div><div style={{ color: NAVY, fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div><div style={{ color: '#64748b', fontSize: 9 }}>Gestion locative</div></div>
     </div>
-  ) : theme === 'marine_band' ? (
-    <div style={{ background: NAVY, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-      {monoDark}
-      <div><div style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div><div style={{ color: '#a9c2e8', fontSize: 9 }}>Gestion locative</div></div>
+  )
+  else if (theme === 'epure_center') head = (
+    <div style={{ background: '#fff', borderBottom: `3px solid ${GOLD}`, padding: '10px', textAlign: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}><Medallion onDark={false} logoUrl={logoUrl} /></div>
+      <div style={{ color: NAVY, fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div>
+      <div style={{ color: '#94a3b8', fontSize: 8, letterSpacing: '.04em' }}>GESTION LOCATIVE</div>
     </div>
-  ) : (
+  )
+  else if (theme === 'marine_band') head = bandLeft(NAVY, '#a9c2e8')
+  else if (theme === 'teal_band') head = bandLeft(TEAL, '#cdeae3')
+  else head = (
     <div style={{ background: NAVY, borderBottom: `3px solid ${GOLD}`, padding: '10px', textAlign: 'center' }}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>{monoDark}</div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}><Medallion onDark logoUrl={logoUrl} /></div>
       <div style={{ color: '#fff', fontSize: 11, fontWeight: 600 }}>Le Comptoir Immo</div>
       <div style={{ color: '#a9c2e8', fontSize: 8, letterSpacing: '.04em' }}>GESTION LOCATIVE</div>
     </div>
   )
-  const foot = theme === 'epure'
+  const foot = theme === 'epure' || theme === 'epure_center'
     ? { background: '#f4f6fb', color: '#94a3b8' }
-    : { background: NAVY, color: '#a9c2e8' }
+    : theme === 'teal_band' ? { background: TEAL, color: '#cdeae3' } : { background: NAVY, color: '#a9c2e8' }
   return (
     <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
       {head}
@@ -57,6 +81,7 @@ export default function EmailThemePicker() {
   const user = useAuthStore(s => s.user)
   const setUser = useAuthStore(s => s.setUser)
   const current = (user?.email_theme as Theme) || 'marine_center'
+  const logoUrl = user?.logo_url || null
   const [busy, setBusy] = useState<Theme | null>(null)
 
   const choose = async (theme: Theme) => {
@@ -74,15 +99,17 @@ export default function EmailThemePicker() {
       <h2 className="text-base font-semibold text-gray-900">Apparence des e-mails</h2>
       <p className="text-sm text-gray-500 mt-1 mb-4">
         Choisissez la mise en page appliquée à tous vos e-mails (accès, avis, quittances, candidatures…).
-        Votre logo (Mes informations) s'affiche dans l'en-tête s'il est renseigné.
+        {logoUrl
+          ? ' Les aperçus montrent votre logo tel qu’il apparaîtra dans l’en-tête.'
+          : ' Ajoutez un logo dans « Mes informations » pour l’afficher dans l’en-tête (un monogramme « LC » est utilisé à défaut).'}
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {THEMES.map(t => {
           const active = current === t.key
           return (
             <button key={t.key} onClick={() => choose(t.key)} disabled={busy === t.key}
               className={`text-left rounded-xl border-2 p-3 transition-colors ${active ? 'border-blue-600 bg-blue-50/40' : 'border-gray-200 hover:border-gray-300'} disabled:opacity-60`}>
-              <Preview theme={t.key} />
+              <Preview theme={t.key} logoUrl={logoUrl} />
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm font-semibold text-gray-900">{t.name}</span>
                 {active && <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700"><Check size={13} /> Actif</span>}

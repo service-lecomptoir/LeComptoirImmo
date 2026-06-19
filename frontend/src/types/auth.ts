@@ -20,7 +20,7 @@ export interface User {
   owner_company?: string | null
   owner_national_id?: string | null
   template_pinned_vars?: Record<string, string[]> | null
-  email_theme?: 'marine_center' | 'marine_band' | 'epure' | null
+  email_theme?: 'marine_center' | 'marine_band' | 'epure' | 'teal_band' | 'epure_center' | null
   logo_url?: string | null
   signature?: string | null
   signature_mode?: 'type' | 'draw' | 'upload' | null

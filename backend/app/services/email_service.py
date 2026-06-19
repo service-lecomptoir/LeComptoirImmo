@@ -10,10 +10,11 @@ logger = logging.getLogger(__name__)
 # Look standard, généralisé à tous les e-mails. Chaque gestionnaire peut choisir
 # son thème (Communication et automatisation) ; résolu via un contexte (set_branding)
 # posé par l'appelant qui connaît le gestionnaire concerné.
-EMAIL_THEMES = ("marine_center", "marine_band", "epure")
+EMAIL_THEMES = ("marine_center", "marine_band", "epure", "teal_band", "epure_center")
 DEFAULT_EMAIL_THEME = "marine_center"
 _NAVY = "#0D2F5C"
 _GOLD = "#C9A227"
+_TEAL = "#1F7A6B"
 
 _ctx_theme: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar("email_theme", default=None)
 _ctx_logo_bytes: "contextvars.ContextVar[Optional[bytes]]" = contextvars.ContextVar("email_logo_bytes", default=None)
@@ -146,6 +147,18 @@ def _avatar_html(*, on_dark: bool, has_logo: bool, dim: int = 44) -> str:
             f'line-height:{dim}px;text-align:center">LC</div>')
 
 
+def _band_header(bg: str, sub_color: str, title: str, has_logo: bool) -> str:
+    """En-tête bandeau coloré, logo à gauche (marine_band / teal_band)."""
+    return (
+        f'<tr><td style="background:{bg};padding:18px 28px">'
+        f'<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+        f'<td style="padding-right:13px">{_avatar_html(on_dark=True, has_logo=has_logo, dim=44)}</td>'
+        f'<td><div style="color:#fff;font-size:17px;font-weight:bold">Le Comptoir Immo</div>'
+        f'<div style="color:{sub_color};font-size:12px">Gestion locative · {title}</div></td>'
+        f'</tr></table></td></tr>'
+    )
+
+
 def _email_header(title: str, theme: str, has_logo: bool) -> str:
     brand = "Le Comptoir Immo"
     if theme == "epure":
@@ -157,15 +170,18 @@ def _email_header(title: str, theme: str, has_logo: bool) -> str:
             f'<div style="color:#64748b;font-size:12px">Gestion locative · {title}</div></td>'
             f'</tr></table></td></tr>'
         )
-    if theme == "marine_band":
+    if theme == "epure_center":
         return (
-            f'<tr><td style="background:{_NAVY};padding:18px 28px">'
-            f'<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
-            f'<td style="padding-right:13px">{_avatar_html(on_dark=True, has_logo=has_logo, dim=44)}</td>'
-            f'<td><div style="color:#fff;font-size:17px;font-weight:bold">{brand}</div>'
-            f'<div style="color:#a9c2e8;font-size:12px">Gestion locative · {title}</div></td>'
-            f'</tr></table></td></tr>'
+            f'<tr><td style="background:#ffffff;border-bottom:3px solid {_GOLD};padding:22px 28px;text-align:center">'
+            f'<div style="margin-bottom:8px">{_avatar_html(on_dark=False, has_logo=has_logo, dim=48)}</div>'
+            f'<div style="color:{_NAVY};font-size:18px;font-weight:bold">{brand}</div>'
+            f'<div style="color:#94a3b8;font-size:12px;letter-spacing:.04em">GESTION LOCATIVE</div>'
+            f'<div style="color:#64748b;font-size:13px;margin-top:6px">{title}</div></td></tr>'
         )
+    if theme == "marine_band":
+        return _band_header(_NAVY, "#a9c2e8", title, has_logo)
+    if theme == "teal_band":
+        return _band_header(_TEAL, "#cdeae3", title, has_logo)
     # marine_center (défaut)
     return (
         f'<tr><td style="background:{_NAVY};border-bottom:3px solid {_GOLD};padding:22px 28px;text-align:center">'
@@ -178,9 +194,12 @@ def _email_header(title: str, theme: str, has_logo: bool) -> str:
 
 def _email_footer(theme: str) -> str:
     txt = "Le Comptoir Immo · Gestion locative · Ce message est automatique, merci de ne pas y répondre."
-    if theme == "epure":
+    if theme in ("epure", "epure_center"):
         return (f'<tr><td style="background:#f4f6fb;border-top:1px solid #e5e7eb;padding:14px 28px;'
                 f'text-align:center;font-size:12px;color:#94a3b8">{txt}</td></tr>')
+    if theme == "teal_band":
+        return (f'<tr><td style="background:{_TEAL};padding:14px 28px;text-align:center;'
+                f'font-size:12px;color:#cdeae3">{txt}</td></tr>')
     return (f'<tr><td style="background:{_NAVY};padding:14px 28px;text-align:center;'
             f'font-size:12px;color:#a9c2e8">{txt}</td></tr>')
 
