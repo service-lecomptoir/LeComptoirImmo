@@ -7,8 +7,8 @@
     body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #111; line-height: 1.5; }
     .head { width: 100%; border-collapse: collapse; }
     .head td { vertical-align: middle; }
-    .caf { display: inline-block; background: #0b6ab0; color: #fff; font-weight: bold;
-           font-size: 15pt; padding: 6px 10px; letter-spacing: 1px; }
+    .caf { background: #0b6ab0; color: #fff; font-weight: bold;
+           font-size: 15pt; padding: 6px 10px; letter-spacing: 1px; text-align: center; }
     .title { font-size: 17pt; font-weight: bold; color: #111; }
     .sub { font-size: 11pt; color: #111; }
     .cerfa { text-align: right; }
@@ -39,7 +39,9 @@
   <table class="head">
     <tr>
       <td style="width: 60%;">
-        <span class="caf">caf</span>
+        <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr><td class="caf">caf</td></tr>
+        </table>
         <div style="margin-top:5px;">
           <span class="title">Demande de versement direct</span><br>
           <span class="sub">allocation de logement</span>

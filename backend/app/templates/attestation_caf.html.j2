@@ -7,8 +7,8 @@
     body { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; color: #111; line-height: 1.45; }
     .head { width: 100%; border-collapse: collapse; }
     .head td { vertical-align: middle; }
-    .caf { display: inline-block; background: #0b6ab0; color: #fff; font-weight: bold;
-           font-size: 15pt; padding: 6px 10px; letter-spacing: 1px; }
+    .caf { background: #0b6ab0; color: #fff; font-weight: bold;
+           font-size: 15pt; padding: 6px 10px; letter-spacing: 1px; text-align: center; }
     .title { font-size: 17pt; font-weight: bold; color: #111; }
     .cerfa { text-align: right; }
     .cerfa .num { display: inline-block; border: 1px solid #333; padding: 2px 8px; font-weight: bold; font-size: 11pt; }
@@ -41,8 +41,10 @@
   <table class="head">
     <tr>
       <td style="width: 60%;">
-        <span class="caf">caf</span>
-        <span class="title" style="margin-left:10px;">Attestation de loyer</span>
+        <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tr>
+          <td class="caf">caf</td>
+          <td class="title" style="padding-left:10px; vertical-align:middle;">Attestation de loyer</td>
+        </tr></table>
       </td>
       <td style="width: 40%;">
         <div class="cerfa"><span class="num">N° 10842*07</span></div>
