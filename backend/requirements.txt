@@ -30,6 +30,7 @@ svglib==1.6.0
 reportlab==4.5.1
 weasyprint==62.3
 jinja2==3.1.4
+# pypdf (déjà transitif via xhtml2pdf) : remplissage des formulaires PDF CAF (AcroForm)
 
 # ── Date utilities ───────────────────────────────────────────────────────────
 python-dateutil==2.9.0.post0

@@ -30,6 +30,7 @@ from app.models.rent_revision import RentRevision
 from app.models.taxe_declaration import TaxeDeclaration
 from app.models.message_template import MessageTemplate
 from app.models.visit import PropertyVisitSlot
+from app.models.caf_template import CafTemplate
 
 __all__ = [
     "User", "Tenant", "Owner", "Property", "Document",
