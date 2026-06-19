@@ -1,18 +1,31 @@
 import { useEffect, useState } from 'react'
+import type { ElementType } from 'react'
 import { BRAND } from '@/lib/brand'
 import { Link } from 'react-router-dom'
 import {
   ArrowRight, Check, Building2, Users, Calendar, CreditCard,
-  FileCheck, TrendingUp, Zap, PenSquare, MessageSquare, Calculator, Infinity as InfinityIcon,
-  Menu, X, Info,
+  FileCheck, TrendingUp, Zap, PenSquare, Calculator, Infinity as InfinityIcon,
+  Menu, X, Info, Megaphone, UserCheck, BarChart3, FileText, Send, MessagesSquare,
+  Wrench, BookUser, ShoppingBag, Landmark, DoorOpen, Settings, Wallet, Bot, ListChecks,
 } from 'lucide-react'
 import SubscriptionModal from '@/pages/SubscriptionModal'
 import { publicPlansApi, type PublicPlan } from '@/api/publicPlans'
-import { FEATURE_LABELS, FEATURE_DESCRIPTIONS } from '@/lib/features'
+import { useCatalogStore, type CatalogItem } from '@/store/catalogStore'
+import { LogoMark } from '@/components/common/Logo'
 
 const NAVY = BRAND.navy
 const ORANGE = BRAND.orange
-const FEATURE_ORDER = Object.keys(FEATURE_LABELS)
+
+// Icône d'illustration par fonctionnalité (la section « Fonctionnalités » est
+// générée depuis le catalogue ; seule l'icône reste choisie ici).
+const ICON_BY_FEATURE: Record<string, ElementType> = {
+  diffusion: Megaphone, candidatures: UserCheck, dashboard: BarChart3, properties: Building2,
+  tenants: Users, leases: FileText, avis_echeances: Calendar, payments: CreditCard,
+  quittances: FileCheck, actualisation: TrendingUp, automatisation: Send, templates: PenSquare,
+  incidents: MessagesSquare, entretiens: Wrench, contacts: BookUser, offres: ShoppingBag,
+  documents_caf: Landmark, sortie_locataire: DoorOpen, admin: Settings, finances: Wallet,
+  performance_biens: BarChart3, liasse_fiscale: Calculator, agents_ia: Bot,
+}
 
 const NAV = [
   { href: '#comment-ca-marche', label: 'Comment ça marche' },
@@ -21,22 +34,9 @@ const NAV = [
 ]
 
 const STEPS = [
-  { n: 1, title: 'Créez votre espace', text: "Votre agence ou votre patrimoine est prêt en quelques minutes : aucun logiciel à installer." },
-  { n: 2, title: 'Ajoutez biens, locataires et contrats', text: "Centralisez propriétaires, locataires, baux et documents au même endroit." },
-  { n: 3, title: 'Automatisez la gestion locative', text: "Avis d'échéances, quittances, relances et révisions de loyer générés automatiquement." },
-]
-
-const FEATURES = [
-  { icon: Building2, title: 'Biens & propriétaires', text: 'Gérez tout votre patrimoine et vos propriétaires avec leurs coordonnées et RIB.' },
-  { icon: Users, title: 'Locataires & contrats', text: 'Fiches locataires, baux, co-titulaires et suivi de l’occupation.' },
-  { icon: Calendar, title: "Avis d'échéances", text: 'Génération automatique des avis selon la fréquence et la règle d’appel.' },
-  { icon: CreditCard, title: 'Paiements', text: 'Encaissements, déclarations, relances et soldes en temps réel.' },
-  { icon: FileCheck, title: 'Quittances de loyer', text: 'Quittances PDF à votre charte, prêtes à envoyer au locataire.' },
-  { icon: TrendingUp, title: 'Actualisation IRL & charges', text: 'Révision annuelle des loyers (IRL) et régularisation des charges.' },
-  { icon: Zap, title: 'Automatisation', text: 'Tâches récurrentes automatisées pour gagner un temps précieux.' },
-  { icon: PenSquare, title: 'Atelier de documents', text: 'Vos modèles de documents personnalisés (logo, en-tête, mentions).' },
-  { icon: MessageSquare, title: 'Messages & incidents', text: 'Échangez avec vos locataires et suivez les incidents et entretiens.' },
-  { icon: Calculator, title: 'Finances & liasse fiscale', text: 'Performance par bien, revenus et liasse fiscale en un clic.' },
+  { n: 1, title: 'Créez votre espace', text: "Votre agence ou votre patrimoine est prêt en quelques minutes, sans aucun logiciel à installer." },
+  { n: 2, title: 'Ajoutez biens, locataires et contrats', text: "Réunissez propriétaires, locataires, baux et documents au même endroit, en toute simplicité." },
+  { n: 3, title: 'Automatisez la gestion locative', text: "Avis d'échéances, quittances, relances et révisions de loyer se génèrent et s'envoient tout seuls." },
 ]
 
 function Header({ onDemo }: { onDemo: () => void }) {
@@ -46,7 +46,7 @@ function Header({ onDemo }: { onDemo: () => void }) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         <a href="#top" onClick={() => setOpen(false)} className="flex items-center gap-2.5 shrink-0">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: ORANGE }}>
-            <span className="text-white font-bold text-xs">LC</span>
+            <LogoMark size={20} className="text-white" />
           </div>
           <span className="font-semibold text-[15px]" style={{ color: NAVY }}>Le Comptoir Immo</span>
         </a>
@@ -253,7 +253,30 @@ function HowItWorks() {
   )
 }
 
+function FeatureCard({ item }: { item: CatalogItem }) {
+  const Icon = ICON_BY_FEATURE[item.key] ?? ListChecks
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md transition-shadow">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: `${ORANGE}1A`, color: ORANGE }}>
+        <Icon size={20} />
+      </div>
+      <h3 className="font-semibold text-gray-900 mb-1.5">{item.label}</h3>
+      <p className="text-sm text-gray-500 leading-relaxed">{item.description}</p>
+    </div>
+  )
+}
+
 function Features() {
+  // Section entièrement générée depuis le catalogue (regroupée par catégorie).
+  const items = useCatalogStore(s => s.items)
+  const groups: { category: string; items: CatalogItem[] }[] = []
+  for (const it of items) {
+    let g = groups.find(x => x.category === it.category)
+    if (!g) { g = { category: it.category, items: [] }; groups.push(g) }
+    g.items.push(it)
+  }
+  const showHeaders = groups.length > 1 || (groups[0]?.category ?? '') !== ''
+
   return (
     <section id="fonctionnalites" className="py-20 sm:py-24 bg-gray-50 scroll-mt-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -261,19 +284,17 @@ function Features() {
           <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: NAVY }}>Fonctionnalités</h2>
           <p className="mt-3 text-gray-500">Tout ce qu'il faut pour gérer la location de A à Z, sans tableur.</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {FEATURES.map(f => {
-            const Icon = f.icon
-            return (
-              <div key={f.title} className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-md transition-shadow">
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: `${ORANGE}1A`, color: ORANGE }}>
-                  <Icon size={20} />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1.5">{f.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{f.text}</p>
+        <div className="space-y-12">
+          {groups.map(g => (
+            <div key={g.category || 'all'}>
+              {showHeaders && g.category && (
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-5">{g.category}</h3>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {g.items.map(it => <FeatureCard key={it.key} item={it} />)}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -281,12 +302,14 @@ function Features() {
 }
 
 function FeatureItem({ featureKey }: { featureKey: string }) {
-  const desc = FEATURE_DESCRIPTIONS[featureKey]
+  const labels = useCatalogStore(s => s.labels)
+  const descriptions = useCatalogStore(s => s.descriptions)
+  const desc = descriptions[featureKey]
   return (
     <li className="flex items-start gap-2 text-sm text-gray-600">
       <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
       <span className="inline-flex items-center gap-1.5">
-        {FEATURE_LABELS[featureKey]}
+        {labels[featureKey] ?? featureKey}
         {desc && (
           <span className="group relative inline-flex items-center">
             <Info size={13} className="text-gray-300 hover:text-gray-500 cursor-help" aria-label={desc} />
@@ -305,9 +328,10 @@ function FeatureItem({ featureKey }: { featureKey: string }) {
 }
 
 function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: (planId?: string) => void; highlight: boolean }) {
-  const included = plan.features === null ? FEATURE_ORDER : FEATURE_ORDER.filter(k => plan.features!.includes(k))
-  // « Toutes » dès que l'intégralité des modules est incluse (null OU les 18 cochés).
-  const allFeatures = included.length === FEATURE_ORDER.length
+  const orderedKeys = useCatalogStore(s => s.orderedKeys)
+  const included = plan.features === null ? orderedKeys : orderedKeys.filter(k => plan.features!.includes(k))
+  // « Toutes » dès que l'intégralité des modules est incluse (null OU tout coché).
+  const allFeatures = included.length === orderedKeys.length
   return (
     <div
       className={`relative bg-white rounded-2xl border p-6 flex flex-col ${highlight ? 'shadow-xl' : 'border-gray-100 shadow-sm'}`}
@@ -408,7 +432,7 @@ function Footer() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: ORANGE }}>
-            <span className="text-white font-bold text-[10px]">LC</span>
+            <LogoMark size={17} className="text-white" />
           </div>
           <span className="font-semibold text-sm" style={{ color: NAVY }}>Le Comptoir Immo</span>
         </div>
@@ -424,6 +448,8 @@ function Footer() {
 export default function Landing() {
   const [demoOpen, setDemoOpen] = useState(false)
   const [demoPlanId, setDemoPlanId] = useState<string | undefined>(undefined)
+  const loadCatalog = useCatalogStore(s => s.loadCatalog)
+  useEffect(() => { loadCatalog() }, [loadCatalog])
   const onDemo = (planId?: string) => { setDemoPlanId(planId); setDemoOpen(true) }
   return (
     <div className="min-h-screen bg-white">

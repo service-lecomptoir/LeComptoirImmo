@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import type { ElementType } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useFeaturesStore } from '@/store/featuresStore'
+import { useCatalogStore } from '@/store/catalogStore'
 import { featureForPath, isFeatureAllowed } from '@/lib/features'
 import { BookOpen, Lightbulb, ListChecks } from 'lucide-react'
 import { navForRole, descriptionForRoute } from '@/lib/navigation'
@@ -17,7 +18,11 @@ import { navForRole, descriptionForRoute } from '@/lib/navigation'
 interface StepItem { to: string; label: string; icon: ElementType; desc: string }
 interface StepGroup { section: string; items: StepItem[] }
 
-function buildSteps(role: string | undefined, features: string[] | null): StepGroup[] {
+function buildSteps(
+  role: string | undefined,
+  features: string[] | null,
+  descFor: (to: string) => string,
+): StepGroup[] {
   const groups: StepGroup[] = []
   let current: StepGroup | null = null
   for (const item of navForRole(role)) {
@@ -31,7 +36,7 @@ function buildSteps(role: string | undefined, features: string[] | null): StepGr
     if (!current) { current = { section: 'Premiers pas', items: [] }; groups.push(current) }
     current.items.push({
       to: item.to, label: item.label,
-      icon: item.icon ?? ListChecks, desc: descriptionForRoute(item.to),
+      icon: item.icon ?? ListChecks, desc: descFor(item.to),
     })
   }
   return groups.filter(g => g.items.length > 0)
@@ -95,7 +100,17 @@ export default function GuideUtilisateur() {
   const { features, loadFeatures } = useFeaturesStore()
   useEffect(() => { if (isManager) loadFeatures() }, [isManager, loadFeatures])
 
-  const groups = useMemo(() => buildSteps(user?.role, features), [user?.role, features])
+  // Descriptions : priorité au catalogue dynamique pour les rubriques portant une
+  // fonctionnalité ; repli sur la formulation par route (espaces proprio/locataire).
+  const catalogDescriptions = useCatalogStore(s => s.descriptions)
+  const loadCatalog = useCatalogStore(s => s.loadCatalog)
+  useEffect(() => { loadCatalog() }, [loadCatalog])
+  const descFor = useCallback((to: string) => {
+    const key = featureForPath(to)
+    return (key && catalogDescriptions[key]) || descriptionForRoute(to)
+  }, [catalogDescriptions])
+
+  const groups = useMemo(() => buildSteps(user?.role, features, descFor), [user?.role, features, descFor])
   const totalSteps = groups.reduce((n, gr) => n + gr.items.length, 0)
 
   return (

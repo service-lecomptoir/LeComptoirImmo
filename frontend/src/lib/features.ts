@@ -54,9 +54,13 @@ export function isFeatureAllowed(features: string[] | null, key: string | null):
   return features.includes(key)
 }
 
-/** Libellés lisibles des fonctionnalités (miroir de alice constants/features.ts).
- *  Utilisés notamment sur la page Tarification publique. */
+/** Libellés lisibles des fonctionnalités.
+ *  REPLI hors-ligne : la source de vérité est le catalogue Immo exposé par
+ *  GET /api/v1/public/features (cf. store/catalogStore.ts). Aligné sur
+ *  backend/app/core/feature_catalog.py ; même ordre. */
 export const FEATURE_LABELS: Record<string, string> = {
+  diffusion: 'Publication des annonces',
+  candidatures: 'Gestion des candidatures',
   dashboard: 'Tableau de bord',
   properties: 'Propriétés',
   tenants: 'Locataires',
@@ -67,46 +71,44 @@ export const FEATURE_LABELS: Record<string, string> = {
   actualisation: 'Révision des loyers et charges',
   automatisation: 'Communication et automatisation',
   templates: 'Atelier de documents',
-  diffusion: 'Publication des annonces',
-  candidatures: 'Gestion des candidatures',
-  sortie_locataire: 'Sortie du locataire',
   incidents: 'Démarche',
   entretiens: 'Entretiens',
   contacts: "Carnet d'adresses",
   offres: 'Offres & Services',
   documents_caf: 'Espace CAF',
+  sortie_locataire: 'Sortie du locataire',
   admin: 'Gestion des utilisateurs',
-  finances: 'Mes revenus',
-  performance_biens: 'Performance bien',
+  finances: 'Revenus et comptabilité',
+  performance_biens: 'Performance des biens',
   liasse_fiscale: 'Liasse fiscale',
   agents_ia: 'Agents IA',
 }
 
-/** Descriptions courtes des fonctionnalités (infobulles, page Tarification). */
+/** Descriptions des fonctionnalités (repli hors-ligne ; source = /public/features). */
 export const FEATURE_DESCRIPTIONS: Record<string, string> = {
-  dashboard: "Vue d'ensemble : indicateurs clés, revenus et alertes en un coup d'œil.",
-  properties: 'Gérez tous vos biens : caractéristiques, adresse, équipements et occupation.',
-  tenants: 'Fiches locataires : coordonnées, pièces justificatives et historique.',
-  leases: 'Contrats de location : baux, co-titulaires, dates et conditions.',
-  avis_echeances: "Génération automatique des avis d'échéance selon la fréquence du bail.",
-  payments: 'Suivi des paiements : encaissements, déclarations, relances et soldes.',
-  quittances: 'Quittances de loyer en PDF, à votre charte, prêtes à envoyer.',
-  actualisation: 'Révision du loyer (IRL ou réévaluation amiable), régularisation et réévaluation des provisions de charges, et décompte de taxes foncières (TEOM).',
-  automatisation: 'Automatisation des tâches récurrentes (avis, quittances, relances).',
-  templates: 'Vos modèles de documents personnalisés (logo, en-tête, mentions).',
-  diffusion: "Création et personnalisation des annonces (photos, description, critères), diffusion sur vos plateformes, publication immédiate ou programmée et suivi des performances (vues).",
-  candidatures: "Centralisation des dossiers candidats, vérification des pièces justificatives, analyse et comparaison des profils, aide à la sélection du locataire le plus adapté.",
-  sortie_locataire: "Suivi des préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie (retenues/restitution) et clôture administrative du dossier.",
-  incidents: 'Démarches : demandes de vos locataires, échanges et suivi (relance, clôture).',
-  entretiens: 'Planification et suivi des entretiens et interventions sur vos biens.',
-  contacts: "Carnet d'adresses : artisans, prestataires et contacts utiles.",
-  offres: 'Offres & services partenaires proposés à vos locataires.',
-  documents_caf: "Espace CAF : attestation de loyer et formulaire tiers payant, + rappel de déclaration de loyer (juillet→décembre).",
-  admin: 'Gestion des comptes utilisateurs et des accès de votre espace.',
-  finances: 'Suivi des revenus locatifs par propriétaire et par période.',
-  performance_biens: 'Performance par bien : loyer théorique vs perçu, taux d’occupation.',
-  liasse_fiscale: 'Génération de la liasse fiscale (revenus fonciers) pour vos déclarations.',
-  agents_ia: "Équipe d'agents IA (Comptable, Sécurité, Administratif) accessible par Telegram : rappels, questions et instructions.",
+  diffusion: "Rédigez des annonces attractives (photos, descriptif, critères), diffusez-les sur vos supports en un clic, en publication immédiate ou programmée, et suivez leur audience pour louer plus vite.",
+  candidatures: "Recevez et centralisez les dossiers, réclamez les pièces par lien sécurisé, proposez des visites avec réservation en ligne, comparez les profils en toute objectivité et transformez le candidat retenu en locataire.",
+  dashboard: "Pilotez votre activité d'un coup d'œil : loyers encaissés, taux d'occupation, impayés et échéances à venir réunis sur un seul écran.",
+  properties: "Réunissez tout votre patrimoine au même endroit : caractéristiques, adresse, équipements, diagnostics et statut d'occupation de chaque bien.",
+  tenants: "Gardez chaque locataire à portée de main : coordonnées, pièces justificatives, garants et historique complet de la relation.",
+  leases: "Établissez et suivez vos baux : co-titulaires, loyer et charges, dépôt de garantie, dates clés et conditions particulières.",
+  avis_echeances: "Émettez automatiquement les appels de loyer au rythme du bail, proratisés pour les mois partiels, prêts à transmettre au locataire.",
+  payments: "Suivez chaque règlement en temps réel : encaissements, soldes, avances et relances, pour ne jamais perdre le fil d'un loyer.",
+  quittances: "Générez les quittances en PDF à votre charte dès qu'un loyer est soldé, et adressez-les au locataire en un geste.",
+  actualisation: "Révisez le loyer selon l'IRL ou à l'amiable, régularisez et réévaluez les provisions de charges, et répercutez la taxe d'enlèvement des ordures ménagères : chaque opération est datée et conservée à l'historique.",
+  automatisation: "Confiez à la plateforme l'envoi des avis, quittances et relances, personnalisez vos modèles d'e-mails multilingues et soignez votre communication sans y penser.",
+  templates: "Composez vos propres modèles de documents à votre image : logo, en-tête, mentions légales et blocs réutilisables.",
+  incidents: "Centralisez les demandes de vos locataires et les signalements de la résidence, échangez, relancez et clôturez chaque dossier au bon moment.",
+  entretiens: "Planifiez et suivez les interventions sur vos biens, de la prise de rendez-vous à la réalisation, sans rien laisser passer.",
+  contacts: "Gardez sous la main vos artisans, prestataires et interlocuteurs de confiance, prêts à être sollicités.",
+  offres: "Proposez à vos locataires des services partenaires (assurance, énergie, internet…) directement depuis leur espace.",
+  documents_caf: "Éditez l'attestation de loyer et le formulaire de tiers payant pré-remplis, et ne manquez plus la déclaration de loyer annuelle (de juillet à décembre).",
+  sortie_locataire: "Accompagnez chaque départ de bout en bout : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture administrative du dossier.",
+  admin: "Maîtrisez les comptes et les accès de votre espace : invitez vos collaborateurs et ouvrez un accès dédié à vos propriétaires et à vos locataires.",
+  finances: "Suivez vos revenus locatifs et tenez un grand livre clair, par propriétaire et par période, prêt à présenter.",
+  performance_biens: "Mesurez le rendement de chaque bien : loyer théorique face au loyer perçu et taux d'occupation, pour repérer ce qui mérite votre attention.",
+  liasse_fiscale: "Préparez sereinement votre déclaration de revenus fonciers : la liasse est constituée à partir de vos données, sans ressaisie.",
+  agents_ia: "Appuyez-vous sur une équipe d'agents IA (Comptable, Sécurité, Administratif) joignable sur Telegram pour vos rappels, vos questions et vos consignes.",
 }
 
 /** Première route autorisée (cible de repli quand l'actuelle est bloquée). */

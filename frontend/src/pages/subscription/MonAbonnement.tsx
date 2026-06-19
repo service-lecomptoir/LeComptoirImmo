@@ -3,11 +3,9 @@ import { getErrorMessage } from '@/utils/errors'
 import { CreditCard, Building2, CheckCircle, XCircle, AlertTriangle, Package, FileDown, Receipt, ListChecks, Check } from 'lucide-react'
 import { subscriptionApi, type SubscriptionInfo, type SubscriptionInvoice, type BillingStatus, type AvailablePlan, type StripePayment } from '@/api/subscription'
 import { Button, Spinner } from '@/components/ui'
-import { FEATURE_LABELS } from '@/lib/features'
+import { useCatalogStore } from '@/store/catalogStore'
 import { downloadBlob } from '@/utils/download'
 import { toast } from '@/store/toast'
-
-const FEATURE_ORDER = Object.keys(FEATURE_LABELS)
 
 function ProgressBar({ value, max }: { value: number; max: number | null }) {
   if (max === null) {
@@ -42,6 +40,10 @@ export default function MonAbonnement() {
   const [payments, setPayments] = useState<StripePayment[]>([])
   const [newPlanId, setNewPlanId] = useState('')
   const [changingPlan, setChangingPlan] = useState(false)
+  const featureLabels = useCatalogStore(s => s.labels)
+  const featureOrder = useCatalogStore(s => s.orderedKeys)
+  const loadCatalog = useCatalogStore(s => s.loadCatalog)
+  useEffect(() => { loadCatalog() }, [loadCatalog])
 
   const changePlan = async () => {
     if (!newPlanId) return
@@ -368,8 +370,8 @@ export default function MonAbonnement() {
 
       {/* Fonctionnalités incluses */}
       {info?.plan_name && !noLicense && (() => {
-        const isAll = info.features == null || info.features.length >= FEATURE_ORDER.length
-        const included = info.features == null ? FEATURE_ORDER : FEATURE_ORDER.filter(k => info.features!.includes(k))
+        const isAll = info.features == null || info.features.length >= featureOrder.length
+        const included = info.features == null ? featureOrder : featureOrder.filter(k => info.features!.includes(k))
         return (
           <div className="bg-white rounded-xl border p-5 space-y-3">
             <div className="flex items-center gap-2">
@@ -386,7 +388,7 @@ export default function MonAbonnement() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                 {included.map(k => (
                   <span key={k} className="flex items-center gap-2 text-sm text-gray-700">
-                    <Check size={15} className="text-green-600 shrink-0" /> {FEATURE_LABELS[k]}
+                    <Check size={15} className="text-green-600 shrink-0" /> {featureLabels[k] ?? k}
                   </span>
                 ))}
               </div>
