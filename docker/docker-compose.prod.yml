@@ -48,6 +48,7 @@ services:
       APP_ENV: production
       POSTGRES_HOST: postgres
       DEBUG: "false"
+      LOG_DIR: /app/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +56,9 @@ services:
       - "8000"
     volumes:
       - uploads_data:/app/uploads
+      # Journaux applicatifs (immo.log / immo-error.log) sur l'hôte → supervisés
+      # par Portail360 (lecture SSH dans ~/LeComptoirImmo/logs/).
+      - ../logs:/app/logs
     networks:
       - locataire_net
 

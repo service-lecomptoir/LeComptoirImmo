@@ -12,6 +12,10 @@ from app.database import engine, Base, AsyncSessionLocal
 from app.api.v1.router import api_router
 from app.core.exceptions import AppException, app_exception_handler, unhandled_exception_handler
 from app.core.scheduler import start_scheduler, stop_scheduler
+from app.core.logging_setup import setup_logging
+
+# Journaux fichier (immo.log / immo-error.log) supervisés par Portail360.
+setup_logging()
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
