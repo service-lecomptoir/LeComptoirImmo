@@ -95,10 +95,12 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 function CellToggle({ on, disabled, busy, onToggle }: {
   on: boolean, disabled?: boolean, busy?: boolean, onToggle: () => void
 }) {
-  if (disabled) return <span className="text-sm text-gray-300">—</span>
+  // Hauteur fixe + centrage : le « — » (désactivé) et l'interrupteur s'alignent
+  // sur la même ligne dans toutes les colonnes.
+  if (disabled) return <span className="inline-flex items-center justify-center h-6 text-gray-300">—</span>
   return (
     <button type="button" onClick={onToggle} disabled={busy}
-      className="inline-flex disabled:opacity-50">
+      className="inline-flex items-center justify-center h-6 disabled:opacity-50">
       {on ? <ToggleRight size={24} className="text-green-600" />
           : <ToggleLeft size={24} className="text-gray-300" />}
     </button>
