@@ -27,7 +27,7 @@ export default function LeaseList() {
   const [showForm, setShowForm] = useState(false)
   // Pré-remplissage du contrat depuis une candidature acceptée (navigation state).
   const location = useLocation()
-  const [leasePrefill, setLeasePrefill] = useState<{ property_id?: string } | undefined>(undefined)
+  const [leasePrefill, setLeasePrefill] = useState<{ property_id?: string; rent_amount?: number; charges_amount?: number } | undefined>(undefined)
   const user = useAuthStore(s => s.user)
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
   const [view, setView] = useViewMode('leases', 'grid')
@@ -55,7 +55,7 @@ export default function LeaseList() {
 
   // Ouvre le formulaire pré-rempli si on arrive depuis une candidature acceptée.
   useEffect(() => {
-    const pf = (location.state as { prefillLease?: { property_id?: string } } | null)?.prefillLease
+    const pf = (location.state as { prefillLease?: { property_id?: string; rent_amount?: number; charges_amount?: number } } | null)?.prefillLease
     if (pf) {
       setLeasePrefill(pf)
       setShowForm(true)

@@ -55,6 +55,15 @@ class LeaseService:
         prop.is_occupied = True
         prop.is_available = False
 
+        # L'annonce du bien passe automatiquement en « loué » (retirée de la
+        # diffusion publique) dès qu'un bail est signé.
+        from app.models.publishing import Listing
+        listing = (await db.execute(
+            select(Listing).where(Listing.property_id == data.property_id)
+        )).scalar_one_or_none()
+        if listing and listing.status in ("published", "scheduled"):
+            listing.status = "loue"
+
         await db.flush()
         await db.refresh(lease)
         return lease

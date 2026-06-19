@@ -264,6 +264,55 @@ async def _job_candidature_doc_reminders() -> None:
             logger.error(f"[Scheduler] candidature_doc_reminders error: {exc}")
 
 
+async def _job_candidature_followup() -> None:
+    """Chaque jour à 10h05 : rappelle au gestionnaire les candidatures laissées « en
+    étude » depuis plus de 7 jours sans décision (notification + push agent), une
+    seule fois (candidatures.stale_alerted_at). Évite d'oublier un dossier en cours."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import select
+    from app.database import AsyncSessionLocal
+    from app.models.candidature import Candidature
+    from app.models.property import Property
+    from app.models.notification import Notification, NotificationType, NotificationPriority
+    from app.services import agent_events
+
+    async with AsyncSessionLocal() as db:
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+            rows = (await db.execute(
+                select(Candidature).where(
+                    Candidature.status == "en_etude",
+                    Candidature.stale_alerted_at.is_(None),
+                    Candidature.updated_at < cutoff,
+                )
+            )).scalars().all()
+            n = 0
+            for c in rows:
+                prop = await db.get(Property, c.property_id)
+                pname = prop.name if prop else "un bien"
+                mgr_id = prop.created_by if prop else None
+                if mgr_id:
+                    db.add(Notification(
+                        title="Candidature en étude sans suite",
+                        message=(f"Le dossier de {c.full_name} ({pname}) est en étude depuis plus "
+                                 f"d'une semaine. Pensez à proposer une visite, accepter ou refuser."),
+                        notification_type=NotificationType.SYSTEME, priority=NotificationPriority.NORMAL,
+                        entity_type="candidature", entity_id=c.id, user_id=mgr_id,
+                    ))
+                await agent_events.notify_manager(
+                    db, mgr_id, "candidature",
+                    f"Le dossier de <b>{c.full_name}</b> ({pname}) est en étude depuis plus d'une semaine.",
+                    cta="Proposez une visite, acceptez ou refusez dans « Candidatures ».",
+                )
+                c.stale_alerted_at = datetime.now(timezone.utc)
+                n += 1
+            await db.commit()
+            if n:
+                logger.info(f"[Scheduler] {n} rappel(s) candidature en étude envoyé(s)")
+        except Exception as exc:
+            logger.error(f"[Scheduler] candidature_followup error: {exc}")
+
+
 async def _job_vacancy_alerts() -> None:
     """Chaque jour à 10h : alerte UNE fois le gestionnaire (agent Administratif +
     notification) pour chaque annonce publiée depuis plus de 7 jours qui n'a reçu
@@ -393,6 +442,13 @@ def start_scheduler(
         _job_candidature_doc_reminders,
         CronTrigger(hour=10, minute=0),
         id="candidature_doc_reminders",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        _job_candidature_followup,
+        CronTrigger(hour=10, minute=5),
+        id="candidature_followup",
         replace_existing=True,
         misfire_grace_time=3600,
     )

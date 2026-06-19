@@ -44,6 +44,8 @@ export interface Candidature {
   visit_invited?: boolean
   visit_slot_id?: string | null
   visit_booked_at?: string | null
+  rent?: number | null
+  charges?: number | null
   metrics: CandidatureMetrics
 }
 

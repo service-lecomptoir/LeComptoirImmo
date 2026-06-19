@@ -297,6 +297,7 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE tickets ADD COLUMN IF NOT EXISTS photo_path VARCHAR(500)",
         # Relances candidatures + alerte vacance (module Annonce)
         "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS docs_reminded_at TIMESTAMPTZ",
+        "ALTER TABLE candidatures ADD COLUMN IF NOT EXISTS stale_alerted_at TIMESTAMPTZ",
         "ALTER TABLE listings ADD COLUMN IF NOT EXISTS vacancy_alerted_at TIMESTAMPTZ",
         # Publication des annonces : suivi de performance (vues de la page publique)
         "ALTER TABLE listings ADD COLUMN IF NOT EXISTS views_count INTEGER NOT NULL DEFAULT 0",

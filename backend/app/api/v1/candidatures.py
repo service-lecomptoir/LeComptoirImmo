@@ -200,7 +200,8 @@ def _doc_out(d: dict) -> dict:
 
 
 def _out(c: Candidature, rent_ref: Optional[float] = None,
-         prop_ref: Optional[str] = None, visit_at=None) -> dict:
+         prop_ref: Optional[str] = None, visit_at=None,
+         charges_ref: Optional[float] = None) -> dict:
     # Normalise pour l'affichage : inclut les nouvelles pièces standard même pour
     # les dossiers créés avant leur ajout (sans modifier la base).
     docs = _ensure_doc_fields(c.docs)
@@ -226,6 +227,8 @@ def _out(c: Candidature, rent_ref: Optional[float] = None,
         "visit_invited": bool(c.visit_invited_at),
         "visit_slot_id": str(c.visit_slot_id) if c.visit_slot_id else None,
         "visit_booked_at": visit_at,
+        "rent": rent_ref,
+        "charges": charges_ref,
         "metrics": _metrics(c, rent_ref),
     }
 
@@ -239,15 +242,15 @@ async def _rent_ref(db: AsyncSession, property_id) -> Optional[float]:
 
 
 async def _full_out(db: AsyncSession, c: Candidature) -> dict:
-    """Sérialise une candidature avec sa réf. de bien et son créneau de visite."""
-    rent = await _rent_ref(db, c.property_id)
+    """Sérialise une candidature avec sa réf. de bien, son loyer/charges et son créneau."""
+    rent, charges = await _listing_pricing(db, c.property_id)
     prop = await db.get(Property, c.property_id)
     prop_ref = getattr(prop, "ref_code", None) if prop else None
     visit_at = None
     if c.visit_slot_id:
         slot = await db.get(PropertyVisitSlot, c.visit_slot_id)
         visit_at = slot.starts_at.isoformat() if slot else None
-    return _out(c, rent, prop_ref, visit_at)
+    return _out(c, rent, prop_ref, visit_at, charges_ref=charges)
 
 
 async def _listing_pricing(db: AsyncSession, property_id):
@@ -404,12 +407,15 @@ async def list_candidatures(
     if status in _STATUSES:
         q = q.where(Candidature.status == status)
     rows = (await db.execute(q)).scalars().all()
-    # Loyer + réf. de bien par bien distinct (volumes faibles).
+    # Loyer + charges + réf. de bien par bien distinct (volumes faibles).
     rents: dict = {}
+    charges: dict = {}
     refs: dict = {}
     for c in rows:
         if c.property_id not in rents:
-            rents[c.property_id] = await _rent_ref(db, c.property_id)
+            price, chg = await _listing_pricing(db, c.property_id)
+            rents[c.property_id] = price
+            charges[c.property_id] = chg
             prop = await db.get(Property, c.property_id)
             refs[c.property_id] = getattr(prop, "ref_code", None) if prop else None
     # Créneaux réservés (une requête groupée).
@@ -422,7 +428,8 @@ async def list_candidatures(
         slot_at = {s.id: s.starts_at.isoformat() for s in slots}
     return [
         _out(c, rents.get(c.property_id), refs.get(c.property_id),
-             slot_at.get(c.visit_slot_id) if c.visit_slot_id else None)
+             slot_at.get(c.visit_slot_id) if c.visit_slot_id else None,
+             charges_ref=charges.get(c.property_id))
         for c in rows
     ]
 

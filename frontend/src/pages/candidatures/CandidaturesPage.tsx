@@ -531,7 +531,7 @@ export default function CandidaturesPage() {
                     </button>
                   )}
                   {selected.status === 'retenue' && (
-                    <button onClick={() => navigate('/leases', { state: { prefillLease: { property_id: selected.property_id } } })} disabled={busy}
+                    <button onClick={() => navigate('/leases', { state: { prefillLease: { property_id: selected.property_id, rent_amount: selected.rent ?? undefined, charges_amount: selected.charges ?? undefined } } })} disabled={busy}
                       title="Créer le bail pour ce bien (le locataire et le loyer restent à confirmer)"
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50">
                       <FileText size={13} className="inline mr-1" />Créer le bail
