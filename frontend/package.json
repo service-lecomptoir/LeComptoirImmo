@@ -12,6 +12,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.4.2",
+    "@dicebear/core": "^9.4.2",
     "@hookform/resolvers": "^3.6.0",
     "@types/recharts": "^1.8.29",
     "axios": "^1.7.2",
