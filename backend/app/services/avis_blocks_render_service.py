@@ -654,30 +654,6 @@ def _render_details_table(props: dict, t: dict, variables: dict, line_items: lis
     </table>"""
 
 
-def _render_signature(variables: dict, t: dict) -> str:
-    """Bloc de signature (image data-URL) aligné à droite, au-dessus du pied légal.
-    Affiché uniquement si une signature est fournie via `signature_uri`."""
-    uri = (variables.get("signature_uri") or "").strip()
-    if not uri:
-        return ""
-    name = _sub(variables.get("company_name"), variables).strip()
-    city = (variables.get("property_city_line") or "").strip()
-    date = _sub("{{today_date}}", variables).strip()
-    place_date = (f'{city}, le {date}' if city and date else (f'Le {date}' if date else ''))
-    place_html = (f'<div style="color:{t["navy"]}; font-size:8.5pt; margin-bottom:4px;">{place_date}</div>'
-                  if place_date else '')
-    name_html = (f'<div style="color:{t["navy"]}; font-size:8.5pt; font-weight:bold; margin-bottom:4px;">{name}</div>'
-                 if name else '')
-    return (
-        f'<table style="width:100%; border-collapse:collapse; margin-top:16px;"><tr>'
-        f'<td style="width:55%;">&nbsp;</td>'
-        f'<td style="width:45%; text-align:center;">'
-        f'{place_html}{name_html}'
-        f'<img src="{uri}" alt="signature" width="70" height="23"/>'
-        f'</td></tr></table>'
-    )
-
-
 def _render_legal_footer(props: dict, t: dict, variables: dict) -> str:
     return (f'<div style="margin-top:18px; border-top:1px solid #e5e7eb; padding-top:6px; '
             f'color:{t["footer_color"]}; font-size:6.5pt; text-align:center;">'
@@ -824,7 +800,6 @@ def render_avis_blocks_html(
         twocol = f'<div>{body_html}</div>'
 
     full_html = "".join(full_parts)
-    signature_html = _render_signature(variables, t)
 
     return f"""<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"><style>
@@ -843,6 +818,5 @@ def render_avis_blocks_html(
   {header_html}
   {twocol}
   {full_html}
-  {signature_html}
   {footer_html}
 </body></html>"""
