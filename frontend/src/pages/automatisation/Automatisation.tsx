@@ -118,6 +118,9 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
   const [busy, setBusy] = useState(false)
   const scheduled = kind !== 'event'  // avis / rappel / relance / rapport
   const isRapport = rule.rule_type === 'rapport_mensuel'  // gestionnaire only (pas de dépôt/SMS)
+  // Candidature : e-mail au candidat uniquement (ni génération de doc, ni dépôt, ni SMS).
+  // L'interrupteur « E-mail » pilote l'envoi automatique (accusé de réception, rappel de visite).
+  const isCandidature = rule.rule_type.startsWith('candidature_')
   const dirty = scheduled && (val !== base || hour !== baseHour || minute !== baseMin)
 
   const patch = async (body: Record<string, any>) => {
@@ -183,10 +186,10 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
           <span className="text-sm text-gray-400">—</span>
         )}
       </td>
-      <td className={td}><CellToggle on={rule.auto_generate !== false} busy={busy} onToggle={() => patch({ auto_generate: !(rule.auto_generate !== false) })} /></td>
-      <td className={td}><CellToggle on={rule.auto_deposit !== false} disabled={isRapport} busy={busy} onToggle={() => patch({ auto_deposit: !(rule.auto_deposit !== false) })} /></td>
+      <td className={td}><CellToggle on={rule.auto_generate !== false} disabled={isCandidature} busy={busy} onToggle={() => patch({ auto_generate: !(rule.auto_generate !== false) })} /></td>
+      <td className={td}><CellToggle on={rule.auto_deposit !== false} disabled={isRapport || isCandidature} busy={busy} onToggle={() => patch({ auto_deposit: !(rule.auto_deposit !== false) })} /></td>
       <td className={td}><CellToggle on={rule.send_email !== false} busy={busy} onToggle={() => patch({ send_email: !(rule.send_email !== false) })} /></td>
-      <td className={td}><CellToggle on={!!rule.send_sms} disabled={isRapport} busy={busy} onToggle={() => patch({ send_sms: !rule.send_sms })} /></td>
+      <td className={td}><CellToggle on={!!rule.send_sms} disabled={isRapport || isCandidature} busy={busy} onToggle={() => patch({ send_sms: !rule.send_sms })} /></td>
       <td className={`${td} text-sm text-gray-600 whitespace-nowrap`}>{lastRun}</td>
       <td className={td}>
         {scheduled

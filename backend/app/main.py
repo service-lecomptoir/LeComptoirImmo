@@ -121,6 +121,9 @@ async def lifespan(app: FastAPI):
             # les comptes existants, sans recréer des règles supprimées.
             nr += await backfill_rule_types(_db, [
                 "revision_loyer", "revision_charges", "taxe_om", "rapport_mensuel",
+                # Communications de candidature (e-mails au candidat, pilotables on/off)
+                "candidature_accuse", "candidature_pieces", "candidature_visite",
+                "candidature_relance_visite", "candidature_acceptation", "candidature_refus",
             ])
             nc = await backfill_default_content(_db)
             # Modèles de courrier multilingues par défaut (« Standard » sélectionné
