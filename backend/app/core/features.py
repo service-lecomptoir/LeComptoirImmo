@@ -24,14 +24,8 @@ from app.services import alice_client
 
 logger = logging.getLogger(__name__)
 
-# Clés canoniques (miroir de alice/frontend/src/constants/features.ts).
-FEATURE_KEYS = {
-    "dashboard", "properties", "tenants", "leases", "avis_echeances", "payments",
-    "quittances", "actualisation", "automatisation", "templates", "diffusion",
-    "candidatures", "sortie_locataire",
-    "incidents", "entretiens", "contacts", "offres", "documents_caf", "admin",
-    "finances", "performance_biens", "liasse_fiscale", "agents_ia",
-}
+# Clés canoniques : dérivées du catalogue unique (app/core/feature_catalog.py).
+from app.core.feature_catalog import FEATURE_KEYS  # noqa: F401  (réexport)
 
 _MANAGER_ROLES = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
 

@@ -10,6 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +29,21 @@ class PublicPlanOut(BaseModel):
     property_limit: Optional[int] = None
     monthly_price: float
     features: Optional[List[str]] = None
+
+
+@router.get("/features", summary="Catalogue des fonctionnalités (source unique)")
+async def list_features():
+    """Catalogue canonique des fonctionnalités : clé, libellé, description, catégorie.
+    Source unique consommée par la page Tarification, le Guide utilisateur et
+    l'éditeur de plans LeComptoir Alice (liste dynamique).
+
+    Donnée publique, non authentifiée : CORS ouvert (`*`) pour permettre le fetch
+    cross-origin depuis LeComptoir Alice sans dépendre de la liste CORS_ORIGINS."""
+    from app.core.feature_catalog import public_catalog
+    return JSONResponse(
+        content=public_catalog(),
+        headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=300"},
+    )
 
 
 @router.get("/plans", response_model=List[PublicPlanOut], summary="Plans tarifaires publics")
