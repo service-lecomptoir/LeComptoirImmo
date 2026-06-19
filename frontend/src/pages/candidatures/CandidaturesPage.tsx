@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui'
 import { formatPhoneDisplay } from '@/utils/format'
-import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2, Sparkles, Send, Link2, Download, Copy, CalendarClock, UserPlus } from 'lucide-react'
+import { Users, Plus, Trash2, X, Scale, BadgeCheck, ShieldQuestion, FileCheck2, Sparkles, Send, Link2, Download, Copy, CalendarClock, UserPlus, FileText } from 'lucide-react'
 import { type VisitSlot } from '@/api/candidatures'
 import { apiClient } from '@/api/client'
 import { candidaturesApi, type Candidature, type CandidatureStatus } from '@/api/candidatures'
@@ -528,6 +528,13 @@ export default function CandidaturesPage() {
                     <button onClick={() => toTenant(selected)} disabled={busy}
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
                       <UserPlus size={13} className="inline mr-1" />Passer en locataire
+                    </button>
+                  )}
+                  {selected.status === 'retenue' && (
+                    <button onClick={() => navigate('/leases', { state: { prefillLease: { property_id: selected.property_id } } })} disabled={busy}
+                      title="Créer le bail pour ce bien (le locataire et le loyer restent à confirmer)"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50">
+                      <FileText size={13} className="inline mr-1" />Créer le bail
                     </button>
                   )}
                   <button onClick={() => rejectCandidate(selected)} disabled={busy || selected.status === 'refusee'}

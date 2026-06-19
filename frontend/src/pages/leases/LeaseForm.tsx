@@ -109,9 +109,11 @@ interface Props {
   onClose: () => void
   onSaved: () => void
   submitError?: string
+  /** Pré-remplissage à la création (depuis une candidature acceptée). */
+  prefill?: { property_id?: string; rent_amount?: number; charges_amount?: number }
 }
 
-export function LeaseForm({ lease, onClose, onSaved }: Props) {
+export function LeaseForm({ lease, onClose, onSaved, prefill }: Props) {
   const isEdit = !!lease
   const [properties, setProperties] = useState<PropertyListItem[]>([])
   const [tenants, setTenants] = useState<TenantListItem[]>([])
@@ -144,6 +146,9 @@ export function LeaseForm({ lease, onClose, onSaved }: Props) {
       guarantor_phone: lease.guarantor_phone ?? '',
       notes: lease.notes ?? '',
     } : {
+      property_id: prefill?.property_id,
+      rent_amount: prefill?.rent_amount,
+      charges_amount: prefill?.charges_amount,
       lease_type: 'vide',
       payment_method: 'virement',
       rent_call_rule: 'calendrier',

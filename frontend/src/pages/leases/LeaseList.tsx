@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, Search, FileText, Filter, Building2, Download } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { leasesApi } from '@/api/leases'
@@ -25,6 +25,9 @@ export default function LeaseList() {
   const [filterActive, setFilterActive] = useState<boolean | undefined>(true)
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  // Pré-remplissage du contrat depuis une candidature acceptée (navigation state).
+  const location = useLocation()
+  const [leasePrefill, setLeasePrefill] = useState<{ property_id?: string } | undefined>(undefined)
   const user = useAuthStore(s => s.user)
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
   const [view, setView] = useViewMode('leases', 'grid')
@@ -49,6 +52,16 @@ export default function LeaseList() {
     const t = setTimeout(() => fetchLeases(search, filterActive, limit), 300)
     return () => clearTimeout(t)
   }, [search, filterActive, limit, fetchLeases])
+
+  // Ouvre le formulaire pré-rempli si on arrive depuis une candidature acceptée.
+  useEffect(() => {
+    const pf = (location.state as { prefillLease?: { property_id?: string } } | null)?.prefillLease
+    if (pf) {
+      setLeasePrefill(pf)
+      setShowForm(true)
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [location, navigate])
 
   const fmtDate = (d: string) => format(new Date(d), 'd MMM yyyy', { locale: fr })
   const fmtEuro = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
@@ -240,8 +253,9 @@ export default function LeaseList() {
 
       {showForm && (
         <LeaseForm
-          onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); fetchLeases(search, filterActive, limit); toast.success('Contrat enregistré') }}
+          prefill={leasePrefill}
+          onClose={() => { setShowForm(false); setLeasePrefill(undefined) }}
+          onSaved={() => { setShowForm(false); setLeasePrefill(undefined); fetchLeases(search, filterActive, limit); toast.success('Contrat enregistré') }}
         />
       )}
     </div>
