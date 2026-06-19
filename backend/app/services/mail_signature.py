@@ -45,7 +45,7 @@ async def build_for_manager(db: AsyncSession, manager_id, service_name: Optional
         logo, sub = read_logo(getattr(u, "logo_path", None))
         theme = getattr(u, "email_theme", None)
     # Apparence des e-mails du gestionnaire (thème choisi + logo si présent).
-    set_branding(theme, has_logo=bool(logo))
+    set_branding(theme, logo=logo, logo_subtype=sub)
     return build_signature_html(service_name, has_logo=bool(logo)), logo, sub
 
 

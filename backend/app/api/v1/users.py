@@ -216,8 +216,10 @@ async def create_user(
     if generated_password and (new_user.email or "").strip():
         try:
             from app.services.email_service import send_credentials, set_branding
-            # Apparence selon le thème e-mail du gestionnaire créateur.
-            set_branding(getattr(current_user, "email_theme", None), has_logo=False)
+            from app.services.mail_signature import read_logo
+            # Apparence (thème + logo) du gestionnaire créateur.
+            _logo, _sub = read_logo(getattr(current_user, "logo_path", None))
+            set_branding(getattr(current_user, "email_theme", None), logo=_logo, logo_subtype=_sub)
             credentials_email_sent = await send_credentials(
                 to=new_user.email, login=new_user.email,
                 password=generated_password, full_name=new_user.full_name,
@@ -407,7 +409,9 @@ async def send_user_credentials(
     email_sent = False
     try:
         from app.services.email_service import send_credentials, set_branding
-        set_branding(getattr(current_user, "email_theme", None), has_logo=False)
+        from app.services.mail_signature import read_logo
+        _logo, _sub = read_logo(getattr(current_user, "logo_path", None))
+        set_branding(getattr(current_user, "email_theme", None), logo=_logo, logo_subtype=_sub)
         email_sent = await send_credentials(
             to=target.email, login=target.email,
             password=temp_password, full_name=target.full_name,

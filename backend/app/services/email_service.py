@@ -16,14 +16,18 @@ _NAVY = "#0D2F5C"
 _GOLD = "#C9A227"
 
 _ctx_theme: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar("email_theme", default=None)
-_ctx_has_logo: "contextvars.ContextVar[bool]" = contextvars.ContextVar("email_has_logo", default=False)
+_ctx_logo_bytes: "contextvars.ContextVar[Optional[bytes]]" = contextvars.ContextVar("email_logo_bytes", default=None)
+_ctx_logo_sub: "contextvars.ContextVar[str]" = contextvars.ContextVar("email_logo_sub", default="png")
 
 
-def set_branding(theme: Optional[str] = None, has_logo: bool = False) -> None:
-    """Pose l'apparence (thème + présence d'un logo gestionnaire) pour les e-mails
-    rendus ensuite dans le même contexte d'exécution. À appeler juste avant l'envoi."""
+def set_branding(theme: Optional[str] = None, logo: Optional[bytes] = None,
+                 logo_subtype: str = "png") -> None:
+    """Pose l'apparence des e-mails rendus ensuite dans le même contexte : thème +
+    logo du gestionnaire (octets). Le logo est affiché dans l'en-tête et attaché
+    automatiquement par ``send_email`` (cid:managerlogo). À appeler juste avant l'envoi."""
     _ctx_theme.set(theme if theme in EMAIL_THEMES else DEFAULT_EMAIL_THEME)
-    _ctx_has_logo.set(bool(has_logo))
+    _ctx_logo_bytes.set(logo or None)
+    _ctx_logo_sub.set(logo_subtype or "png")
 
 
 async def send_email(
@@ -50,6 +54,11 @@ async def send_email(
     if not cfg.smtp_enabled:
         logger.debug("SMTP désactivé : email simulé vers %s: %s", to, subject)
         return False
+
+    # À défaut de logo explicite, reprendre celui posé par set_branding (en-tête).
+    if inline_logo is None and _ctx_logo_bytes.get() is not None:
+        inline_logo = _ctx_logo_bytes.get()
+        inline_logo_subtype = _ctx_logo_sub.get() or inline_logo_subtype
 
     try:
         import aiosmtplib
@@ -180,7 +189,7 @@ def _base_template(title: str, content: str) -> str:
     theme = _ctx_theme.get() or DEFAULT_EMAIL_THEME
     if theme not in EMAIL_THEMES:
         theme = DEFAULT_EMAIL_THEME
-    has_logo = bool(_ctx_has_logo.get())
+    has_logo = _ctx_logo_bytes.get() is not None
     return f"""
 <!DOCTYPE html>
 <html lang="fr">
