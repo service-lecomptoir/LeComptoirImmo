@@ -198,6 +198,18 @@ export default function CandidaturesPage() {
     } catch { /* */ } finally { setBusy(false) }
   }
 
+  const rejectCandidate = async (c: Candidature) => {
+    setBusy(true)
+    try {
+      const r = await candidaturesApi.reject(c.id, {})
+      setSelected(r.data)
+      setItems(prev => prev.map(x => (x.id === r.data.id ? r.data : x)))
+      toast.success(r.data.email_sent
+        ? 'Candidat refusé : e-mail de refus courtois envoyé.'
+        : 'Candidat refusé (e-mail non envoyé : pas d\'adresse ou SMTP indisponible).')
+    } catch { /* */ } finally { setBusy(false) }
+  }
+
   const acknowledgeCand = async (c: Candidature) => {
     setBusy(true)
     try {
@@ -518,9 +530,10 @@ export default function CandidaturesPage() {
                       <UserPlus size={13} className="inline mr-1" />Passer en locataire
                     </button>
                   )}
-                  <button onClick={() => patch(selected.id, { status: 'refusee' })} disabled={busy || selected.status === 'refusee'}
+                  <button onClick={() => rejectCandidate(selected)} disabled={busy || selected.status === 'refusee'}
+                    title={selected.email ? 'Refuser et envoyer un e-mail de refus courtois' : 'Refuser (pas d\'e-mail : aucun envoi)'}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 disabled:opacity-50">
-                    Refuser
+                    Refuser{selected.email ? ' (avec e-mail)' : ''}
                   </button>
                 </>)}
                 <button onClick={() => openCompare(selected.property_id)}

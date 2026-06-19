@@ -33,6 +33,7 @@ EVENT_AGENT: dict[str, str] = {
     "voisinage": "securite",      # trouble / conflit de voisinage → Agent Sécurité
     "logement": "administratif",  # problème dans le logement      → Agent Administratif
     "preavis": "administratif",   # préavis de départ du locataire → Agent Administratif
+    "candidature": "administratif",  # nouvelle candidature à une annonce → Agent Administratif
     "autre": "administratif",     # divers (catch-all)             → Agent Administratif
 }
 
@@ -42,6 +43,7 @@ TOPIC_LABEL: dict[str, str] = {
     "voisinage": "Problème de voisinage signalé",
     "logement": "Problème dans le logement signalé",
     "preavis": "Préavis de départ reçu",
+    "candidature": "Nouvelle candidature reçue",
     "autre": "Nouvelle démarche",
 }
 

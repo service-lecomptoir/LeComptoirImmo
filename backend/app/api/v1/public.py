@@ -440,8 +440,33 @@ async def apply_to_listing(token: str, data: PublicApplicationIn, db: AsyncSessi
                 from app.services.sms_service import send_sms
                 await send_sms(mgr.phone,
                                f"Le Comptoir Immo : nouvelle candidature pour {_pname} ({c.full_name}).")
+            # Alerte « push » à l'équipe d'agents IA (Telegram) si liée.
+            from app.services import agent_events
+            await agent_events.notify_manager(
+                db, listing.created_by, "candidature",
+                f"<b>{c.full_name}</b> a candidaté pour <b>{_pname}</b>"
+                f"{(' (' + c.email + ')') if c.email else ''}.",
+                cta="Dossier à étudier dans « Candidatures ».",
+            )
     except Exception as _exc:  # noqa: BLE001
         import logging
         logging.getLogger(__name__).warning("Notif candidature échouée: %s", _exc)
+
+    # Accusé de réception AUTOMATIQUE au candidat (à la charte du gestionnaire) :
+    # chaque dossier reçoit une réponse immédiate et professionnelle. Best-effort.
+    try:
+        if (c.email or "").strip():
+            from app.api.v1.candidatures import _apply_branding, _property_block
+            from app.services.email_service import send_candidature_acknowledged
+            _mgr = await db.get(User, listing.created_by) if listing.created_by else None
+            _prop = await db.get(Property, listing.property_id)
+            _block = await _property_block(db, _prop)
+            _apply_branding(_mgr)
+            await send_candidature_acknowledged(
+                to=c.email, candidate_name=c.full_name, property_html=_block["html"],
+            )
+    except Exception as _exc:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning("Accusé réception auto échoué: %s", _exc)
 
     return {"status": "received"}

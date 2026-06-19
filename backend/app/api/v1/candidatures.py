@@ -797,6 +797,42 @@ async def accept_candidature(
     return out
 
 
+@router.post("/{candidature_id}/reject", summary="Refuser le candidat (e-mail de refus courtois)")
+async def reject_candidature(
+    candidature_id: uuid.UUID,
+    data: MessageIn,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Passe le dossier en « refusée » et, si le candidat a un e-mail, lui envoie une
+    réponse négative courtoise (sans motif discriminatoire), à la charte du gestionnaire."""
+    c = await _accessible(db, user, candidature_id)
+    c.status = "refusee"
+    await db.commit()
+    await db.refresh(c)
+
+    email_sent = False
+    if (c.email or "").strip():
+        prop = await db.get(Property, c.property_id)
+        block = await _property_block(db, prop)
+        try:
+            from app.services.email_service import send_candidature_rejected
+            _apply_branding(user)
+            email_sent = await send_candidature_rejected(
+                to=c.email, candidate_name=c.full_name,
+                property_ref=block["ref"] or "",
+                custom_message=(data.message or "").strip() or None,
+                cc=getattr(user, "email", None),
+            )
+        except Exception as exc:  # noqa: BLE001
+            import logging
+            logging.getLogger(__name__).warning("E-mail de refus non envoyé (%s): %s", candidature_id, exc)
+
+    out = await _full_out(db, c)
+    out["email_sent"] = email_sent
+    return out
+
+
 @router.post("/{candidature_id}/acknowledge", summary="Accuser réception de la candidature")
 async def acknowledge_candidature(
     candidature_id: uuid.UUID,

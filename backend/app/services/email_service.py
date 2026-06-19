@@ -464,6 +464,37 @@ pour le logement ci-dessous. Félicitations !</p>
     )
 
 
+async def send_candidature_rejected(
+    to: str,
+    candidate_name: str,
+    property_ref: str = "",
+    custom_message: Optional[str] = None,
+    cc: Optional[str] = None,
+) -> bool:
+    """E-mail de réponse négative courtoise : informe le candidat que son dossier
+    n'a pas été retenu, sans détailler de motif (et sans critère discriminatoire)."""
+    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    bien = f" pour le bien {property_ref}" if property_ref else ""
+    content = f"""
+<p>Bonjour {candidate_name},</p>
+<p>Nous vous remercions de l'intérêt que vous avez porté à ce logement et du temps
+consacré à votre dossier{bien}.</p>
+<p>Après étude attentive des candidatures reçues, nous sommes au regret de vous
+informer que <strong>votre dossier n'a pas été retenu</strong> cette fois-ci.</p>
+{intro}
+<p>Nous conservons vos coordonnées et ne manquerons pas de vous recontacter si un
+bien correspondant à votre recherche se libère. Nous vous souhaitons une pleine
+réussite dans vos démarches.</p>
+<p>Cordialement,<br>Le Comptoir Immo · Service Gestion Locative</p>
+"""
+    return await send_email(
+        to=to,
+        subject="Réponse à votre candidature",
+        html_body=_base_template("Réponse à votre candidature", content),
+        cc=cc,
+    )
+
+
 def build_credentials_email(
     *,
     login: str,
