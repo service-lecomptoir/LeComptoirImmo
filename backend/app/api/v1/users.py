@@ -215,7 +215,9 @@ async def create_user(
     credentials_email_sent = False
     if generated_password and (new_user.email or "").strip():
         try:
-            from app.services.email_service import send_credentials
+            from app.services.email_service import send_credentials, set_branding
+            # Apparence selon le thème e-mail du gestionnaire créateur.
+            set_branding(getattr(current_user, "email_theme", None), has_logo=False)
             credentials_email_sent = await send_credentials(
                 to=new_user.email, login=new_user.email,
                 password=generated_password, full_name=new_user.full_name,
@@ -404,7 +406,8 @@ async def send_user_credentials(
 
     email_sent = False
     try:
-        from app.services.email_service import send_credentials
+        from app.services.email_service import send_credentials, set_branding
+        set_branding(getattr(current_user, "email_theme", None), has_logo=False)
         email_sent = await send_credentials(
             to=target.email, login=target.email,
             password=temp_password, full_name=target.full_name,

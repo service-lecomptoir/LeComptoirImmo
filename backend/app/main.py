@@ -351,6 +351,7 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_full_name VARCHAR(150)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_theme VARCHAR(20)",
         # Fusion bien/logement : caractéristiques du logement portées par le bien
         # (loyer/charges/dépôt sont sur le contrat, pas le bien → colonnes supprimées plus bas)
         "ALTER TABLE properties ADD COLUMN IF NOT EXISTS floor INTEGER",

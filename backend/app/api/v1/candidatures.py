@@ -309,7 +309,9 @@ async def send_candidature_visit_reminder(db: AsyncSession, c: Candidature) -> b
         return False
     prop = await db.get(Property, c.property_id)
     block = await _property_block(db, prop)
-    from app.services.email_service import send_visit_reminder
+    from app.services.email_service import send_visit_reminder, set_branding
+    mgr = await db.get(User, prop.created_by) if (prop and prop.created_by) else None
+    set_branding(getattr(mgr, "email_theme", None), has_logo=False)
     ok = await send_visit_reminder(
         to=c.email, candidate_name=c.full_name,
         property_ref=block["ref"] or "votre dossier",
@@ -652,7 +654,8 @@ async def request_documents(
     labels = [_DOC_LABELS[k] for k in selected]
     email_sent = False
     try:
-        from app.services.email_service import send_candidature_documents_request
+        from app.services.email_service import send_candidature_documents_request, set_branding
+        set_branding(getattr(user, "email_theme", None), has_logo=False)
         email_sent = await send_candidature_documents_request(
             to=c.email,
             candidate_name=c.full_name,
@@ -729,7 +732,8 @@ async def invite_visit(
     url = candidature_visit_url(c.upload_token)
     email_sent = False
     try:
-        from app.services.email_service import send_visit_invitation
+        from app.services.email_service import send_visit_invitation, set_branding
+        set_branding(getattr(user, "email_theme", None), has_logo=False)
         email_sent = await send_visit_invitation(
             to=c.email, candidate_name=c.full_name,
             property_ref=block["ref"] or "votre dossier", booking_url=url,
@@ -766,7 +770,8 @@ async def accept_candidature(
         prop = await db.get(Property, c.property_id)
         block = await _property_block(db, prop)
         try:
-            from app.services.email_service import send_candidature_accepted
+            from app.services.email_service import send_candidature_accepted, set_branding
+            set_branding(getattr(user, "email_theme", None), has_logo=False)
             email_sent = await send_candidature_accepted(
                 to=c.email, candidate_name=c.full_name,
                 property_ref=block["ref"] or "votre dossier",
@@ -799,7 +804,8 @@ async def acknowledge_candidature(
     block = await _property_block(db, prop)
     email_sent = False
     try:
-        from app.services.email_service import send_candidature_acknowledged
+        from app.services.email_service import send_candidature_acknowledged, set_branding
+        set_branding(getattr(user, "email_theme", None), has_logo=False)
         email_sent = await send_candidature_acknowledged(
             to=c.email, candidate_name=c.full_name, property_html=block["html"],
             custom_message=(data.message or "").strip() or None,

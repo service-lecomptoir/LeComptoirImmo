@@ -43,6 +43,8 @@ class UserUpdate(BaseModel):
     owner_national_id: Optional[str] = None
     # « Atelier de documents » : variables épinglées par type de document.
     template_pinned_vars: Optional[dict] = None
+    # Thème d'apparence des e-mails ('marine_center'|'marine_band'|'epure').
+    email_theme: Optional[str] = None
     # Signature numérique (data-URL PNG) apposée sur les documents générés.
     signature: Optional[str] = None
     # Source de la signature (pour réédition) : mode 'type'|'draw', texte, police.
@@ -117,6 +119,7 @@ class UserResponse(BaseModel):
     owner_national_id: Optional[str] = None
     template_pinned_vars: Optional[dict] = None
     logo_url: Optional[str] = None
+    email_theme: Optional[str] = None
     signature: Optional[str] = None
     signature_mode: Optional[str] = None
     signature_text: Optional[str] = None

@@ -1,9 +1,29 @@
 """Service d'envoi d'emails transactionnels via SMTP (aiosmtplib)."""
+import contextvars
 import logging
 from email.message import EmailMessage
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# ── Thème d'apparence des e-mails ───────────────────────────────────────────────
+# Look standard, généralisé à tous les e-mails. Chaque gestionnaire peut choisir
+# son thème (Communication et automatisation) ; résolu via un contexte (set_branding)
+# posé par l'appelant qui connaît le gestionnaire concerné.
+EMAIL_THEMES = ("marine_center", "marine_band", "epure")
+DEFAULT_EMAIL_THEME = "marine_center"
+_NAVY = "#0D2F5C"
+_GOLD = "#C9A227"
+
+_ctx_theme: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar("email_theme", default=None)
+_ctx_has_logo: "contextvars.ContextVar[bool]" = contextvars.ContextVar("email_has_logo", default=False)
+
+
+def set_branding(theme: Optional[str] = None, has_logo: bool = False) -> None:
+    """Pose l'apparence (thème + présence d'un logo gestionnaire) pour les e-mails
+    rendus ensuite dans le même contexte d'exécution. À appeler juste avant l'envoi."""
+    _ctx_theme.set(theme if theme in EMAIL_THEMES else DEFAULT_EMAIL_THEME)
+    _ctx_has_logo.set(bool(has_logo))
 
 
 async def send_email(
@@ -101,27 +121,80 @@ def build_signature_html(service_name: Optional[str], has_logo: bool = False) ->
 
 # ── Templates email ───────────────────────────────────────────────────────────
 
+def _avatar_html(*, on_dark: bool, has_logo: bool, dim: int = 44) -> str:
+    """Médaillon d'en-tête : logo du gestionnaire (cid:managerlogo) s'il existe,
+    sinon un monogramme « LC » lisible dans les e-mails (pas d'icône/SVG, peu fiable)."""
+    if has_logo:
+        return (f'<img src="cid:managerlogo" alt="Logo" '
+                f'style="height:{dim}px;max-width:140px;border-radius:8px;background:#fff;padding:3px;'
+                f'vertical-align:middle">')
+    if on_dark:
+        return (f'<div style="display:inline-block;width:{dim}px;height:{dim}px;border-radius:{dim}px;'
+                f'background:rgba(255,255,255,.16);color:#fff;font-size:{int(dim*0.4)}px;font-weight:bold;'
+                f'line-height:{dim}px;text-align:center">LC</div>')
+    return (f'<div style="display:inline-block;width:{dim}px;height:{dim}px;border-radius:10px;'
+            f'background:{_NAVY};color:#fff;font-size:{int(dim*0.4)}px;font-weight:bold;'
+            f'line-height:{dim}px;text-align:center">LC</div>')
+
+
+def _email_header(title: str, theme: str, has_logo: bool) -> str:
+    brand = "Le Comptoir Immo"
+    if theme == "epure":
+        return (
+            f'<tr><td style="background:#ffffff;border-bottom:3px solid {_NAVY};padding:18px 28px">'
+            f'<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+            f'<td style="padding-right:12px">{_avatar_html(on_dark=False, has_logo=has_logo, dim=40)}</td>'
+            f'<td><div style="color:{_NAVY};font-size:16px;font-weight:bold">{brand}</div>'
+            f'<div style="color:#64748b;font-size:12px">Gestion locative · {title}</div></td>'
+            f'</tr></table></td></tr>'
+        )
+    if theme == "marine_band":
+        return (
+            f'<tr><td style="background:{_NAVY};padding:18px 28px">'
+            f'<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+            f'<td style="padding-right:13px">{_avatar_html(on_dark=True, has_logo=has_logo, dim=44)}</td>'
+            f'<td><div style="color:#fff;font-size:17px;font-weight:bold">{brand}</div>'
+            f'<div style="color:#a9c2e8;font-size:12px">Gestion locative · {title}</div></td>'
+            f'</tr></table></td></tr>'
+        )
+    # marine_center (défaut)
+    return (
+        f'<tr><td style="background:{_NAVY};border-bottom:3px solid {_GOLD};padding:22px 28px;text-align:center">'
+        f'<div style="margin-bottom:8px">{_avatar_html(on_dark=True, has_logo=has_logo, dim=48)}</div>'
+        f'<div style="color:#fff;font-size:18px;font-weight:bold">{brand}</div>'
+        f'<div style="color:#a9c2e8;font-size:12px;letter-spacing:.04em">GESTION LOCATIVE</div>'
+        f'<div style="color:#dbeafe;font-size:13px;margin-top:6px">{title}</div></td></tr>'
+    )
+
+
+def _email_footer(theme: str) -> str:
+    txt = "Le Comptoir Immo · Gestion locative · Ce message est automatique, merci de ne pas y répondre."
+    if theme == "epure":
+        return (f'<tr><td style="background:#f4f6fb;border-top:1px solid #e5e7eb;padding:14px 28px;'
+                f'text-align:center;font-size:12px;color:#94a3b8">{txt}</td></tr>')
+    return (f'<tr><td style="background:{_NAVY};padding:14px 28px;text-align:center;'
+            f'font-size:12px;color:#a9c2e8">{txt}</td></tr>')
+
+
 def _base_template(title: str, content: str) -> str:
+    theme = _ctx_theme.get() or DEFAULT_EMAIL_THEME
+    if theme not in EMAIL_THEMES:
+        theme = DEFAULT_EMAIL_THEME
+    has_logo = bool(_ctx_has_logo.get())
     return f"""
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-<meta charset="utf-8">
-<style>
-  body {{ font-family: Arial, sans-serif; color: #333; margin: 0; padding: 0; background: #f5f5f5; }}
-  .wrapper {{ max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.1); }}
-  .header {{ background: #0D2F5C; padding: 20px 32px; }}
-  .header h1 {{ margin: 0; font-size: 18px; font-weight: 600; color: #ffffff; }}
-  .body {{ padding: 24px 32px 28px; }}
-  .footer {{ background: #0D2F5C; padding: 16px 32px; font-size: 12px; color: #dbeafe; text-align: center; }}
-</style>
-</head>
-<body>
-<div class="wrapper">
-  <div class="header"><h1>Le Comptoir Immo : {title}</h1></div>
-  <div class="body">{content}</div>
-  <div class="footer">Le Comptoir Immo · Gestion locative · Ce message est automatique, merci de ne pas y répondre.</div>
-</div>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Arial,Helvetica,sans-serif;color:#333;margin:0;padding:0;background:#f5f5f5">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5">
+<tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e5e7eb">
+{_email_header(title, theme, has_logo)}
+<tr><td style="padding:24px 28px;color:#334155;font-size:14px;line-height:1.7">{content}</td></tr>
+{_email_footer(theme)}
+</table>
+</td></tr>
+</table>
 </body>
 </html>
 """

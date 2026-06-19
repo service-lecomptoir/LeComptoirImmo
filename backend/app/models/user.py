@@ -62,6 +62,9 @@ class User(Base, TimestampMixin):
     # (avis d'échéance, mise en page moderne, à la place du logo).
     logo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    # Thème d'apparence des e-mails (Communication et automatisation) :
+    # 'marine_center' (défaut) | 'marine_band' | 'epure'.
+    email_theme: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     # Signature numérique (data-URL PNG, fond blanc) apposée en bas des courriers
     # générés (lettre de relance, plan d'apurement…). Réglée dans « Mes informations ».
     signature: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

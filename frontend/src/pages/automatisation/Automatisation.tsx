@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import NotificationsSettings from '@/pages/settings/NotificationsSettings'
 import CommunicationLibrary from './CommunicationLibrary'
+import EmailThemePicker from './EmailThemePicker'
 
 const RULE_TYPES = [
   { value: 'avis_echeance', label: "Avis d'échéance", icon: Calendar, color: 'blue' },
@@ -239,7 +240,7 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
 export default function Automatisation() {
   const [rules, setRules] = useState<Rule[]>([])
   const [logs, setLogs] = useState<Log[]>([])
-  const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'scheduler' | 'canaux'>('rules')
+  const [activeTab, setActiveTab] = useState<'rules' | 'logs' | 'scheduler' | 'canaux' | 'apparence'>('rules')
 
   const load = async () => {
     try {
@@ -329,6 +330,7 @@ export default function Automatisation() {
           { key: 'rules', label: 'Communication' },
           { key: 'logs', label: 'Historique des envois' },
           { key: 'scheduler', label: 'Automatisation' },
+          { key: 'apparence', label: 'Apparence des e-mails' },
           { key: 'canaux', label: 'Canaux & tests' },
         ] as const).map(tab => (
           <button key={tab.key}
@@ -345,6 +347,8 @@ export default function Automatisation() {
       </div>
 
       {activeTab === 'rules' && <CommunicationLibrary />}
+
+      {activeTab === 'apparence' && <EmailThemePicker />}
 
       {activeTab === 'logs' && (
         <div className="bg-white rounded-xl border overflow-hidden">

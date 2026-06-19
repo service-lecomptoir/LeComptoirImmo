@@ -37,11 +37,15 @@ async def build_for_manager(db: AsyncSession, manager_id, service_name: Optional
     """Renvoie (signature_html, logo_bytes, logo_subtype) pour un gestionnaire et
     un nom de service donné."""
     from app.models.user import User
-    from app.services.email_service import build_signature_html
+    from app.services.email_service import build_signature_html, set_branding
     logo, sub = None, "png"
+    theme = None
     if manager_id:
         u = await db.get(User, manager_id)
         logo, sub = read_logo(getattr(u, "logo_path", None))
+        theme = getattr(u, "email_theme", None)
+    # Apparence des e-mails du gestionnaire (thème choisi + logo si présent).
+    set_branding(theme, has_logo=bool(logo))
     return build_signature_html(service_name, has_logo=bool(logo)), logo, sub
 
 

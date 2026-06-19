@@ -145,6 +145,9 @@ class UserService:
         )
         if getattr(data, "template_pinned_vars", None) is not None:
             user.template_pinned_vars = data.template_pinned_vars or None
+        if getattr(data, "email_theme", None) is not None:
+            from app.services.email_service import EMAIL_THEMES, DEFAULT_EMAIL_THEME
+            user.email_theme = data.email_theme if data.email_theme in EMAIL_THEMES else DEFAULT_EMAIL_THEME
         if getattr(data, "owner_kind", None) in ("personne", "societe"):
             user.owner_kind = data.owner_kind
         if getattr(data, "owner_full_name", None) is not None:
