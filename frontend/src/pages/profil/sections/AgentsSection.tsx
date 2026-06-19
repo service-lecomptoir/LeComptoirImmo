@@ -72,7 +72,8 @@ export default function AgentsSection() {
       <p className="text-xs text-gray-500 -mt-2">
         Votre équipe d'agents répond à vos questions, vous envoie un point du jour, et peut
         <b> exécuter des actions</b> (générer un avis ou une quittance, enregistrer un paiement,
-        ouvrir une démarche) : avec confirmation, directement sur Telegram (gratuit).
+        ouvrir une démarche, planifier un entretien, proposer la clôture d'une démarche) :
+        avec confirmation, directement sur Telegram (gratuit).
       </p>
 
       <ul className="grid grid-cols-1 sm:grid-cols-3 gap-3">

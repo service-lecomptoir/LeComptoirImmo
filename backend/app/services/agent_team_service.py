@@ -344,6 +344,8 @@ def _help() -> str:
     lines.append("• « envoie la quittance de mai à Martin »")
     lines.append("• « enregistre le paiement de Dupont pour ce mois »")
     lines.append("• « ouvre une démarche pour Martin : fuite d'eau »")
+    lines.append("• « planifie un entretien chaudière le 15/07 pour Rivoli »")
+    lines.append("• « clôture la démarche de Dupont »")
     return "\n".join(lines)
 
 
@@ -418,7 +420,8 @@ _COMMON_RULES = (
     "en restant factuel et bref.\n"
     "4. TU PEUX RÉALISER DES ACTIONS (via une confirmation gérée par le système) : générer/envoyer "
     "un avis d'échéance, générer/envoyer une quittance, enregistrer un paiement reçu, ouvrir une "
-    "démarche. Ne dis JAMAIS que tu es en lecture seule. S'il manque une info (locataire, mois), "
+    "démarche, planifier un entretien sur un bien (à une date), proposer la clôture d'une démarche. "
+    "Ne dis JAMAIS que tu es en lecture seule. S'il manque une info (locataire, bien, date, mois), "
     "invite à reformuler en une phrase, ex. : « génère l'avis de juin pour Dupont ».\n"
     "5. Si une donnée demandée n'est pas dans DONNÉES, dis-le et propose ce que tu peux fournir.\n"
     "6. Montants en euros (€). Va à l'essentiel ; pas de longue introduction."

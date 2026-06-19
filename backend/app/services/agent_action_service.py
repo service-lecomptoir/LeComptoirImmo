@@ -22,6 +22,7 @@ from app.core.permissions import Role
 from app.models.user import User
 from app.models.tenant import Tenant
 from app.models.lease import Lease
+from app.models.property import Property
 from app.models.payment import Payment, PaymentStatus
 from app.services import llm_service
 
@@ -58,23 +59,26 @@ _ACTION_PROMPT = (
     "une ACTION à exécuter. Réponds UNIQUEMENT par un objet JSON valide, sans texte autour.\n\n"
     "Schéma :\n"
     "{\n"
-    '  "action": "avis" | "quittance" | "paiement" | "demarche" | "none",\n'
+    '  "action": "avis" | "quittance" | "paiement" | "demarche" | "entretien" | "cloture" | "none",\n'
     '  "tenant": "<nom du locataire mentionné, sinon null>",\n'
+    '  "property": "<nom du bien mentionné, sinon null>",\n'
     '  "month": <numéro de mois 1-12 ou null>,\n'
     '  "year": <année AAAA ou null>,\n'
+    '  "date": "<date AAAA-MM-JJ si une date est mentionnée (pour un entretien), sinon null>",\n'
     '  "amount": <montant en euros ou null>,\n'
     '  "method": "virement" | "cheque" | "prelevement" | "especes" | null,\n'
     '  "send_email": <true si le message demande explicitement d\'ENVOYER au locataire, sinon false>,\n'
-    '  "title": "<titre court si action=demarche, sinon null>",\n'
-    '  "note": "<contenu/description si demarche, sinon null>"\n'
+    '  "title": "<titre court si action=demarche/entretien/cloture, sinon null>",\n'
+    '  "note": "<contenu/description, sinon null>"\n'
     "}\n\n"
     "Règles : 'action'='avis' pour générer/envoyer un avis d'échéance ; 'quittance' pour une quittance ; "
-    "'paiement' pour enregistrer un loyer encaissé ; 'demarche' pour ouvrir une démarche/note. "
-    "Même si la demande est formulée comme une QUESTION (« peux-tu générer un avis ? », « tu sais "
-    "faire une quittance ? ») ou si le nom du locataire n'est pas précisé, renvoie quand même "
+    "'paiement' pour enregistrer un loyer encaissé ; 'demarche' pour ouvrir une démarche/note ; "
+    "'entretien' pour PLANIFIER un entretien/une intervention/une maintenance sur un bien (à une date) ; "
+    "'cloture' pour CLÔTURER/terminer une démarche existante d'un locataire. "
+    "Même si la demande est formulée comme une QUESTION ou si un détail manque, renvoie quand même "
     "l'action correspondante (NE mets PAS 'none'). Mets 'none' UNIQUEMENT pour une demande "
-    "d'information pure qui n'implique aucune de ces 4 opérations (ex. « combien d'impayés ? », "
-    "« qu'est-ce qu'un avis d'échéance ? »). Ne devine pas un locataire : si aucun nom n'est cité, mets null."
+    "d'information pure (ex. « combien d'impayés ? », « qu'est-ce qu'un avis d'échéance ? »). "
+    "Ne devine pas un locataire ni un bien : si rien n'est cité, mets null."
 )
 
 
@@ -123,6 +127,41 @@ async def _active_lease(db: AsyncSession, tenant_id: uuid.UUID) -> Optional[Leas
     )).scalars().first()
 
 
+async def _find_properties(db: AsyncSession, user: User, name: str) -> list[Property]:
+    """Biens correspondant au nom, restreints au périmètre du gestionnaire."""
+    rows = list((await db.execute(
+        select(Property).where(Property.name.ilike(f"%{name}%")).limit(25)
+    )).scalars().all())
+    role = Role(user.role)
+    if role == Role.ADMIN:
+        return rows
+    if role == Role.GESTIONNAIRE_PROPRIO:
+        return [p for p in rows if p.created_by == user.id]
+    from app.api.v1._isolation import agency_property_ids
+    ids = await agency_property_ids(db, user)
+    return [p for p in rows if p.id in ids]
+
+
+def _parse_date(raw) -> Optional[date]:
+    """Parse une date « AAAA-MM-JJ », « JJ/MM/AAAA » ou « JJ/MM » (année courante)."""
+    if not raw:
+        return None
+    s = str(raw).strip()
+    try:
+        return date.fromisoformat(s)
+    except Exception:  # noqa: BLE001
+        pass
+    m = re.match(r"^(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?$", s)
+    if m:
+        d, mo, y = int(m.group(1)), int(m.group(2)), m.group(3)
+        year = int(y) + 2000 if y and len(y) == 2 else (int(y) if y else date.today().year)
+        try:
+            return date(year, mo, d)
+        except ValueError:
+            return None
+    return None
+
+
 async def _payment(db, lease_id, year, month) -> Optional[Payment]:
     return (await db.execute(
         select(Payment).where(
@@ -159,15 +198,44 @@ async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
     except Exception:  # noqa: BLE001
         year, month = today.year, today.month
 
+    # ── Entretien : pas de locataire ; un titre + une date, bien optionnel ──
+    if action == "entretien":
+        prop = None
+        pname = (intent.get("property") or "").strip()
+        if pname:
+            props = await _find_properties(db, user, pname)
+            if not props:
+                return {"reply": f"Aucun bien « {pname} » trouvé dans votre portefeuille."}
+            if len(props) > 1:
+                noms = ", ".join(p.name for p in props[:6] if p.name)
+                return {"reply": f"Plusieurs biens correspondent à « {pname} » : {noms}. Précisez."}
+            prop = props[0]
+        sched = _parse_date(intent.get("date"))
+        if not sched:
+            return {"reply": ("🔧 Je peux planifier un entretien : indiquez une <b>date</b>, "
+                              "ex. : « planifie un entretien chaudière le 15/07 pour Rivoli ».")}
+        title = (intent.get("title") or intent.get("note") or "Entretien").strip()[:200]
+        pending = {
+            "action": "entretien", "title": title, "scheduled_date": sched.isoformat(),
+            "property_id": str(prop.id) if prop else None,
+            "property_name": (prop.name if prop else None), "note": (intent.get("note") or ""),
+        }
+        cible = f" pour <b>{prop.name}</b>" if prop and prop.name else ""
+        return {"reply": (f"🔧 Je vais planifier l'entretien « <b>{title}</b> »{cible} le "
+                          f"<b>{sched.strftime('%d/%m/%Y')}</b>.\nConfirmez ? Répondez <b>OUI</b>."),
+                "pending": pending}
+
     # Démarche : pas besoin d'un paiement, mais d'un locataire + titre
     _LABELS = {"avis": "générer un avis d'échéance", "quittance": "générer une quittance",
-               "paiement": "enregistrer un paiement", "demarche": "ouvrir une démarche"}
+               "paiement": "enregistrer un paiement", "demarche": "ouvrir une démarche",
+               "cloture": "proposer la clôture d'une démarche"}
     name = (intent.get("tenant") or "").strip()
-    if not name and action in ("avis", "quittance", "paiement", "demarche"):
+    if not name and action in ("avis", "quittance", "paiement", "demarche", "cloture"):
         ex = {"avis": "génère l'avis de juin pour Dupont",
               "quittance": "envoie la quittance de mai à Dupont",
               "paiement": "enregistre le paiement de Dupont pour ce mois",
-              "demarche": "ouvre une démarche pour Dupont : fuite d'eau"}.get(action, "")
+              "demarche": "ouvre une démarche pour Dupont : fuite d'eau",
+              "cloture": "clôture la démarche de Dupont"}.get(action, "")
         return {"reply": (f"Oui, je peux <b>{_LABELS.get(action, 'le faire')}</b> 👍 "
                           f"Indiquez le locataire en une phrase, ex. : « {ex} ».")}
 
@@ -246,6 +314,30 @@ async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
                           f"<b>{tenant.full_name}</b>.\nConfirmez ? Répondez <b>OUI</b>."),
                 "pending": pending}
 
+    if action == "cloture":
+        from app.models.ticket import Ticket
+        tickets = list((await db.execute(
+            select(Ticket).where(Ticket.tenant_id == tenant.id,
+                                  Ticket.status.in_(["open", "in_progress"]))
+            .order_by(Ticket.created_at.desc())
+        )).scalars().all())
+        if not tickets:
+            return {"reply": f"Aucune démarche en cours à clôturer pour {tenant.full_name}."}
+        want = (intent.get("title") or "").strip().lower()
+        if want:
+            tickets = [t for t in tickets if want in (t.title or "").lower()] or tickets
+        if len(tickets) > 1:
+            noms = " ; ".join(t.title for t in tickets[:6])
+            return {"reply": (f"{tenant.full_name} a plusieurs démarches en cours : {noms}. "
+                              f"Précisez le titre de celle à clôturer.")}
+        tk = tickets[0]
+        pending = {"action": "cloture", "ticket_id": str(tk.id),
+                   "tenant_id": str(tenant.id), "title": tk.title}
+        return {"reply": (f"🛡️ Je vais proposer la clôture de la démarche « <b>{tk.title}</b> » de "
+                          f"<b>{tenant.full_name}</b> (le locataire devra la valider).\n"
+                          f"Confirmez ? Répondez <b>OUI</b>."),
+                "pending": pending}
+
     return None
 
 
@@ -261,6 +353,10 @@ async def execute(db: AsyncSession, user: User, pending: dict) -> str:
             return await _exec_paiement(db, user, pending)
         if action == "demarche":
             return await _exec_demarche(db, user, pending)
+        if action == "entretien":
+            return await _exec_entretien(db, user, pending)
+        if action == "cloture":
+            return await _exec_cloture(db, user, pending)
     except Exception as exc:  # noqa: BLE001
         return f"❌ Échec de l'action : {exc}"
     return "Action inconnue."
@@ -366,3 +462,27 @@ async def _exec_demarche(db, user, p) -> str:
     )
     await db.commit()
     return f"✅ Démarche « {ticket.title} » ouverte pour {tenant.full_name}."
+
+
+async def _exec_entretien(db, user, p) -> str:
+    from app.services.entretien_service import EntretienService
+    from app.schemas.entretien import EntretienCreate
+    sched = date.fromisoformat(p["scheduled_date"])
+    data = EntretienCreate(
+        title=p["title"],
+        scheduled_date=sched,
+        property_id=uuid.UUID(p["property_id"]) if p.get("property_id") else None,
+        notes=(p.get("note") or None),
+    )
+    ent = await EntretienService.create(db, data)
+    await db.commit()
+    cible = f" ({p['property_name']})" if p.get("property_name") else ""
+    return f"✅ Entretien « {ent.title} »{cible} planifié le {sched.strftime('%d/%m/%Y')}."
+
+
+async def _exec_cloture(db, user, p) -> str:
+    from app.services.ticket_service import TicketService
+    ticket = await TicketService.propose_closure(db, uuid.UUID(p["ticket_id"]), user.id)
+    await db.commit()
+    return (f"✅ Clôture proposée pour la démarche « {ticket.title} ». "
+            f"Le locataire est invité à la valider.")
