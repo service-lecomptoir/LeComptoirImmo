@@ -352,6 +352,39 @@ async def send_candidature_visit_reminder(db: AsyncSession, c: Candidature, resp
     return ok
 
 
+async def send_candidature_docs_reminder(db: AsyncSession, c: Candidature, respect_active: bool = True) -> bool:
+    """Relance « dossier incomplet » : rappelle au candidat les pièces encore
+    manquantes via le lien de dépôt sécurisé. Respecte le on/off de la règle
+    « candidature : demande de pièces ». Marque docs_reminded_at."""
+    if not (c.email or "").strip() or not c.upload_token:
+        return False
+    docs = _ensure_doc_fields(c.docs)
+    missing = [d for d in docs if d.get("required") and not d.get("provided")]
+    if not missing:
+        return False
+    prop = await db.get(Property, c.property_id)
+    block = await _property_block(db, prop)
+    mgr_id = prop.created_by if prop else None
+    ov = await _cand_overrides(db, mgr_id, "candidature_pieces", c, block)
+    if respect_active and not ov["active"]:
+        return False
+    labels = [_DOC_LABELS.get(d["key"], d["key"]) for d in missing]
+    url = candidature_upload_url(c.upload_token)
+    from app.services.email_service import send_candidature_documents_request
+    mgr = await db.get(User, mgr_id) if mgr_id else None
+    _apply_branding(mgr)
+    ok = await send_candidature_documents_request(
+        to=c.email, candidate_name=c.full_name,
+        property_name=prop.name if prop else "votre bien",
+        doc_labels=labels, upload_url=url,
+        manager_name=getattr(mgr, "full_name", None),
+        subject_override=ov["subject"], body_html_override=ov["body_html"],
+        signature_override=ov["signature"],
+    )
+    c.docs_reminded_at = datetime.now(timezone.utc)
+    return ok
+
+
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 @router.get("", summary="Liste des candidatures")
 async def list_candidatures(

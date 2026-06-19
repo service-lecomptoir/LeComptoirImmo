@@ -59,6 +59,8 @@ class Listing(Base, TimestampMixin):
     # Suivi de performance : nombre de consultations de la page publique.
     views_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     last_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Alerte « vacance » (annonce publiée sans candidature) déjà poussée (anti-doublon).
+    vacancy_alerted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )

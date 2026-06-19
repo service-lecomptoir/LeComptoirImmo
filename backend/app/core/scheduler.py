@@ -229,6 +229,97 @@ async def _job_visit_reminders() -> None:
             logger.error(f"[Scheduler] visit_reminders error: {exc}")
 
 
+async def _job_candidature_doc_reminders() -> None:
+    """Chaque jour à 10h : relance UNE fois les candidats dont le dossier reste
+    incomplet (pièces demandées non déposées) plus de 3 jours après la demande.
+    Respecte l'interrupteur de la règle « candidature : demande de pièces »."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import select
+    from app.database import AsyncSessionLocal
+    from app.models.candidature import Candidature
+    from app.api.v1.candidatures import send_candidature_docs_reminder
+
+    async with AsyncSessionLocal() as db:
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=3)
+            rows = (await db.execute(
+                select(Candidature).where(
+                    Candidature.status == "documents_demandes",
+                    Candidature.docs_reminded_at.is_(None),
+                    Candidature.upload_token.isnot(None),
+                    Candidature.created_at < cutoff,
+                )
+            )).scalars().all()
+            n = 0
+            for c in rows:
+                try:
+                    if await send_candidature_docs_reminder(db, c, respect_active=True):
+                        n += 1
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(f"[Scheduler] doc reminder {c.id} error: {exc}")
+            await db.commit()
+            if n:
+                logger.info(f"[Scheduler] {n} relance(s) dossier incomplet envoyée(s)")
+        except Exception as exc:
+            logger.error(f"[Scheduler] candidature_doc_reminders error: {exc}")
+
+
+async def _job_vacancy_alerts() -> None:
+    """Chaque jour à 10h : alerte UNE fois le gestionnaire (agent Administratif +
+    notification) pour chaque annonce publiée depuis plus de 7 jours qui n'a reçu
+    AUCUNE candidature. Aide commerciale : relancer la diffusion / revoir le prix."""
+    from datetime import datetime, timezone, timedelta
+    from sqlalchemy import select, func
+    from app.database import AsyncSessionLocal
+    from app.models.publishing import Listing
+    from app.models.candidature import Candidature
+    from app.models.property import Property
+    from app.models.notification import Notification, NotificationType, NotificationPriority
+    from app.services import agent_events
+
+    async with AsyncSessionLocal() as db:
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+            rows = (await db.execute(
+                select(Listing).where(
+                    Listing.status == "published",
+                    Listing.vacancy_alerted_at.is_(None),
+                    Listing.published_at.isnot(None),
+                    Listing.published_at < cutoff,
+                )
+            )).scalars().all()
+            n = 0
+            for lst in rows:
+                cnt = (await db.execute(
+                    select(func.count(Candidature.id)).where(Candidature.property_id == lst.property_id)
+                )).scalar() or 0
+                if cnt:
+                    continue
+                prop = await db.get(Property, lst.property_id)
+                pname = prop.name if prop else "votre bien"
+                days = (datetime.now(timezone.utc) - lst.published_at).days
+                if lst.created_by:
+                    db.add(Notification(
+                        title="Annonce sans candidature",
+                        message=(f"L'annonce « {pname} » est publiée depuis {days} jours sans aucune "
+                                 f"candidature. Pensez à élargir la diffusion ou à revoir le loyer."),
+                        notification_type=NotificationType.SYSTEME, priority=NotificationPriority.NORMAL,
+                        entity_type="listing", entity_id=lst.id, user_id=lst.created_by,
+                    ))
+                await agent_events.notify_manager(
+                    db, lst.created_by, "vacance",
+                    f"L'annonce <b>{pname}</b> est publiée depuis {days} jours sans aucune candidature.",
+                    cta="Élargissez la diffusion ou revoyez le loyer dans « Publication des annonces ».",
+                )
+                lst.vacancy_alerted_at = datetime.now(timezone.utc)
+                n += 1
+            await db.commit()
+            if n:
+                logger.info(f"[Scheduler] {n} alerte(s) vacance envoyée(s)")
+        except Exception as exc:
+            logger.error(f"[Scheduler] vacancy_alerts error: {exc}")
+
+
 def start_scheduler(
     avis_day: int = 1, avis_hour: int = 7, avis_minute: int = 30,
     reminder_hour: int = 8, reminder_minute: int = 0,
@@ -295,6 +386,20 @@ def start_scheduler(
         _job_visit_reminders,
         CronTrigger(hour=9, minute=30),
         id="visit_reminders",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        _job_candidature_doc_reminders,
+        CronTrigger(hour=10, minute=0),
+        id="candidature_doc_reminders",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        _job_vacancy_alerts,
+        CronTrigger(hour=10, minute=15),
+        id="vacancy_alerts",
         replace_existing=True,
         misfire_grace_time=3600,
     )

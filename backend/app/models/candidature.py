@@ -60,6 +60,8 @@ class Candidature(Base, TimestampMixin):
     visit_invited_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     # Relance avant visite déjà envoyée (anti-doublon de la relance automatique).
     visit_reminded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Relance « dossier incomplet » déjà envoyée (anti-doublon de la relance auto).
+    docs_reminded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # annonce (page publique) | manuel (saisie gestionnaire)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="annonce")
