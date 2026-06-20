@@ -11,15 +11,17 @@ Protégé par l'en-tête `X-Internal-Key` == `ALICE_INTERNAL_KEY` (clé partagé
 import hmac
 import uuid
 from datetime import datetime
+from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import func, select, text
+from sqlalchemy import desc, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.core.permissions import Role
 from app.database import get_db
+from app.models.audit_log import AuditLog
 from app.models.property import Property
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRoleUpdate, UserUpdate
@@ -417,3 +419,41 @@ async def stats(_: None = Depends(require_internal_key), db: AsyncSession = Depe
     )
     total = await db.scalar(select(func.count()).select_from(User)) or 0
     return Stats(managers=managers, active_managers=active, users=total)
+
+
+# ── Journal d'audit (consommé par Portail360 uniquement, jamais par l'app) ──────
+class AuditLogOut(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    user_id: uuid.UUID | None
+    user_email: str | None
+    action: str
+    entity_type: str | None
+    entity_id: uuid.UUID | None
+    details: Any | None
+    ip_address: str | None
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/audit", response_model=list[AuditLogOut], dependencies=[Depends(require_internal_key)])
+async def list_audit_logs(
+    action: Optional[str] = Query(None),
+    user_email: Optional[str] = Query(None),
+    entity_type: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+):
+    """Journal d'audit Le Comptoir Immo. Réservé à la supervision (Portail360),
+    via la clé interne : volontairement HORS de l'API applicative (pas d'accès
+    gestionnaire). Renvoie toutes les agences (vue opérateur)."""
+    q = select(AuditLog)
+    if action:
+        q = q.where(AuditLog.action == action)
+    if user_email:
+        q = q.where(AuditLog.user_email.ilike(f"%{user_email}%"))
+    if entity_type:
+        q = q.where(AuditLog.entity_type == entity_type)
+    q = q.order_by(desc(AuditLog.created_at)).offset(skip).limit(limit)
+    return (await db.execute(q)).scalars().all()

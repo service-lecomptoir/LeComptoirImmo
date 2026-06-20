@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends
 from app.api.v1 import (
     actualisation,
     apurement_plans,
-    audit,
     auth,
     automation,
     avis_echeances,
@@ -86,7 +85,6 @@ api_router.include_router(messages.router)
 api_router.include_router(offers.router, dependencies=_feat("offres"))
 api_router.include_router(subscription.router)
 api_router.include_router(webhook.router)
-api_router.include_router(audit.router)
 api_router.include_router(rgpd.router)
 api_router.include_router(settings.router)
 api_router.include_router(public.router)

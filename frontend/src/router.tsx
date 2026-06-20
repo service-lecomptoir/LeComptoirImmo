@@ -48,7 +48,6 @@ const LeaseDetail = lazyPage(() => import('@/pages/leases/LeaseDetail'))
 const PaymentList = lazyPage(() => import('@/pages/payments/PaymentList'))
 const NotificationList = lazyPage(() => import('@/pages/notifications/NotificationList'))
 const AdminUsers = lazyPage(() => import('@/pages/admin/AdminUsers'))
-const JournalAudit = lazyPage(() => import('@/pages/admin/JournalAudit'))
 const MentionsLegales = lazyPage(() => import('@/pages/legal/MentionsLegales'))
 const Confidentialite = lazyPage(() => import('@/pages/legal/Confidentialite'))
 const AvisEcheanceList = lazyPage(() => import('@/pages/avis-echeances/AvisEcheanceList'))
@@ -254,7 +253,6 @@ export const router = createBrowserRouter([
       { path: 'guide', element: <GuideUtilisateur /> },
       { path: 'notifications', element: <NotificationList /> },
       { path: 'admin', element: <AdminUsers /> },
-      { path: 'journal-audit', element: <JournalAudit /> },
       { path: 'comptabilite', element: <ComptabiliteGestion /> },
       { path: 'finances/revenus', element: <FinancesParProprietaire view="revenus" /> },
       { path: 'finances/biens', element: <FinancesParProprietaire view="biens" /> },
