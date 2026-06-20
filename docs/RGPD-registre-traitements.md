@@ -5,7 +5,7 @@ Document interne (art. 30 RGPD). À tenir à jour. `[À COMPLÉTER]` = informati
 ## Responsable du traitement
 - **Le Comptoir** (entreprise individuelle / auto-entrepreneur), Aronson ALPHANORD
 - SIREN : 823 382 213 — TVA non applicable (art. 293 B CGI)
-- Siège : **[ADRESSE — À COMPLÉTER]**
+- Siège : **7 rue d'Alembert, 92600 Asnières-sur-Seine**
 - Contact / référent données : Aronson ALPHANORD — service.lecomptoir@outlook.com
 
 ## Sous-traitants

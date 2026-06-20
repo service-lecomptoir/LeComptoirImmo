@@ -19,7 +19,7 @@ export default function MentionsLegales() {
           <ul className="list-disc pl-5">
             <li>SIREN : <strong>823 382 213</strong></li>
             <li>TVA : non applicable, article 293 B du Code général des impôts (franchise en base)</li>
-            <li>Siège : <strong>[ADRESSE — À COMPLÉTER]</strong></li>
+            <li>Siège : <strong>7 rue d'Alembert, 92600 Asnières-sur-Seine</strong></li>
             <li>Contact : <a className="text-[#0D2F5C] hover:underline" href="mailto:service.lecomptoir@outlook.com">service.lecomptoir@outlook.com</a></li>
             <li>Directeur de la publication : <strong>Aronson ALPHANORD</strong></li>
           </ul>
