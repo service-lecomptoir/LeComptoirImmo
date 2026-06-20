@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -107,3 +107,44 @@ async def get_current_comptable(
     if not role_has_permission(Role(current_user.role), Role.COMPTABLE):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux comptables")
     return current_user
+
+
+# ── Comptable : LECTURE seule globale, sauf encaissement / avis / quittances ─────
+# Le comptable a le MÊME périmètre de lecture que son gestionnaire (hiérarchie de
+# rôles). Ce garde global, monté sur /api/v1, bloque ses ÉCRITURES partout sauf :
+# encaissement (record/validate/refuse), avis d'échéance, quittances, et son propre
+# compte. Les lectures et les autres rôles ne sont pas affectés.
+_WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _comptable_write_allowed(path: str) -> bool:
+    if path.startswith("/api/v1/auth/"):
+        return True  # self-service : profil, mot de passe, logo, session
+    if path.startswith("/api/v1/avis-echeances"):
+        return True  # avis d'échéance : génération / envoi / acquittement
+    if path.startswith("/api/v1/payments/"):
+        return (
+            path.endswith("/record")
+            or path.endswith("/validate-declaration")
+            or path.endswith("/refuse-declaration")
+            or "/quittance" in path
+        )
+    return False
+
+
+async def enforce_comptable_readonly(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    if request.method not in _WRITE_METHODS or credentials is None:
+        return
+    try:
+        user = await AuthService.get_current_user(db, credentials.credentials)
+    except Exception:
+        return  # jeton invalide / absent : laissé aux dépendances de l'endpoint
+    if Role(user.role) == Role.COMPTABLE and not _comptable_write_allowed(request.url.path):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Comptable : lecture seule (encaissement, avis d'échéance et quittances uniquement).",
+        )

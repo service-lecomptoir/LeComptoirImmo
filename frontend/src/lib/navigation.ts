@@ -64,18 +64,9 @@ export const navGestionnaire: NavItem[] = [
   { to: '/finances/fiscal', icon: Calculator, label: 'Liasse fiscale' },
 ]
 
-// Navigation Comptable (sous-compte de gestion) : consultation + encaissement.
-// Lecture seule partout ; pas d'administration (annonces, biens, locataires...).
-export const navComptable: NavItem[] = [
-  { label: 'Gestion locative', isSeparator: true },
-  { to: '/dashboard', icon: BarChart3, label: 'Tableau de bord' },
-  { to: '/owners', icon: KeyRound, label: 'Propriétaires' },
-  { to: '/properties', icon: Building2, label: 'Propriétés' },
-  { to: '/tenants', icon: Users, label: 'Locataires' },
-  { to: '/payments', icon: CreditCard, label: 'Paiements' },
-  { label: 'Finance et Comptabilité', isSeparator: true },
-  { to: '/comptabilite', icon: BookText, label: 'Comptabilité' },
-]
+// Le COMPTABLE voit le MÊME menu que le gestionnaire (lecture intégrale) ; ses
+// actions d'écriture sont bloquées côté serveur sauf encaissement/avis/quittances,
+// et masquées côté UI via canManage(). -> navForRole renvoie navGestionnaire.
 
 // Navigation Propriétaire
 export const navProprietaire: NavItem[] = [
@@ -157,7 +148,7 @@ export const navLocataire: NavItem[] = [
 
 /** Menu du rôle (par défaut : gestionnaire mandataire / admin). */
 export function navForRole(role?: string): NavItem[] {
-  if (role === 'comptable') return navComptable
+  // Comptable = menu gestionnaire complet (lecture) ; écritures bloquées serveur.
   if (role === 'gestionnaire_proprio') return navGestionnairePropio
   if (role === 'proprietaire') return navProprietaire
   if (role === 'locataire') return navLocataire

@@ -40,9 +40,12 @@ from app.api.v1 import (
     users,
     webhook,
 )
+from app.api.deps import enforce_comptable_readonly
 from app.core.features import require_feature
 
-api_router = APIRouter(prefix="/api/v1")
+# Garde global : un COMPTABLE est en lecture seule (sauf encaissement / avis /
+# quittances). N'affecte ni les lectures, ni les autres rôles.
+api_router = APIRouter(prefix="/api/v1", dependencies=[Depends(enforce_comptable_readonly)])
 
 
 # Enforcement serveur des fonctionnalités de plan (entitlements).

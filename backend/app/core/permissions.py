@@ -56,7 +56,16 @@ ROLE_HIERARCHY: dict[Role, set[Role]] = {
     Role.PROPRIETAIRE: {Role.PROPRIETAIRE, Role.LECTURE},
     Role.LOCATAIRE: {Role.LOCATAIRE},
     Role.LECTURE: {Role.LECTURE},
-    Role.COMPTABLE: {Role.LECTURE, Role.COMPTABLE},
+    # Comptable = même périmètre de LECTURE que le gestionnaire (il voit tout).
+    # Ses ÉCRITURES sont restreintes globalement (encaissement / avis / quittances)
+    # par le garde `enforce_comptable_readonly` (app/api/deps.py), PAS par la hiérarchie.
+    Role.COMPTABLE: {
+        Role.GESTIONNAIRE,
+        Role.PROPRIETAIRE,
+        Role.LOCATAIRE,
+        Role.LECTURE,
+        Role.COMPTABLE,
+    },
 }
 
 

@@ -33,10 +33,16 @@ async def test_comptable_lecture_seule(client, gestionnaire_token):
     assert r.status_code == 201, r.text
     tok = await _get_token(client, email, "ComptaPass1!")
 
-    # LECTURE : il peut lister les biens / locataires / propriétaires.
-    assert (await client.get("/api/v1/properties", headers=auth(tok))).status_code == 200
-    assert (await client.get("/api/v1/tenants", headers=auth(tok))).status_code == 200
-    assert (await client.get("/api/v1/owners", headers=auth(tok))).status_code == 200
+    # LECTURE INTÉGRALE (mêmes écrans que le gestionnaire).
+    for path in ("/api/v1/properties", "/api/v1/tenants", "/api/v1/owners",
+                 "/api/v1/leases", "/api/v1/payments", "/api/v1/dashboard/stats"):
+        assert (await client.get(path, headers=auth(tok))).status_code == 200, path
+
+    # ÉCRITURE INTERDITE (garde global), y compris création de bien.
+    assert (await client.post(
+        "/api/v1/properties", headers=auth(tok),
+        json={"name": "X", "address": "1 rue", "zip_code": "75001", "city": "Paris"},
+    )).status_code == 403
 
     # ÉCRITURE INTERDITE (dependency 403 avant tout traitement).
     rid = str(uuid.uuid4())
