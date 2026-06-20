@@ -41,14 +41,10 @@ New variable : `DEPLOY_ENABLED` = `true`. Tant que cette variable n'est pas à `
 le **build + push des images tourne** (test du pipeline) mais l'étape de déploiement
 SSH est **sautée** (pas de run rouge).
 
-### 4. Autoriser le VPS à *pull* depuis ghcr.io
-Les images sont privées par défaut. Deux options :
-- **Simple** : rends les packages `immo-backend` / `immo-frontend` *publics*
-  (GitHub → Packages → Package settings → Change visibility). Aucun login VPS requis.
-- **Privé** : crée un PAT (scope `read:packages`) et sur le VPS :
-  ```bash
-  echo <PAT> | docker login ghcr.io -u service-lecomptoir --password-stdin
-  ```
+### 4. Accès du VPS aux images
+Rien à faire : le job `deploy` connecte automatiquement le VPS à ghcr.io avec le
+`GITHUB_TOKEN` éphémère du run (`docker login` puis `docker logout`). Les images
+peuvent donc **rester privées**. Aucun PAT, aucune visibilité publique requise.
 
 ## Comment ça tourne ensuite
 - Chaque push sur `main` touchant `backend/`, `frontend/` ou `docker/` déclenche le pipeline.
