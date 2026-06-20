@@ -984,7 +984,20 @@ def _render_details_table(props: dict, t: dict, variables: dict, line_items: lis
 
 
 def _render_legal_footer(props: dict, t: dict, variables: dict) -> str:
+    # Signature du gestionnaire (data-URL PNG) apposée au-dessus de la mention
+    # légale lorsqu'elle est fournie. Le chemin « blocs » la transmet via
+    # signature_uri (cf. document_blocks_pdf_service.render_blocks_document) ;
+    # sans elle, on garde la mention « ne nécessite pas de signature ».
+    signature_uri = (variables.get("signature_uri") or "").strip()
+    signature_html = ""
+    if signature_uri:
+        signature_html = (
+            f'<div style="margin-top:14px; text-align:right;">'
+            f'<img src="{signature_uri}" alt="Signature" width="160" height="80"/>'
+            f"</div>"
+        )
     return (
+        f"{signature_html}"
         f'<div style="margin-top:18px; border-top:1px solid #e5e7eb; padding-top:6px; '
         f'color:{t["footer_color"]}; font-size:6.5pt; text-align:center;">'
         f"{_sub(props.get('text'), variables)}</div>"
