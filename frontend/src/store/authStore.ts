@@ -9,12 +9,14 @@ const ROLE_LABELS: Record<string, string> = {
   admin: 'Gestionnaire (Admin)',
   gestionnaire: 'Gestionnaire',
   gestionnaire_proprio: 'Gestionnaire',
+  comptable: 'Comptable',
   proprietaire: 'Propriétaire',
   locataire: 'Locataire',
 }
 
 function roleMatchesAccountType(role: string, accountType: AccountType): boolean {
-  if (accountType === 'gestionnaire') return ['admin', 'gestionnaire', 'gestionnaire_proprio'].includes(role)
+  // Le comptable est un sous-compte de gestion : il se connecte via l'espace gestionnaire.
+  if (accountType === 'gestionnaire') return ['admin', 'gestionnaire', 'gestionnaire_proprio', 'comptable'].includes(role)
   if (accountType === 'proprietaire') return role === 'proprietaire'
   if (accountType === 'locataire') return role === 'locataire'
   return false

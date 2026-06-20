@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_gestionnaire, get_current_user
+from app.api.deps import get_current_gestionnaire, get_current_manager, get_current_user
 from app.api.v1._isolation import agency_owner_ids as _agency_owner_ids
 from app.api.v1._isolation import assert_manager_scope
 from app.core.features import require_any_feature, require_feature
@@ -115,7 +115,7 @@ async def update_my_owner(
 async def get_owner(
     owner_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_manager),
 ):
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "cette fiche propriétaire")
@@ -151,7 +151,7 @@ async def owner_finances(
     owner_id: uuid.UUID,
     year: int = Query(..., ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_manager),
     _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
 ):
     owner = await OwnerService.get_by_id(db, owner_id)
@@ -164,7 +164,7 @@ async def owner_fiscal_pdf(
     owner_id: uuid.UUID,
     year: int = Query(..., ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_manager),
     _feat: User = Depends(require_feature("liasse_fiscale")),
 ):
     from fastapi.responses import Response

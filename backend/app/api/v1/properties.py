@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_gestionnaire, get_current_user
+from app.api.deps import get_current_gestionnaire, get_current_manager, get_current_user
 from app.api.v1._isolation import agency_property_ids, assert_manager_scope
 from app.core.permissions import Role
 from app.database import get_db
@@ -150,7 +150,7 @@ async def create_property(
 async def get_property(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_manager),
 ):
     prop = await PropertyService.get_by_id(db, property_id)
     await assert_manager_scope(db, current_user, prop.created_by, "ce bien")
@@ -187,7 +187,7 @@ async def delete_property(
 async def get_occupancy(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_manager),
 ):
     prop = await PropertyService.get_by_id(db, property_id)
     await assert_manager_scope(db, current_user, prop.created_by, "ce bien")

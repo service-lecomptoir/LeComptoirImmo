@@ -16,6 +16,7 @@ import type { Tenant, TenantListItem } from '@/types/tenant'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAuthStore } from '@/store/authStore'
+import { canManage } from '@/utils/permissions'
 import { ViewToggle } from '@/components/common/ViewToggle'
 import { useViewMode } from '@/hooks/useViewMode'
 
@@ -35,6 +36,7 @@ export default function TenantList() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const user = useAuthStore(s => s.user)
+  const canWrite = canManage(user?.role)  // comptable = lecture seule
   const canToggleView = ['gestionnaire', 'gestionnaire_proprio', 'proprietaire'].includes(user?.role ?? '')
   const [view, setView] = useViewMode('tenants', 'grid')
   const [limit, setLimit] = useState(100)
@@ -126,12 +128,14 @@ export default function TenantList() {
           >
             Exporter
           </Button>
+          {canWrite && (
           <Button
             onClick={() => setShowForm(true)}
             leftIcon={<Plus size={16} />}
           >
             Nouveau locataire
           </Button>
+          )}
         </div>
       </div>
 
@@ -184,6 +188,7 @@ export default function TenantList() {
                       {format(new Date(tenant.created_at), 'd MMM yyyy', { locale: fr })}
                     </td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      {canWrite ? (
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => openEdit(tenant.id)}
@@ -200,6 +205,7 @@ export default function TenantList() {
                           <Trash2 size={14} />
                         </button>
                       </div>
+                      ) : <span className="text-gray-300">—</span>}
                     </td>
                   </tr>
                 ))}

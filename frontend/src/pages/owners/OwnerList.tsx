@@ -15,6 +15,7 @@ import type { Owner, OwnerListItem } from '@/types/owner'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAuthStore } from '@/store/authStore'
+import { canManage } from '@/utils/permissions'
 import { ViewToggle } from '@/components/common/ViewToggle'
 import { useViewMode } from '@/hooks/useViewMode'
 
@@ -30,6 +31,7 @@ export default function OwnerList() {
   const [isDeleting, setIsDeleting] = useState(false)
   const user = useAuthStore(s => s.user)
   const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
+  const canWrite = canManage(user?.role)  // comptable = lecture seule
   const [view, setView] = useViewMode('owners', 'grid')
   const [limit, setLimit] = useState(100)
 
@@ -103,12 +105,14 @@ export default function OwnerList() {
           >
             Exporter
           </Button>
+          {canWrite && (
           <Button
             onClick={() => setShowForm(true)}
             leftIcon={<Plus size={16} />}
           >
             Nouveau propriétaire
           </Button>
+          )}
         </div>
       </div>
 
@@ -161,6 +165,7 @@ export default function OwnerList() {
                       {format(new Date(owner.created_at), 'd MMM yyyy', { locale: fr })}
                     </td>
                     <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                      {canWrite ? (
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => openEdit(owner.id)}
@@ -177,6 +182,7 @@ export default function OwnerList() {
                           <Trash2 size={14} />
                         </button>
                       </div>
+                      ) : <span className="text-gray-300">—</span>}
                     </td>
                   </tr>
                 ))}

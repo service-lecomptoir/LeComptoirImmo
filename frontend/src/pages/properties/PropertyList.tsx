@@ -13,6 +13,7 @@ import { toast } from '@/store/toast'
 import { exportCsv } from '@/utils/exportCsv'
 import type { Property, PropertyListItem } from '@/types/property'
 import { useAuthStore } from '@/store/authStore'
+import { canManage } from '@/utils/permissions'
 import { ViewToggle } from '@/components/common/ViewToggle'
 import { useViewMode } from '@/hooks/useViewMode'
 
@@ -70,6 +71,7 @@ export default function PropertyList() {
   const user = useAuthStore(s => s.user)
   // Mandataire : on regroupe les biens par propriétaire (comme les autres onglets).
   const isMandataire = user?.role === 'gestionnaire'
+  const canWrite = canManage(user?.role)  // comptable = lecture seule
   const [collapsedOwners, setCollapsedOwners] = useState<Set<string>>(new Set())
   const toggleOwner = (owner: string) =>
     setCollapsedOwners(prev => {
@@ -231,7 +233,7 @@ export default function PropertyList() {
         <span className="text-xs text-gray-600 truncate">
           {isMandataire ? '' : (prop.owner_name || '')}
         </span>
-        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        {canWrite && <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
           <button
             onClick={() => openEdit(prop.id)}
             className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors"
@@ -246,7 +248,7 @@ export default function PropertyList() {
           >
             <Trash2 size={14} />
           </button>
-        </div>
+        </div>}
       </div>
     </div>
   )
@@ -319,7 +321,7 @@ export default function PropertyList() {
           >
             Exporter
           </Button>
-          <button
+          {canWrite && <button
           onClick={handleNew}
           disabled={checkingLicense}
           title={creationBlocked ? limitMessage : undefined}
@@ -336,7 +338,7 @@ export default function PropertyList() {
               ? <Lock size={16} />
               : <OpenLockRight size={16} />}
           {checkingLicense ? 'Vérification…' : 'Nouveau bien'}
-          </button>
+          </button>}
         </div>
       </div>
 

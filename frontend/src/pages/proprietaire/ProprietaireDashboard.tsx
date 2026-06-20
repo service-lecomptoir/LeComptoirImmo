@@ -4,8 +4,7 @@ import { Building2, CreditCard, TrendingUp, ArrowRight, Home } from 'lucide-reac
 import { useAuthStore } from '@/store/authStore'
 import { propertiesApi } from '@/api/properties'
 import { apiClient } from '@/api/client'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import { getDayMoment, formatLongDate } from '@/lib/dayMoment'
 
 const fmtEuro = (n: number) =>
   n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €'
@@ -55,7 +54,6 @@ export default function ProprietaireDashboard() {
   const [properties, setProperties] = useState<any[]>([])
   const [stats, setStats] = useState<{ monthly_revenue_expected: number; monthly_revenue_received: number; active_leases: number } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const today = new Date()
 
   useEffect(() => {
     setIsLoading(true)
@@ -76,12 +74,28 @@ export default function ProprietaireDashboard() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Mon tableau de bord</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Bienvenue, <span className="font-medium text-gray-700">{user?.full_name}</span>
-          {' '}— {format(today, 'd MMMM yyyy', { locale: fr })}
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Mon tableau de bord</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Bienvenue, <span className="font-medium text-gray-700">{user?.full_name}</span>
+          </p>
+        </div>
+        {(() => {
+          const m = getDayMoment()
+          const { Icon } = m
+          return (
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: m.bg }} title={m.label}>
+                <Icon size={18} style={{ color: m.color }} />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-gray-600 leading-tight">{m.label}</p>
+                <p className="text-sm text-gray-500 capitalize">{formatLongDate()}</p>
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* KPI */}

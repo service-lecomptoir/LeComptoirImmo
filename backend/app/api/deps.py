@@ -69,6 +69,24 @@ async def get_current_gestionnaire(
     return current_user
 
 
+# Personnel d'agence autorisé en LECTURE sur les écrans de gestion. Inclut le
+# COMPTABLE (sous-compte en lecture seule) SANS élargir aux propriétaires/locataires
+# : remplace get_current_gestionnaire sur les endpoints GET de gestion. Les
+# écritures restent protégées par get_current_gestionnaire (le comptable est exclu).
+_MANAGER_READ_ROLES = (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO, Role.COMPTABLE)
+
+
+async def get_current_manager(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Dependency LECTURE pour les écrans de gestion (gestionnaire/admin/comptable)."""
+    if Role(current_user.role) not in _MANAGER_READ_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Réservé au personnel de gestion"
+        )
+    return current_user
+
+
 async def get_manager_or_owner(
     current_user: User = Depends(get_current_user),
 ) -> User:

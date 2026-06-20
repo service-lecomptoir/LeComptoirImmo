@@ -25,8 +25,9 @@ from app.services.user_service import UserService
 
 router = APIRouter(prefix="/users", tags=["Utilisateurs"])
 
-# Rôles que le gestionnaire mandataire peut créer / voir
-_GESTIONNAIRE_ALLOWED_ROLES = {Role.PROPRIETAIRE, Role.LOCATAIRE}
+# Rôles que le gestionnaire mandataire peut créer / voir. COMPTABLE = sous-compte
+# de gestion en lecture seule (+ encaissement) rattaché à l'agence du créateur.
+_GESTIONNAIRE_ALLOWED_ROLES = {Role.PROPRIETAIRE, Role.LOCATAIRE, Role.COMPTABLE}
 
 # PRINCIPE : tout compte de niveau « gestion » (gestionnaire mandataire,
 # gestionnaire-propriétaire, admin) est créé EXCLUSIVEMENT depuis Alice (console
@@ -209,7 +210,7 @@ async def create_user(
         if Role(data.role) not in _GESTIONNAIRE_ALLOWED_ROLES:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Un gestionnaire ne peut créer que des comptes propriétaire ou locataire.",
+                detail="Un gestionnaire ne peut créer que des comptes propriétaire, locataire ou comptable.",
             )
     elif current_role == Role.GESTIONNAIRE_PROPRIO:
         if Role(data.role) != Role.LOCATAIRE:

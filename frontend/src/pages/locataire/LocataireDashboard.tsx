@@ -5,6 +5,7 @@ import {
   Receipt, MessagesSquare, Megaphone, Bell, Building2, Mail, Phone, MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { getDayMoment, formatLongDate } from '@/lib/dayMoment'
 import { apiClient } from '@/api/client'
 import { leasesApi } from '@/api/leases'
 import { paymentsApi } from '@/api/payments'
@@ -82,11 +83,28 @@ export default function LocataireDashboard() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Mon espace</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Bonjour, <span className="font-medium text-gray-700">{user?.full_name}</span>
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Mon espace</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Bonjour, <span className="font-medium text-gray-700">{user?.full_name}</span>
+          </p>
+        </div>
+        {(() => {
+          const m = getDayMoment()
+          const { Icon } = m
+          return (
+            <div className="flex items-center gap-2.5">
+              <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: m.bg }} title={m.label}>
+                <Icon size={18} style={{ color: m.color }} />
+              </span>
+              <div>
+                <p className="text-xs font-medium text-gray-600 leading-tight">{m.label}</p>
+                <p className="text-sm text-gray-500 capitalize">{formatLongDate()}</p>
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Prochaine échéance / solde — bloc d'action principal */}

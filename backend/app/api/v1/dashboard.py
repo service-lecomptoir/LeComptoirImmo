@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_manager, get_current_user, require_role
 from app.core.permissions import Role
 from app.database import get_db
 from app.models.lease import Lease
@@ -43,7 +43,7 @@ from app.services.apurement_revenue import (  # noqa: E402
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(require_role(Role.GESTIONNAIRE)),
+    current_user=Depends(get_current_manager),
 ):
     today = date.today()
     role = Role(current_user.role)

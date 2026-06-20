@@ -109,7 +109,7 @@ function getCreatableRoles(myRole: Role | undefined): [Role, string][] {
     return [['locataire', 'Locataire']]
   }
   if (myRole === 'gestionnaire') {
-    return [['locataire', 'Locataire'], ['proprietaire', 'Propriétaire']]
+    return [['locataire', 'Locataire'], ['proprietaire', 'Propriétaire'], ['comptable', 'Comptable']]
   }
   return (Object.entries(ROLE_LABELS) as [Role, string][]).filter(
     ([r]) => !_MANAGER_LEVEL_ROLES.includes(r),

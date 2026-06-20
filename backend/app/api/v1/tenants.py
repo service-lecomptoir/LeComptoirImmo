@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_gestionnaire, get_current_user
+from app.api.deps import get_current_gestionnaire, get_current_manager, get_current_user
 from app.api.v1._isolation import agency_tenant_ids as _agency_tenant_ids
 from app.api.v1._isolation import assert_manager_scope
 from app.core.permissions import Role
@@ -134,7 +134,7 @@ async def create_tenant(
 async def get_tenant(
     tenant_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_gestionnaire),
+    current_user: User = Depends(get_current_manager),
 ):
     tenant = await TenantService.get_by_id(db, tenant_id)
     await assert_manager_scope(db, current_user, tenant.created_by, "ce locataire")
