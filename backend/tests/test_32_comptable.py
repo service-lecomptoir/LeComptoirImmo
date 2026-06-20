@@ -23,6 +23,18 @@ async def test_gestionnaire_cree_comptable(client, gestionnaire_token):
 
 
 @pytest.mark.asyncio
+async def test_gestionnaire_proprio_cree_comptable(client, gp_token):
+    """Un gestionnaire-propriétaire peut aussi créer un comptable."""
+    email = f"compta_{uuid.uuid4().hex[:8]}@test.fr"
+    r = await client.post(
+        "/api/v1/users", headers=auth(gp_token),
+        json={"email": email, "password": "ComptaPass1!",
+              "full_name": "Comp Table", "role": "comptable"},
+    )
+    assert r.status_code == 201, r.text
+
+
+@pytest.mark.asyncio
 async def test_comptable_lecture_seule(client, gestionnaire_token):
     email = f"compta_{uuid.uuid4().hex[:8]}@test.fr"
     r = await client.post(

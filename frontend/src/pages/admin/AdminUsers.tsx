@@ -106,7 +106,7 @@ async function fetchUsers(): Promise<User[]> {
 const _MANAGER_LEVEL_ROLES: Role[] = ['admin', 'gestionnaire', 'gestionnaire_proprio']
 function getCreatableRoles(myRole: Role | undefined): [Role, string][] {
   if (myRole === 'gestionnaire_proprio') {
-    return [['locataire', 'Locataire']]
+    return [['locataire', 'Locataire'], ['comptable', 'Comptable']]
   }
   if (myRole === 'gestionnaire') {
     return [['locataire', 'Locataire'], ['proprietaire', 'Propriétaire'], ['comptable', 'Comptable']]

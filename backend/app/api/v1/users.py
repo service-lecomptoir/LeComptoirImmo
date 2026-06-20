@@ -213,10 +213,10 @@ async def create_user(
                 detail="Un gestionnaire ne peut créer que des comptes propriétaire, locataire ou comptable.",
             )
     elif current_role == Role.GESTIONNAIRE_PROPRIO:
-        if Role(data.role) != Role.LOCATAIRE:
+        if Role(data.role) not in {Role.LOCATAIRE, Role.COMPTABLE}:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Un gestionnaire-propriétaire ne peut créer que des comptes locataire.",
+                detail="Un gestionnaire-propriétaire ne peut créer que des comptes locataire ou comptable.",
             )
 
     # Règle : le plan Free ne permet pas de créer des comptes locataire.
