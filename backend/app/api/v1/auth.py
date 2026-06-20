@@ -14,11 +14,13 @@ from app.services.user_service import UserService
 from app.services import audit_service
 from app.core.exceptions import UnauthorizedException
 from app.core.passwords import generate_temp_password
+from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentification"])
 
 
 @router.post("/login", response_model=TokenResponse, summary="Connexion utilisateur")
+@limiter.limit("10/minute")
 async def login(
     data: LoginRequest,
     request: Request,
@@ -51,6 +53,7 @@ async def login(
 
 
 @router.post("/forgot-password", summary="Mot de passe oublié : envoi d'un mot de passe temporaire")
+@limiter.limit("5/minute")
 async def forgot_password(
     data: ForgotPasswordRequest,
     request: Request,

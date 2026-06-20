@@ -1,6 +1,13 @@
 from functools import lru_cache
 from typing import List
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Valeurs par défaut « de développement » qui ne doivent JAMAIS rester en production.
+_INSECURE_DEFAULTS = {
+    "ALICE_INTERNAL_KEY": "lecomptoir-internal-dev-key-change-in-production",
+    "FIRST_ADMIN_PASSWORD": "Admin1234!",
+}
 
 
 class Settings(BaseSettings):
@@ -106,6 +113,22 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.APP_ENV == "production"
+
+    @model_validator(mode="after")
+    def _forbid_insecure_defaults_in_production(self) -> "Settings":
+        """En production, refuse de démarrer si un secret est resté sur sa valeur
+        de développement (clé interne, mot de passe admin par défaut)."""
+        if self.is_production:
+            leaked = [
+                name for name, default in _INSECURE_DEFAULTS.items()
+                if getattr(self, name, None) == default
+            ]
+            if leaked:
+                raise ValueError(
+                    "Secrets non configurés en production : " + ", ".join(leaked)
+                    + ". Définissez-les dans le fichier .env."
+                )
+        return self
 
 
 @lru_cache()

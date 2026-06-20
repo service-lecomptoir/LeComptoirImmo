@@ -11,6 +11,8 @@ from app.config import get_settings
 from app.database import engine, Base, AsyncSessionLocal
 from app.api.v1.router import api_router
 from app.core.exceptions import AppException, app_exception_handler, unhandled_exception_handler
+from app.core.security_headers import SecurityHeadersMiddleware
+from app.core.rate_limit import limiter
 from app.core.scheduler import start_scheduler, stop_scheduler
 from app.core.logging_setup import setup_logging
 
@@ -673,6 +675,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.add_middleware(SecurityHeadersMiddleware, production=settings.is_production)
+
+# ── Limitation de débit (anti brute-force, actif en production) ─────────────────
+from slowapi import _rate_limit_exceeded_handler  # noqa: E402
+from slowapi.errors import RateLimitExceeded  # noqa: E402
+from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # ── Exception handlers ────────────────────────────────────────────────────────
 app.add_exception_handler(AppException, app_exception_handler)

@@ -1,0 +1,21 @@
+[tool.ruff]
+# Qualité de code : linter + formateur (https://docs.astral.sh/ruff/).
+# Lancer :  ruff check app   /   ruff format app
+target-version = "py312"
+line-length = 100
+extend-exclude = ["alembic", "migrations", ".venv"]
+
+[tool.ruff.lint]
+# E/F = pyflakes+pycodestyle, I = isort, B = bugbear, UP = pyupgrade,
+# C4 = comprehensions, SIM = simplifications.
+select = ["E", "F", "I", "B", "UP", "C4", "SIM"]
+ignore = [
+    "E501",  # longueur de ligne gérée par le formateur
+    "B008",  # Depends(...) en valeur par défaut = idiome FastAPI
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011", "F401", "F811"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
