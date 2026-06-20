@@ -1,0 +1,75 @@
+# ── Déploiement par IMAGES (pipeline reproductible) ───────────────────────────
+# Le CI (.github/workflows/deploy.yml) construit et pousse les images sur ghcr.io.
+# Le VPS NE CONSTRUIT PLUS : il PULL les images puis up -d. Fini la dérive
+# « tar-extract » : ce qui tourne == l'image taguée par le commit.
+#
+# Usage sur le VPS (fait par le CI) :
+#   export IMAGE_TAG=<sha>     # défaut: latest
+#   docker compose -p docker -f docker/docker-compose.deploy.yml pull
+#   docker compose -p docker -f docker/docker-compose.deploy.yml up -d
+#
+# Les secrets/règles restent dans backend/.env(.prod) sur le VPS (hors git).
+# Postgres, volumes et réseau sont identiques au compose de build.
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: locataire_postgres
+    restart: always
+    env_file:
+      - ../backend/.env
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - locataire_net
+
+  backend:
+    image: ghcr.io/service-lecomptoir/immo-backend:${IMAGE_TAG:-latest}
+    pull_policy: always
+    container_name: locataire_backend
+    restart: always
+    env_file:
+      - ../backend/.env.prod
+    environment:
+      APP_ENV: production
+      POSTGRES_HOST: postgres
+      DEBUG: "false"
+      LOG_DIR: /app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+    volumes:
+      - uploads_data:/app/uploads
+      - ../logs:/app/logs
+    networks:
+      - locataire_net
+
+  frontend:
+    image: ghcr.io/service-lecomptoir/immo-frontend:${IMAGE_TAG:-latest}
+    pull_policy: always
+    container_name: locataire_frontend
+    restart: always
+    expose:
+      - "80"
+    networks:
+      - locataire_net
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  locataire_net:
+    driver: bridge
