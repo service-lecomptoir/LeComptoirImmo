@@ -68,6 +68,18 @@ async def lifespan(app: FastAPI):
     except Exception as _exc:
         logger.warning(f"Migration enum pending_closure ignorée : {_exc!r}")
 
+    # ── Valeur d'enum « carte » : paiement de loyer en ligne (Stripe/SumUp). Sans
+    # elle, l'enregistrement d'un paiement par carte échoue (enum invalide). ──────
+    try:
+        from sqlalchemy import text as _text
+        async with engine.connect() as conn:
+            conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
+            await conn.execute(_text(
+                "ALTER TYPE payment_method_enum ADD VALUE IF NOT EXISTS 'carte'"))
+        logger.info("Enum payment_method_enum : valeur carte ✓")
+    except Exception as _exc:
+        logger.warning(f"Migration enum carte ignorée : {_exc!r}")
+
     # ── Modèles par défaut : seed des comptes existants + refonte de mise en page ─
     try:
         from sqlalchemy import text as _text

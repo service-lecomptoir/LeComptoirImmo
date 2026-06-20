@@ -36,6 +36,7 @@ class PaymentMethod(str, Enum):
     CHEQUE = "cheque"
     PRELEVEMENT = "prelevement"
     ESPECES = "especes"
+    CARTE = "carte"          # paiement en ligne (Stripe / SumUp)
 
 
 class RentCallRule(str, Enum):

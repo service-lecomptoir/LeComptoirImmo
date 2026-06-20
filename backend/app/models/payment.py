@@ -65,7 +65,7 @@ class Payment(Base, TimestampMixin):
     payment_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     payment_method: Mapped[Optional[str]] = mapped_column(
         SAEnum(
-            "virement", "cheque", "prelevement", "especes",
+            "virement", "cheque", "prelevement", "especes", "carte",
             name="payment_method_enum", create_type=False,
         ),
         nullable=True,
