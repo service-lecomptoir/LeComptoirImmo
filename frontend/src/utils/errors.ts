@@ -37,10 +37,19 @@ export function getErrorMessage(
 
   // Codes HTTP parlants
   const status = error?.response?.status
+  if (status === 401) return 'E-mail ou mot de passe incorrect.'
   if (status === 403) return "Vous n'avez pas les droits pour effectuer cette action."
   if (status === 404) return 'Élément introuvable.'
   if (status === 413) return 'Fichier trop volumineux.'
-  if (status && status >= 500) return 'Erreur interne du serveur. Réessayez dans un instant.'
+  if (status === 429) {
+    return 'Trop de tentatives en peu de temps. Patientez une minute avant de réessayer.'
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return 'Service momentanément indisponible. Réessayez dans quelques instants.'
+  }
+  if (status && status >= 500) {
+    return 'Le service a rencontré un problème temporaire. Réessayez dans un instant ; si cela persiste, contactez le support.'
+  }
 
   // Erreur applicative levée manuellement (throw new Error("…")) — pas de réponse
   // HTTP. On surface son message (mais jamais le « Request failed… » d'axios, qui

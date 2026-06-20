@@ -1,5 +1,11 @@
+import logging
+import uuid
+
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
+
+# Journal dédié aux erreurs serveur (routé vers immo-error.log, supervisé par Portail360).
+logger = logging.getLogger("app.errors")
 
 
 # ── Exceptions métier ─────────────────────────────────────────────────────────
@@ -50,7 +56,20 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Référence courte partagée entre l'écran utilisateur et le journal d'erreurs,
+    # pour retrouver l'incident côté supervision (Portail360).
+    incident_id = uuid.uuid4().hex[:8]
+    logger.exception(
+        "Erreur non gérée [%s] %s %s", incident_id, request.method, request.url.path
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Erreur interne du serveur", "status_code": 500},
+        content={
+            "detail": (
+                "Le service a rencontré un problème temporaire. Réessayez dans un "
+                f"instant. Si le problème persiste, contactez le support (réf. {incident_id})."
+            ),
+            "status_code": 500,
+            "incident_id": incident_id,
+        },
     )
