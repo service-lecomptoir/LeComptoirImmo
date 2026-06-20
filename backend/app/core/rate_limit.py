@@ -21,8 +21,10 @@ def client_ip(request: Request) -> str:
     return get_remote_address(request)
 
 
+# headers_enabled reste False : l'injection des en-têtes X-RateLimit par slowapi
+# exige un paramètre `response: Response` sur chaque endpoint, sinon les réponses
+# (succès) plantent en 500. Le throttling (429) fonctionne sans ces en-têtes.
 limiter = Limiter(
     key_func=client_ip,
     enabled=get_settings().is_production,
-    headers_enabled=True,
 )
