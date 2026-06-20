@@ -178,6 +178,20 @@ _DEFAULT_RULES = [
     ("candidature_refus", "Candidature : refus", "email", 0, _GL),
 ]
 
+# Règles créées DÉSACTIVÉES par défaut (le gestionnaire les active à la demande) :
+#  - e-mails candidat automatiques (accusé de réception, acceptation, refus) : on
+#    n'écrit pas au candidat sans action explicite du gestionnaire ;
+#  - relances impayés (rappel, relance 1, mise en demeure) : déclenchées
+#    manuellement après vérification, jamais envoyées au locataire sans contrôle.
+_DEFAULT_INACTIVE_RULES = {
+    "candidature_accuse", "candidature_acceptation", "candidature_refus",
+    "rappel_impaye", "relance_1", "relance_2",
+}
+
+
+def _default_active(rule_type: str) -> bool:
+    return rule_type not in _DEFAULT_INACTIVE_RULES
+
 # Sujet et corps PAR DÉFAUT, ÉDITABLES dans la règle (rien en boîte noire).
 # Placeholders disponibles : {{tenant_name}} {{period}} {{amount}} {{due_date}}
 # {{balance}} {{property_name}}.
@@ -329,7 +343,7 @@ async def ensure_default_rules(db: AsyncSession, gestionnaire_id) -> int:
             continue
         db.add(AutomationRule(
             name=name, rule_type=rule_type, channel=channel,
-            trigger_days=days, is_active=True, created_by=gestionnaire_id,
+            trigger_days=days, is_active=_default_active(rule_type), created_by=gestionnaire_id,
             cc_emails=cc_default, signature=signature,
             subject=_DEFAULT_SUBJECTS.get(rule_type),
             body_template=_DEFAULT_BODIES.get(rule_type),
@@ -414,7 +428,7 @@ async def backfill_rule_types(db: AsyncSession, types: list) -> int:
             name, channel, days, sig = by_type[rt]
             db.add(AutomationRule(
                 name=name, rule_type=rt, channel=channel, trigger_days=days,
-                is_active=True, created_by=mid, signature=sig,
+                is_active=_default_active(rt), created_by=mid, signature=sig,
                 subject=_DEFAULT_SUBJECTS.get(rt), body_template=_DEFAULT_BODIES.get(rt),
             ))
             total += 1
