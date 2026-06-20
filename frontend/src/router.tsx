@@ -48,6 +48,9 @@ const LeaseDetail = lazyPage(() => import('@/pages/leases/LeaseDetail'))
 const PaymentList = lazyPage(() => import('@/pages/payments/PaymentList'))
 const NotificationList = lazyPage(() => import('@/pages/notifications/NotificationList'))
 const AdminUsers = lazyPage(() => import('@/pages/admin/AdminUsers'))
+const JournalAudit = lazyPage(() => import('@/pages/admin/JournalAudit'))
+const MentionsLegales = lazyPage(() => import('@/pages/legal/MentionsLegales'))
+const Confidentialite = lazyPage(() => import('@/pages/legal/Confidentialite'))
 const AvisEcheanceList = lazyPage(() => import('@/pages/avis-echeances/AvisEcheanceList'))
 const ContactList = lazyPage(() => import('@/pages/contacts/ContactList'))
 const Automatisation = lazyPage(() => import('@/pages/automatisation/Automatisation'))
@@ -186,6 +189,16 @@ export const router = createBrowserRouter([
   { path: '/login', element: <Login /> },
   { path: '/', element: <PublicHome /> },
   {
+    path: '/mentions-legales',
+    errorElement: <RouteError />,
+    element: <Suspense fallback={<PageLoader />}><MentionsLegales /></Suspense>,
+  },
+  {
+    path: '/confidentialite',
+    errorElement: <RouteError />,
+    element: <Suspense fallback={<PageLoader />}><Confidentialite /></Suspense>,
+  },
+  {
     path: '/annonce/:token',
     errorElement: <RouteError />,
     element: (
@@ -241,6 +254,7 @@ export const router = createBrowserRouter([
       { path: 'guide', element: <GuideUtilisateur /> },
       { path: 'notifications', element: <NotificationList /> },
       { path: 'admin', element: <AdminUsers /> },
+      { path: 'journal-audit', element: <JournalAudit /> },
       { path: 'comptabilite', element: <ComptabiliteGestion /> },
       { path: 'finances/revenus', element: <FinancesParProprietaire view="revenus" /> },
       { path: 'finances/biens', element: <FinancesParProprietaire view="biens" /> },

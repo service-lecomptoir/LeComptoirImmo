@@ -173,6 +173,11 @@ function BrandPanel({ accountType }: { accountType: AccountType }) {
         <p className="text-blue-300 text-xs">
           © {new Date().getFullYear()} Le Comptoir Immo · Gestion locative professionnelle
         </p>
+        <p className="text-blue-300/80 text-xs mt-1">
+          <a href="/mentions-legales" className="hover:text-white">Mentions légales</a>
+          {' · '}
+          <a href="/confidentialite" className="hover:text-white">Confidentialité</a>
+        </p>
       </div>
     </div>
   )

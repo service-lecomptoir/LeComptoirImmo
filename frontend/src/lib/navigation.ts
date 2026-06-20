@@ -56,6 +56,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
+  { to: '/journal-audit', icon: ShieldCheck, label: "Journal d'audit" },
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/finances/revenus', icon: Wallet, label: 'Encaissements' },
   { to: '/comptabilite', icon: BookText, label: 'Comptabilité' },
@@ -122,6 +123,7 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
+  { to: '/journal-audit', icon: ShieldCheck, label: "Journal d'audit" },
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Encaissements' },
   { to: '/comptabilite', icon: BookText, label: 'Comptabilité' },
@@ -162,6 +164,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   '/candidatures': 'Dossiers candidats centralisés : vérification des pièces, analyse et comparaison des profils, sélection du locataire le plus adapté.',
   '/sorties': "Sortie du locataire : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture du dossier.",
   '/abonnement': 'Vos factures (PDF), votre formule et la gestion de votre abonnement.',
+  '/journal-audit': "Traçabilité des actions sensibles (connexions, opérations RGPD, paiements) : qui a fait quoi et quand.",
   // Espace propriétaire
   '/proprietaire/annonces': "Le statut de mise en location de vos biens (publiée, programmée, brouillon) et leurs performances (vues), en lecture seule.",
   '/proprietaire': "Vue d'ensemble : revenus, taux d'occupation et points d'attention sur vos biens.",

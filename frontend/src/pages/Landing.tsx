@@ -436,7 +436,14 @@ function Footer() {
           </div>
           <span className="font-semibold text-sm" style={{ color: NAVY }}>Le Comptoir Immo</span>
         </div>
-        <p className="text-xs text-gray-400">© {new Date().getFullYear()} Le Comptoir Immo : Gestion locative</p>
+        <div className="text-xs text-gray-400 text-center">
+          <p>© {new Date().getFullYear()} Le Comptoir Immo : Gestion locative</p>
+          <p className="mt-1">
+            <Link to="/mentions-legales" className="hover:text-gray-600">Mentions légales</Link>
+            {' · '}
+            <Link to="/confidentialite" className="hover:text-gray-600">Confidentialité</Link>
+          </p>
+        </div>
         <Link to="/login" className="text-sm font-medium inline-flex items-center gap-1.5" style={{ color: NAVY }}>
           Vers le site <ArrowRight size={14} />
         </Link>
