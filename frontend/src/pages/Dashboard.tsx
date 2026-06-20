@@ -150,7 +150,10 @@ export default function Dashboard() {
                 style={{ background: moment.bg }} title={moment.label}>
                 <Icon size={18} style={{ color: moment.color }} />
               </span>
-              <span className="text-sm text-gray-500 capitalize">{formatLongDate()}</span>
+              <div>
+                <p className="text-xs font-medium text-gray-600 leading-tight">{moment.label}</p>
+                <p className="text-sm text-gray-500 capitalize">{formatLongDate()}</p>
+              </div>
             </div>
           )
         })()}
