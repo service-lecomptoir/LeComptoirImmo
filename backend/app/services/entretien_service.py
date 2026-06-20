@@ -1,15 +1,23 @@
 import uuid
 from datetime import date, timedelta
-from typing import Optional
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.entretien import (
-    Prestataire, Entretien, EntretienStatus, EntretienFrequency,
-)
-from app.schemas.entretien import PrestataireCreate, PrestataireUpdate, EntretienCreate, EntretienUpdate
 from app.core.exceptions import NotFoundException
+from app.models.entretien import (
+    Entretien,
+    EntretienFrequency,
+    EntretienStatus,
+    Prestataire,
+)
+from app.schemas.entretien import (
+    EntretienCreate,
+    EntretienUpdate,
+    PrestataireCreate,
+    PrestataireUpdate,
+)
 
 # Durée indicative (jours) d'une fréquence déclarée — repli quand l'historique est insuffisant.
 _FREQ_DAYS = {
@@ -44,7 +52,6 @@ def _days_to_frequency(days: float) -> str:
 
 
 class PrestataireService:
-
     @staticmethod
     async def create(db: AsyncSession, data: PrestataireCreate) -> Prestataire:
         p = Prestataire(**data.model_dump())
@@ -71,7 +78,9 @@ class PrestataireService:
         return list(result.scalars().all())
 
     @staticmethod
-    async def update(db: AsyncSession, prestataire_id: uuid.UUID, data: PrestataireUpdate) -> Prestataire:
+    async def update(
+        db: AsyncSession, prestataire_id: uuid.UUID, data: PrestataireUpdate
+    ) -> Prestataire:
         p = await PrestataireService.get(db, prestataire_id)
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(p, field, value)
@@ -86,7 +95,6 @@ class PrestataireService:
 
 
 class EntretienService:
-
     @staticmethod
     async def create(db: AsyncSession, data: EntretienCreate) -> Entretien:
         e = Entretien(**data.model_dump())
@@ -111,8 +119,8 @@ class EntretienService:
     async def list_all(
         db: AsyncSession,
         *,
-        status: Optional[str] = None,
-        property_id: Optional[uuid.UUID] = None,
+        status: str | None = None,
+        property_id: uuid.UUID | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> tuple[list[Entretien], int]:
@@ -155,9 +163,9 @@ class EntretienService:
     async def autoplan(
         db: AsyncSession,
         *,
-        allowed_props: Optional[set] = None,
-        excluded_props: Optional[set] = None,
-        today: Optional[date] = None,
+        allowed_props: set | None = None,
+        excluded_props: set | None = None,
+        today: date | None = None,
     ) -> list[dict]:
         """Crée automatiquement la prochaine maintenance pour chaque « série »
         d'entretiens récurrents, en déduisant la cadence de l'HISTORIQUE des
@@ -205,15 +213,17 @@ class EntretienService:
                 continue
 
             # Cadence : médiane des intervalles observés, sinon fréquence déclarée
-            cadence: Optional[float] = None
+            cadence: float | None = None
             if len(done_dates) >= 2:
-                diffs = [(done_dates[i] - done_dates[i - 1]).days for i in range(1, len(done_dates))]
+                diffs = [
+                    (done_dates[i] - done_dates[i - 1]).days for i in range(1, len(done_dates))
+                ]
                 diffs = [d for d in diffs if d > 3]
                 if diffs:
                     cadence = _median(diffs)
             if cadence is None:
                 last_e = max(done, key=eff_date)
-                freq = (last_e.frequency or EntretienFrequency.UNIQUE.value)
+                freq = last_e.frequency or EntretienFrequency.UNIQUE.value
                 cadence = _FREQ_DAYS.get(freq)
             if not cadence:
                 continue  # série non récurrente (fréquence unique, pas d'historique)
@@ -224,8 +234,10 @@ class EntretienService:
 
             src = max(done, key=eff_date)
             months = max(1, int(round(cadence / 30)))
-            notes = (f"{AUTOPLAN_TAG} Planifié automatiquement d'après l'historique "
-                     f"(cadence ~{months} mois). Dernier le {last_done.strftime('%d/%m/%Y')}.")
+            notes = (
+                f"{AUTOPLAN_TAG} Planifié automatiquement d'après l'historique "
+                f"(cadence ~{months} mois). Dernier le {last_done.strftime('%d/%m/%Y')}."
+            )
             e_new = Entretien(
                 title=src.title,
                 description=src.description,
@@ -239,13 +251,15 @@ class EntretienService:
                 notes=notes,
             )
             db.add(e_new)
-            created.append({
-                "title": src.title,
-                "property_label": (src.property.address if src.property else None),
-                "scheduled_date": next_due.isoformat(),
-                "cadence_months": months,
-                "overdue": next_due < today,
-            })
+            created.append(
+                {
+                    "title": src.title,
+                    "property_label": (src.property.address if src.property else None),
+                    "scheduled_date": next_due.isoformat(),
+                    "cadence_months": months,
+                    "overdue": next_due < today,
+                }
+            )
 
         if created:
             await db.flush()

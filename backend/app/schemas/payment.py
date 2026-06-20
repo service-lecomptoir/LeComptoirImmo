@@ -1,6 +1,6 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
 from app.models.payment import PaymentStatus
@@ -10,20 +10,21 @@ class PaymentCreate(BaseModel):
     lease_id: uuid.UUID
     period_year: int = Field(..., ge=2000, le=2100)
     period_month: int = Field(..., ge=1, le=12)
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class PaymentRecordIn(BaseModel):
     """Payload pour saisir un paiement."""
+
     amount_paid: float = Field(..., gt=0)
     payment_date: date
-    payment_method: Optional[str] = None
-    notes: Optional[str] = None
+    payment_method: str | None = None
+    notes: str | None = None
 
 
 class PaymentUpdate(BaseModel):
-    notes: Optional[str] = None
-    status: Optional[PaymentStatus] = None
+    notes: str | None = None
+    status: PaymentStatus | None = None
 
 
 class TenantInPayment(BaseModel):
@@ -39,25 +40,25 @@ class PaymentResponse(BaseModel):
     period_year: int
     period_month: int
     period_label: str
-    period_start: Optional[date] = None
-    period_end: Optional[date] = None
-    period_range_label: Optional[str] = None
+    period_start: date | None = None
+    period_end: date | None = None
+    period_range_label: str | None = None
     due_date: date
     amount_rent: float
     amount_charges: float
-    amount_apl: Optional[float] = None
+    amount_apl: float | None = None
     amount_due: float
     amount_paid: float
     balance: float
     credit_applied: float = 0.0
-    payment_date: Optional[date] = None
-    payment_method: Optional[str] = None
+    payment_date: date | None = None
+    payment_method: str | None = None
     status: PaymentStatus
     settled_by_plan: bool = False
-    notes: Optional[str] = None
-    quittance_generated_at: Optional[datetime] = None
-    quittance_sent_at: Optional[datetime] = None
-    tenant: Optional[TenantInPayment] = None
+    notes: str | None = None
+    quittance_generated_at: datetime | None = None
+    quittance_sent_at: datetime | None = None
+    tenant: TenantInPayment | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -69,29 +70,29 @@ class PaymentListItem(BaseModel):
     tenant_full_name: str
     property_name: str
     period_label: str
-    period_start: Optional[date] = None
-    period_end: Optional[date] = None
-    period_range_label: Optional[str] = None
+    period_start: date | None = None
+    period_end: date | None = None
+    period_range_label: str | None = None
     period_year: int
     period_month: int
     due_date: date
     amount_rent: float = 0.0
     amount_charges: float = 0.0
-    amount_apl: Optional[float] = None
+    amount_apl: float | None = None
     amount_due: float
     amount_paid: float
     balance: float
     credit_applied: float = 0.0
     amount_on_plan: float = 0.0
-    payment_method: Optional[str] = None
-    payment_date: Optional[date] = None
+    payment_method: str | None = None
+    payment_date: date | None = None
     status: PaymentStatus
     settled_by_plan: bool = False
-    quittance_generated_at: Optional[datetime] = None
-    quittance_sent_at: Optional[datetime] = None
-    declared_at: Optional[datetime] = None
-    declared_method: Optional[str] = None
-    declared_amount: Optional[float] = None
+    quittance_generated_at: datetime | None = None
+    quittance_sent_at: datetime | None = None
+    declared_at: datetime | None = None
+    declared_method: str | None = None
+    declared_amount: float | None = None
 
 
 class PaymentListResponse(BaseModel):

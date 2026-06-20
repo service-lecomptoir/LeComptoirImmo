@@ -1,21 +1,25 @@
 """API Automatisation — règles d'envoi automatique et communications groupées."""
+
 import uuid
-from typing import List, Optional
-from datetime import datetime
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_gestionnaire
 from app.core.permissions import Role
+from app.database import get_db
 from app.models.automation import AutomationRule, CommunicationLog, RuleType
-from app.models.tenant import Tenant
 from app.models.lease import Lease
+from app.models.tenant import Tenant
 from app.models.user import User
 from app.schemas.automation import (
-    AutomationRuleCreate, AutomationRuleUpdate, AutomationRuleResponse,
-    CommunicationLogResponse, GroupCommunicationRequest,
+    AutomationRuleCreate,
+    AutomationRuleResponse,
+    AutomationRuleUpdate,
+    CommunicationLogResponse,
+    GroupCommunicationRequest,
 )
 
 router = APIRouter(prefix="/automation", tags=["Automatisation"])
@@ -31,6 +35,7 @@ async def _check_rule_access(rule: AutomationRule, current_user: User, db: Async
             raise HTTPException(status_code=403, detail="Accès refusé")
     elif role == Role.GESTIONNAIRE:
         from app.api.v1._isolation import agency_member_ids
+
         members = await agency_member_ids(db, current_user)
         if rule.created_by not in members:
             raise HTTPException(status_code=403, detail="Accès refusé")
@@ -38,9 +43,10 @@ async def _check_rule_access(rule: AutomationRule, current_user: User, db: Async
 
 # ── Règles d'automatisation ───────────────────────────────────────────────────
 
-@router.get("/rules", response_model=List[AutomationRuleResponse])
+
+@router.get("/rules", response_model=list[AutomationRuleResponse])
 async def list_rules(
-    rule_type: Optional[RuleType] = Query(None),
+    rule_type: RuleType | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
@@ -52,6 +58,7 @@ async def list_rules(
         q = q.where(AutomationRule.created_by == current_user.id)
     elif role == Role.GESTIONNAIRE:
         from app.api.v1._isolation import agency_member_ids
+
         members = await agency_member_ids(db, current_user)
         q = q.where(AutomationRule.created_by.in_(members)) if members else q.where(False)
     # Admin : pas de filtre
@@ -64,6 +71,7 @@ async def list_rules(
     # Masquer les règles dont la fonctionnalité n'est pas incluse au plan
     # (ex. règles candidature si le gestionnaire n'a pas « Gestion des candidatures »).
     from app.core.features import get_plan_features, rule_type_allowed
+
     feats = await get_plan_features(db, current_user.id)
     return [r for r in rules if rule_type_allowed(r.rule_type, feats)]
 
@@ -150,6 +158,7 @@ async def run_rules_now(
     """Exécute immédiatement les règles d'automatisation du gestionnaire courant
     (avis selon délai, rappels/relances d'impayés). Idempotent (dédup)."""
     from app.services import automation_engine
+
     summary = await automation_engine.run_all(db, manager_id=current_user.id)
     await db.commit()
     total = sum(summary.values()) if summary else 0
@@ -166,7 +175,9 @@ async def run_rule_now(
     génère/traite immédiatement le type concerné et horodate la dernière exécution.
     Les types événementiels (quittance, révisions, taxe) ne se déclenchent qu'à
     l'action correspondante : pas d'exécution planifiable."""
-    from datetime import datetime, timezone, date as _date
+    from datetime import date as _date
+    from datetime import datetime
+
     rule = await db.get(AutomationRule, rule_id)
     if not rule:
         raise HTTPException(status_code=404, detail="Règle introuvable")
@@ -175,39 +186,58 @@ async def run_rule_now(
     if rule.rule_type == "avis_echeance":
         # Génération + dépôt des avis du mois courant (l'envoi reste piloté par la règle).
         from app.services.avis_echeance_service import AvisEcheanceService
+
         today = _date.today()
         prop_ids = None
         if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
             from app.models.property import Property
-            prop_ids = list((await db.execute(
-                select(Property.id).where(Property.created_by == current_user.id)
-            )).scalars().all())
+
+            prop_ids = list(
+                (
+                    await db.execute(
+                        select(Property.id).where(Property.created_by == current_user.id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
         count = await AvisEcheanceService.generate_monthly_all(
-            db, today.year, today.month, property_ids=prop_ids)
-        rule.last_run_at = datetime.now(timezone.utc)
+            db, today.year, today.month, property_ids=prop_ids
+        )
+        rule.last_run_at = datetime.now(UTC)
         await db.commit()
-        return {"ran": rule.rule_type, "count": count,
-                "message": f"{count} avis d'échéance généré(s) et déposé(s)."}
+        return {
+            "ran": rule.rule_type,
+            "count": count,
+            "message": f"{count} avis d'échéance généré(s) et déposé(s).",
+        }
 
     if rule.rule_type in ("rappel_impaye", "relance_1", "relance_2", "rapport_mensuel"):
         from app.services import automation_engine
+
         summary = await automation_engine.run_all(
-            db, manager_id=rule.created_by, only_rule_id=rule.id)
+            db, manager_id=rule.created_by, only_rule_id=rule.id
+        )
         await db.commit()
-        return {"ran": rule.rule_type, "count": sum(summary.values()) if summary else 0,
-                "detail": summary}
+        return {
+            "ran": rule.rule_type,
+            "count": sum(summary.values()) if summary else 0,
+            "detail": summary,
+        }
 
     raise HTTPException(
         status_code=400,
         detail="Type événementiel : se déclenche automatiquement à l'action "
-               "(paiement, déclaration). Pas d'exécution à planifier.")
+        "(paiement, déclaration). Pas d'exécution à planifier.",
+    )
 
 
 # ── Logs de communication ─────────────────────────────────────────────────────
 
-@router.get("/logs", response_model=List[CommunicationLogResponse])
+
+@router.get("/logs", response_model=list[CommunicationLogResponse])
 async def list_logs(
-    tenant_id: Optional[uuid.UUID] = Query(None),
+    tenant_id: uuid.UUID | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -219,15 +249,18 @@ async def list_logs(
     # ── Scope par rôle ────────────────────────────────────────────────────────
     if role == Role.GESTIONNAIRE_PROPRIO:
         # Logs liés aux locataires du GP
-        my_tenant_ids = (await db.execute(
-            select(Tenant.id).where(Tenant.created_by == current_user.id)
-        )).scalars().all()
+        my_tenant_ids = (
+            (await db.execute(select(Tenant.id).where(Tenant.created_by == current_user.id)))
+            .scalars()
+            .all()
+        )
         if my_tenant_ids:
             q = q.where(CommunicationLog.tenant_id.in_(my_tenant_ids))
         else:
             return []
     elif role == Role.GESTIONNAIRE:
         from app.api.v1._isolation import agency_tenant_ids
+
         allowed = await agency_tenant_ids(db, current_user)
         q = q.where(CommunicationLog.tenant_id.in_(allowed)) if allowed else q.where(False)
 
@@ -250,13 +283,16 @@ async def delete_log(
         raise HTTPException(status_code=404, detail="Entrée introuvable")
     role = Role(current_user.role)
     if role == Role.GESTIONNAIRE_PROPRIO:
-        my_tenant_ids = set((await db.execute(
-            select(Tenant.id).where(Tenant.created_by == current_user.id)
-        )).scalars().all())
+        my_tenant_ids = set(
+            (await db.execute(select(Tenant.id).where(Tenant.created_by == current_user.id)))
+            .scalars()
+            .all()
+        )
         if log.tenant_id not in my_tenant_ids:
             raise HTTPException(status_code=403, detail="Accès refusé")
     elif role == Role.GESTIONNAIRE:
         from app.api.v1._isolation import agency_tenant_ids
+
         allowed = set(await agency_tenant_ids(db, current_user))
         if log.tenant_id not in allowed:
             raise HTTPException(status_code=403, detail="Accès refusé")
@@ -266,6 +302,7 @@ async def delete_log(
 
 
 # ── Communication groupée ─────────────────────────────────────────────────────
+
 
 @router.post("/send-group", status_code=status.HTTP_200_OK)
 async def send_group_communication(
@@ -285,6 +322,7 @@ async def send_group_communication(
     elif role == Role.GESTIONNAIRE:
         # Uniquement les locataires de SON agence
         from app.api.v1._isolation import agency_tenant_ids
+
         allowed = await agency_tenant_ids(db, current_user)
         q = q.where(Tenant.id.in_(allowed)) if allowed else q.where(False)
 
@@ -316,16 +354,26 @@ async def send_group_communication(
         # Envoi réel si SMTP configuré, sinon log "simulated"
         email_sent = False
         if is_email and recipient:
-            from app.services.cc_service import rule_cc
             from app.services import mail_signature
+            from app.services.cc_service import rule_cc
+
             # CC : celui saisi dans le formulaire, sinon celui d'une règle
             # « communication_groupee » active.
-            _cc = (data.cc_emails or "").strip() or await rule_cc(db, current_user.id, "communication_groupee")
+            _cc = (data.cc_emails or "").strip() or await rule_cc(
+                db, current_user.id, "communication_groupee"
+            )
             _sig, _logo, _logosub = await mail_signature.build_for_manager(
-                db, current_user.id, "Service Gestion Locative")
-            email_sent = await send_group_message(recipient, data.subject, data.body, cc=_cc,
-                                                  signature_html=_sig, inline_logo=_logo,
-                                                  inline_logo_subtype=_logosub)
+                db, current_user.id, "Service Gestion Locative"
+            )
+            email_sent = await send_group_message(
+                recipient,
+                data.subject,
+                data.body,
+                cc=_cc,
+                signature_html=_sig,
+                inline_logo=_logo,
+                inline_logo_subtype=_logosub,
+            )
 
         log = CommunicationLog(
             tenant_id=tenant.id,
@@ -345,5 +393,5 @@ async def send_group_communication(
         "sent_count": sent_count,
         "total_targets": len(tenants),
         "errors": errors,
-        "message": f"Communication envoyée à {sent_count} destinataire(s)"
+        "message": f"Communication envoyée à {sent_count} destinataire(s)",
     }

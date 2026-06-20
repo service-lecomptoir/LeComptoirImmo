@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel
-from app.models.document import EntityType, DocumentType
+
+from app.models.document import DocumentType, EntityType
 
 
 class DocumentResponse(BaseModel):
@@ -12,16 +13,16 @@ class DocumentResponse(BaseModel):
     document_type: DocumentType
     file_name: str
     mime_type: str
-    file_size: Optional[int]
-    label: Optional[str]
-    notes: Optional[str]
-    uploaded_by: Optional[uuid.UUID]
+    file_size: int | None
+    label: str | None
+    notes: str | None
+    uploaded_by: uuid.UUID | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
 
 class DocumentUpdate(BaseModel):
-    document_type: Optional[DocumentType] = None
-    label: Optional[str] = None
-    notes: Optional[str] = None
+    document_type: DocumentType | None = None
+    label: str | None = None
+    notes: str | None = None

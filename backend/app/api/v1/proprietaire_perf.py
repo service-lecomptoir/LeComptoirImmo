@@ -1,16 +1,18 @@
 """Endpoint de performance par bien — loyer théorique vs perçu, par mois."""
+
 from datetime import date
+
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_user
 from app.core.features import require_any_feature
-from app.models.property import Property
+from app.database import get_db
 from app.models.lease import Lease
-from app.models.payment import Payment, PaymentStatus
-from app.services.apurement_revenue import received_status, apurement_received
+from app.models.payment import Payment
+from app.models.property import Property
+from app.services.apurement_revenue import apurement_received, received_status
 
 router = APIRouter(prefix="/proprietaire-performance", tags=["Propriétaire Performance"])
 
@@ -23,8 +25,10 @@ async def get_proprietaire_performance(
     _feat=Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
 ):
     """Performance des biens du propriétaire : loyer théorique vs perçu, par mois."""
-    from app.core.permissions import Role as R
     from fastapi import HTTPException
+
+    from app.core.permissions import Role as R
+
     role = R(current_user.role)
 
     if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.GESTIONNAIRE_PROPRIO, R.ADMIN):
@@ -32,9 +36,7 @@ async def get_proprietaire_performance(
 
     proprietaire_id = current_user.id
 
-    props_res = await db.execute(
-        select(Property).where(Property.owner_user_id == proprietaire_id)
-    )
+    props_res = await db.execute(select(Property).where(Property.owner_user_id == proprietaire_id))
     properties = list(props_res.scalars().all())
 
     today = date.today()
@@ -46,9 +48,7 @@ async def get_proprietaire_performance(
 
         # Loyer mensuel théorique = somme des baux actifs
         leases_res = await db.execute(
-            select(
-                func.coalesce(func.sum(Lease.rent_amount + Lease.charges_amount), 0.0)
-            ).where(
+            select(func.coalesce(func.sum(Lease.rent_amount + Lease.charges_amount), 0.0)).where(
                 Lease.property_id == prop_id,
                 Lease.is_active.is_(True),
             )
@@ -85,26 +85,30 @@ async def get_proprietaire_performance(
             )
             m_received = float(m_res.scalar_one() or 0)
             m_received += await apurement_received(db, [prop_id], year=year, month=month)
-            monthly_breakdown.append({
-                "month": month,
-                "expected": round(monthly_expected, 2),
-                "received": round(m_received, 2),
-            })
+            monthly_breakdown.append(
+                {
+                    "month": month,
+                    "expected": round(monthly_expected, 2),
+                    "received": round(m_received, 2),
+                }
+            )
 
         collection_rate = round(
             (ytd_received / ytd_theoretical * 100) if ytd_theoretical > 0 else 0, 1
         )
 
-        result_props.append({
-            "property_id": str(prop_id),
-            "property_name": prop.name,
-            "monthly_expected": round(monthly_expected, 2),
-            "ytd_theoretical": round(ytd_theoretical, 2),
-            "ytd_received": round(ytd_received, 2),
-            "collection_rate": collection_rate,
-            "months_elapsed": months_elapsed,
-            "monthly_breakdown": monthly_breakdown,
-        })
+        result_props.append(
+            {
+                "property_id": str(prop_id),
+                "property_name": prop.name,
+                "monthly_expected": round(monthly_expected, 2),
+                "ytd_theoretical": round(ytd_theoretical, 2),
+                "ytd_received": round(ytd_received, 2),
+                "collection_rate": collection_rate,
+                "months_elapsed": months_elapsed,
+                "monthly_breakdown": monthly_breakdown,
+            }
+        )
 
     total_theoretical = sum(p["ytd_theoretical"] for p in result_props)
     total_received = sum(p["ytd_received"] for p in result_props)

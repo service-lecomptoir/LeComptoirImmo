@@ -1,29 +1,32 @@
-import uuid
 import calendar
 import logging
-from datetime import date, datetime, timezone
+import uuid
+from datetime import date
+
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.database import get_db
-from app.api.deps import get_current_user, get_current_gestionnaire
-from app.core.permissions import Role
-from app.models.user import User
-from app.models.lease import Lease
-from app.models.tenant import Tenant
-from app.models.property import Property
-from app.models.apurement_plan import ApurementPlan
-from app.services.payment_service import PaymentService
-from app.services.apurement_plan_service import ApurementPlanService, plan_to_dict
+from app.api.deps import get_current_gestionnaire, get_current_user
 from app.api.v1._isolation import (
-    assert_payment_access, assert_lease_access, agency_tenant_ids,
+    agency_tenant_ids,
+    assert_lease_access,
+    assert_payment_access,
 )
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.features import require_feature
+from app.core.permissions import Role
+from app.database import get_db
+from app.models.apurement_plan import ApurementPlan
+from app.models.lease import Lease
+from app.models.property import Property
+from app.models.tenant import Tenant
+from app.models.user import User
 from app.schemas.apurement_plan import ApurementPlanCreate, InstallmentMark
+from app.services.apurement_plan_service import ApurementPlanService, plan_to_dict
+from app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/apurement-plans", tags=["Apurement"])
 _log = logging.getLogger(__name__)
@@ -35,10 +38,12 @@ async def _auto_send_quittance(db: AsyncSession, payment) -> None:
     Fail-soft : n'interrompt jamais le marquage de l'échéance."""
     try:
         from app.services.automation_engine import send_quittance_for_payment
+
         await send_quittance_for_payment(db, payment)
     except Exception as exc:  # noqa: BLE001
-        _log.warning("Envoi auto quittance (apurement) échoué (%s): %s",
-                     getattr(payment, "id", None), exc)
+        _log.warning(
+            "Envoi auto quittance (apurement) échoué (%s): %s", getattr(payment, "id", None), exc
+        )
 
 
 def _add_months(d: date, m: int) -> date:
@@ -50,10 +55,13 @@ def _add_months(d: date, m: int) -> date:
 async def _lease_for_access(db: AsyncSession, lease_id):
     """Charge le bail AVEC parent_property et tenant : `assert_lease_access` lit ces
     relations, qui doivent être eager-loadées (sinon lazy-load sync → MissingGreenlet)."""
-    return (await db.execute(
-        select(Lease).options(selectinload(Lease.parent_property), selectinload(Lease.tenant))
-        .where(Lease.id == lease_id)
-    )).scalar_one_or_none()
+    return (
+        await db.execute(
+            select(Lease)
+            .options(selectinload(Lease.parent_property), selectinload(Lease.tenant))
+            .where(Lease.id == lease_id)
+        )
+    ).scalar_one_or_none()
 
 
 async def _names(db: AsyncSession, plan) -> tuple:
@@ -90,18 +98,29 @@ async def create_plan(
     for i in range(n):
         due = _add_months(data.first_date, i)
         amount = base if i < n - 1 else round(total - base * (n - 1), 2)
-        insts.append({
-            "seq": i + 1, "due_date": due.isoformat(),
-            "amount": amount, "paid": False, "paid_date": None,
-        })
+        insts.append(
+            {
+                "seq": i + 1,
+                "due_date": due.isoformat(),
+                "amount": amount,
+                "paid": False,
+                "paid_date": None,
+            }
+        )
 
     plan = await ApurementPlanService.create(
-        db, lease_id=payment.lease_id, tenant_id=payment.tenant_id,
-        origin_payment_id=payment.id, total=total, installments=insts,
-        created_by=current_user.id, label=f"Plan d'apurement · {payment.period_label}",
+        db,
+        lease_id=payment.lease_id,
+        tenant_id=payment.tenant_id,
+        origin_payment_id=payment.id,
+        total=total,
+        installments=insts,
+        created_by=current_user.id,
+        label=f"Plan d'apurement · {payment.period_label}",
     )
 
     from app.models.payment import PaymentStatus
+
     _note = (payment.notes or "").strip()
     # Dans TOUS les cas, le montant reporté sort du solde du mois d'origine
     # (`amount_on_plan` déduit du solde) : la nouvelle dette, c'est le plan.
@@ -130,9 +149,9 @@ async def my_plans(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    t = (await db.execute(
-        select(Tenant).where(Tenant.user_id == current_user.id)
-    )).scalar_one_or_none()
+    t = (
+        await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    ).scalar_one_or_none()
     if not t:
         return []
     plans = await ApurementPlanService.list_for_tenant(db, t.id)
@@ -150,10 +169,17 @@ async def active_plans(
 ):
     role = Role(current_user.role)
     if role == Role.ADMIN:
-        plans = list((await db.execute(
-            select(ApurementPlan).where(ApurementPlan.status == "active")
-            .order_by(ApurementPlan.created_at.desc())
-        )).scalars().all())
+        plans = list(
+            (
+                await db.execute(
+                    select(ApurementPlan)
+                    .where(ApurementPlan.status == "active")
+                    .order_by(ApurementPlan.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
     else:
         allowed = await agency_tenant_ids(db, current_user)
         plans = await ApurementPlanService.list_active_for_tenants(db, allowed)
@@ -172,9 +198,9 @@ async def list_plans(
 ):
     role = Role(current_user.role)
     if role == Role.LOCATAIRE:
-        t = (await db.execute(
-            select(Tenant).where(Tenant.user_id == current_user.id)
-        )).scalar_one_or_none()
+        t = (
+            await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+        ).scalar_one_or_none()
         if not t or t.id != tenant_id:
             return []
     elif role in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
@@ -203,7 +229,8 @@ async def mark_installment(
     lease = await _lease_for_access(db, plan.lease_id)
     await assert_lease_access(db, current_user, lease, write=True)
     plan, found = await ApurementPlanService.mark_installment(
-        db, plan, seq, data.paid, data.paid_date)
+        db, plan, seq, data.paid, data.paid_date
+    )
     if not found:
         raise BadRequestException("Échéance introuvable")
 
@@ -212,7 +239,9 @@ async def mark_installment(
     # quittance devient générable. On NE touche PAS au montant payé réel : le
     # revenu reste reconnu au fil des échéances (choix A), donc pas de double-revenu.
     if plan.origin_payment_id:
-        from app.models.payment import Payment as _Pay, PaymentStatus as _PS
+        from app.models.payment import Payment as _Pay
+        from app.models.payment import PaymentStatus as _PS
+
         _pay = await db.get(_Pay, plan.origin_payment_id)
         if _pay is not None:
             completed = plan.status == "completed"
@@ -223,27 +252,42 @@ async def mark_installment(
                 # (comme un paiement intégral classique).
                 await _auto_send_quittance(db, _pay)
                 await db.flush()
-            elif (not completed) and _pay.status == _PS.PAID and (
-                getattr(_pay, "settled_by_plan", False) or float(getattr(_pay, "amount_on_plan", 0) or 0) > 0
+            elif (
+                (not completed)
+                and _pay.status == _PS.PAID
+                and (
+                    getattr(_pay, "settled_by_plan", False)
+                    or float(getattr(_pay, "amount_on_plan", 0) or 0) > 0
+                )
             ):
                 # Échéance dépointée : le mois n'est plus totalement réglé.
                 if getattr(_pay, "settled_by_plan", False):
                     _pay.status = _PS.CANCELLED
                 else:
                     _paid = float(_pay.amount_paid or 0)
-                    _pay.status = (_PS.PARTIAL if _paid > 0
-                                   else (_PS.LATE if _pay.due_date and _pay.due_date < date.today() else _PS.PENDING))
+                    _pay.status = (
+                        _PS.PARTIAL
+                        if _paid > 0
+                        else (
+                            _PS.LATE
+                            if _pay.due_date and _pay.due_date < date.today()
+                            else _PS.PENDING
+                        )
+                    )
                 await db.flush()
 
     # Aligner l'avis d'échéance d'apurement (le cas échéant) : Acquitté si payé,
     # sinon Envoyé.
     from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
-    _av = (await db.execute(
-        select(AvisEcheance).where(
-            AvisEcheance.plan_id == plan.id,
-            AvisEcheance.installment_seq == seq,
+
+    _av = (
+        await db.execute(
+            select(AvisEcheance).where(
+                AvisEcheance.plan_id == plan.id,
+                AvisEcheance.installment_seq == seq,
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if _av is not None:
         _av.status = AvisEcheanceStatus.ACQUITTE if data.paid else AvisEcheanceStatus.ENVOYE
         await db.flush()
@@ -251,20 +295,27 @@ async def mark_installment(
     # Aligner aussi l'avis de LOYER du mois d'origine si l'apurement vient de le
     # solder (ou de le dé-solder).
     if plan.origin_payment_id:
-        from app.models.payment import Payment as _Pay2, PaymentStatus as _PS2
+        from app.models.payment import Payment as _Pay2
+        from app.models.payment import PaymentStatus as _PS2
+
         _po = await db.get(_Pay2, plan.origin_payment_id)
         if _po is not None:
-            _avl = (await db.execute(
-                select(AvisEcheance).where(
-                    AvisEcheance.lease_id == _po.lease_id,
-                    AvisEcheance.period_year == _po.period_year,
-                    AvisEcheance.period_month == _po.period_month,
-                    AvisEcheance.kind == "loyer",
+            _avl = (
+                await db.execute(
+                    select(AvisEcheance).where(
+                        AvisEcheance.lease_id == _po.lease_id,
+                        AvisEcheance.period_year == _po.period_year,
+                        AvisEcheance.period_month == _po.period_month,
+                        AvisEcheance.kind == "loyer",
+                    )
                 )
-            )).scalar_one_or_none()
+            ).scalar_one_or_none()
             if _avl is not None:
-                _target = (AvisEcheanceStatus.ACQUITTE if _po.status == _PS2.PAID
-                           else AvisEcheanceStatus.ENVOYE)
+                _target = (
+                    AvisEcheanceStatus.ACQUITTE
+                    if _po.status == _PS2.PAID
+                    else AvisEcheanceStatus.ENVOYE
+                )
                 if _avl.status != _target:
                     _avl.status = _target
                     await db.flush()
@@ -273,7 +324,10 @@ async def mark_installment(
     return plan_to_dict(plan, tn, pn)
 
 
-@router.post("/{plan_id}/installments/{seq}/declare", summary="Locataire : déclarer le paiement d'une échéance")
+@router.post(
+    "/{plan_id}/installments/{seq}/declare",
+    summary="Locataire : déclarer le paiement d'une échéance",
+)
 async def declare_installment(
     plan_id: uuid.UUID,
     seq: int,
@@ -284,9 +338,9 @@ async def declare_installment(
     if not plan:
         raise NotFoundException("Plan d'apurement", str(plan_id))
     # Le locataire ne peut déclarer que sur SON plan.
-    t = (await db.execute(
-        select(Tenant).where(Tenant.user_id == current_user.id)
-    )).scalar_one_or_none()
+    t = (
+        await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    ).scalar_one_or_none()
     if not t or t.id != plan.tenant_id:
         raise BadRequestException("Ce plan d'apurement ne vous concerne pas.")
     plan, found = await ApurementPlanService.declare_installment(db, plan, seq)
@@ -294,19 +348,27 @@ async def declare_installment(
         raise BadRequestException("Échéance introuvable")
     # Notifie le gestionnaire pour validation (best-effort).
     try:
-        from app.models.notification import Notification, NotificationType, NotificationPriority
+        from app.models.notification import Notification, NotificationPriority, NotificationType
+
         manager_id = plan.created_by
         if not manager_id:
             manager_id = getattr(t, "created_by", None)
-        inst = next((i for i in (plan.installments or []) if int(i.get("seq", -1)) == int(seq)), None)
+        inst = next(
+            (i for i in (plan.installments or []) if int(i.get("seq", -1)) == int(seq)), None
+        )
         amt = float(inst.get("amount", 0)) if inst else 0
         if manager_id:
-            db.add(Notification(
-                title="Échéance d'apurement déclarée payée",
-                message=f"{t.full_name} déclare avoir réglé une échéance de {amt:.2f} € de son plan d'apurement. À valider.",
-                notification_type=NotificationType.SYSTEME, priority=NotificationPriority.NORMAL,
-                entity_type="apurement_plan", entity_id=plan.id, user_id=manager_id,
-            ))
+            db.add(
+                Notification(
+                    title="Échéance d'apurement déclarée payée",
+                    message=f"{t.full_name} déclare avoir réglé une échéance de {amt:.2f} € de son plan d'apurement. À valider.",
+                    notification_type=NotificationType.SYSTEME,
+                    priority=NotificationPriority.NORMAL,
+                    entity_type="apurement_plan",
+                    entity_id=plan.id,
+                    user_id=manager_id,
+                )
+            )
     except Exception:  # noqa: BLE001
         pass
     tn, pn = await _names(db, plan)
@@ -328,10 +390,13 @@ async def delete_plan(
     # Suppression du plan → la dette revient sur le mois d'origine (solde restauré).
     if plan.origin_payment_id:
         from app.models.payment import Payment, PaymentStatus
+
         pay = await db.get(Payment, plan.origin_payment_id)
         if pay is not None:
             # La part reportée revient toujours dans le solde du mois d'origine.
-            pay.amount_on_plan = round(max(0.0, float(pay.amount_on_plan or 0) - float(plan.total_amount or 0)), 2)
+            pay.amount_on_plan = round(
+                max(0.0, float(pay.amount_on_plan or 0) - float(plan.total_amount or 0)), 2
+            )
             if getattr(pay, "settled_by_plan", False):
                 # Apurement total : restaure aussi le statut.
                 pay.settled_by_plan = False
@@ -342,11 +407,15 @@ async def delete_plan(
                 elif paid > 0:
                     pay.status = PaymentStatus.PARTIAL
                 else:
-                    pay.status = (PaymentStatus.LATE
-                                  if pay.due_date and pay.due_date < date.today()
-                                  else PaymentStatus.PENDING)
+                    pay.status = (
+                        PaymentStatus.LATE
+                        if pay.due_date and pay.due_date < date.today()
+                        else PaymentStatus.PENDING
+                    )
                 if pay.notes:
-                    pay.notes = pay.notes.replace("· Reporté sur plan d'apurement", "").strip(" ·") or None
+                    pay.notes = (
+                        pay.notes.replace("· Reporté sur plan d'apurement", "").strip(" ·") or None
+                    )
             elif pay.notes:
                 pay.notes = pay.notes.replace("· Apurement partiel", "").strip(" ·") or None
             await db.flush()
@@ -369,7 +438,9 @@ async def plan_pdf(
     payment = None
     if plan.origin_payment_id:
         try:
-            payment = await PaymentService.get_by_id(db, plan.origin_payment_id, load_relations=True)
+            payment = await PaymentService.get_by_id(
+                db, plan.origin_payment_id, load_relations=True
+            )
         except Exception:
             payment = None
     if payment is None:
@@ -381,16 +452,21 @@ async def plan_pdf(
         except Exception:
             return iso
 
-    schedule = [{"due": _fr(i["due_date"]), "amount": float(i["amount"])}
-                for i in (plan.installments or [])]
+    schedule = [
+        {"due": _fr(i["due_date"]), "amount": float(i["amount"])} for i in (plan.installments or [])
+    ]
 
-    from app.services.pdf_service import render_plan_apurement_html, html_to_pdf
-    html = await render_plan_apurement_html(db, payment, len(schedule), date.today(), schedule=schedule)
+    from app.services.pdf_service import html_to_pdf, render_plan_apurement_html
+
+    html = await render_plan_apurement_html(
+        db, payment, len(schedule), date.today(), schedule=schedule
+    )
     if not html:
         raise BadRequestException("Modèle de plan d'apurement indisponible")
     pdf = html_to_pdf(html)
 
     from app.utils.filename import doc_filename
+
     prop = await db.get(Property, lease.property_id) if lease and lease.property_id else None
     tenant = await db.get(Tenant, plan.tenant_id)
     filename = doc_filename(
@@ -399,13 +475,15 @@ async def plan_pdf(
         property_name=getattr(prop, "name", None),
     )
     return Response(
-        content=pdf, media_type="application/pdf",
+        content=pdf,
+        media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
-@router.get("/{plan_id}/installments/{seq}/quittance",
-            summary="Quittance dédiée d'une échéance réglée")
+@router.get(
+    "/{plan_id}/installments/{seq}/quittance", summary="Quittance dédiée d'une échéance réglée"
+)
 async def installment_quittance(
     plan_id: uuid.UUID,
     seq: int,
@@ -424,8 +502,20 @@ async def installment_quittance(
     if not inst.get("paid"):
         raise BadRequestException("La quittance n'est disponible qu'une fois l'échéance réglée.")
 
-    _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
-                  "août", "septembre", "octobre", "novembre", "décembre"]
+    _MONTHS_FR = [
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ]
     _d = date.today()
     today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
 
@@ -436,26 +526,40 @@ async def installment_quittance(
     label = f"Plan d'apurement · échéance {seq}"
 
     from app.services.document_blocks_pdf_service import (
-        render_blocks_document, _doc_common_vars, _eur_sym)
+        _doc_common_vars,
+        _eur_sym,
+        render_blocks_document,
+    )
+
     qv = _doc_common_vars(tenant, prop, today_fr)
-    qv.update({
-        "period_range": label, "month": label,
-        "total_due": _eur_sym(amount), "rent_amount": _eur_sym(amount),
-        "charges_amount": _eur_sym(0), "apl_amount": "",
-    })
-    line_items = [{
-        "label": f"RÈGLEMENT — PLAN D'APUREMENT, ÉCHÉANCE {seq}",
-        "appele": _eur_sym(amount), "regle": _eur_sym(amount),
-    }]
+    qv.update(
+        {
+            "period_range": label,
+            "month": label,
+            "total_due": _eur_sym(amount),
+            "rent_amount": _eur_sym(amount),
+            "charges_amount": _eur_sym(0),
+            "apl_amount": "",
+        }
+    )
+    line_items = [
+        {
+            "label": f"RÈGLEMENT — PLAN D'APUREMENT, ÉCHÉANCE {seq}",
+            "appele": _eur_sym(amount),
+            "regle": _eur_sym(amount),
+        }
+    ]
     pdf = await render_blocks_document(db, gid, "quittance", qv, line_items=line_items)
 
     from app.utils.filename import doc_filename
+
     filename = doc_filename(
         "quittance",
         tenant=getattr(tenant, "full_name", None),
         property_name=getattr(prop, "name", None),
     )
     return Response(
-        content=pdf, media_type="application/pdf",
+        content=pdf,
+        media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

@@ -1,28 +1,30 @@
 import secrets
 import string
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_gestionnaire
-from app.core.features import require_feature
 from app.config import get_settings
-from app.models.user import User
+from app.core.features import require_feature
+from app.database import get_db
 from app.models.telegram_link import TelegramLink
+from app.models.user import User
 from app.services import agent_team_service
 from app.services.telegram_service import send_message
 
 router = APIRouter(tags=["Agents IA"])
 
-_LINK_HELP = ("Pour activer vos agents, générez un code dans l'application "
-              "(Mes informations → Agents IA) puis envoyez « /start <code> » ici.")
+_LINK_HELP = (
+    "Pour activer vos agents, générez un code dans l'application "
+    "(Mes informations → Agents IA) puis envoyez « /start <code> » ici."
+)
 
 
 def _now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _gen_code() -> str:
@@ -30,9 +32,9 @@ def _gen_code() -> str:
 
 
 async def _get_or_create_link(db: AsyncSession, user_id) -> TelegramLink:
-    link = (await db.execute(
-        select(TelegramLink).where(TelegramLink.user_id == user_id)
-    )).scalar_one_or_none()
+    link = (
+        await db.execute(select(TelegramLink).where(TelegramLink.user_id == user_id))
+    ).scalar_one_or_none()
     if not link:
         link = TelegramLink(user_id=user_id)
         db.add(link)
@@ -60,20 +62,22 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         parts = text.split(maxsplit=1)
         code = parts[1].strip() if len(parts) > 1 else ""
         if code:
-            link = (await db.execute(
-                select(TelegramLink).where(TelegramLink.link_code == code)
-            )).scalar_one_or_none()
+            link = (
+                await db.execute(select(TelegramLink).where(TelegramLink.link_code == code))
+            ).scalar_one_or_none()
             if link:
                 link.chat_id = chat_id
                 link.verified_at = _now()
                 link.link_code = None
                 link.opt_in = True
                 await db.commit()
-                await send_message(chat_id, "✅ Compte lié avec succès !\n\n" + agent_team_service._help())
+                await send_message(
+                    chat_id, "✅ Compte lié avec succès !\n\n" + agent_team_service._help()
+                )
                 return {"ok": True}
-        existing = (await db.execute(
-            select(TelegramLink).where(TelegramLink.chat_id == chat_id)
-        )).scalar_one_or_none()
+        existing = (
+            await db.execute(select(TelegramLink).where(TelegramLink.chat_id == chat_id))
+        ).scalar_one_or_none()
         if existing and existing.opt_in:
             await send_message(chat_id, agent_team_service._help())
         else:
@@ -81,9 +85,9 @@ async def telegram_webhook(request: Request, db: AsyncSession = Depends(get_db))
         return {"ok": True}
 
     # Message courant : nécessite un compte lié
-    link = (await db.execute(
-        select(TelegramLink).where(TelegramLink.chat_id == chat_id)
-    )).scalar_one_or_none()
+    link = (
+        await db.execute(select(TelegramLink).where(TelegramLink.chat_id == chat_id))
+    ).scalar_one_or_none()
     if not link or not link.opt_in:
         await send_message(chat_id, _LINK_HELP)
         return {"ok": True}
@@ -164,9 +168,9 @@ async def telegram_status(
     current_user: User = Depends(get_current_gestionnaire),
     _feat: User = Depends(require_feature("agents_ia")),
 ):
-    link = (await db.execute(
-        select(TelegramLink).where(TelegramLink.user_id == current_user.id)
-    )).scalar_one_or_none()
+    link = (
+        await db.execute(select(TelegramLink).where(TelegramLink.user_id == current_user.id))
+    ).scalar_one_or_none()
     s = get_settings()
     return {
         "linked": bool(link and link.chat_id and link.opt_in),
@@ -181,9 +185,9 @@ async def telegram_unlink(
     current_user: User = Depends(get_current_gestionnaire),
     _feat: User = Depends(require_feature("agents_ia")),
 ):
-    link = (await db.execute(
-        select(TelegramLink).where(TelegramLink.user_id == current_user.id)
-    )).scalar_one_or_none()
+    link = (
+        await db.execute(select(TelegramLink).where(TelegramLink.user_id == current_user.id))
+    ).scalar_one_or_none()
     if link:
         link.chat_id = None
         link.opt_in = False

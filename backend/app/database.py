@@ -1,7 +1,8 @@
+from datetime import datetime
+
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import func
-from datetime import datetime
 
 from app.config import get_settings
 
@@ -13,8 +14,8 @@ engine = create_async_engine(
     echo=settings.DEBUG,
     pool_size=10,
     max_overflow=20,
-    pool_pre_ping=True,           # Vérifie la connexion avant utilisation
-    pool_recycle=3600,            # Recycle les connexions après 1h
+    pool_pre_ping=True,  # Vérifie la connexion avant utilisation
+    pool_recycle=3600,  # Recycle les connexions après 1h
 )
 
 # ── Session factory ───────────────────────────────────────────────────────────
@@ -34,9 +35,8 @@ class Base(DeclarativeBase):
 
 class TimestampMixin:
     """Ajoute created_at et updated_at à tous les modèles qui en héritent."""
-    created_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), nullable=False
-    )
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(),
         onupdate=func.now(),

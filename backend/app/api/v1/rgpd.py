@@ -3,18 +3,19 @@
 Réservé aux gestionnaires/admin. Un gestionnaire n'agit que sur SES locataires
 (created_by) ; l'admin sur tous. Chaque opération est tracée au journal d'audit.
 """
+
 import uuid
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_active_admin
+from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.permissions import Role
-from app.core.exceptions import NotFoundException, ForbiddenException
-from app.models.user import User
+from app.database import get_db
 from app.models.tenant import Tenant
-from app.services import rgpd_service, audit_service
+from app.models.user import User
+from app.services import audit_service, rgpd_service
 
 router = APIRouter(prefix="/rgpd", tags=["RGPD"])
 
@@ -40,8 +41,12 @@ async def export_tenant_data(
     tenant = await _get_owned_tenant(db, user, tenant_id)
     data = await rgpd_service.export_tenant(db, tenant)
     await audit_service.log(
-        db, action=audit_service.RGPD_EXPORT, user_id=user.id, user_email=user.email,
-        entity_type="tenant", entity_id=tenant.id,
+        db,
+        action=audit_service.RGPD_EXPORT,
+        user_id=user.id,
+        user_email=user.email,
+        entity_type="tenant",
+        entity_id=tenant.id,
         ip_address=getattr(getattr(request, "client", None), "host", None),
     )
     await db.commit()
@@ -61,8 +66,13 @@ async def erase_tenant_data(
     result = await rgpd_service.anonymize_tenant(db, tenant)
     if not result.get("already"):
         await audit_service.log(
-            db, action=audit_service.RGPD_ERASE, user_id=user.id, user_email=user.email,
-            entity_type="tenant", entity_id=tenant.id, details=result,
+            db,
+            action=audit_service.RGPD_ERASE,
+            user_id=user.id,
+            user_email=user.email,
+            entity_type="tenant",
+            entity_id=tenant.id,
+            details=result,
             ip_address=getattr(getattr(request, "client", None), "host", None),
         )
     await db.commit()

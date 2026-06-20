@@ -1,31 +1,42 @@
 """API Dashboard — statistiques avancées pour aide à la décision."""
+
 import uuid
-from typing import Optional
 from datetime import date, timedelta
+
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func, case, or_
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.core.permissions import Role
-from app.models.property import Property
+from app.database import get_db
 from app.models.lease import Lease
 from app.models.payment import Payment, PaymentStatus
+from app.models.property import Property
 from app.models.tenant import Tenant
 from app.schemas.dashboard import (
-    DashboardStats, OccupancyStats, FinancialStats,
-    MonthlyRevenue, PropertyStats, AlertStats, FiscalRevenueFoncier, OwnerBreakdown
+    AlertStats,
+    DashboardStats,
+    FinancialStats,
+    FiscalRevenueFoncier,
+    MonthlyRevenue,
+    OccupancyStats,
+    OwnerBreakdown,
+    PropertyStats,
 )
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 # Règles de revenu d'apurement (mois reportés + échéances) centralisées.
+from app.services.apurement_revenue import (
+    apurement_installments as _apurement_installments,
+)
+from app.services.apurement_revenue import (
+    apurement_received as _apurement_received,
+)
 from app.services.apurement_revenue import (  # noqa: E402
     received_status as _received_status,
-    apurement_received as _apurement_received,
-    apurement_installments as _apurement_installments,
 )
 
 
@@ -38,30 +49,42 @@ async def get_dashboard_stats(
     role = Role(current_user.role)
 
     # ── Périmètre ─────────────────────────────────────────────────────────────
-    prop_ids_filter: list = []   # GP : liste blanche de ses biens
+    prop_ids_filter: list = []  # GP : liste blanche de ses biens
     is_gp = role == Role.GESTIONNAIRE_PROPRIO
     is_mandataire = role == Role.GESTIONNAIRE
 
     if is_gp:
-        res = await db.execute(
-            select(Property.id).where(Property.created_by == current_user.id)
-        )
+        res = await db.execute(select(Property.id).where(Property.created_by == current_user.id))
         prop_ids_filter = list(res.scalars().all())
         if not prop_ids_filter:
             return DashboardStats(
-                occupancy=OccupancyStats(total_units=0, occupied_units=0, vacant_units=0, occupancy_rate=0),
-                financial=FinancialStats(total_rent_expected=0, total_rent_received=0,
-                                         total_outstanding=0, collection_rate=0, total_deposits=0),
+                occupancy=OccupancyStats(
+                    total_units=0, occupied_units=0, vacant_units=0, occupancy_rate=0
+                ),
+                financial=FinancialStats(
+                    total_rent_expected=0,
+                    total_rent_received=0,
+                    total_outstanding=0,
+                    collection_rate=0,
+                    total_deposits=0,
+                ),
                 monthly_revenues=[
                     MonthlyRevenue(
                         month=(today.replace(day=1) - relativedelta(months=i)).strftime("%Y-%m"),
-                        expected=0, received=0, outstanding=0,
+                        expected=0,
+                        received=0,
+                        outstanding=0,
                     )
                     for i in range(11, -1, -1)
                 ],
                 top_properties=[],
-                alerts=AlertStats(leases_expiring_30d=0, leases_expiring_90d=0,
-                                   overdue_payments=0, overdue_amount=0, tenants_no_insurance=0),
+                alerts=AlertStats(
+                    leases_expiring_30d=0,
+                    leases_expiring_90d=0,
+                    overdue_payments=0,
+                    overdue_amount=0,
+                    tenants_no_insurance=0,
+                ),
                 total_tenants=0,
                 total_properties=0,
                 total_leases_active=0,
@@ -70,6 +93,7 @@ async def get_dashboard_stats(
     if is_mandataire:
         # Mandataire : liste blanche = biens de SON agence (multi-tenant).
         from app.api.v1._isolation import agency_property_ids
+
         prop_ids_filter = list(await agency_property_ids(db, current_user))
 
     # Liste blanche de biens (GP + mandataire) ; None = tout (admin).
@@ -108,7 +132,9 @@ async def get_dashboard_stats(
     # ── Finances ──────────────────────────────────────────────────────────────
     rent_expected_res = await db.execute(
         _lease_scope(
-            select(func.sum(Lease.rent_amount + Lease.charges_amount)).where(Lease.is_active.is_(True))
+            select(func.sum(Lease.rent_amount + Lease.charges_amount)).where(
+                Lease.is_active.is_(True)
+            )
         )
     )
     total_rent_expected = float(rent_expected_res.scalar_one() or 0)
@@ -141,9 +167,7 @@ async def get_dashboard_stats(
     )
 
     deposits_res = await db.execute(
-        _lease_scope(
-            select(func.sum(Lease.deposit_amount)).where(Lease.is_active.is_(True))
-        )
+        _lease_scope(select(func.sum(Lease.deposit_amount)).where(Lease.is_active.is_(True)))
     )
     total_deposits = float(deposits_res.scalar_one() or 0)
 
@@ -153,7 +177,7 @@ async def get_dashboard_stats(
         month_date = today.replace(day=1) - relativedelta(months=i)
         month_str = month_date.strftime("%Y-%m")
         month_start = month_date
-        month_end = (month_date + relativedelta(months=1))
+        month_end = month_date + relativedelta(months=1)
 
         exp_res = await db.execute(
             _lease_scope(
@@ -190,18 +214,18 @@ async def get_dashboard_stats(
         )
         outstanding = float(out_res.scalar_one() or 0)
 
-        monthly_revenues.append(MonthlyRevenue(
-            month=month_str,
-            expected=round(expected, 2),
-            received=round(received, 2),
-            outstanding=round(outstanding, 2),
-        ))
+        monthly_revenues.append(
+            MonthlyRevenue(
+                month=month_str,
+                expected=round(expected, 2),
+                received=round(received, 2),
+                outstanding=round(outstanding, 2),
+            )
+        )
 
     # ── Performance par bien (TOUS les biens du périmètre) ──────────────────────
     if whitelist is not None:
-        props_res = await db.execute(
-            select(Property).where(Property.id.in_(whitelist))
-        )
+        props_res = await db.execute(select(Property).where(Property.id.in_(whitelist)))
     else:
         props_res = await db.execute(select(Property))
     properties = props_res.scalars().all()
@@ -212,32 +236,36 @@ async def get_dashboard_stats(
     rev_by_prop: dict = {}
     out_by_prop: dict = {}
     if prop_ids:
-        lease_rows = (await db.execute(
-            select(
-                Lease.property_id,
-                func.count(Lease.id),
-                func.sum(Lease.rent_amount + Lease.charges_amount),
+        lease_rows = (
+            await db.execute(
+                select(
+                    Lease.property_id,
+                    func.count(Lease.id),
+                    func.sum(Lease.rent_amount + Lease.charges_amount),
+                )
+                .where(Lease.property_id.in_(prop_ids), Lease.is_active.is_(True))
+                .group_by(Lease.property_id)
             )
-            .where(Lease.property_id.in_(prop_ids), Lease.is_active.is_(True))
-            .group_by(Lease.property_id)
-        )).all()
+        ).all()
         for pid, cnt, rev in lease_rows:
             occ_by_prop[pid] = cnt or 0
             rev_by_prop[pid] = float(rev or 0)
 
-        out_rows = (await db.execute(
-            select(
-                Lease.property_id,
-                func.sum(Payment.amount_due - Payment.amount_paid),
+        out_rows = (
+            await db.execute(
+                select(
+                    Lease.property_id,
+                    func.sum(Payment.amount_due - Payment.amount_paid),
+                )
+                .join(Lease, Payment.lease_id == Lease.id)
+                .where(
+                    Lease.property_id.in_(prop_ids),
+                    Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
+                    Payment.due_date < today,
+                )
+                .group_by(Lease.property_id)
             )
-            .join(Lease, Payment.lease_id == Lease.id)
-            .where(
-                Lease.property_id.in_(prop_ids),
-                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.LATE]),
-                Payment.due_date < today,
-            )
-            .group_by(Lease.property_id)
-        )).all()
+        ).all()
         for pid, out in out_rows:
             out_by_prop[pid] = float(out or 0)
 
@@ -260,7 +288,13 @@ async def get_dashboard_stats(
     for prop in properties:
         key = (prop.owner_name or "").strip() or "Sans propriétaire"
         a = owner_acc.setdefault(
-            key, {"properties_count": 0, "occupied_count": 0, "monthly_revenue": 0.0, "outstanding": 0.0}
+            key,
+            {
+                "properties_count": 0,
+                "occupied_count": 0,
+                "monthly_revenue": 0.0,
+                "outstanding": 0.0,
+            },
         )
         a["properties_count"] += 1
         a["occupied_count"] += 1 if occ_by_prop.get(prop.id, 0) else 0
@@ -337,16 +371,16 @@ async def get_dashboard_stats(
         total_props = (await db.execute(select(func.count(Property.id)))).scalar_one() or 0
 
     active_leases_res = await db.execute(
-        _lease_scope(
-            select(func.count(Lease.id)).where(Lease.is_active.is_(True))
-        )
+        _lease_scope(select(func.count(Lease.id)).where(Lease.is_active.is_(True)))
     )
     total_leases_active = active_leases_res.scalar_one() or 0
 
     # ── Entretiens importants à venir (planifiés / en cours, dus sous 30 j ou en retard) ─
+    from sqlalchemy.orm import selectinload as _selectinload
+
     from app.models.entretien import Entretien, EntretienStatus
     from app.schemas.dashboard import UpcomingEntretien
-    from sqlalchemy.orm import selectinload as _selectinload
+
     ent_q = (
         select(Entretien)
         .options(_selectinload(Entretien.property))
@@ -360,7 +394,10 @@ async def get_dashboard_stats(
     ent_q = ent_q.order_by(Entretien.scheduled_date.asc()).limit(6)
     upcoming = [
         UpcomingEntretien(
-            id=str(e.id), title=e.title, type=e.type, status=e.status,
+            id=str(e.id),
+            title=e.title,
+            type=e.type,
+            status=e.status,
             scheduled_date=e.scheduled_date,
             property_label=(e.property.address if e.property else None),
             overdue=e.scheduled_date < today,
@@ -405,18 +442,18 @@ async def get_proprietaire_stats(
 ):
     """Statistiques mensuelles pour le tableau de bord propriétaire."""
     from app.core.permissions import Role as R
+
     role = R(current_user.role)
 
     if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.GESTIONNAIRE_PROPRIO, R.ADMIN):
         from fastapi import HTTPException
+
         raise HTTPException(status_code=403, detail="Accès refusé")
 
     proprietaire_id = current_user.id
 
     # Biens du propriétaire
-    props_res = await db.execute(
-        select(Property).where(Property.owner_user_id == proprietaire_id)
-    )
+    props_res = await db.execute(select(Property).where(Property.owner_user_id == proprietaire_id))
     properties = list(props_res.scalars().all())
     prop_ids = [p.id for p in properties]
 
@@ -430,8 +467,7 @@ async def get_proprietaire_stats(
 
     # Revenus attendus = somme loyers+charges baux actifs
     expected_res = await db.execute(
-        select(func.sum(Lease.rent_amount + Lease.charges_amount))
-        .where(
+        select(func.sum(Lease.rent_amount + Lease.charges_amount)).where(
             Lease.property_id.in_(prop_ids),
             Lease.is_active.is_(True),
         )
@@ -452,13 +488,12 @@ async def get_proprietaire_stats(
         )
     )
     monthly_received = float(received_res.scalar_one() or 0)
-    monthly_received += await _apurement_received(
-        db, prop_ids, year=today.year, month=today.month
-    )
+    monthly_received += await _apurement_received(db, prop_ids, year=today.year, month=today.month)
 
     active_leases_res = await db.execute(
-        select(func.count(Lease.id))
-        .where(Lease.property_id.in_(prop_ids), Lease.is_active.is_(True))
+        select(func.count(Lease.id)).where(
+            Lease.property_id.in_(prop_ids), Lease.is_active.is_(True)
+        )
     )
     active_leases = active_leases_res.scalar_one() or 0
 
@@ -477,9 +512,7 @@ async def get_proprietaire_apurement(
 ):
     """Échéances d'apurement encaissées sur les biens du propriétaire, sous forme
     de lignes de revenu (à fusionner avec « Mes revenus »)."""
-    props_res = await db.execute(
-        select(Property).where(Property.owner_user_id == current_user.id)
-    )
+    props_res = await db.execute(select(Property).where(Property.owner_user_id == current_user.id))
     properties = list(props_res.scalars().all())
     prop_ids = [p.id for p in properties]
     if not prop_ids:
@@ -493,29 +526,32 @@ async def get_proprietaire_apurement(
         ten = await db.get(Tenant, pl.tenant_id)
         lease = await db.get(Lease, pl.lease_id)
         prop = prop_by_id.get(lease.property_id) if lease else None
-        items.append({
-            "id": f"apur-{pl.id}-{r['seq']}",
-            "period_label": f"Apurement · échéance {r['seq']}",
-            "tenant_full_name": ten.full_name if ten else "",
-            "property_name": prop.name if prop else "",
-            "amount_due": r["amount"],
-            "amount_paid": r["amount"],
-            "status": "apurement",
-            "settled_by_plan": False,
-            "payment_date": r["date"].isoformat(),
-        })
+        items.append(
+            {
+                "id": f"apur-{pl.id}-{r['seq']}",
+                "period_label": f"Apurement · échéance {r['seq']}",
+                "tenant_full_name": ten.full_name if ten else "",
+                "property_name": prop.name if prop else "",
+                "amount_due": r["amount"],
+                "amount_paid": r["amount"],
+                "status": "apurement",
+                "settled_by_plan": False,
+                "payment_date": r["date"].isoformat(),
+            }
+        )
     return {"items": items}
 
 
 @router.get("/fiscal/{year}", response_model=FiscalRevenueFoncier)
 async def get_fiscal_revenues(
     year: int,
-    proprietaire_id: Optional[uuid.UUID] = Query(None),
+    proprietaire_id: uuid.UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """Calcul des revenus fonciers pour la liasse fiscale."""
     from app.core.permissions import Role as R
+
     role = R(current_user.role)
 
     # Propriétaire (et gestionnaire_proprio) ne voient que leurs propres données
@@ -531,12 +567,14 @@ async def get_fiscal_revenues(
     # Mandataire (et legacy lecture/comptable) : uniquement les biens de SON agence.
     if role in (R.GESTIONNAIRE, R.LECTURE, R.COMPTABLE):
         from app.api.v1._isolation import agency_property_ids
+
         _allowed = await agency_property_ids(db, current_user)
         properties = [p for p in properties if p.id in _allowed]
     prop_ids = [p.id for p in properties]
 
     if not prop_ids:
         from app.models.user import User
+
         owner = await db.get(User, proprietaire_id) if proprietaire_id else current_user
         return FiscalRevenueFoncier(
             year=year,
@@ -571,8 +609,10 @@ async def get_fiscal_revenues(
         select(
             func.sum(
                 case(
-                    (Payment.amount_due > 0,
-                     Payment.amount_paid * Payment.amount_rent / Payment.amount_due),
+                    (
+                        Payment.amount_due > 0,
+                        Payment.amount_paid * Payment.amount_rent / Payment.amount_due,
+                    ),
                     else_=0.0,
                 )
             )
@@ -589,8 +629,10 @@ async def get_fiscal_revenues(
         select(
             func.sum(
                 case(
-                    (Payment.amount_due > 0,
-                     Payment.amount_paid * Payment.amount_charges / Payment.amount_due),
+                    (
+                        Payment.amount_due > 0,
+                        Payment.amount_paid * Payment.amount_charges / Payment.amount_due,
+                    ),
                     else_=0.0,
                 )
             )
@@ -610,8 +652,10 @@ async def get_fiscal_revenues(
             select(
                 func.sum(
                     case(
-                        (Payment.amount_due > 0,
-                         Payment.amount_paid * Payment.amount_rent / Payment.amount_due),
+                        (
+                            Payment.amount_due > 0,
+                            Payment.amount_paid * Payment.amount_rent / Payment.amount_due,
+                        ),
                         else_=0.0,
                     )
                 )
@@ -627,18 +671,21 @@ async def get_fiscal_revenues(
         prop_rent += await _apurement_received(db, [prop.id], year=year)
 
         leases_res = await db.execute(
-            select(func.count(Lease.id))
-            .where(Lease.property_id == prop.id, Lease.is_active.is_(True))
+            select(func.count(Lease.id)).where(
+                Lease.property_id == prop.id, Lease.is_active.is_(True)
+            )
         )
         leases_count = leases_res.scalar_one() or 0
 
-        properties_detail.append({
-            "property_id": str(prop.id),
-            "property_name": prop.name,
-            "address": prop.full_address,
-            "annual_rent": round(prop_rent, 2),
-            "active_leases": leases_count,
-        })
+        properties_detail.append(
+            {
+                "property_id": str(prop.id),
+                "property_name": prop.name,
+                "address": prop.full_address,
+                "annual_rent": round(prop_rent, 2),
+                "active_leases": leases_count,
+            }
+        )
 
     total_gross = gross_rent + charges_annual
     total_deductible = management_fees
@@ -669,8 +716,10 @@ async def get_proprietaire_performance(
     current_user=Depends(get_current_user),
 ):
     """Performance des biens du propriétaire : loyer théorique vs perçu, par mois."""
-    from app.core.permissions import Role as R
     from fastapi import HTTPException
+
+    from app.core.permissions import Role as R
+
     role = R(current_user.role)
 
     if role not in (R.PROPRIETAIRE, R.GESTIONNAIRE, R.GESTIONNAIRE_PROPRIO, R.ADMIN):
@@ -678,9 +727,7 @@ async def get_proprietaire_performance(
 
     proprietaire_id = current_user.id
 
-    props_res = await db.execute(
-        select(Property).where(Property.owner_user_id == proprietaire_id)
-    )
+    props_res = await db.execute(select(Property).where(Property.owner_user_id == proprietaire_id))
     properties = list(props_res.scalars().all())
 
     today = date.today()
@@ -692,9 +739,7 @@ async def get_proprietaire_performance(
 
         # Loyer mensuel théorique = somme des baux actifs
         leases_res = await db.execute(
-            select(
-                func.coalesce(func.sum(Lease.rent_amount + Lease.charges_amount), 0.0)
-            ).where(
+            select(func.coalesce(func.sum(Lease.rent_amount + Lease.charges_amount), 0.0)).where(
                 Lease.property_id == prop_id,
                 Lease.is_active.is_(True),
             )
@@ -729,26 +774,30 @@ async def get_proprietaire_performance(
                     Payment.period_month == month,
                 )
             )
-            monthly_breakdown.append({
-                "month": month,
-                "expected": round(monthly_expected, 2),
-                "received": round(float(m_res.scalar_one() or 0), 2),
-            })
+            monthly_breakdown.append(
+                {
+                    "month": month,
+                    "expected": round(monthly_expected, 2),
+                    "received": round(float(m_res.scalar_one() or 0), 2),
+                }
+            )
 
         collection_rate = round(
             (ytd_received / ytd_theoretical * 100) if ytd_theoretical > 0 else 0, 1
         )
 
-        result_props.append({
-            "property_id": str(prop_id),
-            "property_name": prop.name,
-            "monthly_expected": round(monthly_expected, 2),
-            "ytd_theoretical": round(ytd_theoretical, 2),
-            "ytd_received": round(ytd_received, 2),
-            "collection_rate": collection_rate,
-            "months_elapsed": months_elapsed,
-            "monthly_breakdown": monthly_breakdown,
-        })
+        result_props.append(
+            {
+                "property_id": str(prop_id),
+                "property_name": prop.name,
+                "monthly_expected": round(monthly_expected, 2),
+                "ytd_theoretical": round(ytd_theoretical, 2),
+                "ytd_received": round(ytd_received, 2),
+                "collection_rate": collection_rate,
+                "months_elapsed": months_elapsed,
+                "monthly_breakdown": monthly_breakdown,
+            }
+        )
 
     total_theoretical = sum(p["ytd_theoretical"] for p in result_props)
     total_received = sum(p["ytd_received"] for p in result_props)

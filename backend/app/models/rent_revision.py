@@ -1,10 +1,10 @@
 import uuid
 from datetime import date
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Date, Numeric, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Date, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
@@ -25,6 +25,7 @@ class RentRevision(Base, TimestampMixin):
     applique, pour une période, la dernière révision du champ dont la date
     d'effet précède le début de la période.
     """
+
     __tablename__ = "lease_rent_revisions"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -41,15 +42,15 @@ class RentRevision(Base, TimestampMixin):
 
     # Nouveau montant du champ, et montant précédent (rappel).
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    prev_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
+    prev_amount: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     # Origine : 'manuel' | 'irl' | 'charges' | 'amiable'
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manuel")
-    reason: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
     # True quand la date d'effet est atteinte (sinon : révision programmée à venir).
     applied: Mapped[bool] = mapped_column(default=False, nullable=False)
 
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 

@@ -1,20 +1,23 @@
 """API Templates — gestion des modèles de documents."""
-import uuid
+
 import os
+import uuid
 from datetime import date
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, status
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import require_role
 from app.core.permissions import Role
+from app.database import get_db
 from app.models.document_template import DocumentTemplate, TemplateType
 from app.schemas.document_template import (
-    DocumentTemplateCreate, DocumentTemplateUpdate, DocumentTemplateResponse
+    DocumentTemplateCreate,
+    DocumentTemplateResponse,
+    DocumentTemplateUpdate,
 )
 from app.services.document_template_service import (
     ensure_default_templates,
@@ -38,9 +41,9 @@ def _check_ownership(tmpl: DocumentTemplate, current_user) -> None:
         raise HTTPException(status_code=403, detail="Ce template ne vous appartient pas")
 
 
-@router.get("", response_model=List[DocumentTemplateResponse])
+@router.get("", response_model=list[DocumentTemplateResponse])
 async def list_templates(
-    template_type: Optional[TemplateType] = Query(None),
+    template_type: TemplateType | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(require_role(Role.GESTIONNAIRE)),
 ):
@@ -56,6 +59,7 @@ async def list_templates(
     items = list(result.scalars().all())
     # Ne garder que les types proposés dans l'atelier de documents, dans l'ordre voulu.
     from app.models.document_template import ATELIER_ORDER
+
     order = {t: i for i, t in enumerate(ATELIER_ORDER)}
     items = [t for t in items if t.template_type in order]
     items.sort(key=lambda t: (order[t.template_type], t.name))
@@ -63,14 +67,14 @@ async def list_templates(
 
 
 class TemplatePreviewIn(BaseModel):
-    template_type: Optional[str] = None
+    template_type: str | None = None
     content_html: str = ""
     footer_text: str = ""
     header_color: str = "#1E3A5F"
-    template_id: Optional[uuid.UUID] = None  # pour récupérer le logo enregistré
-    layout: Optional[dict] = None            # surcharge de mise en page (sinon globale)
-    blocks: Optional[list] = None            # éditeur par blocs (mise en page moderne)
-    theme: Optional[dict] = None             # thème (palette/police) des blocs
+    template_id: uuid.UUID | None = None  # pour récupérer le logo enregistré
+    layout: dict | None = None  # surcharge de mise en page (sinon globale)
+    blocks: list | None = None  # éditeur par blocs (mise en page moderne)
+    theme: dict | None = None  # thème (palette/police) des blocs
 
 
 @router.post("/preview")
@@ -94,8 +98,20 @@ async def preview_document_pdf(
     # Signature du profil (« Mes informations ») : affichée dans l'aperçu comme le logo.
     sig_uri = getattr(current_user, "signature", None) or ""
 
-    _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
-                  "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+    _MONTHS_FR = [
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ]
     _d = date.today()
     today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
 
@@ -116,30 +132,52 @@ async def preview_document_pdf(
         "property_reference": "REF-2024-001",
         "unit_ref": "Appartement B12",
         "property_address": "12 avenue des Tilleuls APPART B12\n75001 Paris",
-        "rent_amount": eur(800), "charges_amount": eur(80),
-        "total_due": eur(880), "amount_paid": eur(880), "apl_amount": eur(0),
+        "rent_amount": eur(800),
+        "charges_amount": eur(80),
+        "total_due": eur(880),
+        "amount_paid": eur(880),
+        "apl_amount": eur(0),
         "month": f"{_MONTHS_FR[_d.month - 1].capitalize()} {_d.year}",
         "period_range": "du 01/06/2026 au 30/06/2026",
-        "due_date": today_fr, "date": today_fr, "today_date": today_fr,
+        "due_date": today_fr,
+        "date": today_fr,
+        "today_date": today_fr,
         "lease_start_date": "01/01/2024",
         # Régularisation de charges (exemple)
-        "regul_real": f"{eur(526.35)} €", "regul_provisions": f"{eur(960.20)} €",
+        "regul_real": f"{eur(526.35)} €",
+        "regul_provisions": f"{eur(960.20)} €",
         "regul_quote_part": f"{eur(108.30)} €",
-        "regul_result_label": "Montant en votre faveur", "regul_result_amount": f"{eur(851.70)} €",
+        "regul_result_label": "Montant en votre faveur",
+        "regul_result_amount": f"{eur(851.70)} €",
         # Révision de loyer (exemple)
-        "rev_old_rent": f"{eur(726.46)} €", "rev_old_index": "144,51", "rev_new_index": "145,77",
-        "rev_coeff": "145,77 / 144,51 = 1,00871912", "rev_new_rent": f"{eur(732.79)} €",
-        "rev_effective_date": "30 novembre 2025", "rev_quarter": "3",
-        "rev_old_index_year": "2024", "rev_new_index_year": "2025",
+        "rev_old_rent": f"{eur(726.46)} €",
+        "rev_old_index": "144,51",
+        "rev_new_index": "145,77",
+        "rev_coeff": "145,77 / 144,51 = 1,00871912",
+        "rev_new_rent": f"{eur(732.79)} €",
+        "rev_effective_date": "30 novembre 2025",
+        "rev_quarter": "3",
+        "rev_old_index_year": "2024",
+        "rev_new_index_year": "2025",
         # Taxes foncières (exemple)
-        "tax_label": "TAXE ENLÈVEMENT O.M. 2025", "tax_total": f"{eur(178)} €",
-        "tax_days": "365", "tax_quote_part": f"{eur(178)} €", "tax_provisions": f"{eur(0)} €",
+        "tax_label": "TAXE ENLÈVEMENT O.M. 2025",
+        "tax_total": f"{eur(178)} €",
+        "tax_days": "365",
+        "tax_quote_part": f"{eur(178)} €",
+        "tax_provisions": f"{eur(0)} €",
         # Rapport de gestion (exemple)
         "period": f"{_MONTHS_FR[_d.month - 1].capitalize()} {_d.year}",
-        "stat_due": f"{eur(4400)} €", "stat_paid": f"{eur(4180)} €", "stat_taux": "95 %",
-        "stat_unpaid": f"{eur(220)} €", "stat_biens": "6", "stat_actifs": "5",
-        "stat_occ": "83 %", "stat_entrees": "1", "stat_sorties": "0",
-        "stat_demarches": "2", "stat_signalements": "1",
+        "stat_due": f"{eur(4400)} €",
+        "stat_paid": f"{eur(4180)} €",
+        "stat_taux": "95 %",
+        "stat_unpaid": f"{eur(220)} €",
+        "stat_biens": "6",
+        "stat_actifs": "5",
+        "stat_occ": "83 %",
+        "stat_entrees": "1",
+        "stat_sorties": "0",
+        "stat_demarches": "2",
+        "stat_signalements": "1",
         # Signature (affichée dans l'aperçu, comme le logo).
         "signature_uri": sig_uri,
     }
@@ -147,36 +185,52 @@ async def preview_document_pdf(
     # Éditeur par blocs (avis d'échéance, mise en page moderne) : rendu prioritaire.
     if data.blocks is not None:
         from app.services.avis_blocks_render_service import render_avis_blocks_html
+
         # Le moteur de blocs n'ajoute pas le symbole € → on l'inclut dans les
         # variables/lignes factices de l'aperçu (contexte blocs uniquement).
-        block_vars = {**variables,
-                      "total_due": f"{eur(880)} €",
-                      "rent_amount": f"{eur(800)} €",
-                      "charges_amount": f"{eur(80)} €",
-                      "apl_amount": f"{eur(200)} €"}
+        block_vars = {
+            **variables,
+            "total_due": f"{eur(880)} €",
+            "rent_amount": f"{eur(800)} €",
+            "charges_amount": f"{eur(80)} €",
+            "apl_amount": f"{eur(200)} €",
+        }
         line_items = [
             {"label": "LOYER PRINCIPAL", "appele": f"{eur(800)} €"},
             {"label": "PROVISION CHARGES", "appele": f"{eur(80)} €"},
         ]
         html = render_avis_blocks_html(
-            data.blocks, data.theme, block_vars,
-            line_items=line_items, logo_path=logo_path,
+            data.blocks,
+            data.theme,
+            block_vars,
+            line_items=line_items,
+            logo_path=logo_path,
         )
         pdf_bytes = html_to_pdf(html)
-        return Response(content=pdf_bytes, media_type="application/pdf",
-                        headers={"Content-Disposition": 'inline; filename="apercu.pdf"'})
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": 'inline; filename="apercu.pdf"'},
+        )
 
     html = build_document_html(
-        header_color=data.header_color, footer_text=data.footer_text,
-        content_html=data.content_html, logo_path=logo_path,
-        sender_name=sender_name, sender_addr=sender_addr,
+        header_color=data.header_color,
+        footer_text=data.footer_text,
+        content_html=data.content_html,
+        logo_path=logo_path,
+        sender_name=sender_name,
+        sender_addr=sender_addr,
         recipient_lines=["Marie Dupont"],
         property_address="12 avenue des Tilleuls APPART B12\n75001 Paris",
-        variables=variables, layout=(data.layout or get_layout()),
+        variables=variables,
+        layout=(data.layout or get_layout()),
     )
     pdf_bytes = html_to_pdf(html)
-    return Response(content=pdf_bytes, media_type="application/pdf",
-                    headers={"Content-Disposition": 'inline; filename="apercu.pdf"'})
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="apercu.pdf"'},
+    )
 
 
 @router.post("/initialize-defaults", status_code=status.HTTP_200_OK)
@@ -254,7 +308,9 @@ async def upload_logo(
     _check_ownership(tmpl, current_user)
 
     if file.content_type not in ("image/png", "image/jpeg", "image/svg+xml", "image/webp"):
-        raise HTTPException(status_code=400, detail="Format d'image non supporté (PNG, JPG, SVG, WebP)")
+        raise HTTPException(
+            status_code=400, detail="Format d'image non supporté (PNG, JPG, SVG, WebP)"
+        )
 
     ext = file.filename.split(".")[-1] if "." in file.filename else "png"
     filename = f"logo_{template_id}.{ext}"
@@ -282,7 +338,9 @@ async def delete_template(
         raise HTTPException(status_code=404, detail="Template introuvable")
     _check_ownership(tmpl, current_user)
     if tmpl.is_default:
-        raise HTTPException(status_code=400, detail="Le template par défaut ne peut pas être supprimé")
+        raise HTTPException(
+            status_code=400, detail="Le template par défaut ne peut pas être supprimé"
+        )
     await db.delete(tmpl)
     await db.commit()
 

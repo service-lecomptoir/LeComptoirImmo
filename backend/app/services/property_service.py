@@ -1,15 +1,14 @@
 import uuid
-from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
 
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import NotFoundException
 from app.models.property import Property
 from app.schemas.property import PropertyCreate, PropertyUpdate
-from app.core.exceptions import NotFoundException
 
 
 class PropertyService:
-
     @staticmethod
     async def _enrich_owner(db: AsyncSession, data_dict: dict) -> dict:
         """Synchronise les champs dénormalisés du propriétaire depuis la fiche Owner.
@@ -19,6 +18,7 @@ class PropertyService:
         pour l'isolation et les modèles PDF. À défaut de fiche, on retombe sur l'ancien
         comportement (compte lié `owner_user_id`)."""
         from sqlalchemy import select
+
         from app.models.owner import Owner
 
         owner_id = data_dict.get("owner_id")
@@ -27,9 +27,11 @@ class PropertyService:
         if not owner_id:
             owner_user_id = data_dict.get("owner_user_id")
             if owner_user_id:
-                owner = (await db.execute(
-                    select(Owner).where(Owner.user_id == owner_user_id)
-                )).scalars().first()
+                owner = (
+                    (await db.execute(select(Owner).where(Owner.user_id == owner_user_id)))
+                    .scalars()
+                    .first()
+                )
                 if owner:
                     data_dict["owner_id"] = owner.id
                     owner_id = owner.id
@@ -47,6 +49,7 @@ class PropertyService:
         owner_user_id = data_dict.get("owner_user_id")
         if owner_user_id:
             from app.models.user import User
+
             user = await db.get(User, owner_user_id)
             if user:
                 if not data_dict.get("owner_name"):
@@ -56,10 +59,9 @@ class PropertyService:
         return data_dict
 
     @staticmethod
-    async def create(
-        db: AsyncSession, data: PropertyCreate, created_by: uuid.UUID
-    ) -> Property:
+    async def create(db: AsyncSession, data: PropertyCreate, created_by: uuid.UUID) -> Property:
         from app.services.reference_service import make_ref
+
         data_dict = await PropertyService._enrich_owner(db, data.model_dump())
         prop = Property(**data_dict, created_by=created_by)
         prop.ref_code = await make_ref(db, Property.ref_code, "BN")
@@ -81,10 +83,10 @@ class PropertyService:
     @staticmethod
     async def list_all(
         db: AsyncSession,
-        search: Optional[str] = None,
+        search: str | None = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[List[Property], int]:
+    ) -> tuple[list[Property], int]:
         query = select(Property)
         count_query = select(func.count(Property.id))
 
@@ -105,9 +107,7 @@ class PropertyService:
         return list(results.scalars().all()), count_result.scalar_one()
 
     @staticmethod
-    async def update(
-        db: AsyncSession, property_id: uuid.UUID, data: PropertyUpdate
-    ) -> Property:
+    async def update(db: AsyncSession, property_id: uuid.UUID, data: PropertyUpdate) -> Property:
         prop = await PropertyService.get_by_id(db, property_id)
         update_data = data.model_dump(exclude_unset=True)
         update_data = await PropertyService._enrich_owner(db, update_data)

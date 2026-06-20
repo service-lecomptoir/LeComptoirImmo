@@ -1,16 +1,49 @@
 from fastapi import APIRouter, Depends
+
 from app.api.v1 import (
-    auth, users, tenants, owners, properties, documents,
-    leases, inspections, payments, letters, notifications,
-    avis_echeances, contacts, automation, templates, dashboard,
-    tickets, entretiens, messages, proprietaire_perf, offers, subscription,
-    webhook, audit, settings, public, actualisation, scoring, telegram,
-    publishing, candidatures, lease_exits, apurement_plans, signalements,
-    online_payments, message_templates, caf, rgpd,
+    actualisation,
+    apurement_plans,
+    audit,
+    auth,
+    automation,
+    avis_echeances,
+    caf,
+    candidatures,
+    contacts,
+    dashboard,
+    documents,
+    entretiens,
+    inspections,
+    lease_exits,
+    leases,
+    letters,
+    message_templates,
+    messages,
+    notifications,
+    offers,
+    online_payments,
+    owners,
+    payments,
+    properties,
+    proprietaire_perf,
+    public,
+    publishing,
+    rgpd,
+    scoring,
+    settings,
+    signalements,
+    subscription,
+    telegram,
+    templates,
+    tenants,
+    tickets,
+    users,
+    webhook,
 )
 from app.core.features import require_feature
 
 api_router = APIRouter(prefix="/api/v1")
+
 
 # Enforcement serveur des fonctionnalités de plan (entitlements).
 # Appliqué aux routers qui correspondent proprement à UNE fonctionnalité.
@@ -20,6 +53,7 @@ api_router = APIRouter(prefix="/api/v1")
 # performance_biens, liasse_fiscale → gérés côté front menu+URL).
 def _feat(key: str):
     return [Depends(require_feature(key))]
+
 
 api_router.include_router(auth.router)
 api_router.include_router(users.router)

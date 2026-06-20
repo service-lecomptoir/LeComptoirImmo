@@ -1,18 +1,17 @@
 """API Settings — configuration dynamique du scheduler et paramètres globaux."""
+
 import logging
-from datetime import datetime, date
-from typing import List, Optional
+from datetime import UTC, date, datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_gestionnaire
+from app.database import get_db
 from app.models.user import User
-from app.services import settings_service
-from app.services import template_layout_service
+from app.services import settings_service, template_layout_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/settings", tags=["Paramètres"])
@@ -27,7 +26,7 @@ class SchedulerConfig(BaseModel):
 
 
 class SchedulerConfigOut(SchedulerConfig):
-    next_run: Optional[str] = None
+    next_run: str | None = None
 
 
 def _compute_next_run(day: int, hour: int, minute: int) -> str:
@@ -50,6 +49,7 @@ def _compute_next_run(day: int, hour: int, minute: int) -> str:
             candidate = datetime(year, month, day, hour, minute, tzinfo=TZ)
         except ValueError:
             import calendar
+
             last_day = calendar.monthrange(year, month)[1]
             candidate = datetime(year, month, min(day, last_day), hour, minute, tzinfo=TZ)
     return candidate.isoformat()
@@ -85,6 +85,7 @@ async def update_scheduler(
     # Reschedule dynamique du job APScheduler
     try:
         from app.core.scheduler import reschedule_avis_job
+
         reschedule_avis_job(body.day, body.hour, body.minute)
     except Exception as exc:
         logger.warning("Reschedule APScheduler failed (non bloquant): %s", exc)
@@ -99,6 +100,7 @@ async def update_scheduler(
 
 # ── Rappels Telegram quotidiens (équipe d'agents IA) ─────────────────────────
 
+
 class ReminderConfig(BaseModel):
     enabled: bool = True
     hour: int = Field(8, ge=0, le=23)
@@ -106,12 +108,13 @@ class ReminderConfig(BaseModel):
 
 
 class ReminderConfigOut(ReminderConfig):
-    next_run: Optional[str] = None
+    next_run: str | None = None
 
 
 def _compute_next_daily(hour: int, minute: int) -> str:
     """Prochaine occurrence quotidienne (Paris) en ISO 8601."""
     from datetime import timedelta
+
     now = datetime.now(TZ)
     candidate = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
     if candidate <= now:
@@ -127,7 +130,9 @@ async def get_reminders(
     """Config des rappels Telegram quotidiens (point du jour)."""
     cfg = await settings_service.get_reminder_config(db)
     return ReminderConfigOut(
-        enabled=cfg["enabled"], hour=cfg["hour"], minute=cfg["minute"],
+        enabled=cfg["enabled"],
+        hour=cfg["hour"],
+        minute=cfg["minute"],
         next_run=_compute_next_daily(cfg["hour"], cfg["minute"]) if cfg["enabled"] else None,
     )
 
@@ -139,17 +144,22 @@ async def update_reminders(
     _: User = Depends(get_current_gestionnaire),
 ):
     """Active/désactive et planifie l'heure des rappels Telegram quotidiens."""
-    await settings_service.set_(db, "telegram_reminder_enabled", "true" if body.enabled else "false")
+    await settings_service.set_(
+        db, "telegram_reminder_enabled", "true" if body.enabled else "false"
+    )
     await settings_service.set_(db, "telegram_reminder_hour", str(body.hour))
     await settings_service.set_(db, "telegram_reminder_minute", str(body.minute))
     await db.commit()
     try:
         from app.core.scheduler import reschedule_reminder_job
+
         reschedule_reminder_job(body.hour, body.minute)
     except Exception as exc:
         logger.warning("Reschedule rappels Telegram échoué (non bloquant): %s", exc)
     return ReminderConfigOut(
-        enabled=body.enabled, hour=body.hour, minute=body.minute,
+        enabled=body.enabled,
+        hour=body.hour,
+        minute=body.minute,
         next_run=_compute_next_daily(body.hour, body.minute) if body.enabled else None,
     )
 
@@ -160,11 +170,13 @@ async def run_reminders_now(
 ):
     """Déclenche immédiatement l'envoi des rappels (test). Sécurisé : no-op si Telegram désactivé."""
     from app.core.scheduler import run_telegram_reminders_now
+
     await run_telegram_reminders_now()
     return {"status": "ok"}
 
 
 # ── Mise en page des templates PDF ───────────────────────────────────────────
+
 
 class TemplateSpacing(BaseModel):
     page_margin: str = "2cm 2.5cm"
@@ -175,16 +187,16 @@ class TemplateSpacing(BaseModel):
     line_height: float = 1.55
     font_size: int = 10
     # Personnalisation typographie / couleurs (édition depuis l'aperçu).
-    font_family: Optional[str] = "Helvetica, Arial, sans-serif"
-    text_color: Optional[str] = "#1f2937"
-    heading_color: Optional[str] = None  # vide → reprend la couleur d'accent du template
-    heading_scale: Optional[int] = 6     # h1/h2 = font_size + heading_scale
-    paragraph_spacing: Optional[int] = 8  # px entre paragraphes
+    font_family: str | None = "Helvetica, Arial, sans-serif"
+    text_color: str | None = "#1f2937"
+    heading_color: str | None = None  # vide → reprend la couleur d'accent du template
+    heading_scale: int | None = 6  # h1/h2 = font_size + heading_scale
+    paragraph_spacing: int | None = 8  # px entre paragraphes
 
 
 class TemplateLayout(BaseModel):
-    header_left: List[str] = ["logo", "sender"]
-    header_right: List[str] = ["recipient", "citydate"]
+    header_left: list[str] = ["logo", "sender"]
+    header_right: list[str] = ["recipient", "citydate"]
     spacing: TemplateSpacing = Field(default_factory=TemplateSpacing)
 
 
@@ -214,10 +226,23 @@ async def preview_template(
     """Génère un PDF d'aperçu avec données fictives selon la mise en page courante."""
     _sig_uri = getattr(current_user, "signature", None) or ""
     from types import SimpleNamespace
-    from app.services.pdf_service import render_template, html_to_pdf
 
-    _MONTHS_FR = ["janvier","février","mars","avril","mai","juin",
-                  "juillet","août","septembre","octobre","novembre","décembre"]
+    from app.services.pdf_service import html_to_pdf, render_template
+
+    _MONTHS_FR = [
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ]
     _d = date.today()
     today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
     layout = template_layout_service.get_layout()
@@ -249,16 +274,20 @@ async def preview_template(
             amount_due=880.0,
             due_date=None,
         )
-        html = render_template("avis_echeance.html.j2", {
-            "avis": mock_avis,
-            "property": mock_property,
-            "today": today_fr,
-            "layout": layout,
-            "signature_uri": _sig_uri,
-        })
+        html = render_template(
+            "avis_echeance.html.j2",
+            {
+                "avis": mock_avis,
+                "property": mock_property,
+                "today": today_fr,
+                "layout": layout,
+                "signature_uri": _sig_uri,
+            },
+        )
     else:
         import uuid as _uuid
-        from datetime import datetime as _dt, timezone as _tz
+        from datetime import datetime as _dt
+
         mock_payment = SimpleNamespace(
             id=_uuid.uuid4(),
             tenant=mock_tenant,
@@ -275,16 +304,19 @@ async def preview_template(
             payment_date=_d,
             payment_method="virement",
             status="paid",
-            updated_at=_dt.now(_tz.utc),
-            quittance_generated_at=_dt.now(_tz.utc),
+            updated_at=_dt.now(UTC),
+            quittance_generated_at=_dt.now(UTC),
             quittance_sent_at=None,
         )
-        html = render_template("quittance.html.j2", {
-            "payment": mock_payment,
-            "today": today_fr,
-            "layout": layout,
-            "signature_uri": _sig_uri,
-        })
+        html = render_template(
+            "quittance.html.j2",
+            {
+                "payment": mock_payment,
+                "today": today_fr,
+                "layout": layout,
+                "signature_uri": _sig_uri,
+            },
+        )
 
     pdf_bytes = html_to_pdf(html)
     return Response(
@@ -308,6 +340,7 @@ async def notifications_status(
     """Indique si l'e-mail (SMTP) et le SMS (Brevo) sont configurés/activés,
     et si le gestionnaire est mis en copie (CC) des e-mails locataires."""
     from app.config import get_settings
+
     cfg = get_settings()
     return {
         "email_enabled": cfg.smtp_enabled,
@@ -325,14 +358,26 @@ async def test_notification(
     """Envoie un e-mail ou un SMS de test (pour valider la configuration Brevo)."""
     if body.channel == "email":
         from app.services.email_service import send_email
+
         ok = await send_email(
             to=body.to,
             subject="Le Comptoir Immo : e-mail de test",
             html_body="<p>Ceci est un e-mail de test. Votre configuration SMTP fonctionne ✅</p>",
         )
-        return {"channel": "email", "to": body.to, "sent": ok,
-                "detail": "Envoyé" if ok else "Désactivé (SMTP non configuré) ou erreur — voir logs"}
+        return {
+            "channel": "email",
+            "to": body.to,
+            "sent": ok,
+            "detail": "Envoyé" if ok else "Désactivé (SMTP non configuré) ou erreur — voir logs",
+        }
     from app.services.sms_service import send_sms
+
     ok = await send_sms(body.to, "Le Comptoir Immo : SMS de test. Configuration OK.")
-    return {"channel": "sms", "to": body.to, "sent": ok,
-            "detail": "Envoyé" if ok else "Désactivé (BREVO_API_KEY absente), numéro invalide, ou erreur — voir logs"}
+    return {
+        "channel": "sms",
+        "to": body.to,
+        "sent": ok,
+        "detail": "Envoyé"
+        if ok
+        else "Désactivé (BREVO_API_KEY absente), numéro invalide, ou erreur — voir logs",
+    }

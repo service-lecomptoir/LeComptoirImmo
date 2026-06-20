@@ -1,10 +1,10 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from sqlalchemy import String, Date, DateTime, Numeric, Integer, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
@@ -25,6 +25,7 @@ class ChargeRegularization(Base, TimestampMixin):
     À l'application, la provision mensuelle du bail est réajustée
     (new_monthly_provision) et le solde ponctuel est traité.
     """
+
     __tablename__ = "charge_regularizations"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -51,14 +52,14 @@ class ChargeRegularization(Base, TimestampMixin):
 
     # ── État ─────────────────────────────────────────────────────────────────
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="applied")  # applied
-    applied_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     # Révision de loyer/charges générée par cette régularisation (lien pour annulation).
-    rent_revision_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    rent_revision_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     lease: Mapped["Lease"] = relationship("Lease", lazy="select")
     tenant: Mapped["Tenant"] = relationship("Tenant", lazy="select")

@@ -1,16 +1,17 @@
 """API Contacts — carnet d'adresses prestataires."""
+
 import uuid
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_gestionnaire
 from app.core.permissions import Role
+from app.database import get_db
 from app.models.contact import Contact, ContactCategory
 from app.models.user import User
-from app.schemas.contact import ContactCreate, ContactUpdate, ContactResponse
+from app.schemas.contact import ContactCreate, ContactResponse, ContactUpdate
 
 router = APIRouter(prefix="/contacts", tags=["Contacts"])
 
@@ -26,15 +27,16 @@ async def _check_contact_access(contact: Contact, current_user: User, db: AsyncS
     elif role == Role.GESTIONNAIRE:
         # Un mandataire n'accède qu'aux contacts de SON agence
         from app.api.v1._isolation import agency_member_ids
+
         members = await agency_member_ids(db, current_user)
         if contact.created_by not in members:
             raise HTTPException(status_code=403, detail="Accès refusé")
 
 
-@router.get("", response_model=List[ContactResponse])
+@router.get("", response_model=list[ContactResponse])
 async def list_contacts(
-    search: Optional[str] = Query(None),
-    category: Optional[ContactCategory] = Query(None),
+    search: str | None = Query(None),
+    category: ContactCategory | None = Query(None),
     favorites_only: bool = Query(False),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -51,6 +53,7 @@ async def list_contacts(
     elif role == Role.GESTIONNAIRE:
         # Mandataire : uniquement les contacts de SON agence
         from app.api.v1._isolation import agency_member_ids
+
         members = await agency_member_ids(db, current_user)
         q = q.where(Contact.created_by.in_(members)) if members else q.where(False)
     # Admin : pas de filtre
@@ -58,14 +61,16 @@ async def list_contacts(
     # ── Filtres utilisateur ───────────────────────────────────────────────────
     if search:
         term = f"%{search}%"
-        q = q.where(or_(
-            Contact.last_name.ilike(term),
-            Contact.first_name.ilike(term),
-            Contact.company_name.ilike(term),
-            Contact.phone.ilike(term),
-            Contact.email.ilike(term),
-            Contact.city.ilike(term),
-        ))
+        q = q.where(
+            or_(
+                Contact.last_name.ilike(term),
+                Contact.first_name.ilike(term),
+                Contact.company_name.ilike(term),
+                Contact.phone.ilike(term),
+                Contact.email.ilike(term),
+                Contact.city.ilike(term),
+            )
+        )
     if category:
         q = q.where(Contact.category == category)
     if favorites_only:

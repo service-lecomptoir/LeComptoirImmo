@@ -1,11 +1,11 @@
 import uuid
-from typing import Optional, Any
-from sqlalchemy import String, Boolean, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from typing import Any
+
+from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base, TimestampMixin
-
 
 # Langues proposées pour le contenu des courriers (onglet Communication).
 TEMPLATE_LANGS = ["fr", "en", "pt-BR", "ht", "srn"]
@@ -28,10 +28,8 @@ class MessageTemplate(Base, TimestampMixin):
 
     __tablename__ = "message_templates"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    gestionnaire_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    gestionnaire_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )
     # Type de document/communication concerné (avis_echeance, quittance, …).

@@ -9,16 +9,16 @@ Convention : `features = NULL` (ou plan/licence absent) ⇒ AUCUNE restriction
 Les rôles non-gestionnaire (admin, propriétaire, locataire) ne sont jamais
 restreints : l'abonnement concerne le compte gestionnaire.
 """
+
 import logging
-from typing import Optional, List
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_user
 from app.core.permissions import Role
+from app.database import get_db
 from app.models.user import User
 from app.services import alice_client
 
@@ -58,10 +58,11 @@ def rule_type_allowed(rule_type: str, feats) -> bool:
     feat = RULE_TYPE_FEATURE.get(rule_type)
     return feat is None or feat in feats
 
+
 _MANAGER_ROLES = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
 
 
-async def get_plan_features(db: AsyncSession, user_id: UUID) -> Optional[List[str]]:
+async def get_plan_features(db: AsyncSession, user_id: UUID) -> list[str] | None:
     """Fonctionnalités du plan du gestionnaire (via l'API Alice).
 
     Retourne None s'il n'y a pas de plan/licence ou si `features` n'est pas défini
@@ -74,7 +75,7 @@ async def get_plan_features(db: AsyncSession, user_id: UUID) -> Optional[List[st
     return feats if isinstance(feats, list) else None
 
 
-async def get_plan_name(db: AsyncSession, user_id: UUID) -> Optional[str]:
+async def get_plan_name(db: AsyncSession, user_id: UUID) -> str | None:
     """Nom du plan tarifaire du gestionnaire (via l'API Alice)."""
     lic = await alice_client.get_license(user_id)
     return lic.get("plan_name") if lic else None
@@ -82,6 +83,7 @@ async def get_plan_name(db: AsyncSession, user_id: UUID) -> Optional[str]:
 
 def require_feature(feature: str):
     """Dépendance FastAPI : 403 si le plan du gestionnaire n'inclut pas `feature`."""
+
     async def _dep(
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user),
@@ -99,6 +101,7 @@ def require_feature(feature: str):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Fonctionnalité non incluse dans votre abonnement",
         )
+
     return _dep
 
 
@@ -107,6 +110,7 @@ def require_any_feature(*features: str):
 
     Utile quand plusieurs fonctionnalités partagent le même endpoint (ex. la donnée
     finances/performance/liasse provient d'un seul endpoint propriétaire)."""
+
     async def _dep(
         db: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user),
@@ -124,4 +128,5 @@ def require_any_feature(*features: str):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Fonctionnalité non incluse dans votre abonnement",
         )
+
     return _dep

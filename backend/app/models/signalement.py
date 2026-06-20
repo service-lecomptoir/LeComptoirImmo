@@ -1,11 +1,11 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import String, Text, DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
@@ -17,17 +17,18 @@ if TYPE_CHECKING:
 # Valeurs stockées en TEXTE (pas d'enum Postgres) : on pourra ajouter des
 # catégories / sources (ex. capteurs télématiques) sans migration ALTER TYPE.
 
+
 class SignalementCategory(str, Enum):
     # Signalements liés à la RÉSIDENCE / l'IMMEUBLE (parties communes, équipements
     # collectifs, voisinage). Les problèmes dans le logement privatif relèvent d'un
     # autre canal (démarche / demande d'intervention), pas de ce signalement.
-    BRUIT = "bruit"                  # nuisance sonore / voisinage
-    SECURITE = "securite"           # accès, interphone, serrure, éclairage des communs
-    PROPRETE = "proprete"           # propreté des parties communes (hall, local poubelles…)
-    ASCENSEUR = "ascenseur"         # panne / dysfonctionnement de l'ascenseur
-    EXTERIEUR = "exterieur"         # espaces extérieurs, parking, espaces verts
-    DEGRADATION = "degradation"     # dégradation / vandalisme des communs
-    LOGEMENT = "logement"           # (héritage) ancien motif « mon logement »
+    BRUIT = "bruit"  # nuisance sonore / voisinage
+    SECURITE = "securite"  # accès, interphone, serrure, éclairage des communs
+    PROPRETE = "proprete"  # propreté des parties communes (hall, local poubelles…)
+    ASCENSEUR = "ascenseur"  # panne / dysfonctionnement de l'ascenseur
+    EXTERIEUR = "exterieur"  # espaces extérieurs, parking, espaces verts
+    DEGRADATION = "degradation"  # dégradation / vandalisme des communs
+    LOGEMENT = "logement"  # (héritage) ancien motif « mon logement »
     AUTRE = "autre"
 
 
@@ -47,7 +48,7 @@ class SignalementStatus(str, Enum):
 class SignalementSource(str, Enum):
     LOCATAIRE = "locataire"
     GESTIONNAIRE = "gestionnaire"
-    TELEMATIQUE = "telematique"      # à terme : remontée automatique par capteurs
+    TELEMATIQUE = "telematique"  # à terme : remontée automatique par capteurs
 
 
 class Signalement(Base, TimestampMixin):
@@ -59,40 +60,48 @@ class Signalement(Base, TimestampMixin):
     création). Le moteur d'alertes bruit (étape 2) s'appuiera sur category=bruit +
     occurred_at + property_id.
     """
+
     __tablename__ = "signalements"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     category: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    urgency: Mapped[str] = mapped_column(String(10), nullable=False, default=SignalementUrgency.MOYEN.value)
-    status: Mapped[str] = mapped_column(String(12), nullable=False, default=SignalementStatus.NOUVEAU.value, index=True)
-    source: Mapped[str] = mapped_column(String(12), nullable=False, default=SignalementSource.LOCATAIRE.value)
+    urgency: Mapped[str] = mapped_column(
+        String(10), nullable=False, default=SignalementUrgency.MOYEN.value
+    )
+    status: Mapped[str] = mapped_column(
+        String(12), nullable=False, default=SignalementStatus.NOUVEAU.value, index=True
+    )
+    source: Mapped[str] = mapped_column(
+        String(12), nullable=False, default=SignalementSource.LOCATAIRE.value
+    )
 
-    title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     # Date/heure de survenue de l'incident (peut différer de la création).
-    occurred_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    occurred_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Photo optionnelle (chemin relatif sous uploads/, servie via /uploads).
-    photo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Localisation = le bien concerné. Locataire/contrat éventuels.
-    property_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("properties.id", ondelete="SET NULL"), nullable=True, index=True
+    property_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("properties.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
-    tenant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    lease_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    lease_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("leases.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     # Traitement par le gestionnaire.
-    resolution_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 

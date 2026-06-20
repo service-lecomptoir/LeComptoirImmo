@@ -1,27 +1,29 @@
 """
 API de génération de lettres et documents PDF.
 """
+
 import re
 import uuid
 from datetime import date
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.core.permissions import Role
 from app.api.deps import require_role
-from app.api.v1._isolation import assert_payment_access, assert_lease_access
-from app.models.user import User
-from app.models.owner import Owner
+from app.api.v1._isolation import assert_lease_access, assert_payment_access
+from app.core.exceptions import BadRequestException
 from app.core.features import require_feature
+from app.core.permissions import Role
+from app.database import get_db
+from app.models.document import DocumentType, EntityType
+from app.models.owner import Owner
+from app.models.user import User
+from app.services.document_service import DocumentService
 from app.services.lease_service import LeaseService
 from app.services.payment_service import PaymentService
-from app.services.pdf_service import render_template, html_to_pdf, render_relance_html
-from app.services.document_service import DocumentService
-from app.models.document import EntityType, DocumentType
-from app.core.exceptions import BadRequestException
+from app.services.pdf_service import html_to_pdf, render_relance_html, render_template
 
 router = APIRouter(prefix="/letters", tags=["Letters"])
 
@@ -34,13 +36,18 @@ async def _save_to_tenant_docs(db, payment, current_user, pdf: bytes, filename: 
         return
     try:
         await DocumentService.save_generated(
-            db, content=pdf, file_name=filename,
-            entity_type=EntityType.TENANT, entity_id=tenant_id,
-            document_type=DocumentType.AUTRE, label=label,
+            db,
+            content=pdf,
+            file_name=filename,
+            entity_type=EntityType.TENANT,
+            entity_id=tenant_id,
+            document_type=DocumentType.AUTRE,
+            label=label,
             uploaded_by=current_user.id,
         )
     except Exception:
         pass
+
 
 LEASE_TYPE_LABELS = {
     "vide": "Location vide (loi du 6 juillet 1989)",
@@ -50,8 +57,19 @@ LEASE_TYPE_LABELS = {
 }
 
 MONTHS_FR = [
-    "", "janvier", "février", "mars", "avril", "mai", "juin",
-    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+    "",
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
 ]
 
 
@@ -68,7 +86,7 @@ def _split_address(raw):
     s = " ".join(str(raw).split())
     m = re.search(r"\b\d{5}\b", s)
     if m and m.start() > 0:
-        return s[:m.start()].rstrip(" ,"), s[m.start():].strip()
+        return s[: m.start()].rstrip(" ,"), s[m.start() :].strip()
     return s, ""
 
 
@@ -79,7 +97,7 @@ def _split_address_parts(raw):
     s = " ".join(str(raw).split())
     m = re.search(r"\b(\d{5})\b", s)
     if m:
-        return s[:m.start()].rstrip(" ,"), m.group(1), s[m.end():].lstrip(" ,").strip()
+        return s[: m.start()].rstrip(" ,"), m.group(1), s[m.end() :].lstrip(" ,").strip()
     return s, "", ""
 
 
@@ -119,6 +137,7 @@ async def lettre_relance(
     pdf = html_to_pdf(html)
 
     from app.utils.filename import doc_filename
+
     filename = doc_filename(
         "relance",
         tenant=payment.tenant.full_name if payment.tenant else None,
@@ -126,24 +145,29 @@ async def lettre_relance(
         month=payment.period_month,
         year=payment.period_year,
     )
-    await _save_to_tenant_docs(db, payment, current_user, pdf, filename,
-                               f"Lettre de relance · {payment.period_label}")
+    await _save_to_tenant_docs(
+        db, payment, current_user, pdf, filename, f"Lettre de relance · {payment.period_label}"
+    )
 
     # Notifier le locataire : e-mail (PDF joint) + SMS (fail-soft, n'empêche jamais
     # le téléchargement de la relance).
     import logging as _logging
+
     _log = _logging.getLogger(__name__)
     _ten = getattr(payment, "tenant", None)
     _bal = f"{float(payment.balance):.2f}"
     if _ten is not None and getattr(_ten, "email", None):
         try:
-            from app.services.email_service import send_email
-            from app.services.cc_service import rule_cc_for_lease, rule_message_for_lease
             from app.services import mail_signature
             from app.services.automation_engine import render_rule_body, render_subject
+            from app.services.cc_service import rule_cc_for_lease, rule_message_for_lease
+            from app.services.email_service import send_email
+
             _types = ("relance_1", "relance_2", "rappel_impaye")
             _cc = await rule_cc_for_lease(db, payment.lease_id, *_types)
-            _sig, _logo, _logosub = await mail_signature.build_for_lease(db, payment.lease_id, *_types)
+            _sig, _logo, _logosub = await mail_signature.build_for_lease(
+                db, payment.lease_id, *_types
+            )
             _subjT, _bodyT = await rule_message_for_lease(db, payment.lease_id, *_types)
             _ctx = {
                 "tenant_name": (getattr(_ten, "full_name", "") or ""),
@@ -154,25 +178,40 @@ async def lettre_relance(
             }
             # Corps : celui de la règle (éditable) sinon corps par défaut. La lettre
             # de relance reste jointe en PDF dans tous les cas.
-            _default_body = (f"<p>Madame, Monsieur,</p>"
-                             f"<p>Sauf erreur de notre part, le loyer de la période "
-                             f"<strong>{payment.period_label}</strong> reste impayé "
-                             f"(solde dû : <strong>{_bal} €</strong>).</p>"
-                             f"<p>Merci de régulariser dans les meilleurs délais.</p>")
-            _body = (render_rule_body(_bodyT, _ctx) or _default_body) \
-                + "<p>La lettre de relance est jointe en PDF.</p>" + _sig
-            await send_email(to=_ten.email,
-                             subject=render_subject(_subjT, _ctx) or f"Rappel de loyer impayé : {payment.period_label}",
-                             html_body=_body, attachment_bytes=pdf, attachment_filename=filename,
-                             cc=_cc, inline_logo=_logo, inline_logo_subtype=_logosub)
+            _default_body = (
+                f"<p>Madame, Monsieur,</p>"
+                f"<p>Sauf erreur de notre part, le loyer de la période "
+                f"<strong>{payment.period_label}</strong> reste impayé "
+                f"(solde dû : <strong>{_bal} €</strong>).</p>"
+                f"<p>Merci de régulariser dans les meilleurs délais.</p>"
+            )
+            _body = (
+                (render_rule_body(_bodyT, _ctx) or _default_body)
+                + "<p>La lettre de relance est jointe en PDF.</p>"
+                + _sig
+            )
+            await send_email(
+                to=_ten.email,
+                subject=render_subject(_subjT, _ctx)
+                or f"Rappel de loyer impayé : {payment.period_label}",
+                html_body=_body,
+                attachment_bytes=pdf,
+                attachment_filename=filename,
+                cc=_cc,
+                inline_logo=_logo,
+                inline_logo_subtype=_logosub,
+            )
         except Exception as _exc:  # noqa: BLE001
             _log.warning("E-mail relance échoué (%s): %s", payment_id, _exc)
     if _ten is not None and getattr(_ten, "phone", None):
         try:
             from app.services.sms_service import send_sms
-            await send_sms(_ten.phone,
-                           f"Le Comptoir Immo : rappel, loyer {payment.period_label} impaye "
-                           f"(solde {_bal} EUR). Merci de regulariser.")
+
+            await send_sms(
+                _ten.phone,
+                f"Le Comptoir Immo : rappel, loyer {payment.period_label} impaye "
+                f"(solde {_bal} EUR). Merci de regulariser.",
+            )
         except Exception as _exc:  # noqa: BLE001
             _log.warning("SMS relance échoué (%s): %s", payment_id, _exc)
 
@@ -205,27 +244,31 @@ async def plan_apurement(
             raise BadRequestException("Date de première échéance invalide")
     else:
         d = date.today()
-        fd = date(d.year + (1 if d.month == 12 else 0),
-                  1 if d.month == 12 else d.month + 1, 1)
+        fd = date(d.year + (1 if d.month == 12 else 0), 1 if d.month == 12 else d.month + 1, 1)
 
     from app.services.pdf_service import render_plan_apurement_html
+
     html = await render_plan_apurement_html(db, payment, installments, fd)
     if not html:
         raise BadRequestException("Modèle de plan d'apurement indisponible")
     pdf = html_to_pdf(html)
 
     from app.utils.filename import doc_filename
+
     property_obj = payment.lease.parent_property if payment.lease else None
     filename = doc_filename(
         "plan_apurement",
         tenant=payment.tenant.full_name if payment.tenant else None,
         property_name=property_obj.name if property_obj else None,
-        month=payment.period_month, year=payment.period_year,
+        month=payment.period_month,
+        year=payment.period_year,
     )
-    await _save_to_tenant_docs(db, payment, current_user, pdf, filename,
-                               f"Plan d'apurement · {payment.period_label}")
+    await _save_to_tenant_docs(
+        db, payment, current_user, pdf, filename, f"Plan d'apurement · {payment.period_label}"
+    )
     return Response(
-        content=pdf, media_type="application/pdf",
+        content=pdf,
+        media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
@@ -248,7 +291,9 @@ async def attestation_caf(
     # Bailleur = fiche propriétaire du bien (sinon copie dénormalisée, sinon utilisateur)
     owner = None
     if prop and prop.owner_id:
-        owner = (await db.execute(select(Owner).where(Owner.id == prop.owner_id))).scalar_one_or_none()
+        owner = (
+            await db.execute(select(Owner).where(Owner.id == prop.owner_id))
+        ).scalar_one_or_none()
 
     co_tenants = list(lease.co_tenants or [])
     tenant2 = co_tenants[0] if co_tenants else None
@@ -261,14 +306,24 @@ async def attestation_caf(
     bailleur_addr1, bailleur_addr2 = _split_address(owner.full_address if owner else None)
     # Adresse logement → rue (champ structuré) puis « CP Ville »
     logement_street = (prop.address if prop else "") or ""
-    logement_cpville = " ".join(p for p in [(prop.zip_code if prop else ""), (prop.city if prop else "")] if p).strip()
+    logement_cpville = " ".join(
+        p for p in [(prop.zip_code if prop else ""), (prop.city if prop else "")] if p
+    ).strip()
 
     ctx = {
-        "bailleur_name": getattr(current_user, "owner_full_name", None) or (owner.full_name if owner else None) or (prop.owner_name if prop else None) or current_user.full_name,
+        "bailleur_name": getattr(current_user, "owner_full_name", None)
+        or (owner.full_name if owner else None)
+        or (prop.owner_name if prop else None)
+        or current_user.full_name,
         "bailleur_addr1": bailleur_addr1,
         "bailleur_addr2": bailleur_addr2,
-        "bailleur_phone": (owner.phone if owner else None) or (prop.owner_phone if prop else None) or getattr(current_user, "phone", None) or "",
-        "bailleur_email": (owner.email if owner else None) or (prop.owner_email if prop else None) or current_user.email,
+        "bailleur_phone": (owner.phone if owner else None)
+        or (prop.owner_phone if prop else None)
+        or getattr(current_user, "phone", None)
+        or "",
+        "bailleur_email": (owner.email if owner else None)
+        or (prop.owner_email if prop else None)
+        or current_user.email,
         "bailleur_siret": (owner.national_id if owner else None) or "",
         "tenant_name": tenant.full_name if tenant else "",
         "tenant2_name": tenant2.full_name if tenant2 else None,
@@ -299,6 +354,7 @@ async def attestation_caf(
     pdf = html_to_pdf(html)
 
     from app.utils.filename import doc_filename
+
     filename = doc_filename(
         "attestation_caf",
         tenant=tenant.full_name if tenant else None,
@@ -328,7 +384,9 @@ async def versement_direct_caf(
 
     owner = None
     if prop and prop.owner_id:
-        owner = (await db.execute(select(Owner).where(Owner.id == prop.owner_id))).scalar_one_or_none()
+        owner = (
+            await db.execute(select(Owner).where(Owner.id == prop.owner_id))
+        ).scalar_one_or_none()
 
     # Bailleur : c'est le « Nom et prénom du propriétaire » du profil (owner_full_name),
     # source de vérité commune au bail, à l'attestation de loyer et au tiers payant —
@@ -354,8 +412,13 @@ async def versement_direct_caf(
         "bailleur_rue": b_rue,
         "bailleur_cp": b_cp,
         "bailleur_commune": b_commune,
-        "bailleur_phone": (owner.phone if owner else None) or (prop.owner_phone if prop else None) or getattr(current_user, "phone", None) or "",
-        "bailleur_email": (owner.email if owner else None) or (prop.owner_email if prop else None) or current_user.email,
+        "bailleur_phone": (owner.phone if owner else None)
+        or (prop.owner_phone if prop else None)
+        or getattr(current_user, "phone", None)
+        or "",
+        "bailleur_email": (owner.email if owner else None)
+        or (prop.owner_email if prop else None)
+        or current_user.email,
         "bailleur_siret": (owner.national_id if owner else None) or "",
         # Allocataire = locataire ; adresse = logement
         "alloc_nom": tenant.last_name if tenant else "",
@@ -373,6 +436,7 @@ async def versement_direct_caf(
     pdf = html_to_pdf(html)
 
     from app.utils.filename import doc_filename
+
     filename = doc_filename(
         "versement_direct_caf",
         tenant=tenant.full_name if tenant else None,

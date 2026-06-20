@@ -6,6 +6,7 @@ Utilisé sur les chemins d'écriture (comptes, fiches propriétaires) pour qu'un
 adresse combinée (« 7 rue d'Alembert 92600 Asnières-Sur-Seine ») ne soit jamais
 stockée d'un seul tenant, sans que l'utilisateur ait à re-saisir quoi que ce soit.
 """
+
 import re
 
 # Code postal français / DOM : 5 chiffres consécutifs.
@@ -26,7 +27,7 @@ def split_combined_address(address):
     if not m:
         return None, None, None
     street = address[: m.start()].strip(_STRIP)
-    town = address[m.end():].strip(_STRIP)
+    town = address[m.end() :].strip(_STRIP)
     if not street or not town:
         return None, None, None
     return street, m.group(0), town

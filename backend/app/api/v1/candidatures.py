@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Gestion des candidatures locatives.
 
 Centralisation des dossiers candidats (déposés depuis la page d'annonce publique
@@ -6,22 +5,22 @@ ou saisis manuellement), vérification des pièces justificatives (checklist),
 analyse et comparaison des profils (taux d'effort, complétude, garant) pour
 aider à la sélection du locataire le plus adapté.
 """
+
 import secrets
 import uuid
-from datetime import datetime, timezone
-from typing import Optional, List
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_role, get_manager_or_owner
+from app.api.deps import get_manager_or_owner, require_role
 from app.core.exceptions import BadRequestException, ForbiddenException, NotFoundException
 from app.core.permissions import Role
 from app.database import get_db
-from app.models.candidature import Candidature, CANDIDATURE_DOC_KEYS
+from app.models.candidature import CANDIDATURE_DOC_KEYS, Candidature
 from app.models.property import Property
 from app.models.publishing import Listing
 from app.models.user import User
@@ -36,14 +35,22 @@ _DOC_LABELS = {k: lbl for k, lbl in CANDIDATURE_DOC_KEYS}
 
 def default_docs() -> list[dict]:
     return [
-        {"key": k, "required": False, "provided": False, "verified": False,
-         "file_path": None, "filename": None, "uploaded_at": None}
+        {
+            "key": k,
+            "required": False,
+            "provided": False,
+            "verified": False,
+            "file_path": None,
+            "filename": None,
+            "uploaded_at": None,
+        }
         for k, _ in CANDIDATURE_DOC_KEYS
     ]
 
 
 def candidature_upload_url(token: str) -> str:
     from app.config import get_settings
+
     return f"{get_settings().PUBLIC_APP_URL.rstrip('/')}/candidature/{token}"
 
 
@@ -51,21 +58,29 @@ def _apply_branding(manager) -> None:
     """Pose le thème + logo du gestionnaire pour le prochain e-mail candidat."""
     from app.services.email_service import set_branding
     from app.services.mail_signature import read_logo
+
     logo, sub = read_logo(getattr(manager, "logo_path", None))
-    set_branding(getattr(manager, "email_theme", None), logo=logo, logo_subtype=sub,
-                 brand_name=getattr(manager, "full_name", None))
+    set_branding(
+        getattr(manager, "email_theme", None),
+        logo=logo,
+        logo_subtype=sub,
+        brand_name=getattr(manager, "full_name", None),
+    )
 
 
 def candidature_visit_url(token: str) -> str:
     from app.config import get_settings
+
     return f"{get_settings().PUBLIC_APP_URL.rstrip('/')}/candidature/{token}/visite"
 
 
-async def _cand_overrides(db, gestionnaire_id, rule_type: str, c, block: Optional[dict] = None,
-                          when: Optional[str] = None) -> dict:
+async def _cand_overrides(
+    db, gestionnaire_id, rule_type: str, c, block: dict | None = None, when: str | None = None
+) -> dict:
     """Résout l'e-mail candidat depuis la règle Communication du gestionnaire
     (objet/corps/signature personnalisés + interrupteur on/off)."""
     from app.services import candidature_comm
+
     ctx = {
         "candidate_name": c.full_name,
         "property_ref": (block or {}).get("ref") or "",
@@ -75,11 +90,15 @@ async def _cand_overrides(db, gestionnaire_id, rule_type: str, c, block: Optiona
     return await candidature_comm.resolve(db, gestionnaire_id, rule_type, ctx)
 
 
-def format_property_address(prop) -> Optional[str]:
+def format_property_address(prop) -> str | None:
     """Adresse postale du bien (sans le nom du logement) : rue, CP ville, pays."""
     if prop is None:
         return None
-    line1 = ", ".join(p for p in [(prop.address or "").strip(), (getattr(prop, "address2", None) or "").strip()] if p)
+    line1 = ", ".join(
+        p
+        for p in [(prop.address or "").strip(), (getattr(prop, "address2", None) or "").strip()]
+        if p
+    )
     line2 = " ".join(p for p in [(prop.zip_code or "").strip(), (prop.city or "").strip()] if p)
     country = (getattr(prop, "country", None) or "").strip()
     if country and country.lower() == "france":
@@ -92,34 +111,36 @@ def format_property_address(prop) -> Optional[str]:
 class CandidatureIn(BaseModel):
     property_id: uuid.UUID
     full_name: str = Field(..., min_length=1, max_length=200)
-    email: Optional[str] = Field(None, max_length=255)
-    phone: Optional[str] = Field(None, max_length=30)
-    employment: Optional[str] = Field(None, max_length=150)
-    monthly_income: Optional[float] = Field(None, ge=0)
+    email: str | None = Field(None, max_length=255)
+    phone: str | None = Field(None, max_length=30)
+    employment: str | None = Field(None, max_length=150)
+    monthly_income: float | None = Field(None, ge=0)
     has_guarantor: bool = False
-    message: Optional[str] = Field(None, max_length=4000)
+    message: str | None = Field(None, max_length=4000)
 
 
 class CandidatureUpdate(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=1, max_length=200)
-    email: Optional[str] = Field(None, max_length=255)
-    phone: Optional[str] = Field(None, max_length=30)
-    employment: Optional[str] = Field(None, max_length=150)
-    monthly_income: Optional[float] = Field(None, ge=0)
-    has_guarantor: Optional[bool] = None
-    message: Optional[str] = Field(None, max_length=4000)
-    status: Optional[str] = Field(None, pattern="^(nouvelle|documents_demandes|en_etude|retenue|refusee)$")
-    docs: Optional[list] = None
-    notes: Optional[str] = Field(None, max_length=4000)
+    full_name: str | None = Field(None, min_length=1, max_length=200)
+    email: str | None = Field(None, max_length=255)
+    phone: str | None = Field(None, max_length=30)
+    employment: str | None = Field(None, max_length=150)
+    monthly_income: float | None = Field(None, ge=0)
+    has_guarantor: bool | None = None
+    message: str | None = Field(None, max_length=4000)
+    status: str | None = Field(
+        None, pattern="^(nouvelle|documents_demandes|en_etude|retenue|refusee)$"
+    )
+    docs: list | None = None
+    notes: str | None = Field(None, max_length=4000)
 
 
 class RequestDocumentsIn(BaseModel):
-    doc_keys: List[str] = Field(..., min_length=1)
-    message: Optional[str] = Field(None, max_length=2000)
+    doc_keys: list[str] = Field(..., min_length=1)
+    message: str | None = Field(None, max_length=2000)
 
 
 class MessageIn(BaseModel):
-    message: Optional[str] = Field(None, max_length=2000)
+    message: str | None = Field(None, max_length=2000)
 
 
 class VisitSlotIn(BaseModel):
@@ -127,26 +148,35 @@ class VisitSlotIn(BaseModel):
     starts_at: datetime
     duration_min: int = Field(30, ge=5, le=480)
     capacity: int = Field(1, ge=1, le=50)
-    notes: Optional[str] = Field(None, max_length=300)
+    notes: str | None = Field(None, max_length=300)
 
 
 # ── Périmètre ──────────────────────────────────────────────────────────────────
-async def _scope_property_ids(db: AsyncSession, user: User) -> Optional[set]:
+async def _scope_property_ids(db: AsyncSession, user: User) -> set | None:
     role = Role(user.role)
     if role == Role.ADMIN:
         return None
     if role == Role.GESTIONNAIRE_PROPRIO:
-        return set((await db.execute(
-            select(Property.id).where(
-                (Property.created_by == user.id) | (Property.owner_user_id == user.id)
+        return set(
+            (
+                await db.execute(
+                    select(Property.id).where(
+                        (Property.created_by == user.id) | (Property.owner_user_id == user.id)
+                    )
+                )
             )
-        )).scalars().all())
+            .scalars()
+            .all()
+        )
     # Propriétaire (lecture seule) : strictement SES biens (bailleur rattaché).
     if role == Role.PROPRIETAIRE:
-        return set((await db.execute(
-            select(Property.id).where(Property.owner_user_id == user.id)
-        )).scalars().all())
+        return set(
+            (await db.execute(select(Property.id).where(Property.owner_user_id == user.id)))
+            .scalars()
+            .all()
+        )
     from app.api.v1._isolation import agency_property_ids
+
     return await agency_property_ids(db, user)
 
 
@@ -160,7 +190,7 @@ async def _accessible(db: AsyncSession, user: User, candidature_id: uuid.UUID) -
     return c
 
 
-def _metrics(c: Candidature, rent_ref: Optional[float]) -> dict:
+def _metrics(c: Candidature, rent_ref: float | None) -> dict:
     """Indicateurs d'analyse d'un dossier (taux d'effort, complétude, score)."""
     docs = c.docs or []
     total = max(1, len(docs))
@@ -172,7 +202,9 @@ def _metrics(c: Candidature, rent_ref: Optional[float]) -> dict:
     # Score d'aide à la sélection (0-100) : effort 50 pts, dossier 30 pts, garant 20 pts.
     pts = 0.0
     if effort is not None:
-        pts += 50 * max(0.0, min(1.0, (0.5 - effort) / 0.3))  # 33 % d'effort ≈ 28/50 ; ≤20 % = 50/50
+        pts += 50 * max(
+            0.0, min(1.0, (0.5 - effort) / 0.3)
+        )  # 33 % d'effort ≈ 28/50 ; ≤20 % = 50/50
     pts += 30 * completeness / 100
     pts += 20 if c.has_guarantor else 0
     return {
@@ -199,9 +231,13 @@ def _doc_out(d: dict) -> dict:
     }
 
 
-def _out(c: Candidature, rent_ref: Optional[float] = None,
-         prop_ref: Optional[str] = None, visit_at=None,
-         charges_ref: Optional[float] = None) -> dict:
+def _out(
+    c: Candidature,
+    rent_ref: float | None = None,
+    prop_ref: str | None = None,
+    visit_at=None,
+    charges_ref: float | None = None,
+) -> dict:
     # Normalise pour l'affichage : inclut les nouvelles pièces standard même pour
     # les dossiers créés avant leur ajout (sans modifier la base).
     docs = _ensure_doc_fields(c.docs)
@@ -233,11 +269,11 @@ def _out(c: Candidature, rent_ref: Optional[float] = None,
     }
 
 
-async def _rent_ref(db: AsyncSession, property_id) -> Optional[float]:
+async def _rent_ref(db: AsyncSession, property_id) -> float | None:
     """Loyer de référence pour le taux d'effort : prix de l'annonce du bien."""
-    listing = (await db.execute(
-        select(Listing).where(Listing.property_id == property_id)
-    )).scalar_one_or_none()
+    listing = (
+        await db.execute(select(Listing).where(Listing.property_id == property_id))
+    ).scalar_one_or_none()
     return float(listing.price) if (listing and listing.price is not None) else None
 
 
@@ -257,18 +293,37 @@ async def _listing_pricing(db: AsyncSession, property_id):
     """(loyer hors charges, charges) du bien : depuis l'annonce en priorité, sinon
     repli sur le bail le plus récent du bien (utile pour une candidature sans
     annonce publiée)."""
-    listing = (await db.execute(
-        select(Listing).where(Listing.property_id == property_id)
-        .order_by(Listing.created_at.desc())
-    )).scalars().first()
+    listing = (
+        (
+            await db.execute(
+                select(Listing)
+                .where(Listing.property_id == property_id)
+                .order_by(Listing.created_at.desc())
+            )
+        )
+        .scalars()
+        .first()
+    )
     price = float(listing.price) if (listing and listing.price is not None) else None
-    charges = float(listing.charges) if (listing and getattr(listing, "charges", None) is not None) else None
+    charges = (
+        float(listing.charges)
+        if (listing and getattr(listing, "charges", None) is not None)
+        else None
+    )
     if price is None:
         from app.models.lease import Lease
-        lease = (await db.execute(
-            select(Lease).where(Lease.property_id == property_id)
-            .order_by(Lease.created_at.desc())
-        )).scalars().first()
+
+        lease = (
+            (
+                await db.execute(
+                    select(Lease)
+                    .where(Lease.property_id == property_id)
+                    .order_by(Lease.created_at.desc())
+                )
+            )
+            .scalars()
+            .first()
+        )
         if lease is not None:
             if lease.rent_amount is not None:
                 price = float(lease.rent_amount)
@@ -297,21 +352,34 @@ async def _property_block(db: AsyncSession, prop) -> dict:
             chips.append("Meublé")
     rows = []
     if address:
-        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Adresse :</strong> {address}</p>')
+        rows.append(
+            f'<p style="margin:2px 0;color:#374151"><strong>Adresse :</strong> {address}</p>'
+        )
     if chips:
-        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Caractéristiques :</strong> {" · ".join(chips)}</p>')
+        rows.append(
+            f'<p style="margin:2px 0;color:#374151"><strong>Caractéristiques :</strong> {" · ".join(chips)}</p>'
+        )
     if price is not None:
-        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Loyer hors charges :</strong> {price:.0f} € / mois</p>')
+        rows.append(
+            f'<p style="margin:2px 0;color:#374151"><strong>Loyer hors charges :</strong> {price:.0f} € / mois</p>'
+        )
     if charges is not None:
-        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Charges :</strong> {charges:.0f} € / mois</p>')
+        rows.append(
+            f'<p style="margin:2px 0;color:#374151"><strong>Charges :</strong> {charges:.0f} € / mois</p>'
+        )
     if price is not None and charges is not None:
-        rows.append(f'<p style="margin:2px 0;color:#374151"><strong>Total :</strong> {price + charges:.0f} € charges comprises / mois</p>')
+        rows.append(
+            f'<p style="margin:2px 0;color:#374151"><strong>Total :</strong> {price + charges:.0f} € charges comprises / mois</p>'
+        )
     html = ""
     if rows:
-        html = ('<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;'
-                'margin:16px 0;background:#f9fafb">'
-                '<p style="margin:0 0 6px;font-weight:600;color:#0D2F5C">Le logement</p>'
-                + "".join(rows) + '</div>')
+        html = (
+            '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;'
+            'margin:16px 0;background:#f9fafb">'
+            '<p style="margin:0 0 6px;font-weight:600;color:#0D2F5C">Le logement</p>'
+            + "".join(rows)
+            + "</div>"
+        )
     return {"ref": ref, "address": address, "price": price, "html": html}
 
 
@@ -319,13 +387,16 @@ def _fmt_when(dt) -> str:
     """Formate une date/heure (UTC) en heure locale (Europe/Paris) lisible."""
     try:
         from zoneinfo import ZoneInfo
+
         dt = dt.astimezone(ZoneInfo("Europe/Paris"))
     except Exception:  # noqa: BLE001
         pass
     return dt.strftime("%d/%m/%Y à %Hh%M")
 
 
-async def send_candidature_visit_reminder(db: AsyncSession, c: Candidature, respect_active: bool = False) -> bool:
+async def send_candidature_visit_reminder(
+    db: AsyncSession, c: Candidature, respect_active: bool = False
+) -> bool:
     """Envoie au candidat la relance avant visite (et marque l'envoi). Réutilisé
     par le bouton manuel et la relance automatique de la veille. `respect_active`
     (relance AUTO) : ne pas envoyer si le gestionnaire a coupé la règle."""
@@ -337,25 +408,32 @@ async def send_candidature_visit_reminder(db: AsyncSession, c: Candidature, resp
     prop = await db.get(Property, c.property_id)
     block = await _property_block(db, prop)
     mgr_id = prop.created_by if (prop and prop.created_by) else None
-    ov = await _cand_overrides(db, mgr_id, "candidature_relance_visite", c, block,
-                               when=_fmt_when(slot.starts_at))
+    ov = await _cand_overrides(
+        db, mgr_id, "candidature_relance_visite", c, block, when=_fmt_when(slot.starts_at)
+    )
     if respect_active and not ov["active"]:
         return False
     from app.services.email_service import send_visit_reminder
+
     mgr = await db.get(User, mgr_id) if mgr_id else None
     _apply_branding(mgr)
     ok = await send_visit_reminder(
-        to=c.email, candidate_name=c.full_name,
+        to=c.email,
+        candidate_name=c.full_name,
         property_ref=block["ref"] or "votre dossier",
-        when_str=_fmt_when(slot.starts_at), property_html=block["html"],
-        subject_override=ov["subject"], body_html_override=ov["body_html"],
+        when_str=_fmt_when(slot.starts_at),
+        property_html=block["html"],
+        subject_override=ov["subject"],
+        body_html_override=ov["body_html"],
         signature_override=ov["signature"],
     )
-    c.visit_reminded_at = datetime.now(timezone.utc)
+    c.visit_reminded_at = datetime.now(UTC)
     return ok
 
 
-async def send_candidature_docs_reminder(db: AsyncSession, c: Candidature, respect_active: bool = True) -> bool:
+async def send_candidature_docs_reminder(
+    db: AsyncSession, c: Candidature, respect_active: bool = True
+) -> bool:
     """Relance « dossier incomplet » : rappelle au candidat les pièces encore
     manquantes via le lien de dépôt sécurisé. Respecte le on/off de la règle
     « candidature : demande de pièces ». Marque docs_reminded_at."""
@@ -374,25 +452,29 @@ async def send_candidature_docs_reminder(db: AsyncSession, c: Candidature, respe
     labels = [_DOC_LABELS.get(d["key"], d["key"]) for d in missing]
     url = candidature_upload_url(c.upload_token)
     from app.services.email_service import send_candidature_documents_request
+
     mgr = await db.get(User, mgr_id) if mgr_id else None
     _apply_branding(mgr)
     ok = await send_candidature_documents_request(
-        to=c.email, candidate_name=c.full_name,
+        to=c.email,
+        candidate_name=c.full_name,
         property_name=prop.name if prop else "votre bien",
-        doc_labels=labels, upload_url=url,
+        doc_labels=labels,
+        upload_url=url,
         manager_name=getattr(mgr, "full_name", None),
-        subject_override=ov["subject"], body_html_override=ov["body_html"],
+        subject_override=ov["subject"],
+        body_html_override=ov["body_html"],
         signature_override=ov["signature"],
     )
-    c.docs_reminded_at = datetime.now(timezone.utc)
+    c.docs_reminded_at = datetime.now(UTC)
     return ok
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 @router.get("", summary="Liste des candidatures")
 async def list_candidatures(
-    property_id: Optional[uuid.UUID] = Query(None),
-    status: Optional[str] = Query(None),
+    property_id: uuid.UUID | None = Query(None),
+    status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_manager_or_owner),
 ):
@@ -422,14 +504,20 @@ async def list_candidatures(
     slot_ids = [c.visit_slot_id for c in rows if c.visit_slot_id]
     slot_at: dict = {}
     if slot_ids:
-        slots = (await db.execute(
-            select(PropertyVisitSlot).where(PropertyVisitSlot.id.in_(slot_ids))
-        )).scalars().all()
+        slots = (
+            (await db.execute(select(PropertyVisitSlot).where(PropertyVisitSlot.id.in_(slot_ids))))
+            .scalars()
+            .all()
+        )
         slot_at = {s.id: s.starts_at.isoformat() for s in slots}
     return [
-        _out(c, rents.get(c.property_id), refs.get(c.property_id),
-             slot_at.get(c.visit_slot_id) if c.visit_slot_id else None,
-             charges_ref=charges.get(c.property_id))
+        _out(
+            c,
+            rents.get(c.property_id),
+            refs.get(c.property_id),
+            slot_at.get(c.visit_slot_id) if c.visit_slot_id else None,
+            charges_ref=charges.get(c.property_id),
+        )
         for c in rows
     ]
 
@@ -469,9 +557,11 @@ async def doc_keys():
 
 # ── Créneaux de visite (par bien) ────────────────────────────────────────────────
 async def _slot_out(db: AsyncSession, slot: PropertyVisitSlot) -> dict:
-    booked = (await db.execute(
-        select(func.count(Candidature.id)).where(Candidature.visit_slot_id == slot.id)
-    )).scalar() or 0
+    booked = (
+        await db.execute(
+            select(func.count(Candidature.id)).where(Candidature.visit_slot_id == slot.id)
+        )
+    ).scalar() or 0
     return {
         "id": str(slot.id),
         "property_id": str(slot.property_id),
@@ -493,10 +583,17 @@ async def list_visit_slots(
     ids = await _scope_property_ids(db, user)
     if ids is not None and property_id not in ids:
         raise ForbiddenException("Ce bien n'est pas dans votre périmètre.")
-    slots = (await db.execute(
-        select(PropertyVisitSlot).where(PropertyVisitSlot.property_id == property_id)
-        .order_by(PropertyVisitSlot.starts_at)
-    )).scalars().all()
+    slots = (
+        (
+            await db.execute(
+                select(PropertyVisitSlot)
+                .where(PropertyVisitSlot.property_id == property_id)
+                .order_by(PropertyVisitSlot.starts_at)
+            )
+        )
+        .scalars()
+        .all()
+    )
     return [await _slot_out(db, s) for s in slots]
 
 
@@ -510,9 +607,12 @@ async def create_visit_slot(
     if ids is not None and data.property_id not in ids:
         raise ForbiddenException("Ce bien n'est pas dans votre périmètre.")
     slot = PropertyVisitSlot(
-        property_id=data.property_id, starts_at=data.starts_at,
-        duration_min=data.duration_min, capacity=data.capacity,
-        notes=(data.notes or "").strip() or None, created_by=user.id,
+        property_id=data.property_id,
+        starts_at=data.starts_at,
+        duration_min=data.duration_min,
+        capacity=data.capacity,
+        notes=(data.notes or "").strip() or None,
+        created_by=user.id,
     )
     db.add(slot)
     await db.commit()
@@ -548,18 +648,26 @@ async def compare_candidatures(
     if ids is not None and property_id not in ids:
         raise ForbiddenException("Ce bien n'est pas dans votre périmètre.")
     rent = await _rent_ref(db, property_id)
-    rows = (await db.execute(
-        select(Candidature).where(
-            Candidature.property_id == property_id,
-            Candidature.status != "refusee",
+    rows = (
+        (
+            await db.execute(
+                select(Candidature).where(
+                    Candidature.property_id == property_id,
+                    Candidature.status != "refusee",
+                )
+            )
         )
-    )).scalars().all()
+        .scalars()
+        .all()
+    )
     out = [_out(c, rent) for c in rows]
     out.sort(key=lambda x: x["metrics"]["score"], reverse=True)
     return {"rent_reference": rent, "candidates": out}
 
 
-@router.get("/compare/{property_id}/analysis", summary="Analyse IA d'aide à la décision (candidatures)")
+@router.get(
+    "/compare/{property_id}/analysis", summary="Analyse IA d'aide à la décision (candidatures)"
+)
 async def compare_ai_analysis(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -570,16 +678,23 @@ async def compare_ai_analysis(
         raise ForbiddenException("Ce bien n'est pas dans votre périmètre.")
 
     from app.services import llm_service
+
     if not llm_service.enabled():
         return {"analysis": None, "enabled": False}
 
     rent = await _rent_ref(db, property_id)
-    rows = (await db.execute(
-        select(Candidature).where(
-            Candidature.property_id == property_id,
-            Candidature.status != "refusee",
+    rows = (
+        (
+            await db.execute(
+                select(Candidature).where(
+                    Candidature.property_id == property_id,
+                    Candidature.status != "refusee",
+                )
+            )
         )
-    )).scalars().all()
+        .scalars()
+        .all()
+    )
     if not rows:
         return {"analysis": None, "enabled": True, "empty": True}
 
@@ -589,13 +704,19 @@ async def compare_ai_analysis(
     for i, c in enumerate(cands, 1):
         m = c["metrics"]
         eff = f"{m['effort_ratio'] * 100:.0f} %" if m.get("effort_ratio") else "non calculé"
-        inc = f"{c['monthly_income']:.0f} €" if c.get("monthly_income") is not None else "non renseignés"
+        inc = (
+            f"{c['monthly_income']:.0f} €"
+            if c.get("monthly_income") is not None
+            else "non renseignés"
+        )
         lines.append(
             f"Candidat {i} ({c['full_name']}) : score {m['score']}/100 ; taux d'effort {eff} ; "
             f"dossier complet à {m['completeness_pct']} % ; revenus {inc} ; "
             f"garant {'oui' if c['has_guarantor'] else 'non'} ; statut {c['status']}"
         )
-    rent_line = f"Loyer de référence du bien : {rent:.0f} €" if rent else "Loyer de référence inconnu"
+    rent_line = (
+        f"Loyer de référence du bien : {rent:.0f} €" if rent else "Loyer de référence inconnu"
+    )
 
     system = (
         "Tu es un expert en sélection de locataires en France, neutre et rigoureux. À partir des "
@@ -609,9 +730,12 @@ async def compare_ai_analysis(
         "• Réserves : pièces manquantes ou points à sécuriser avant signature."
     )
     text = await llm_service.chat(
-        [{"role": "system", "content": system},
-         {"role": "user", "content": rent_line + "\nCANDIDATS :\n- " + "\n- ".join(lines)}],
-        temperature=0.4, max_tokens=450,
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": rent_line + "\nCANDIDATS :\n- " + "\n- ".join(lines)},
+        ],
+        temperature=0.4,
+        max_tokens=450,
     )
     return {"analysis": text, "enabled": True}
 
@@ -648,17 +772,20 @@ async def update_candidature(
             if key not in allowed:
                 continue
             ex = existing.get(key, {})
-            merged.append({
-                "key": key,
-                "required": bool(d.get("required", ex.get("required", False))),
-                "provided": bool(d.get("provided")),
-                "verified": bool(d.get("verified")),
-                "file_path": ex.get("file_path"),
-                "filename": ex.get("filename"),
-                "uploaded_at": ex.get("uploaded_at"),
-            })
+            merged.append(
+                {
+                    "key": key,
+                    "required": bool(d.get("required", ex.get("required", False))),
+                    "provided": bool(d.get("provided")),
+                    "verified": bool(d.get("verified")),
+                    "file_path": ex.get("file_path"),
+                    "filename": ex.get("filename"),
+                    "uploaded_at": ex.get("uploaded_at"),
+                }
+            )
         c.docs = merged
         from sqlalchemy.orm.attributes import flag_modified
+
         flag_modified(c, "docs")
     for k, v in fields.items():
         setattr(c, k, v)
@@ -667,21 +794,23 @@ async def update_candidature(
     return await _full_out(db, c)
 
 
-def _ensure_doc_fields(docs: Optional[list]) -> list[dict]:
+def _ensure_doc_fields(docs: list | None) -> list[dict]:
     """Normalise une checklist (anciens dossiers sans les champs récents)."""
     by_key = {d.get("key"): d for d in (docs or [])}
     out = []
     for k, _ in CANDIDATURE_DOC_KEYS:
         d = by_key.get(k, {})
-        out.append({
-            "key": k,
-            "required": bool(d.get("required")),
-            "provided": bool(d.get("provided")),
-            "verified": bool(d.get("verified")),
-            "file_path": d.get("file_path"),
-            "filename": d.get("filename"),
-            "uploaded_at": d.get("uploaded_at"),
-        })
+        out.append(
+            {
+                "key": k,
+                "required": bool(d.get("required")),
+                "provided": bool(d.get("provided")),
+                "verified": bool(d.get("verified")),
+                "file_path": d.get("file_path"),
+                "filename": d.get("filename"),
+                "uploaded_at": d.get("uploaded_at"),
+            }
+        )
     return out
 
 
@@ -711,6 +840,7 @@ async def request_documents(
             d["required"] = True
     c.docs = docs
     from sqlalchemy.orm.attributes import flag_modified
+
     flag_modified(c, "docs")
 
     if not c.upload_token:
@@ -726,23 +856,30 @@ async def request_documents(
     email_sent = False
     try:
         from app.services.email_service import send_candidature_documents_request
+
         ov = await _cand_overrides(db, user.id, "candidature_pieces", c)
         _apply_branding(user)
         email_sent = await send_candidature_documents_request(
             to=c.email,
             candidate_name=c.full_name,
-            property_name=(await db.get(Property, c.property_id)).name if c.property_id else "votre bien",
+            property_name=(await db.get(Property, c.property_id)).name
+            if c.property_id
+            else "votre bien",
             doc_labels=labels,
             upload_url=url,
             manager_name=getattr(user, "full_name", None),
             custom_message=(data.message or "").strip() or None,
             cc=getattr(user, "email", None),
-            subject_override=ov["subject"], body_html_override=ov["body_html"],
+            subject_override=ov["subject"],
+            body_html_override=ov["body_html"],
             signature_override=ov["signature"],
         )
     except Exception as exc:  # noqa: BLE001
         import logging
-        logging.getLogger(__name__).warning("Demande de pièces non envoyée (%s): %s", candidature_id, exc)
+
+        logging.getLogger(__name__).warning(
+            "Demande de pièces non envoyée (%s): %s", candidature_id, exc
+        )
 
     out = await _full_out(db, c)
     out["upload_url"] = url
@@ -784,13 +921,15 @@ async def invite_visit(
     if not (c.email or "").strip():
         raise BadRequestException("Ce candidat n'a pas d'adresse e-mail.")
     # Au moins un créneau futur doit exister pour ce bien.
-    now = datetime.now(timezone.utc)
-    future = (await db.execute(
-        select(func.count(PropertyVisitSlot.id)).where(
-            PropertyVisitSlot.property_id == c.property_id,
-            PropertyVisitSlot.starts_at >= now,
+    now = datetime.now(UTC)
+    future = (
+        await db.execute(
+            select(func.count(PropertyVisitSlot.id)).where(
+                PropertyVisitSlot.property_id == c.property_id,
+                PropertyVisitSlot.starts_at >= now,
+            )
         )
-    )).scalar() or 0
+    ).scalar() or 0
     if not future:
         raise BadRequestException(
             "Ajoutez d'abord au moins un créneau de visite (à venir) pour ce bien."
@@ -807,20 +946,27 @@ async def invite_visit(
     email_sent = False
     try:
         from app.services.email_service import send_visit_invitation
+
         ov = await _cand_overrides(db, user.id, "candidature_visite", c, block)
         _apply_branding(user)
         email_sent = await send_visit_invitation(
-            to=c.email, candidate_name=c.full_name,
-            property_ref=block["ref"] or "votre dossier", booking_url=url,
+            to=c.email,
+            candidate_name=c.full_name,
+            property_ref=block["ref"] or "votre dossier",
+            booking_url=url,
             property_html=block["html"],
             custom_message=(data.message or "").strip() or None,
             cc=getattr(user, "email", None),
-            subject_override=ov["subject"], body_html_override=ov["body_html"],
+            subject_override=ov["subject"],
+            body_html_override=ov["body_html"],
             signature_override=ov["signature"],
         )
     except Exception as exc:  # noqa: BLE001
         import logging
-        logging.getLogger(__name__).warning("Invitation visite non envoyée (%s): %s", candidature_id, exc)
+
+        logging.getLogger(__name__).warning(
+            "Invitation visite non envoyée (%s): %s", candidature_id, exc
+        )
 
     out = await _full_out(db, c)
     out["visit_url"] = url
@@ -848,20 +994,27 @@ async def accept_candidature(
         block = await _property_block(db, prop)
         try:
             from app.services.email_service import send_candidature_accepted
+
             ov = await _cand_overrides(db, user.id, "candidature_acceptation", c, block)
             _apply_branding(user)
             email_sent = await send_candidature_accepted(
-                to=c.email, candidate_name=c.full_name,
+                to=c.email,
+                candidate_name=c.full_name,
                 property_ref=block["ref"] or "votre dossier",
-                property_address=block["address"], property_html=block["html"],
+                property_address=block["address"],
+                property_html=block["html"],
                 custom_message=(data.message or "").strip() or None,
                 cc=getattr(user, "email", None),
-                subject_override=ov["subject"], body_html_override=ov["body_html"],
+                subject_override=ov["subject"],
+                body_html_override=ov["body_html"],
                 signature_override=ov["signature"],
             )
         except Exception as exc:  # noqa: BLE001
             import logging
-            logging.getLogger(__name__).warning("E-mail d'acceptation non envoyé (%s): %s", candidature_id, exc)
+
+            logging.getLogger(__name__).warning(
+                "E-mail d'acceptation non envoyé (%s): %s", candidature_id, exc
+            )
 
     out = await _full_out(db, c)
     out["email_sent"] = email_sent
@@ -888,19 +1041,25 @@ async def reject_candidature(
         block = await _property_block(db, prop)
         try:
             from app.services.email_service import send_candidature_rejected
+
             ov = await _cand_overrides(db, user.id, "candidature_refus", c, block)
             _apply_branding(user)
             email_sent = await send_candidature_rejected(
-                to=c.email, candidate_name=c.full_name,
+                to=c.email,
+                candidate_name=c.full_name,
                 property_ref=block["ref"] or "",
                 custom_message=(data.message or "").strip() or None,
                 cc=getattr(user, "email", None),
-                subject_override=ov["subject"], body_html_override=ov["body_html"],
+                subject_override=ov["subject"],
+                body_html_override=ov["body_html"],
                 signature_override=ov["signature"],
             )
         except Exception as exc:  # noqa: BLE001
             import logging
-            logging.getLogger(__name__).warning("E-mail de refus non envoyé (%s): %s", candidature_id, exc)
+
+            logging.getLogger(__name__).warning(
+                "E-mail de refus non envoyé (%s): %s", candidature_id, exc
+            )
 
     out = await _full_out(db, c)
     out["email_sent"] = email_sent
@@ -924,18 +1083,25 @@ async def acknowledge_candidature(
     email_sent = False
     try:
         from app.services.email_service import send_candidature_acknowledged
+
         ov = await _cand_overrides(db, user.id, "candidature_accuse", c, block)
         _apply_branding(user)
         email_sent = await send_candidature_acknowledged(
-            to=c.email, candidate_name=c.full_name, property_html=block["html"],
+            to=c.email,
+            candidate_name=c.full_name,
+            property_html=block["html"],
             custom_message=(data.message or "").strip() or None,
             cc=getattr(user, "email", None),
-            subject_override=ov["subject"], body_html_override=ov["body_html"],
+            subject_override=ov["subject"],
+            body_html_override=ov["body_html"],
             signature_override=ov["signature"],
         )
     except Exception as exc:  # noqa: BLE001
         import logging
-        logging.getLogger(__name__).warning("Accusé réception non envoyé (%s): %s", candidature_id, exc)
+
+        logging.getLogger(__name__).warning(
+            "Accusé réception non envoyé (%s): %s", candidature_id, exc
+        )
     out = await _full_out(db, c)
     out["email_sent"] = email_sent
     return out

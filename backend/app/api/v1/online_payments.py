@@ -4,6 +4,7 @@
 - Locataire : disponibilité (gating) + création du checkout + confirmation SumUp.
 - Public : webhook Stripe (par gestionnaire) — non authentifié, vérifié par signature.
 """
+
 from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 

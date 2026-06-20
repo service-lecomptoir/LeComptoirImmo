@@ -19,12 +19,12 @@ La clé d'unicité (period_year, period_month) d'une période = son PREMIER mois
 réellement couvert (= le mois où la période est facturée). Pour une première période
 partielle (entrée en cours de période calendaire), c'est le mois d'entrée.
 """
+
 from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Optional
 
 # Fréquence → nombre de mois couverts par un appel
 FREQ_MONTHS = {
@@ -36,7 +36,7 @@ FREQ_MONTHS = {
 }
 
 
-def months_for_frequency(freq: Optional[str]) -> int:
+def months_for_frequency(freq: str | None) -> int:
     return FREQ_MONTHS.get(freq or "mensuelle", 1)
 
 
@@ -52,11 +52,11 @@ def _first_of_next_month(year: int, month: int) -> date:
 
 def month_period_and_factor(
     lease_start: date,
-    lease_end: Optional[date],
+    lease_end: date | None,
     rule: str,
     year: int,
     month: int,
-) -> tuple[Optional[date], Optional[date], float]:
+) -> tuple[date | None, date | None, float]:
     """Période couverte et facteur de prorata pour UN mois (year, month).
 
     - calendrier   : mois civil borné aux dates du bail ; prorata au nb de jours.
@@ -126,7 +126,7 @@ def _anchor_period_start(
     return year, am
 
 
-def compute_period(lease, year: int, month: int) -> Optional[BillingPeriod]:
+def compute_period(lease, year: int, month: int) -> BillingPeriod | None:
     """Calcule la période de facturation contenant (year, month) pour ce bail.
 
     Retourne None si le bail ne couvre aucun mois de cette période (avant l'entrée
@@ -134,7 +134,7 @@ def compute_period(lease, year: int, month: int) -> Optional[BillingPeriod]:
     freq_n = months_for_frequency(getattr(lease, "payment_frequency", None))
     rule = getattr(lease, "rent_call_rule", None) or "calendrier"
     lease_start: date = lease.start_date
-    lease_end: Optional[date] = getattr(lease, "end_date", None)
+    lease_end: date | None = getattr(lease, "end_date", None)
 
     ay, am = _anchor_period_start(lease_start, freq_n, rule, year, month)
 

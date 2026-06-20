@@ -1,22 +1,23 @@
 import uuid
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from sqlalchemy import select, func
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.api.deps import get_current_user
 from app.core.permissions import Role
-from app.models.user import User
-from app.models.message import ProprietaireMessage
-from app.models.ticket import Ticket
+from app.database import get_db
 from app.models.lease import Lease
+from app.models.message import ProprietaireMessage
 from app.models.property import Property
+from app.models.ticket import Ticket
+from app.models.user import User
 from app.schemas.notification import (
-    NotificationResponse,
     NotificationListResponse,
+    NotificationResponse,
     UnreadCountResponse,
 )
 from app.services.notification_service import NotificationService
-from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
@@ -61,10 +62,20 @@ async def get_badge_count(
         # Mandataire : messages des propriétaires de SON agence uniquement.
         from app.api.v1._isolation import agency_member_ids
         from app.models.owner import Owner
+
         members = await agency_member_ids(db, current_user)
-        prop_ids = [u for u in (await db.execute(
-            select(Owner.user_id).where(Owner.created_by.in_(members), Owner.user_id.isnot(None))
-        )).scalars().all()]
+        prop_ids = [
+            u
+            for u in (
+                await db.execute(
+                    select(Owner.user_id).where(
+                        Owner.created_by.in_(members), Owner.user_id.isnot(None)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        ]
         if prop_ids:
             res = await db.execute(
                 select(func.count(ProprietaireMessage.id)).where(
@@ -78,13 +89,12 @@ async def get_badge_count(
     # ── Tickets / Incidents ───────────────────────────────────────────────────
     inc_count = 0
     if role == Role.ADMIN:
-        res = await db.execute(
-            select(func.count(Ticket.id)).where(Ticket.status == "open")
-        )
+        res = await db.execute(select(func.count(Ticket.id)).where(Ticket.status == "open"))
         inc_count = res.scalar_one()
     elif role == Role.GESTIONNAIRE:
         # Mandataire : incidents ouverts des locataires de SON agence.
         from app.api.v1._isolation import agency_tenant_ids
+
         allowed = await agency_tenant_ids(db, current_user)
         if allowed:
             res = await db.execute(
@@ -94,13 +104,23 @@ async def get_badge_count(
             )
             inc_count = res.scalar_one()
     elif role == Role.GESTIONNAIRE_PROPRIO:
-        prop_ids = [row[0] for row in (await db.execute(
-            select(Property.id).where(Property.owner_user_id == current_user.id)
-        )).all()]
+        prop_ids = [
+            row[0]
+            for row in (
+                await db.execute(
+                    select(Property.id).where(Property.owner_user_id == current_user.id)
+                )
+            ).all()
+        ]
         if prop_ids:
-            tenant_ids = [row[0] for row in (await db.execute(
-                select(Lease.tenant_id).where(Lease.property_id.in_(prop_ids)).distinct()
-            )).all()]
+            tenant_ids = [
+                row[0]
+                for row in (
+                    await db.execute(
+                        select(Lease.tenant_id).where(Lease.property_id.in_(prop_ids)).distinct()
+                    )
+                ).all()
+            ]
             if tenant_ids:
                 res = await db.execute(
                     select(func.count(Ticket.id)).where(
@@ -110,13 +130,23 @@ async def get_badge_count(
                 )
                 inc_count = res.scalar_one()
     elif role == Role.PROPRIETAIRE:
-        prop_ids = [row[0] for row in (await db.execute(
-            select(Property.id).where(Property.owner_user_id == current_user.id)
-        )).all()]
+        prop_ids = [
+            row[0]
+            for row in (
+                await db.execute(
+                    select(Property.id).where(Property.owner_user_id == current_user.id)
+                )
+            ).all()
+        ]
         if prop_ids:
-            tenant_ids = [row[0] for row in (await db.execute(
-                select(Lease.tenant_id).where(Lease.property_id.in_(prop_ids)).distinct()
-            )).all()]
+            tenant_ids = [
+                row[0]
+                for row in (
+                    await db.execute(
+                        select(Lease.tenant_id).where(Lease.property_id.in_(prop_ids)).distinct()
+                    )
+                ).all()
+            ]
             if tenant_ids:
                 res = await db.execute(
                     select(func.count(Ticket.id)).where(
@@ -179,7 +209,9 @@ async def generate_alerts(
 ):
     """Déclenche manuellement la génération d'alertes (admin uniquement)."""
     if Role(current_user.role) != Role.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux administrateurs")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux administrateurs"
+        )
     late = await NotificationService.generate_late_payment_alerts(db)
     expiring = await NotificationService.generate_expiring_lease_alerts(db)
     await db.commit()

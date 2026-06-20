@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 # ── Exceptions métier ─────────────────────────────────────────────────────────
 class AppException(HTTPException):
     """Base pour toutes les exceptions métier de l'application."""
+
     pass
 
 

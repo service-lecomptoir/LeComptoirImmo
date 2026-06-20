@@ -1,9 +1,9 @@
 """Webhook interne Alice → LeCI — notifie les changements de statut/plan."""
+
 import logging
 import uuid
-from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from app.config import get_settings
@@ -18,14 +18,14 @@ class AliceWebhookPayload(BaseModel):
     user_id: uuid.UUID
     event: str
     is_blocked: bool
-    plan_name: Optional[str] = None
-    property_limit: Optional[int] = None
+    plan_name: str | None = None
+    property_limit: int | None = None
 
 
 @router.post("/alice", status_code=204, summary="Webhook Alice → LeCI")
 async def alice_webhook(
     payload: AliceWebhookPayload,
-    x_internal_key: Optional[str] = Header(None),
+    x_internal_key: str | None = Header(None),
 ) -> None:
     """
     Reçoit une notification de Alice lors d'un blocage, déblocage ou

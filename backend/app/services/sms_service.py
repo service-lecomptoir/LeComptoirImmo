@@ -4,9 +4,9 @@ API : POST https://api.brevo.com/v3/transactionalSMS/sms (en-tête `api-key`).
 Fail-soft : si BREVO_API_KEY est vide (SMS désactivé) ou en cas d'erreur, on
 journalise et on renvoie False — l'app ne casse jamais à cause du SMS.
 """
+
 import logging
 import re
-from typing import Optional
 
 import httpx
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _BREVO_SMS_URL = "https://api.brevo.com/v3/transactionalSMS/sms"
 
 
-def normalize_phone(raw: Optional[str], default_country: str = "FR") -> Optional[str]:
+def normalize_phone(raw: str | None, default_country: str = "FR") -> str | None:
     """Met un numéro au format international E.164 (ex. « 06 12 34 56 78 » → « +33612345678 »).
     Retourne None si le numéro est inexploitable. Couvre la France + DOM (préfixe +33)."""
     if not raw:
@@ -56,8 +56,11 @@ async def send_sms(to: str, content: str) -> bool:
         "content": content,
         "type": "transactional",
     }
-    headers = {"api-key": cfg.BREVO_API_KEY, "accept": "application/json",
-               "content-type": "application/json"}
+    headers = {
+        "api-key": cfg.BREVO_API_KEY,
+        "accept": "application/json",
+        "content-type": "application/json",
+    }
     try:
         async with httpx.AsyncClient(timeout=8.0) as hc:
             resp = await hc.post(_BREVO_SMS_URL, json=payload, headers=headers)

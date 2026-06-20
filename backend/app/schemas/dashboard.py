@@ -1,6 +1,7 @@
 """Schémas pour le dashboard avancé."""
+
 from datetime import date
-from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -10,7 +11,7 @@ class UpcomingEntretien(BaseModel):
     type: str
     status: str
     scheduled_date: date
-    property_label: Optional[str] = None
+    property_label: str | None = None
     overdue: bool = False
 
 
@@ -47,6 +48,7 @@ class PropertyStats(BaseModel):
 
 class OwnerBreakdown(BaseModel):
     """Ventilation des indicateurs par propriétaire (vue mandataire)."""
+
     owner_name: str
     properties_count: int
     occupied_count: int

@@ -1,20 +1,23 @@
 import uuid
-from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import require_role
 from app.api.v1._isolation import agency_property_ids, assert_manager_scope
-from app.models.user import User
 from app.core.permissions import Role
-from app.schemas.entretien import (
-    PrestataireCreate, PrestataireUpdate, PrestataireResponse,
-    EntretienCreate, EntretienUpdate,
-)
-from app.services.entretien_service import PrestataireService, EntretienService
+from app.database import get_db
 from app.models.entretien import EntretienStatus
+from app.models.user import User
+from app.schemas.entretien import (
+    EntretienCreate,
+    EntretienUpdate,
+    PrestataireCreate,
+    PrestataireResponse,
+    PrestataireUpdate,
+)
+from app.services.entretien_service import EntretienService, PrestataireService
 
 router = APIRouter(tags=["Entretiens"])
 
@@ -22,6 +25,7 @@ router = APIRouter(tags=["Entretiens"])
 async def _assert_entretien_scope(db: AsyncSession, user: User, e) -> None:
     """Isolation d'un entretien via le bien rattaché (created_by de la propriété)."""
     from app.models.property import Property
+
     created_by = None
     if getattr(e, "property_id", None):
         p = await db.get(Property, e.property_id)
@@ -34,9 +38,15 @@ async def _autoplan_scope(db: AsyncSession, current_user: User):
     role = Role(current_user.role)
     if role == Role.GESTIONNAIRE_PROPRIO:
         from app.models.property import Property
-        own = {p.id for p in (await db.execute(
-            select(Property).where(Property.owner_user_id == current_user.id)
-        )).scalars().all()}
+
+        own = {
+            p.id
+            for p in (
+                await db.execute(select(Property).where(Property.owner_user_id == current_user.id))
+            )
+            .scalars()
+            .all()
+        }
         return own, None
     if role == Role.GESTIONNAIRE:
         # Mandataire : borné aux biens de SON agence
@@ -130,8 +140,8 @@ entretiens_router = APIRouter(prefix="/entretiens")
 
 @entretiens_router.get("", summary="Liste des entretiens")
 async def list_entretiens(
-    status: Optional[str] = Query(None),
-    property_id: Optional[uuid.UUID] = Query(None),
+    status: str | None = Query(None),
+    property_id: uuid.UUID | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -139,9 +149,15 @@ async def list_entretiens(
 ):
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         from app.models.property import Property
-        own_prop_ids = [p.id for p in (await db.execute(
-            select(Property).where(Property.owner_user_id == current_user.id)
-        )).scalars().all()]
+
+        own_prop_ids = [
+            p.id
+            for p in (
+                await db.execute(select(Property).where(Property.owner_user_id == current_user.id))
+            )
+            .scalars()
+            .all()
+        ]
         if not own_prop_ids:
             return {"total": 0, "items": []}
         # Respecter le filtre property_id si fourni, mais uniquement parmi ses biens
@@ -149,8 +165,10 @@ async def list_entretiens(
         if property_id and property_id not in own_prop_ids:
             return {"total": 0, "items": []}
         all_items = []
-        for oid in (own_prop_ids if not pid else [pid]):
-            chunk, _ = await EntretienService.list_all(db, status=status, property_id=oid, limit=limit, offset=0)
+        for oid in own_prop_ids if not pid else [pid]:
+            chunk, _ = await EntretienService.list_all(
+                db, status=status, property_id=oid, limit=limit, offset=0
+            )
             all_items.extend(chunk)
         return {"total": len(all_items), "items": [_enrich_entretien(e) for e in all_items]}
 
@@ -159,9 +177,11 @@ async def list_entretiens(
         allowed = await agency_property_ids(db, current_user)
         if property_id and property_id not in allowed:
             return {"total": 0, "items": []}
-        all_items, _ = await EntretienService.list_all(db, status=status, property_id=property_id, limit=5000, offset=0)
+        all_items, _ = await EntretienService.list_all(
+            db, status=status, property_id=property_id, limit=5000, offset=0
+        )
         filtered = [e for e in all_items if e.property_id in allowed]
-        page = filtered[offset: offset + limit]
+        page = filtered[offset : offset + limit]
         return {"total": len(filtered), "items": [_enrich_entretien(e) for e in page]}
 
     items, total = await EntretienService.list_all(

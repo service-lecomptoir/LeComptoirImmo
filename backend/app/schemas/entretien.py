@@ -1,38 +1,38 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional
+
 from pydantic import BaseModel
 
-from app.models.entretien import EntretienType, EntretienStatus, EntretienFrequency
+from app.models.entretien import EntretienFrequency, EntretienStatus, EntretienType
 
 
 class PrestataireCreate(BaseModel):
     name: str
-    specialty: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    siret: Optional[str] = None
-    notes: Optional[str] = None
+    specialty: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    siret: str | None = None
+    notes: str | None = None
 
 
 class PrestataireUpdate(BaseModel):
-    name: Optional[str] = None
-    specialty: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    siret: Optional[str] = None
-    notes: Optional[str] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    specialty: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    siret: str | None = None
+    notes: str | None = None
+    is_active: bool | None = None
 
 
 class PrestataireResponse(BaseModel):
     id: uuid.UUID
     name: str
-    specialty: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    siret: Optional[str] = None
-    notes: Optional[str] = None
+    specialty: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    siret: str | None = None
+    notes: str | None = None
     is_active: bool
     created_at: datetime
 
@@ -41,50 +41,50 @@ class PrestataireResponse(BaseModel):
 
 class EntretienCreate(BaseModel):
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     type: EntretienType = EntretienType.PREVENTIF
     status: EntretienStatus = EntretienStatus.PLANIFIE
     frequency: EntretienFrequency = EntretienFrequency.UNIQUE
     scheduled_date: date
-    completed_date: Optional[date] = None
-    next_date: Optional[date] = None
-    cost: Optional[float] = None
-    property_id: Optional[uuid.UUID] = None
-    prestataire_id: Optional[uuid.UUID] = None
-    notes: Optional[str] = None
+    completed_date: date | None = None
+    next_date: date | None = None
+    cost: float | None = None
+    property_id: uuid.UUID | None = None
+    prestataire_id: uuid.UUID | None = None
+    notes: str | None = None
 
 
 class EntretienUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    type: Optional[EntretienType] = None
-    status: Optional[EntretienStatus] = None
-    frequency: Optional[EntretienFrequency] = None
-    scheduled_date: Optional[date] = None
-    completed_date: Optional[date] = None
-    next_date: Optional[date] = None
-    cost: Optional[float] = None
-    property_id: Optional[uuid.UUID] = None
-    prestataire_id: Optional[uuid.UUID] = None
-    notes: Optional[str] = None
+    title: str | None = None
+    description: str | None = None
+    type: EntretienType | None = None
+    status: EntretienStatus | None = None
+    frequency: EntretienFrequency | None = None
+    scheduled_date: date | None = None
+    completed_date: date | None = None
+    next_date: date | None = None
+    cost: float | None = None
+    property_id: uuid.UUID | None = None
+    prestataire_id: uuid.UUID | None = None
+    notes: str | None = None
 
 
 class EntretienResponse(BaseModel):
     id: uuid.UUID
     title: str
-    description: Optional[str] = None
+    description: str | None = None
     type: str
     status: str
     frequency: str
     scheduled_date: date
-    completed_date: Optional[date] = None
-    next_date: Optional[date] = None
-    cost: Optional[float] = None
-    property_id: Optional[uuid.UUID] = None
-    property_label: Optional[str] = None
-    prestataire_id: Optional[uuid.UUID] = None
-    prestataire_name: Optional[str] = None
-    notes: Optional[str] = None
+    completed_date: date | None = None
+    next_date: date | None = None
+    cost: float | None = None
+    property_id: uuid.UUID | None = None
+    property_label: str | None = None
+    prestataire_id: uuid.UUID | None = None
+    prestataire_name: str | None = None
+    notes: str | None = None
     created_at: datetime
     updated_at: datetime
 

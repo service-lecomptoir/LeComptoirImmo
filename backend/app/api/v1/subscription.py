@@ -1,32 +1,33 @@
 """API Abonnement — informations de licence Alice pour le gestionnaire connecté."""
+
 import logging
 import uuid
-from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from pydantic import BaseModel, Field
 
-from app.database import get_db
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.api.deps import get_current_user
 from app.core.permissions import Role
-from app.models.user import User
+from app.database import get_db
 from app.models.property import Property
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/subscription", tags=["Abonnement"])
 
 
 class SubscriptionInfo(BaseModel):
-    plan_name: Optional[str]
+    plan_name: str | None
     is_blocked: bool
-    property_limit: Optional[int]
+    property_limit: int | None
     property_count: int
     can_create_property: bool
-    access_until: Optional[str] = None
-    resiliation_days_remaining: Optional[int] = None
+    access_until: str | None = None
+    resiliation_days_remaining: int | None = None
     # Fonctionnalités incluses (null = toutes autorisées).
-    features: Optional[List[str]] = None
+    features: list[str] | None = None
 
 
 @router.get("", response_model=SubscriptionInfo, summary="Mon abonnement Alice")
@@ -40,20 +41,24 @@ async def get_subscription(
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
 
     # Nombre de biens actuels
-    property_count = (await db.execute(
-        select(func.count(Property.id)).where(Property.created_by == current_user.id)
-    )).scalar_one_or_none() or 0
+    property_count = (
+        await db.execute(
+            select(func.count(Property.id)).where(Property.created_by == current_user.id)
+        )
+    ).scalar_one_or_none() or 0
 
     # Infos licence depuis Alice
-    plan_name: Optional[str] = None
+    plan_name: str | None = None
     is_blocked = False
-    property_limit: Optional[int] = None
-    access_until: Optional[str] = None
-    features: Optional[List[str]] = None
+    property_limit: int | None = None
+    access_until: str | None = None
+    features: list[str] | None = None
 
     try:
         import httpx
+
         from app.config import get_settings
+
         cfg = get_settings()
         async with httpx.AsyncClient(timeout=5.0) as hc:
             resp = await hc.get(
@@ -77,10 +82,11 @@ async def get_subscription(
     can_create = not is_blocked and (property_limit is None or property_count < property_limit)
 
     # Décompte jours restants si une résiliation est programmée
-    days_remaining: Optional[int] = None
+    days_remaining: int | None = None
     if access_until:
         try:
             from datetime import datetime as _dt
+
             end = _dt.fromisoformat(access_until)
             days_remaining = max(0, (end.date() - _dt.utcnow().date()).days)
         except Exception:
@@ -107,6 +113,7 @@ async def _notify_resiliation(full_name: str, email: str, reason: str) -> None:
     try:
         from app.config import get_settings
         from app.services.email_service import send_email
+
         cfg = get_settings()
         recipient = cfg.LEADS_NOTIFY_EMAIL or cfg.FIRST_ADMIN_EMAIL
         html = (
@@ -115,7 +122,9 @@ async def _notify_resiliation(full_name: str, email: str, reason: str) -> None:
             f"<p><strong>Motif&nbsp;:</strong><br>{reason}</p>"
             "<p style='margin-top:16px'>À traiter dans Alice → <strong>Demandes</strong>.</p>"
         )
-        await send_email(to=recipient, subject="Demande de résiliation : Le Comptoir Immo", html_body=html)
+        await send_email(
+            to=recipient, subject="Demande de résiliation : Le Comptoir Immo", html_body=html
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Notification de résiliation non envoyée : %s", exc)
 
@@ -134,6 +143,7 @@ async def request_resiliation(
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
 
     from app.services import alice_client
+
     await alice_client.create_lead(
         full_name=current_user.full_name,
         email=current_user.email,
@@ -142,7 +152,9 @@ async def request_resiliation(
         message=data.reason.strip(),
         source="resiliation",
     )
-    background.add_task(_notify_resiliation, current_user.full_name, current_user.email, data.reason.strip())
+    background.add_task(
+        _notify_resiliation, current_user.full_name, current_user.email, data.reason.strip()
+    )
     return {"status": "received"}
 
 
@@ -154,7 +166,9 @@ async def get_my_invoices(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
     try:
         import httpx
+
         from app.config import get_settings
+
         cfg = get_settings()
         async with httpx.AsyncClient(timeout=8.0) as hc:
             resp = await hc.get(
@@ -178,7 +192,9 @@ async def get_my_invoice_pdf(
     if role not in (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
         raise HTTPException(status_code=403, detail="Réservé aux gestionnaires")
     import httpx
+
     from app.config import get_settings
+
     cfg = get_settings()
     try:
         async with httpx.AsyncClient(timeout=15.0) as hc:
@@ -209,11 +225,14 @@ def _require_manager(current_user: User) -> None:
 
 async def _alice_billing(method: str, path: str, user_id, json: dict | None = None):
     import httpx
+
     from app.config import get_settings
+
     cfg = get_settings()
     async with httpx.AsyncClient(timeout=15.0) as hc:
         resp = await hc.request(
-            method, f"{cfg.ALICE_URL}/api/v1/internal/billing/{path}/{user_id}",
+            method,
+            f"{cfg.ALICE_URL}/api/v1/internal/billing/{path}/{user_id}",
             headers={"X-Internal-Key": cfg.ALICE_INTERNAL_KEY},
             json=json,
         )
@@ -223,8 +242,9 @@ async def _alice_billing(method: str, path: str, user_id, json: dict | None = No
             detail = resp.json().get("detail", detail)
         except Exception:  # noqa: BLE001
             pass
-        raise HTTPException(status_code=resp.status_code if resp.status_code < 500 else 502,
-                            detail=detail)
+        raise HTTPException(
+            status_code=resp.status_code if resp.status_code < 500 else 502, detail=detail
+        )
     return resp.json()
 
 
@@ -273,7 +293,9 @@ class _ChangePlanIn(BaseModel):
 async def billing_change_plan(body: _ChangePlanIn, current_user: User = Depends(get_current_user)):
     """Change le plan de l'abonnement avec proration automatique (via Alice/Stripe)."""
     _require_manager(current_user)
-    return await _alice_billing("POST", "change-plan", current_user.id, json={"plan_id": body.plan_id})
+    return await _alice_billing(
+        "POST", "change-plan", current_user.id, json={"plan_id": body.plan_id}
+    )
 
 
 @router.get("/payments", summary="Historique des paiements Stripe")

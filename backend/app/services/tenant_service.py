@@ -1,16 +1,15 @@
 import uuid
-from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
 
-from app.models.tenant import Tenant
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import ConflictException, NotFoundException
 from app.models.lease import Lease, lease_tenants
+from app.models.tenant import Tenant
 from app.schemas.tenant import TenantCreate, TenantUpdate
-from app.core.exceptions import NotFoundException, ConflictException
 
 
 class TenantService:
-
     @staticmethod
     async def _sync_linked_user_phone(db: AsyncSession, tenant: Tenant) -> None:
         """Aligne le téléphone du compte de connexion lié avec celui de la fiche.
@@ -21,11 +20,12 @@ class TenantService:
         if not getattr(tenant, "user_id", None):
             return
         from app.models.user import User
+
         user = await db.get(User, tenant.user_id)
         if user is None:
             return
-        t_phone = (tenant.phone or None)
-        u_phone = (user.phone or None)
+        t_phone = tenant.phone or None
+        u_phone = user.phone or None
         if t_phone == u_phone:
             return
         if t_phone:
@@ -34,10 +34,9 @@ class TenantService:
             tenant.phone = u_phone
 
     @staticmethod
-    async def create(
-        db: AsyncSession, data: TenantCreate, created_by: uuid.UUID
-    ) -> Tenant:
+    async def create(db: AsyncSession, data: TenantCreate, created_by: uuid.UUID) -> Tenant:
         from app.services.reference_service import make_ref
+
         tenant = Tenant(**data.model_dump(), created_by=created_by)
         tenant.ref_code = await make_ref(db, Tenant.ref_code, "LO")
         db.add(tenant)
@@ -57,10 +56,10 @@ class TenantService:
     @staticmethod
     async def list_all(
         db: AsyncSession,
-        search: Optional[str] = None,
+        search: str | None = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[List[Tenant], int]:
+    ) -> tuple[list[Tenant], int]:
         """Retourne (tenants, total_count) avec filtrage optionnel."""
         query = select(Tenant)
         count_query = select(func.count(Tenant.id))
@@ -85,9 +84,7 @@ class TenantService:
         return list(results.scalars().all()), count_result.scalar_one()
 
     @staticmethod
-    async def update(
-        db: AsyncSession, tenant_id: uuid.UUID, data: TenantUpdate
-    ) -> Tenant:
+    async def update(db: AsyncSession, tenant_id: uuid.UUID, data: TenantUpdate) -> Tenant:
         tenant = await TenantService.get_by_id(db, tenant_id)
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
@@ -111,13 +108,18 @@ class TenantService:
         # ne peut pas être supprimé : la FK des baux est en RESTRICT et la
         # suppression provoquerait une erreur SQL silencieuse (500). On renvoie
         # plutôt un message clair (409).
-        as_principal = (await db.execute(
-            select(func.count()).select_from(Lease).where(Lease.tenant_id == tenant_id)
-        )).scalar_one()
-        as_cotenant = (await db.execute(
-            select(func.count()).select_from(lease_tenants)
-            .where(lease_tenants.c.tenant_id == tenant_id)
-        )).scalar_one()
+        as_principal = (
+            await db.execute(
+                select(func.count()).select_from(Lease).where(Lease.tenant_id == tenant_id)
+            )
+        ).scalar_one()
+        as_cotenant = (
+            await db.execute(
+                select(func.count())
+                .select_from(lease_tenants)
+                .where(lease_tenants.c.tenant_id == tenant_id)
+            )
+        ).scalar_one()
         if (as_principal or 0) + (as_cotenant or 0) > 0:
             raise ConflictException(
                 "Ce locataire est rattaché à un ou plusieurs contrats. "

@@ -1,43 +1,44 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional, Any
+from typing import Any
+
 from pydantic import BaseModel
 
 from app.models.inspection import InspectionType, OverallCondition
 
 
 class InspectionCreate(BaseModel):
-    lease_id: Optional[uuid.UUID] = None
-    property_id: Optional[uuid.UUID] = None
+    lease_id: uuid.UUID | None = None
+    property_id: uuid.UUID | None = None
     inspection_type: InspectionType
     inspection_date: date
-    inspector_name: Optional[str] = None
+    inspector_name: str | None = None
     tenant_present: bool = True
-    overall_condition: Optional[OverallCondition] = None
-    notes: Optional[str] = None
-    rooms_data: Optional[dict[str, Any]] = None
+    overall_condition: OverallCondition | None = None
+    notes: str | None = None
+    rooms_data: dict[str, Any] | None = None
 
 
 class InspectionUpdate(BaseModel):
-    inspection_date: Optional[date] = None
-    inspector_name: Optional[str] = None
-    tenant_present: Optional[bool] = None
-    overall_condition: Optional[OverallCondition] = None
-    notes: Optional[str] = None
-    rooms_data: Optional[dict[str, Any]] = None
+    inspection_date: date | None = None
+    inspector_name: str | None = None
+    tenant_present: bool | None = None
+    overall_condition: OverallCondition | None = None
+    notes: str | None = None
+    rooms_data: dict[str, Any] | None = None
 
 
 class InspectionResponse(BaseModel):
     id: uuid.UUID
-    lease_id: Optional[uuid.UUID] = None
-    property_id: Optional[uuid.UUID] = None
+    lease_id: uuid.UUID | None = None
+    property_id: uuid.UUID | None = None
     inspection_type: InspectionType
     inspection_date: date
-    inspector_name: Optional[str] = None
+    inspector_name: str | None = None
     tenant_present: bool
-    overall_condition: Optional[OverallCondition] = None
-    notes: Optional[str] = None
-    rooms_data: Optional[dict[str, Any]] = None
+    overall_condition: OverallCondition | None = None
+    notes: str | None = None
+    rooms_data: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -1,9 +1,10 @@
 """
 Service de génération PDF via Jinja2 + WeasyPrint.
 """
+
 import io
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,10 +31,7 @@ def html_to_pdf(html_content: str) -> bytes:
     try:
         from xhtml2pdf import pisa
     except ImportError:
-        raise RuntimeError(
-            "xhtml2pdf n'est pas installé. "
-            "Exécutez : pip install xhtml2pdf"
-        )
+        raise RuntimeError("xhtml2pdf n'est pas installé. Exécutez : pip install xhtml2pdf")
 
     pdf_buffer = io.BytesIO()
     result = pisa.CreatePDF(
@@ -52,12 +50,16 @@ async def user_signature_uri(db, gestionnaire_id) -> str:
     if not gestionnaire_id:
         return ""
     from sqlalchemy import select as _select
+
     from app.models.user import User as _User
+
     u = (await db.execute(_select(_User).where(_User.id == gestionnaire_id))).scalar_one_or_none()
     return (getattr(u, "signature", None) or "") if u else ""
 
 
-def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_mandataire: bool = False) -> bytes:
+def generate_lease_pdf(
+    lease: Any, owner: Any = None, manager: Any = None, is_mandataire: bool = False
+) -> bytes:
     """Génère le PDF d'un contrat de bail (loi 89-462) — logement non meublé OU
     meublé (art. 25-3 et s.) selon `lease.lease_type` : durée, préavis, dépôt de
     garantie et inventaire du mobilier sont adaptés en conséquence.
@@ -84,7 +86,7 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
         s = " ".join(str(raw).split())
         mm = _re.search(r"\b\d{5}\b", s)
         if mm and mm.start() > 0:
-            return s[:mm.start()].rstrip(" ,"), s[mm.start():].strip()
+            return s[: mm.start()].rstrip(" ,"), s[mm.start() :].strip()
         return s, ""
 
     if owner is not None:
@@ -103,7 +105,7 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
     _bailleur = getattr(manager, "bailleur_name", None) if manager else None
     if _bailleur:
         bailleur_name = _bailleur
-        is_morale = (getattr(manager, "owner_kind", None) == "societe")
+        is_morale = getattr(manager, "owner_kind", None) == "societe"
 
     bailleur_addr1, bailleur_addr2 = _split_addr(bailleur_address)
 
@@ -124,7 +126,7 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
     # LeaseType hérite de str → .value donne 'vide'/'meuble'/...
     _lt = getattr(lease, "lease_type", None)
     _lt_val = getattr(_lt, "value", _lt) or "vide"
-    is_furnished = (_lt_val == "meuble")
+    is_furnished = _lt_val == "meuble"
 
     ctx = {
         "is_morale": is_morale,
@@ -140,7 +142,8 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
         "mandataire_address": (getattr(manager, "address", "") if manager else "") or "",
         # Société + SIRET du mandataire (gestionnaire agissant « pour le compte du bailleur »).
         "mandataire_company": (getattr(manager, "owner_company", "") if manager else "") or "",
-        "mandataire_national_id": (getattr(manager, "owner_national_id", "") if manager else "") or "",
+        "mandataire_national_id": (getattr(manager, "owner_national_id", "") if manager else "")
+        or "",
         "has_guarantor": bool(getattr(lease, "has_guarantor", False)),
         "guarantor_name": getattr(lease, "guarantor_name", "") or "",
         "tenant_name": tenant.full_name if tenant else "",
@@ -162,7 +165,11 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
         "charges": f"{float(lease.charges_amount):.2f}",
         "total": f"{lease.total_monthly:.2f}",
         "payment_day": getattr(lease, "payment_day", 1),
-        "deposit": (f"{float(lease.deposit_amount):.2f}" if getattr(lease, "deposit_amount", None) is not None else ""),
+        "deposit": (
+            f"{float(lease.deposit_amount):.2f}"
+            if getattr(lease, "deposit_amount", None) is not None
+            else ""
+        ),
         "irl_quarter": getattr(lease, "irl_quarter", None),
         "tenant_names": tenant_names,
         "today": _fr(_date.today()),
@@ -174,9 +181,14 @@ def generate_lease_pdf(lease: Any, owner: Any = None, manager: Any = None, is_ma
 
 
 _CIVILITY_SHORT = {
-    "monsieur": "M", "m": "M", "m.": "M", "mr": "M",
-    "madame": "Mme", "mme": "Mme",
-    "mademoiselle": "Mlle", "mlle": "Mlle",
+    "monsieur": "M",
+    "m": "M",
+    "m.": "M",
+    "mr": "M",
+    "madame": "Mme",
+    "mme": "Mme",
+    "mademoiselle": "Mlle",
+    "mlle": "Mlle",
 }
 
 
@@ -209,8 +221,11 @@ def _civil_name(tenant) -> str:
 
 
 _CIVILITY_GREETING = {
-    "m": "Monsieur", "m.": "Monsieur", "monsieur": "Monsieur",
-    "mme": "Madame", "madame": "Madame",
+    "m": "Monsieur",
+    "m.": "Monsieur",
+    "monsieur": "Monsieur",
+    "mme": "Madame",
+    "madame": "Madame",
 }
 
 
@@ -221,17 +236,19 @@ def civility_greeting(tenant) -> str:
     return _CIVILITY_GREETING.get(civ, "Madame, Monsieur")
 
 
-async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
+async def render_relance_html(db: AsyncSession, payment: Any) -> str | None:
     """Rend la lettre de relance via le template « lettre_relance » de l'atelier de documents
     (modèle par blocs / thème Foncia) du gestionnaire, en réutilisant le moteur de
     blocs commun à tous les documents. Retourne None si aucun template par blocs
     n'est disponible (→ l'appelant retombe sur le modèle .j2 historique)."""
     from datetime import date as _date
+
     from sqlalchemy import select
+
     from app.models.document_template import DocumentTemplate
     from app.models.user import User
-    from app.services.document_render_service import eur, build_emitter_address
     from app.services.avis_blocks_render_service import render_avis_blocks_html
+    from app.services.document_render_service import build_emitter_address, eur
 
     lease = getattr(payment, "lease", None)
     property_obj = getattr(lease, "parent_property", None) if lease else None
@@ -239,27 +256,42 @@ async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
     if not gid:
         return None
 
-    tmpl = (await db.execute(
-        select(DocumentTemplate).where(
-            DocumentTemplate.gestionnaire_id == gid,
-            DocumentTemplate.template_type == "lettre_relance",
-            DocumentTemplate.is_default.is_(True),
-            DocumentTemplate.is_active.is_(True),
+    tmpl = (
+        await db.execute(
+            select(DocumentTemplate).where(
+                DocumentTemplate.gestionnaire_id == gid,
+                DocumentTemplate.template_type == "lettre_relance",
+                DocumentTemplate.is_default.is_(True),
+                DocumentTemplate.is_active.is_(True),
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if tmpl is None or not getattr(tmpl, "blocks", None):
         return None
 
     tenant = getattr(payment, "tenant", None)
-    _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
-                  "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+    _MONTHS_FR = [
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ]
     _d = _date.today()
     today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
 
     user = (await db.execute(select(User).where(User.id == gid))).scalar_one_or_none()
-    sender_name = ((user.full_name if user else "") or tmpl.company_name or "")
-    sender_addr = (((getattr(user, "full_address", None) or "") if user else "")
-                   or tmpl.company_address or "")
+    sender_name = (user.full_name if user else "") or tmpl.company_name or ""
+    sender_addr = (
+        ((getattr(user, "full_address", None) or "") if user else "") or tmpl.company_address or ""
+    )
     owner_company = (getattr(user, "owner_company", "") or "") if user else ""
     owner_national_id = (getattr(user, "owner_national_id", "") or "") if user else ""
 
@@ -278,28 +310,45 @@ async def render_relance_html(db: AsyncSession, payment: Any) -> Optional[str]:
         "property_address": property_obj.full_address_block if property_obj else "",
         "property_street": (getattr(property_obj, "address", "") or "") if property_obj else "",
         "property_city_line": (
-            " ".join(p for p in [getattr(property_obj, "zip_code", ""),
-                                 getattr(property_obj, "city", "")] if p)
-            if property_obj else ""),
+            " ".join(
+                p
+                for p in [getattr(property_obj, "zip_code", ""), getattr(property_obj, "city", "")]
+                if p
+            )
+            if property_obj
+            else ""
+        ),
         "property_reference": (
-            (getattr(property_obj, "ref_code", "") or getattr(property_obj, "reference", "")
-             or getattr(property_obj, "name", ""))
-            if property_obj else ""),
+            (
+                getattr(property_obj, "ref_code", "")
+                or getattr(property_obj, "reference", "")
+                or getattr(property_obj, "name", "")
+            )
+            if property_obj
+            else ""
+        ),
         "company_name": sender_name,
         "company_address": build_emitter_address(sender_addr, owner_company, owner_national_id),
         "today_date": today_fr,
         "date": today_fr,
         "period_label": getattr(payment, "period_label", "") or "",
-        "period_range": getattr(payment, "period_range_label", "") or getattr(payment, "period_label", "") or "",
-        "due_date": payment.due_date.strftime("%d/%m/%Y") if getattr(payment, "due_date", None) else "",
+        "period_range": getattr(payment, "period_range_label", "")
+        or getattr(payment, "period_label", "")
+        or "",
+        "due_date": payment.due_date.strftime("%d/%m/%Y")
+        if getattr(payment, "due_date", None)
+        else "",
         "amount_due": _eur(getattr(payment, "balance", 0) or 0),
         "apl_amount": _eur(payment.amount_apl) if getattr(payment, "amount_apl", None) else "",
         "signature_uri": (getattr(user, "signature", None) or "") if user else "",
     }
     _logo = getattr(user, "logo_path", None) if user else None
     return render_avis_blocks_html(
-        tmpl.blocks, getattr(tmpl, "theme", None), variables,
-        line_items=[], logo_path=_logo,
+        tmpl.blocks,
+        getattr(tmpl, "theme", None),
+        variables,
+        line_items=[],
+        logo_path=_logo,
     )
 
 
@@ -320,10 +369,14 @@ async def build_relance_pdf(db: AsyncSession, payment: Any) -> bytes:
             "city": (property_obj.city if property_obj else ""),
             "tenant_name": tenant.full_name if tenant else "",
             "period_label": payment.period_label,
-            "due_date": payment.due_date.strftime("%d/%m/%Y") if getattr(payment, "due_date", None) else "",
+            "due_date": payment.due_date.strftime("%d/%m/%Y")
+            if getattr(payment, "due_date", None)
+            else "",
             "amount_due": f"{float(payment.balance):.2f}",
             "apl_info": bool(getattr(payment, "amount_apl", None)),
-            "apl_amount": f"{float(payment.amount_apl):.2f}" if getattr(payment, "amount_apl", None) else "0.00",
+            "apl_amount": f"{float(payment.amount_apl):.2f}"
+            if getattr(payment, "amount_apl", None)
+            else "0.00",
             "today": _today_fr(),
             "signature_uri": await user_signature_uri(db, gid),
         }
@@ -334,6 +387,7 @@ async def build_relance_pdf(db: AsyncSession, payment: Any) -> bytes:
 def relance_filename(payment: Any) -> str:
     """Nom de fichier normalisé pour une lettre de relance."""
     from app.utils.filename import doc_filename
+
     lease = getattr(payment, "lease", None)
     property_obj = getattr(lease, "parent_property", None) if lease else None
     tenant = getattr(payment, "tenant", None)
@@ -348,8 +402,22 @@ def relance_filename(payment: Any) -> str:
 
 def _today_fr() -> str:
     from datetime import date as _date
-    _MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin",
-                  "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+
+    _MONTHS_FR = [
+        "",
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ]
     d = _date.today()
     return f"{d.day} {_MONTHS_FR[d.month]} {d.year}"
 
@@ -358,43 +426,61 @@ def _add_months(d, m: int):
     """Ajoute `m` mois à une date en bornant le jour au dernier jour du mois cible."""
     import calendar
     from datetime import date as _date
+
     y = d.year + (d.month - 1 + m) // 12
     mo = (d.month - 1 + m) % 12 + 1
     return _date(y, mo, min(d.day, calendar.monthrange(y, mo)[1]))
 
 
-async def render_plan_apurement_html(db: AsyncSession, payment: Any,
-                                     installments: int, first_date, schedule=None) -> Optional[str]:
+async def render_plan_apurement_html(
+    db: AsyncSession, payment: Any, installments: int, first_date, schedule=None
+) -> str | None:
     """Rend le plan d'apurement via le template « plan_apurement » du gestionnaire,
     avec un échéancier calculé (solde réparti en `installments` mensualités égales
     à partir de `first_date`, la dernière absorbant l'arrondi). Retourne None si
     aucun template par blocs n'est disponible."""
     from datetime import date as _date
+
     from sqlalchemy import select
+
     from app.models.document_template import DocumentTemplate
     from app.models.user import User
-    from app.services.document_render_service import eur, build_emitter_address
     from app.services.avis_blocks_render_service import render_avis_blocks_html
+    from app.services.document_render_service import build_emitter_address, eur
 
     lease = getattr(payment, "lease", None)
     property_obj = getattr(lease, "parent_property", None) if lease else None
     gid = getattr(lease, "created_by", None) if lease else None
     if not gid:
         return None
-    tmpl = (await db.execute(
-        select(DocumentTemplate).where(
-            DocumentTemplate.gestionnaire_id == gid,
-            DocumentTemplate.template_type == "plan_apurement",
-            DocumentTemplate.is_default.is_(True),
-            DocumentTemplate.is_active.is_(True),
+    tmpl = (
+        await db.execute(
+            select(DocumentTemplate).where(
+                DocumentTemplate.gestionnaire_id == gid,
+                DocumentTemplate.template_type == "plan_apurement",
+                DocumentTemplate.is_default.is_(True),
+                DocumentTemplate.is_active.is_(True),
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if tmpl is None or not getattr(tmpl, "blocks", None):
         return None
 
     tenant = getattr(payment, "tenant", None)
-    _MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
-                  "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+    _MONTHS_FR = [
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ]
     _d = _date.today()
     today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
 
@@ -405,11 +491,11 @@ async def render_plan_apurement_html(db: AsyncSession, payment: Any,
     # la dernière absorbant l'arrondi).
     if schedule is not None:
         line_items = [
-            {"label": f"Échéance {idx + 1} du {s['due']}", "appele": _eur(float(s['amount']))}
+            {"label": f"Échéance {idx + 1} du {s['due']}", "appele": _eur(float(s["amount"]))}
             for idx, s in enumerate(schedule)
         ]
-        total = round(sum(float(s['amount']) for s in schedule), 2)
-        first_due_str = schedule[0]['due'] if schedule else first_date.strftime('%d/%m/%Y')
+        total = round(sum(float(s["amount"]) for s in schedule), 2)
+        first_due_str = schedule[0]["due"] if schedule else first_date.strftime("%d/%m/%Y")
     else:
         n = max(1, min(int(installments or 1), 36))
         total = round(float(getattr(payment, "balance", 0) or 0), 2)
@@ -418,16 +504,19 @@ async def render_plan_apurement_html(db: AsyncSession, payment: Any,
         for i in range(n):
             due = _add_months(first_date, i)
             amount = base if i < n - 1 else round(total - base * (n - 1), 2)
-            line_items.append({
-                "label": f"Échéance {i + 1} du {due.strftime('%d/%m/%Y')}",
-                "appele": _eur(amount),
-            })
-        first_due_str = first_date.strftime('%d/%m/%Y')
+            line_items.append(
+                {
+                    "label": f"Échéance {i + 1} du {due.strftime('%d/%m/%Y')}",
+                    "appele": _eur(amount),
+                }
+            )
+        first_due_str = first_date.strftime("%d/%m/%Y")
 
     user = (await db.execute(select(User).where(User.id == gid))).scalar_one_or_none()
-    sender_name = ((user.full_name if user else "") or tmpl.company_name or "")
-    sender_addr = (((getattr(user, "full_address", None) or "") if user else "")
-                   or tmpl.company_address or "")
+    sender_name = (user.full_name if user else "") or tmpl.company_name or ""
+    sender_addr = (
+        ((getattr(user, "full_address", None) or "") if user else "") or tmpl.company_address or ""
+    )
     owner_company = (getattr(user, "owner_company", "") or "") if user else ""
     owner_national_id = (getattr(user, "owner_national_id", "") or "") if user else ""
 
@@ -443,28 +532,45 @@ async def render_plan_apurement_html(db: AsyncSession, payment: Any,
         "property_address": property_obj.full_address_block if property_obj else "",
         "property_street": (getattr(property_obj, "address", "") or "") if property_obj else "",
         "property_city_line": (
-            " ".join(p for p in [getattr(property_obj, "zip_code", ""),
-                                 getattr(property_obj, "city", "")] if p)
-            if property_obj else ""),
+            " ".join(
+                p
+                for p in [getattr(property_obj, "zip_code", ""), getattr(property_obj, "city", "")]
+                if p
+            )
+            if property_obj
+            else ""
+        ),
         "property_reference": (
-            (getattr(property_obj, "ref_code", "") or getattr(property_obj, "reference", "")
-             or getattr(property_obj, "name", ""))
-            if property_obj else ""),
+            (
+                getattr(property_obj, "ref_code", "")
+                or getattr(property_obj, "reference", "")
+                or getattr(property_obj, "name", "")
+            )
+            if property_obj
+            else ""
+        ),
         "company_name": sender_name,
         "company_address": build_emitter_address(sender_addr, owner_company, owner_national_id),
         "today_date": today_fr,
         "date": today_fr,
         "period_label": getattr(payment, "period_label", "") or "",
-        "period_range": getattr(payment, "period_range_label", "") or getattr(payment, "period_label", "") or "",
-        "due_date": payment.due_date.strftime("%d/%m/%Y") if getattr(payment, "due_date", None) else "",
+        "period_range": getattr(payment, "period_range_label", "")
+        or getattr(payment, "period_label", "")
+        or "",
+        "due_date": payment.due_date.strftime("%d/%m/%Y")
+        if getattr(payment, "due_date", None)
+        else "",
         "amount_due": _eur(total),
         "first_due_date": first_due_str,
         "signature_uri": (getattr(user, "signature", None) or "") if user else "",
     }
     _logo = getattr(user, "logo_path", None) if user else None
     return render_avis_blocks_html(
-        tmpl.blocks, getattr(tmpl, "theme", None), variables,
-        line_items=line_items, logo_path=_logo,
+        tmpl.blocks,
+        getattr(tmpl, "theme", None),
+        variables,
+        line_items=line_items,
+        logo_path=_logo,
     )
 
 
@@ -479,21 +585,24 @@ class AvisEcheancePDFService:
         """
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
+
         from app.models.avis_echeance import AvisEcheance
-        from app.models.property import Property
         from app.models.lease import Lease
+        from app.models.property import Property
 
         # Recharger avec toutes les relations nécessaires (+ co-titulaires du bail + bien)
-        avis_full = (await db.execute(
-            select(AvisEcheance)
-            .options(
-                selectinload(AvisEcheance.tenant),
-                selectinload(AvisEcheance.lease).selectinload(Lease.tenant),
-                selectinload(AvisEcheance.lease).selectinload(Lease.co_tenants),
-                selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
+        avis_full = (
+            await db.execute(
+                select(AvisEcheance)
+                .options(
+                    selectinload(AvisEcheance.tenant),
+                    selectinload(AvisEcheance.lease).selectinload(Lease.tenant),
+                    selectinload(AvisEcheance.lease).selectinload(Lease.co_tenants),
+                    selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
+                )
+                .where(AvisEcheance.id == avis.id)
             )
-            .where(AvisEcheance.id == avis.id)
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
 
         if not avis_full:
             avis_full = avis
@@ -517,21 +626,37 @@ class AvisEcheancePDFService:
         if _lease is not None:
             property_obj = getattr(_lease, "parent_property", None)
             if property_obj is None and _lease.property_id:
-                property_obj = (await db.execute(
-                    select(Property).where(Property.id == _lease.property_id)
-                )).scalar_one_or_none()
+                property_obj = (
+                    await db.execute(select(Property).where(Property.id == _lease.property_id))
+                ).scalar_one_or_none()
 
         from datetime import date as _date
+
+        from app.services.document_render_service import eur, render_saved_document
         from app.services.template_layout_service import get_layout
-        from app.services.document_render_service import render_saved_document, eur
-        _MONTHS_FR = ["janvier","février","mars","avril","mai","juin",
-                      "juillet","août","septembre","octobre","novembre","décembre"]
+
+        _MONTHS_FR = [
+            "janvier",
+            "février",
+            "mars",
+            "avril",
+            "mai",
+            "juin",
+            "juillet",
+            "août",
+            "septembre",
+            "octobre",
+            "novembre",
+            "décembre",
+        ]
         _d = _date.today()
         today_fr = f"{_d.day} {_MONTHS_FR[_d.month - 1]} {_d.year}"
         layout = get_layout()
 
         # 1) Template ENREGISTRÉ par le gestionnaire (éditeur) si présent…
-        _month_label = f"{_MONTHS_FR[avis_full.period_month - 1].capitalize()} {avis_full.period_year}"
+        _month_label = (
+            f"{_MONTHS_FR[avis_full.period_month - 1].capitalize()} {avis_full.period_year}"
+        )
         _total = getattr(avis_full, "amount_total", None)
         if _total is None:
             _total = float(avis_full.amount_rent) + float(avis_full.amount_charges)
@@ -555,29 +680,48 @@ class AvisEcheancePDFService:
             "date": today_fr,
             "today_date": today_fr,
             "period_range": avis_full.period_range_label,
-            "tenant_email": getattr(avis_full.tenant, "email", "") if getattr(avis_full, "tenant", None) else "",
-            "tenant_phone": getattr(avis_full.tenant, "phone", "") if getattr(avis_full, "tenant", None) else "",
+            "tenant_email": getattr(avis_full.tenant, "email", "")
+            if getattr(avis_full, "tenant", None)
+            else "",
+            "tenant_phone": getattr(avis_full.tenant, "phone", "")
+            if getattr(avis_full, "tenant", None)
+            else "",
             # Identifiant locataire : code stable dérivé de l'UUID en base (ex. « 2B12C23A ».
             # tenant_login conservé comme alias rétro-compatible des templates enregistrés.
             "tenant_login": tenant_reference(getattr(avis_full, "tenant", None)),
             "tenant_reference": tenant_reference(getattr(avis_full, "tenant", None)),
-            "property_reference": (getattr(property_obj, "ref_code", "") or
-                                   getattr(property_obj, "reference", "") or
-                                   getattr(property_obj, "name", "")) if property_obj else "",
+            "property_reference": (
+                getattr(property_obj, "ref_code", "")
+                or getattr(property_obj, "reference", "")
+                or getattr(property_obj, "name", "")
+            )
+            if property_obj
+            else "",
             # Nom du destinataire : civilité + prénom + NOM (majuscules).
             "tenant_civil_name": _civil_name(getattr(avis_full, "tenant", None)),
             "civility_greeting": civility_greeting(getattr(avis_full, "tenant", None)),
             # Adresse du bien décomposée pour le bloc destinataire (lignes séparées).
-            "property_address2": (getattr(property_obj, "address2", "") or "") if property_obj else "",
+            "property_address2": (getattr(property_obj, "address2", "") or "")
+            if property_obj
+            else "",
             "property_street": (getattr(property_obj, "address", "") or "") if property_obj else "",
             "property_city_line": (
-                " ".join(p for p in [getattr(property_obj, "zip_code", ""),
-                                     getattr(property_obj, "city", "")] if p)
-                if property_obj else ""),
+                " ".join(
+                    p
+                    for p in [
+                        getattr(property_obj, "zip_code", ""),
+                        getattr(property_obj, "city", ""),
+                    ]
+                    if p
+                )
+                if property_obj
+                else ""
+            ),
             "company_address": "",
             "lease_start_date": (
                 _lease.start_date.strftime("%d/%m/%Y")
-                if _lease is not None and getattr(_lease, "start_date", None) else ""
+                if _lease is not None and getattr(_lease, "start_date", None)
+                else ""
             ),
         }
         _gid = getattr(_lease_rel, "created_by", None)
@@ -589,29 +733,35 @@ class AvisEcheancePDFService:
         # l'avis en possède, on rend via le moteur de blocs (prioritaire).
         from app.models.document_template import DocumentTemplate
         from app.models.user import User
+
         avis_tmpl = None
         if _gid:
-            avis_tmpl = (await db.execute(
-                select(DocumentTemplate).where(
-                    DocumentTemplate.gestionnaire_id == _gid,
-                    DocumentTemplate.template_type == "avis_echeance",
-                    DocumentTemplate.is_default.is_(True),
-                    DocumentTemplate.is_active.is_(True),
+            avis_tmpl = (
+                await db.execute(
+                    select(DocumentTemplate).where(
+                        DocumentTemplate.gestionnaire_id == _gid,
+                        DocumentTemplate.template_type == "avis_echeance",
+                        DocumentTemplate.is_default.is_(True),
+                        DocumentTemplate.is_active.is_(True),
+                    )
                 )
-            )).scalar_one_or_none()
+            ).scalar_one_or_none()
         if avis_tmpl is not None and getattr(avis_tmpl, "blocks", None):
             from app.services.avis_blocks_render_service import render_avis_blocks_html
+
             # Nom + adresse de l'expéditeur depuis le profil du gestionnaire.
             sender_name, sender_addr = "", ""
             owner_company, owner_national_id = "", ""
             user = None
             try:
-                user = (await db.execute(
-                    select(User).where(User.id == _gid)
-                )).scalar_one_or_none()
+                user = (await db.execute(select(User).where(User.id == _gid))).scalar_one_or_none()
                 if user:
                     sender_name = user.full_name or avis_tmpl.company_name or ""
-                    sender_addr = (getattr(user, "full_address", None) or "") or avis_tmpl.company_address or ""
+                    sender_addr = (
+                        (getattr(user, "full_address", None) or "")
+                        or avis_tmpl.company_address
+                        or ""
+                    )
                     owner_company = getattr(user, "owner_company", "") or ""
                     owner_national_id = getattr(user, "owner_national_id", "") or ""
             except Exception:
@@ -620,17 +770,25 @@ class AvisEcheancePDFService:
                 variables["company_name"] = sender_name
             if not variables.get("company_address"):
                 from app.services.document_render_service import build_emitter_address
-                variables["company_address"] = build_emitter_address(sender_addr, owner_company, owner_national_id)
+
+                variables["company_address"] = build_emitter_address(
+                    sender_addr, owner_company, owner_national_id
+                )
+
             # Le moteur de blocs n'ajoute pas le symbole € (contrairement aux anciens
             # templates HTML) → on le préfixe ici, dans le contexte blocs uniquement.
             def _eur(v):
                 return f"{eur(v)} €"
+
             variables["total_due"] = _eur(_total)
             variables["rent_amount"] = _eur(avis_full.amount_rent)
             variables["charges_amount"] = _eur(avis_full.amount_charges)
             if _is_apur:
                 line_items = [
-                    {"label": f"ÉCHÉANCE D'APUREMENT N° {_apur_seq}", "appele": _eur(avis_full.amount_total)},
+                    {
+                        "label": f"ÉCHÉANCE D'APUREMENT N° {_apur_seq}",
+                        "appele": _eur(avis_full.amount_total),
+                    },
                 ]
             else:
                 line_items = [
@@ -638,29 +796,40 @@ class AvisEcheancePDFService:
                     {"label": "PROVISION CHARGES", "appele": _eur(avis_full.amount_charges)},
                 ]
                 if avis_full.amount_apl:
-                    line_items.append({"label": "AIDE PERSONNELLE AU LOGEMENT",
-                                       "appele": "-" + _eur(avis_full.amount_apl)})
+                    line_items.append(
+                        {
+                            "label": "AIDE PERSONNELLE AU LOGEMENT",
+                            "appele": "-" + _eur(avis_full.amount_apl),
+                        }
+                    )
             # Logo : UNIQUEMENT celui du profil gestionnaire (« Mes informations »).
             # On n'utilise PAS le logo_path résiduel du modèle (ancien upload par
             # template) → par défaut, pas de logo (emplacement vide réservé).
             _logo = getattr(user, "logo_path", None)
             html = render_avis_blocks_html(
-                avis_tmpl.blocks, getattr(avis_tmpl, "theme", None), variables,
-                line_items=line_items, logo_path=_logo,
+                avis_tmpl.blocks,
+                getattr(avis_tmpl, "theme", None),
+                variables,
+                line_items=line_items,
+                logo_path=_logo,
             )
             notice = None
             if _lease_rel is not None:
-                from app.services.irl_notice import upcoming_revision_notice, inject_notice
+                from app.services.irl_notice import inject_notice, upcoming_revision_notice
+
                 notice = await upcoming_revision_notice(
-                    db, _lease_rel, avis_full.period_year, avis_full.period_month)
+                    db, _lease_rel, avis_full.period_year, avis_full.period_month
+                )
                 if notice:
                     html = inject_notice(html, notice)
             return html_to_pdf(html)
 
         custom = await render_saved_document(
-            db, template_type="avis_echeance",
+            db,
+            template_type="avis_echeance",
             gestionnaire_id=_gid,
-            variables=variables, recipient_lines=names,
+            variables=variables,
+            recipient_lines=names,
             property_address=property_obj.full_address_block if property_obj else "",
             layout=layout,
         )
@@ -669,6 +838,7 @@ class AvisEcheancePDFService:
         notice = None
         if _lease_rel is not None:
             from app.services.irl_notice import upcoming_revision_notice
+
             notice = await upcoming_revision_notice(
                 db, _lease_rel, avis_full.period_year, avis_full.period_month
             )
@@ -676,22 +846,27 @@ class AvisEcheancePDFService:
         if custom:
             if notice:
                 from app.services.irl_notice import inject_notice
+
                 custom = inject_notice(custom, notice)
             return html_to_pdf(custom)
 
         # 2) …sinon, modèle .j2 historique (mise en page complète).
-        html = render_template("avis_echeance.html.j2", {
-            "avis": avis_full,
-            "property": property_obj,
-            "today": today_fr,
-            "tenant_names": tenant_names,
-            "tenant_names_list": names,
-            "layout": layout,
-            "signature_uri": _sig_uri,
-            "is_apurement": _is_apur,
-            "apur_seq": _apur_seq,
-        })
+        html = render_template(
+            "avis_echeance.html.j2",
+            {
+                "avis": avis_full,
+                "property": property_obj,
+                "today": today_fr,
+                "tenant_names": tenant_names,
+                "tenant_names_list": names,
+                "layout": layout,
+                "signature_uri": _sig_uri,
+                "is_apurement": _is_apur,
+                "apur_seq": _apur_seq,
+            },
+        )
         if notice:
             from app.services.irl_notice import inject_notice
+
             html = inject_notice(html, notice)
         return html_to_pdf(html)

@@ -1,7 +1,10 @@
 """Service AppSettings — lecture/écriture des paramètres dynamiques."""
+
 import logging
+
+from sqlalchemy import select
+from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text as sa_text
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +23,10 @@ async def get(db: AsyncSession, key: str) -> str:
     """Lit un paramètre. Retourne la valeur par défaut si absent."""
     try:
         from app.models.app_setting import AppSetting
-        row = (await db.execute(
-            select(AppSetting).where(AppSetting.key == key)
-        )).scalar_one_or_none()
+
+        row = (
+            await db.execute(select(AppSetting).where(AppSetting.key == key))
+        ).scalar_one_or_none()
         return row.value if row else _DEFAULTS.get(key, "")
     except Exception as exc:
         logger.warning("settings_service.get(%s) failed: %s", key, exc)

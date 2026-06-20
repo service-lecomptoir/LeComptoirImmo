@@ -1,9 +1,8 @@
 import uuid
-from typing import Optional
 
-from sqlalchemy import String, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from app.database import Base, TimestampMixin
 
@@ -16,19 +15,23 @@ class CafTemplate(Base, TimestampMixin):
     associe aux données de l'application (`field_map` : champ PDF → clé de donnée).
     La génération remplit ce PDF et y appose la signature. Un modèle par
     (gestionnaire, type de document)."""
+
     __tablename__ = "caf_templates"
     __table_args__ = (UniqueConstraint("gestionnaire_id", "doc_type", name="uq_caf_tpl_gest_type"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     gestionnaire_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     # 'attestation' | 'tiers_payant'
     doc_type: Mapped[str] = mapped_column(String(20), nullable=False)
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
-    original_filename: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Mapping {nom_du_champ_pdf: clé_de_donnée} (clés : voir caf_data.DATA_KEYS).
-    field_map: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    field_map: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # Signature : page (1-based) + position/échelle (mm) pour l'apposition.
     sign_page: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     sign_x_mm: Mapped[int] = mapped_column(Integer, nullable=False, default=130)

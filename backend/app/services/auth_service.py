@@ -1,15 +1,16 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 import logging
 
-from app.models.user import User
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import UnauthorizedException
 from app.core.security import (
-    verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
+    verify_password,
 )
-from app.core.exceptions import UnauthorizedException
+from app.models.user import User
 from app.schemas.auth import TokenResponse
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,6 @@ _MANAGED_ROLES = {"gestionnaire", "gestionnaire_proprio"}
 
 
 class AuthService:
-
     @staticmethod
     async def _check_alice_license(db: AsyncSession, user: User) -> None:
         """Vérifie que la licence Alice n'est pas bloquée pour les gestionnaires
@@ -27,21 +27,22 @@ class AuthService:
             return
         try:
             from app.services import alice_client
+
             lic = await alice_client.get_license(user.id)
             if lic is None:
                 logger.warning(f"Aucune licence Alice pour user {user.id} ({user.email})")
                 return  # pas de licence → on laisse passer
             if lic.get("is_blocked"):
-                raise UnauthorizedException("Votre compte a été suspendu. Contactez l'administrateur.")
+                raise UnauthorizedException(
+                    "Votre compte a été suspendu. Contactez l'administrateur."
+                )
         except UnauthorizedException:
             raise
         except Exception as exc:
             logger.warning(f"Alice license check failed for {user.id}: {exc}")
 
     @staticmethod
-    async def authenticate(
-        db: AsyncSession, email: str, password: str
-    ) -> User:
+    async def authenticate(db: AsyncSession, email: str, password: str) -> User:
         """Vérifie les identifiants et retourne l'utilisateur si valide."""
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
@@ -65,9 +66,7 @@ class AuthService:
         )
 
     @staticmethod
-    async def refresh_access_token(
-        db: AsyncSession, refresh_token: str
-    ) -> str:
+    async def refresh_access_token(db: AsyncSession, refresh_token: str) -> str:
         """Valide le refresh token et retourne un nouvel access token."""
         payload = decode_token(refresh_token)
 

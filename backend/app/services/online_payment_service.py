@@ -7,6 +7,7 @@ transite par notre serveur : Stripe Checkout (page hébergée) et SumUp (widget)
 gèrent la saisie. À la confirmation (webhook Stripe / vérification SumUp), le
 loyer est enregistré comme payé (quittance automatique).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -15,7 +16,6 @@ import json
 import logging
 import uuid
 from datetime import date
-from typing import Optional
 
 import httpx
 from sqlalchemy import select
@@ -25,7 +25,6 @@ from sqlalchemy.orm import selectinload
 from app.config import get_settings
 from app.core.crypto import decrypt_secret, encrypt_secret
 from app.core.exceptions import BadRequestException
-from app.models.lease import Lease
 from app.models.payment import Payment
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -98,32 +97,41 @@ def apply_config(user: User, data: dict) -> None:
     if user.card_payments_enabled:
         if user.payment_provider == "stripe" and not user.stripe_secret_key_enc:
             raise BadRequestException("Renseignez la clé secrète Stripe avant d'activer.")
-        if user.payment_provider == "sumup" and not (user.sumup_api_key_enc and user.sumup_merchant_code):
-            raise BadRequestException("Renseignez la clé API et le merchant code SumUp avant d'activer.")
+        if user.payment_provider == "sumup" and not (
+            user.sumup_api_key_enc and user.sumup_merchant_code
+        ):
+            raise BadRequestException(
+                "Renseignez la clé API et le merchant code SumUp avant d'activer."
+            )
         if not user.payment_provider:
-            raise BadRequestException("Choisissez un prestataire (Stripe ou SumUp) avant d'activer.")
+            raise BadRequestException(
+                "Choisissez un prestataire (Stripe ou SumUp) avant d'activer."
+            )
 
 
 # ── Résolution locataire → loyer dû → config du gestionnaire ───────────────────
 async def _tenant_due_payment(
-    db: AsyncSession, tenant_user: User, payment_id: Optional[str] = None
-) -> Optional[tuple[Tenant, Optional[Payment]]]:
-    tenant = (await db.execute(
-        select(Tenant).where(Tenant.user_id == tenant_user.id)
-    )).scalar_one_or_none()
+    db: AsyncSession, tenant_user: User, payment_id: str | None = None
+) -> tuple[Tenant, Payment | None] | None:
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == tenant_user.id))
+    ).scalar_one_or_none()
     if not tenant:
         return None
     q = select(Payment).options(selectinload(Payment.lease)).where(Payment.tenant_id == tenant.id)
     if payment_id:
         q = q.where(Payment.id == uuid.UUID(str(payment_id)))
     else:
-        q = (q.where(Payment.status.in_(_DUE_STATUSES))
-             .order_by(Payment.period_year.desc(), Payment.period_month.desc()).limit(1))
+        q = (
+            q.where(Payment.status.in_(_DUE_STATUSES))
+            .order_by(Payment.period_year.desc(), Payment.period_month.desc())
+            .limit(1)
+        )
     payment = (await db.execute(q)).scalar_one_or_none()
     return tenant, payment
 
 
-async def _config_holder_for_payment(db: AsyncSession, payment: Payment) -> Optional[User]:
+async def _config_holder_for_payment(db: AsyncSession, payment: Payment) -> User | None:
     """Compte gestionnaire (principal d'agence) qui porte la config de paiement."""
     mgr_id = getattr(payment.lease, "created_by", None) if payment.lease else None
     if not mgr_id:
@@ -138,7 +146,10 @@ async def _config_holder_for_payment(db: AsyncSession, payment: Payment) -> Opti
 
 
 def _period_label(payment: Payment) -> str:
-    return getattr(payment, "period_label", None) or f"{payment.period_month:02d}/{payment.period_year}"
+    return (
+        getattr(payment, "period_label", None)
+        or f"{payment.period_month:02d}/{payment.period_year}"
+    )
 
 
 # ── Disponibilité (gating côté locataire) ──────────────────────────────────────
@@ -150,16 +161,16 @@ async def card_availability(db: AsyncSession, tenant_user: User) -> dict:
     if not holder or not holder.card_payments_enabled or not holder.payment_provider:
         return {"available": False, "provider": None}
     prov = holder.payment_provider
-    ok = (
-        (prov == "stripe" and bool(decrypt_secret(holder.stripe_secret_key_enc)))
-        or (prov == "sumup" and bool(decrypt_secret(holder.sumup_api_key_enc) and holder.sumup_merchant_code))
+    ok = (prov == "stripe" and bool(decrypt_secret(holder.stripe_secret_key_enc))) or (
+        prov == "sumup"
+        and bool(decrypt_secret(holder.sumup_api_key_enc) and holder.sumup_merchant_code)
     )
     return {"available": ok, "provider": prov if ok else None}
 
 
 # ── Création du paiement (checkout) ────────────────────────────────────────────
 async def create_checkout(
-    db: AsyncSession, tenant_user: User, payment_id: Optional[str] = None
+    db: AsyncSession, tenant_user: User, payment_id: str | None = None
 ) -> dict:
     res = await _tenant_due_payment(db, tenant_user, payment_id)
     if not res or not res[1]:
@@ -202,7 +213,9 @@ async def create_checkout(
             raise BadRequestException(f"Stripe injoignable : {exc}")
         if r.status_code >= 400:
             logger.warning("Stripe checkout error %s: %s", r.status_code, r.text[:300])
-            raise BadRequestException("Le paiement par carte a échoué (Stripe). Réessayez plus tard.")
+            raise BadRequestException(
+                "Le paiement par carte a échoué (Stripe). Réessayez plus tard."
+            )
         return {"provider": "stripe", "url": r.json().get("url")}
 
     # SumUp : crée un checkout ; le widget côté front collecte la carte.
@@ -218,15 +231,21 @@ async def create_checkout(
     }
     try:
         async with httpx.AsyncClient(timeout=20.0) as c:
-            r = await c.post(f"{_SUMUP_API}/checkouts", json=payload,
-                             headers={"Authorization": f"Bearer {api}"})
+            r = await c.post(
+                f"{_SUMUP_API}/checkouts", json=payload, headers={"Authorization": f"Bearer {api}"}
+            )
     except httpx.RequestError as exc:
         raise BadRequestException(f"SumUp injoignable : {exc}")
     if r.status_code >= 400:
         logger.warning("SumUp checkout error %s: %s", r.status_code, r.text[:300])
         raise BadRequestException("Le paiement par carte a échoué (SumUp). Réessayez plus tard.")
     co = r.json()
-    return {"provider": "sumup", "checkout_id": co.get("id"), "amount": amount, "currency": currency}
+    return {
+        "provider": "sumup",
+        "checkout_id": co.get("id"),
+        "amount": amount,
+        "currency": currency,
+    }
 
 
 # ── Confirmation / enregistrement ──────────────────────────────────────────────
@@ -243,10 +262,13 @@ async def _record_card_payment(db: AsyncSession, payment_id, provider_label: str
     if amount <= 0.005:
         return True
     await PaymentService.record_payment(
-        db, pid,
+        db,
+        pid,
         PaymentRecordIn(
-            amount_paid=amount, payment_date=date.today(),
-            payment_method="carte", notes=f"Paiement par carte ({provider_label})",
+            amount_paid=amount,
+            payment_date=date.today(),
+            payment_method="carte",
+            notes=f"Paiement par carte ({provider_label})",
         ),
     )
     await db.commit()
@@ -255,25 +277,40 @@ async def _record_card_payment(db: AsyncSession, payment_id, provider_label: str
     # Notifie le gestionnaire + journal d'audit (best-effort, jamais bloquant).
     try:
         full = await PaymentService.get_by_id(db, pid, load_relations=True)
-        manager_id = getattr(full.lease, "created_by", None) if getattr(full, "lease", None) else None
+        manager_id = (
+            getattr(full.lease, "created_by", None) if getattr(full, "lease", None) else None
+        )
         tenant_name = getattr(getattr(full, "tenant", None), "full_name", None) or "Le locataire"
         if manager_id:
             from app.models.notification import (
-                Notification, NotificationPriority, NotificationType,
+                Notification,
+                NotificationPriority,
+                NotificationType,
             )
-            db.add(Notification(
-                title=f"Loyer payé par carte : {tenant_name}",
-                message=(f"{tenant_name} a réglé le loyer de {_period_label(full)} par carte "
-                         f"({provider_label}, {amount:.2f}). Le règlement est enregistré."),
-                notification_type=NotificationType.PAIEMENT_RECU,
-                priority=getattr(NotificationPriority, "NORMAL", NotificationPriority.HIGH),
-                entity_type="payment", entity_id=full.id, user_id=manager_id,
-            ))
+
+            db.add(
+                Notification(
+                    title=f"Loyer payé par carte : {tenant_name}",
+                    message=(
+                        f"{tenant_name} a réglé le loyer de {_period_label(full)} par carte "
+                        f"({provider_label}, {amount:.2f}). Le règlement est enregistré."
+                    ),
+                    notification_type=NotificationType.PAIEMENT_RECU,
+                    priority=getattr(NotificationPriority, "NORMAL", NotificationPriority.HIGH),
+                    entity_type="payment",
+                    entity_id=full.id,
+                    user_id=manager_id,
+                )
+            )
             await db.commit()
         from app.services import audit_service
+
         await audit_service.log(
-            db, action="payment.card_paid", user_id=manager_id,
-            entity_type="payment", entity_id=pid,
+            db,
+            action="payment.card_paid",
+            user_id=manager_id,
+            entity_type="payment",
+            entity_id=pid,
             details={"provider": provider_label, "amount": amount},
         )
         await db.commit()
@@ -289,7 +326,10 @@ async def test_connection(user: User) -> dict:
     if prov == "stripe":
         secret = decrypt_secret(user.stripe_secret_key_enc)
         if not secret:
-            return {"ok": False, "detail": "Renseignez d'abord la clé secrète Stripe puis enregistrez."}
+            return {
+                "ok": False,
+                "detail": "Renseignez d'abord la clé secrète Stripe puis enregistrez.",
+            }
         try:
             async with httpx.AsyncClient(timeout=15.0) as c:
                 r = await c.get(f"{_STRIPE_API}/balance", auth=(secret, ""))
@@ -324,7 +364,7 @@ def _verify_stripe_signature(payload: bytes, sig_header: str, secret: str) -> bo
 
 
 async def handle_stripe_webhook(
-    db: AsyncSession, gestionnaire_id: str, payload: bytes, sig_header: Optional[str]
+    db: AsyncSession, gestionnaire_id: str, payload: bytes, sig_header: str | None
 ) -> dict:
     holder = await db.get(User, uuid.UUID(str(gestionnaire_id)))
     if not holder:
@@ -361,8 +401,9 @@ async def confirm_sumup(db: AsyncSession, tenant_user: User, checkout_id: str) -
         raise BadRequestException("Configuration SumUp incomplète.")
     try:
         async with httpx.AsyncClient(timeout=20.0) as c:
-            r = await c.get(f"{_SUMUP_API}/checkouts/{checkout_id}",
-                            headers={"Authorization": f"Bearer {api}"})
+            r = await c.get(
+                f"{_SUMUP_API}/checkouts/{checkout_id}", headers={"Authorization": f"Bearer {api}"}
+            )
     except httpx.RequestError as exc:
         raise BadRequestException(f"SumUp injoignable : {exc}")
     if r.status_code >= 400:

@@ -8,9 +8,9 @@ Toutes les fonctions sont « fail-soft » : en cas d'indisponibilité d'Alice,
 elles renvoient une valeur neutre (None / [] / False) et journalisent : l'app
 ne casse jamais à cause d'Alice.
 """
+
 import logging
 import time
-from typing import Optional, List
 from uuid import UUID
 
 import httpx
@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 # Alice par requête (+ ~timeout si Alice est lente/indisponible → latence sur
 # TOUTES les requêtes). On mémorise le résultat (succès ET échec) un court instant.
 _LICENSE_CACHE: dict = {}
-_LICENSE_TTL = 60.0          # succès : revérifier au plus une fois / minute / user
-_LICENSE_FAIL_TTL = 20.0     # échec/indispo : court (circuit-breaker, évite de réessayer en boucle)
+_LICENSE_TTL = 60.0  # succès : revérifier au plus une fois / minute / user
+_LICENSE_FAIL_TTL = 20.0  # échec/indispo : court (circuit-breaker, évite de réessayer en boucle)
 
 
 def _base_headers():
@@ -33,7 +33,7 @@ def _base_headers():
     return cfg.ALICE_URL, {"X-Internal-Key": cfg.ALICE_INTERNAL_KEY}
 
 
-async def get_license(user_id: UUID, *, use_cache: bool = True) -> Optional[dict]:
+async def get_license(user_id: UUID, *, use_cache: bool = True) -> dict | None:
     """Licence/entitlements d'un gestionnaire : {is_blocked, plan_name, property_limit,
     access_until, features}. None si pas de licence (404) ou Alice indisponible.
     Résultat mis en cache (TTL court) pour ne pas appeler Alice à chaque requête."""
@@ -45,7 +45,7 @@ async def get_license(user_id: UUID, *, use_cache: bool = True) -> Optional[dict
             return hit[1]
 
     base, headers = _base_headers()
-    result: Optional[dict] = None
+    result: dict | None = None
     ok = False
     try:
         async with httpx.AsyncClient(timeout=3.0) as hc:
@@ -63,7 +63,7 @@ async def get_license(user_id: UUID, *, use_cache: bool = True) -> Optional[dict
     return result
 
 
-def invalidate_license_cache(user_id: Optional[UUID] = None) -> None:
+def invalidate_license_cache(user_id: UUID | None = None) -> None:
     """Vide le cache licence (pour un user, ou tout). À appeler si la licence change."""
     if user_id is None:
         _LICENSE_CACHE.clear()
@@ -71,12 +71,14 @@ def invalidate_license_cache(user_id: Optional[UUID] = None) -> None:
         _LICENSE_CACHE.pop(str(user_id), None)
 
 
-async def list_plans() -> List[dict]:
+async def list_plans() -> list[dict]:
     """Plans actifs (pour la page Tarification publique). [] si indisponible."""
     base, headers = _base_headers()
     try:
         async with httpx.AsyncClient(timeout=6.0) as hc:
-            resp = await hc.get(f"{base}/api/v1/internal/plans", headers=headers, params={"product": "immo"})
+            resp = await hc.get(
+                f"{base}/api/v1/internal/plans", headers=headers, params={"product": "immo"}
+            )
         if resp.status_code == 200:
             return resp.json()
         logger.warning("Alice list_plans → %s", resp.status_code)
@@ -88,16 +90,20 @@ async def list_plans() -> List[dict]:
 async def create_lead(
     full_name: str,
     email: str,
-    phone: Optional[str] = None,
-    company: Optional[str] = None,
-    message: Optional[str] = None,
+    phone: str | None = None,
+    company: str | None = None,
+    message: str | None = None,
     source: str = "site_lecomptoir",
 ) -> bool:
     """Crée une demande (souscription/démo/résiliation) côté Alice. True si OK."""
     base, headers = _base_headers()
     payload = {
-        "full_name": full_name, "email": email, "phone": phone,
-        "company": company, "message": message, "source": source,
+        "full_name": full_name,
+        "email": email,
+        "phone": phone,
+        "company": company,
+        "message": message,
+        "source": source,
     }
     try:
         async with httpx.AsyncClient(timeout=8.0) as hc:

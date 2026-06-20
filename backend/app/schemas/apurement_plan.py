@@ -1,6 +1,6 @@
 import uuid
 from datetime import date
-from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -10,9 +10,9 @@ class ApurementPlanCreate(BaseModel):
     first_date: date
     # Montant total à étaler. Absent ou >= solde -> mois totalement soldé (reporté).
     # Inférieur au solde -> apurement PARTIEL : seul ce montant sort du solde.
-    total_amount: Optional[float] = None
+    total_amount: float | None = None
 
 
 class InstallmentMark(BaseModel):
     paid: bool
-    paid_date: Optional[date] = None
+    paid_date: date | None = None

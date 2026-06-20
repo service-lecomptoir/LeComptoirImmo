@@ -1,10 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, field_validator
 
 from app.models.signalement import (
-    SignalementCategory, SignalementUrgency, SignalementStatus,
+    SignalementCategory,
+    SignalementStatus,
+    SignalementUrgency,
 )
 
 
@@ -12,14 +14,14 @@ class SignalementCreate(BaseModel):
     category: SignalementCategory
     description: str
     urgency: SignalementUrgency = SignalementUrgency.MOYEN
-    title: Optional[str] = None
+    title: str | None = None
     # Date/heure de survenue ; par défaut « maintenant » côté service si absent.
-    occurred_at: Optional[datetime] = None
+    occurred_at: datetime | None = None
     # Optionnels : un gestionnaire peut cibler un bien/locataire ; pour un locataire
     # ils sont résolus automatiquement depuis son bail actif.
-    property_id: Optional[uuid.UUID] = None
-    tenant_id: Optional[uuid.UUID] = None
-    lease_id: Optional[uuid.UUID] = None
+    property_id: uuid.UUID | None = None
+    tenant_id: uuid.UUID | None = None
+    lease_id: uuid.UUID | None = None
 
     @field_validator("description")
     @classmethod
@@ -30,6 +32,6 @@ class SignalementCreate(BaseModel):
 
 
 class SignalementUpdate(BaseModel):
-    status: Optional[SignalementStatus] = None
-    urgency: Optional[SignalementUrgency] = None
-    resolution_note: Optional[str] = None
+    status: SignalementStatus | None = None
+    urgency: SignalementUrgency | None = None
+    resolution_note: str | None = None

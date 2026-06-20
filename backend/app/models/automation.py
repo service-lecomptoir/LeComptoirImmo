@@ -1,12 +1,12 @@
 """Modèles Automatisation — règles d'envoi et logs de communication."""
+
 import uuid
-from typing import Optional
 from datetime import datetime
-from sqlalchemy import String, Text, Boolean, Integer, DateTime, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import Mapped, mapped_column
 from enum import Enum
 
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base, TimestampMixin
 
@@ -43,9 +43,7 @@ class Channel(str, Enum):
 class AutomationRule(Base, TimestampMixin):
     __tablename__ = "automation_rules"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     rule_type: Mapped[str] = mapped_column(String(30), nullable=False)
@@ -59,9 +57,7 @@ class AutomationRule(Base, TimestampMixin):
     run_minute: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Dernière exécution automatique ou manuelle (« Exécuter maintenant »).
-    last_run_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Canal d'envoi (hérité ; remplacé par les interrupteurs send_email/send_sms).
     channel: Mapped[str] = mapped_column(String(20), default="email", nullable=False)
@@ -74,25 +70,25 @@ class AutomationRule(Base, TimestampMixin):
     send_sms: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Contenu personnalisé
-    subject: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
-    body_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    body_template: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Adresse(s) en copie (CC) des e-mails de cette règle, séparées par des
     # virgules (ex. l'e-mail du gestionnaire). NULL/"" = aucune copie.
-    cc_emails: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    cc_emails: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Signature (nom du service) affichée en bas des e-mails de cette règle,
     # ex. « Service contentieux » ou « Service Gestion Locative ».
-    signature: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    signature: Mapped[str | None] = mapped_column(String(150), nullable=True)
 
     # Actif/inactif
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Filtre optionnel
-    filter_config: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    filter_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Propriétaire de la règle (gestionnaire ou admin)
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -105,34 +101,29 @@ class AutomationRule(Base, TimestampMixin):
 class CommunicationLog(Base, TimestampMixin):
     __tablename__ = "communication_logs"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    rule_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("automation_rules.id", ondelete="SET NULL"), nullable=True
     )
 
-    rule_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("automation_rules.id", ondelete="SET NULL"),
-        nullable=True
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=True
     )
 
-    tenant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"),
-        nullable=True
-    )
-
-    lease_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("leases.id", ondelete="CASCADE"),
-        nullable=True
+    lease_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("leases.id", ondelete="CASCADE"), nullable=True
     )
 
     # Clé d'idempotence : une cible + une règle = un seul envoi (anti-doublon).
-    dedup_key: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
+    dedup_key: Mapped[str | None] = mapped_column(String(200), nullable=True, index=True)
 
     channel: Mapped[str] = mapped_column(String(20), nullable=False)
-    recipient: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    subject: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
-    body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    recipient: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="sent", nullable=False)
-    error_message: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
     sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=datetime.utcnow
     )

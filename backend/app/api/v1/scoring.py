@@ -1,18 +1,19 @@
 import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database import get_db
 from app.api.deps import require_role
-from app.core.permissions import Role
 from app.api.v1._isolation import agency_member_ids, assert_manager_scope
-from app.models.user import User
-from app.models.tenant import Tenant
+from app.core.permissions import Role
+from app.database import get_db
 from app.models.lease import Lease
 from app.models.payment import Payment
-from app.services.scoring_service import KIND_META, event_kinds, compute
+from app.models.tenant import Tenant
+from app.models.user import User
+from app.services.scoring_service import KIND_META, compute, event_kinds
 
 router = APIRouter(prefix="/scoring", tags=["Scoring locataires"])
 
@@ -54,26 +55,37 @@ async def list_scoring(
         return {"total": 0, "items": []}
 
     # Bail actif (principal) par locataire
-    leases = list((await db.execute(
-        select(Lease).options(selectinload(Lease.parent_property))
-        .where(Lease.tenant_id.in_(tid_list), Lease.is_active.is_(True))
-    )).scalars().all())
+    leases = list(
+        (
+            await db.execute(
+                select(Lease)
+                .options(selectinload(Lease.parent_property))
+                .where(Lease.tenant_id.in_(tid_list), Lease.is_active.is_(True))
+            )
+        )
+        .scalars()
+        .all()
+    )
     lease_by_tenant: dict = {}
     for le in leases:
         lease_by_tenant.setdefault(le.tenant_id, le)
 
     # Paiements groupés par locataire
-    payments = list((await db.execute(
-        select(Payment).where(Payment.tenant_id.in_(tid_list))
-    )).scalars().all())
+    payments = list(
+        (await db.execute(select(Payment).where(Payment.tenant_id.in_(tid_list)))).scalars().all()
+    )
     pay_by_tenant: dict = {}
     for p in payments:
         pay_by_tenant.setdefault(p.tenant_id, []).append(p)
 
     # Propriétaire (bailleur) par bien → permet le regroupement côté mandataire
     from app.models.owner import Owner
-    owner_ids = {le.parent_property.owner_id for le in leases
-                 if getattr(le, "parent_property", None) and le.parent_property.owner_id}
+
+    owner_ids = {
+        le.parent_property.owner_id
+        for le in leases
+        if getattr(le, "parent_property", None) and le.parent_property.owner_id
+    }
     owner_names: dict = {}
     if owner_ids:
         for o in (await db.execute(select(Owner).where(Owner.id.in_(owner_ids)))).scalars().all():
@@ -92,23 +104,25 @@ async def list_scoring(
         res = compute(t, lease, pay_by_tenant.get(t.id, []))
         prop = getattr(lease, "parent_property", None) if lease else None
         owner_id, owner_name = _owner_of(lease)
-        items.append({
-            "tenant_id": str(t.id),
-            "tenant_name": t.full_name,
-            "lease_id": str(lease.id) if lease else None,
-            "property_label": (prop.name if prop else None),
-            "owner_id": owner_id,
-            "owner_name": owner_name,
-            "has_active_lease": lease is not None,
-            "score": res["score"],
-            "grade": res["grade"],
-            "strategy": res["strategy"],
-            "income": res["stats"]["income"],
-            "effort_rate": res["stats"]["effort_rate"],
-            "on_time_rate": res["stats"]["on_time_rate"],
-            "overdue_count": res["stats"]["overdue_count"],
-            "outstanding": res["stats"]["outstanding"],
-        })
+        items.append(
+            {
+                "tenant_id": str(t.id),
+                "tenant_name": t.full_name,
+                "lease_id": str(lease.id) if lease else None,
+                "property_label": (prop.name if prop else None),
+                "owner_id": owner_id,
+                "owner_name": owner_name,
+                "has_active_lease": lease is not None,
+                "score": res["score"],
+                "grade": res["grade"],
+                "strategy": res["strategy"],
+                "income": res["stats"]["income"],
+                "effort_rate": res["stats"]["effort_rate"],
+                "on_time_rate": res["stats"]["on_time_rate"],
+                "overdue_count": res["stats"]["overdue_count"],
+                "outstanding": res["stats"]["outstanding"],
+            }
+        )
     # Pire score en premier (priorité d'action)
     items.sort(key=lambda x: x["score"])
     return {"total": len(items), "items": items}
@@ -125,24 +139,36 @@ async def get_scoring_detail(
         raise HTTPException(status_code=404, detail="Locataire introuvable")
     await assert_manager_scope(db, current_user, tenant.created_by, "ce locataire")
 
-    lease = (await db.execute(
-        select(Lease).options(selectinload(Lease.parent_property))
-        .where(Lease.tenant_id == tenant_id, Lease.is_active.is_(True))
-        .order_by(Lease.start_date.desc())
-    )).scalars().first()
-    payments = list((await db.execute(
-        select(Payment).where(Payment.tenant_id == tenant_id)
-    )).scalars().all())
+    lease = (
+        (
+            await db.execute(
+                select(Lease)
+                .options(selectinload(Lease.parent_property))
+                .where(Lease.tenant_id == tenant_id, Lease.is_active.is_(True))
+                .order_by(Lease.start_date.desc())
+            )
+        )
+        .scalars()
+        .first()
+    )
+    payments = list(
+        (await db.execute(select(Payment).where(Payment.tenant_id == tenant_id))).scalars().all()
+    )
 
     res = compute(tenant, lease, payments)
     prop = getattr(lease, "parent_property", None) if lease else None
 
     # Événements de relation enrichis (libellé + polarité), plus récents d'abord
     events = []
-    for e in (getattr(lease, "relationship_events", None) or [] if lease else []):
+    for e in getattr(lease, "relationship_events", None) or [] if lease else []:
         meta = KIND_META.get(e.get("kind", ""), {})
-        events.append({**e, "kind_label": meta.get("label", e.get("kind")),
-                       "polarity": meta.get("polarity", "neutre")})
+        events.append(
+            {
+                **e,
+                "kind_label": meta.get("label", e.get("kind")),
+                "polarity": meta.get("polarity", "neutre"),
+            }
+        )
     events.sort(key=lambda x: x.get("date", ""), reverse=True)
 
     return {
@@ -170,17 +196,25 @@ async def scoring_ai_analysis(
         raise HTTPException(status_code=404, detail="Locataire introuvable")
     await assert_manager_scope(db, current_user, tenant.created_by, "ce locataire")
 
-    lease = (await db.execute(
-        select(Lease).options(selectinload(Lease.parent_property))
-        .where(Lease.tenant_id == tenant_id, Lease.is_active.is_(True))
-        .order_by(Lease.start_date.desc())
-    )).scalars().first()
-    payments = list((await db.execute(
-        select(Payment).where(Payment.tenant_id == tenant_id)
-    )).scalars().all())
+    lease = (
+        (
+            await db.execute(
+                select(Lease)
+                .options(selectinload(Lease.parent_property))
+                .where(Lease.tenant_id == tenant_id, Lease.is_active.is_(True))
+                .order_by(Lease.start_date.desc())
+            )
+        )
+        .scalars()
+        .first()
+    )
+    payments = list(
+        (await db.execute(select(Payment).where(Payment.tenant_id == tenant_id))).scalars().all()
+    )
     res = compute(tenant, lease, payments)
 
     from app.services import llm_service
+
     if not llm_service.enabled():
         return {"analysis": None, "enabled": False}
 
@@ -195,7 +229,9 @@ async def scoring_ai_analysis(
         facts.append(f"{f['label']} : {f['score']}/100 (poids {f['weight']} %) : {f['detail']}")
     evs = (getattr(lease, "relationship_events", None) or []) if lease else []
     if evs:
-        labels = [KIND_META.get(e.get("kind", ""), {}).get("label", e.get("kind")) for e in evs[-8:]]
+        labels = [
+            KIND_META.get(e.get("kind", ""), {}).get("label", e.get("kind")) for e in evs[-8:]
+        ]
         facts.append("Événements de relation récents : " + ", ".join(str(x) for x in labels))
 
     system = (
@@ -207,8 +243,11 @@ async def scoring_ai_analysis(
         "Reste sobre et orienté décision."
     )
     text = await llm_service.chat(
-        [{"role": "system", "content": system},
-         {"role": "user", "content": "DONNÉES DU LOCATAIRE :\n- " + "\n- ".join(facts)}],
-        temperature=0.4, max_tokens=420,
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": "DONNÉES DU LOCATAIRE :\n- " + "\n- ".join(facts)},
+        ],
+        temperature=0.4,
+        max_tokens=420,
     )
     return {"analysis": text, "enabled": True}

@@ -1,8 +1,9 @@
 import uuid
 from typing import TYPE_CHECKING
-from sqlalchemy import Text, Boolean, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from sqlalchemy import Boolean, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
 
 class ProprietaireMessage(Base, TimestampMixin):
     """Messages entre un propriétaire et le gestionnaire."""
+
     __tablename__ = "proprietaire_messages"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -26,7 +28,9 @@ class ProprietaireMessage(Base, TimestampMixin):
     is_from_gestionnaire: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    proprietaire: Mapped["User"] = relationship("User", foreign_keys=[proprietaire_id], lazy="select")
+    proprietaire: Mapped["User"] = relationship(
+        "User", foreign_keys=[proprietaire_id], lazy="select"
+    )
     sender: Mapped["User"] = relationship("User", foreign_keys=[sender_id], lazy="select")
 
     def __repr__(self) -> str:

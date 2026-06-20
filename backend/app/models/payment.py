@@ -1,10 +1,21 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Date, DateTime, Numeric, Integer, Boolean, Enum as SAEnum, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
+from typing import TYPE_CHECKING
+
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
@@ -14,11 +25,11 @@ if TYPE_CHECKING:
 
 
 class PaymentStatus(str, Enum):
-    PENDING = "pending"       # En attente
-    PAID = "paid"             # Payé intégralement
-    PARTIAL = "partial"       # Paiement partiel
-    LATE = "late"             # En retard
-    CANCELLED = "cancelled"   # Annulé
+    PENDING = "pending"  # En attente
+    PAID = "paid"  # Payé intégralement
+    PARTIAL = "partial"  # Paiement partiel
+    LATE = "late"  # En retard
+    CANCELLED = "cancelled"  # Annulé
 
 
 class Payment(Base, TimestampMixin):
@@ -27,9 +38,7 @@ class Payment(Base, TimestampMixin):
         UniqueConstraint("lease_id", "period_year", "period_month", name="uq_payment_lease_period"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # ── Liens ─────────────────────────────────────────────────────────────────
     lease_id: Mapped[uuid.UUID] = mapped_column(
@@ -50,71 +59,86 @@ class Payment(Base, TimestampMixin):
     period_month: Mapped[int] = mapped_column(Integer, nullable=False)
     # Étendue réellement couverte (multi-mois selon la fréquence + prorata).
     # Nullable pour compat avec les paiements générés avant cette fonctionnalité.
-    period_start: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    period_end: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    period_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    period_end: Mapped[date | None] = mapped_column(Date, nullable=True)
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
 
     # ── Montants ──────────────────────────────────────────────────────────────
     amount_rent: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     amount_charges: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
-    amount_apl: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
+    amount_apl: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     amount_due: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     amount_paid: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
 
     # ── Paiement ──────────────────────────────────────────────────────────────
-    payment_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    payment_method: Mapped[Optional[str]] = mapped_column(
+    payment_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(
         SAEnum(
-            "virement", "cheque", "prelevement", "especes", "carte",
-            name="payment_method_enum", create_type=False,
+            "virement",
+            "cheque",
+            "prelevement",
+            "especes",
+            "carte",
+            name="payment_method_enum",
+            create_type=False,
         ),
         nullable=True,
     )
 
     # ── Statut ────────────────────────────────────────────────────────────────
     status: Mapped[str] = mapped_column(
-        SAEnum(PaymentStatus, name="payment_status_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
+        SAEnum(
+            PaymentStatus,
+            name="payment_status_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=PaymentStatus.PENDING,
         index=True,
     )
-    notes: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
     # ── Déclaration de paiement par le locataire (à valider par le gestionnaire) ─
-    declared_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    declared_method: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    declared_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
+    declared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    declared_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    declared_amount: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
     # Crédit (trop-perçu d'échéances précédentes) déjà consommé par CE paiement.
-    credit_applied: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0, server_default="0")
+    credit_applied: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, default=0, server_default="0"
+    )
 
     # Mois reporté sur un plan d'apurement : le statut passe à « cancelled » (sort des
     # impayés et des revenus), la dette vit désormais dans le plan. Le drapeau permet
     # d'afficher « Reporté » (et non « Annulé ») et de restaurer la dette si le plan
     # est supprimé.
     settled_by_plan: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="false",
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
     )
     # Part du solde de CE loyer reportée sur un plan d'apurement sans solder tout le
     # mois (apurement PARTIEL) : déduite du solde restant dû. L'apurement TOTAL passe
     # plutôt par `settled_by_plan` (+ statut cancelled). Remis à 0 si le plan est supprimé.
     amount_on_plan: Mapped[float] = mapped_column(
-        Numeric(10, 2), nullable=False, default=0, server_default="0",
+        Numeric(10, 2),
+        nullable=False,
+        default=0,
+        server_default="0",
     )
 
     # ── Quittance ─────────────────────────────────────────────────────────────
-    quittance_generated_at: Mapped[Optional[datetime]] = mapped_column(
+    quittance_generated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    quittance_sent_at: Mapped[Optional[datetime]] = mapped_column(
+    quittance_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
     # ── Audit ─────────────────────────────────────────────────────────────────
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
@@ -125,13 +149,26 @@ class Payment(Base, TimestampMixin):
     @property
     def balance(self) -> float:
         """Solde restant dû (déduction faite de la part reportée sur un plan d'apurement partiel)."""
-        return max(0.0, float(self.amount_due) - float(self.amount_paid) - float(self.amount_on_plan or 0))
+        return max(
+            0.0, float(self.amount_due) - float(self.amount_paid) - float(self.amount_on_plan or 0)
+        )
 
     @property
     def period_label(self) -> str:
         months = [
-            "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-            "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+            "",
+            "Janvier",
+            "Février",
+            "Mars",
+            "Avril",
+            "Mai",
+            "Juin",
+            "Juillet",
+            "Août",
+            "Septembre",
+            "Octobre",
+            "Novembre",
+            "Décembre",
         ]
         return f"{months[self.period_month]} {self.period_year}"
 
@@ -140,8 +177,10 @@ class Payment(Base, TimestampMixin):
         """Période réellement couverte, ex. « du 01/02/2026 au 30/04/2026 »
         (ou le mois si les dates ne sont pas renseignées : anciens paiements)."""
         if self.period_start and self.period_end:
-            return (f"du {self.period_start.strftime('%d/%m/%Y')} "
-                    f"au {self.period_end.strftime('%d/%m/%Y')}")
+            return (
+                f"du {self.period_start.strftime('%d/%m/%Y')} "
+                f"au {self.period_end.strftime('%d/%m/%Y')}"
+            )
         return self.period_label
 
     def __repr__(self) -> str:

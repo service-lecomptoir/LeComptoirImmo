@@ -1,9 +1,9 @@
 """
 API Avis d'échéances : Génération manuelle, automatique, listing, PDF.
 """
-import uuid
+
 import logging
-from typing import Optional
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -11,24 +11,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.api.v1._isolation import agency_lease_ids, assert_avis_access
+from app.core.exceptions import ConflictException, NotFoundException
 from app.core.permissions import Role
-from app.models.user import User
+from app.models.avis_echeance import AvisEcheance
 from app.models.lease import Lease
 from app.models.tenant import Tenant
-from app.models.avis_echeance import AvisEcheance
-from app.services.avis_echeance_service import AvisEcheanceService
+from app.models.user import User
 from app.schemas.avis_echeance import (
     AvisEcheanceGenerateIn,
-    AvisEcheaneBulkGenerateIn,
-    AvisEcheancePatchApl,
     AvisEcheancePatch,
+    AvisEcheancePatchApl,
+    AvisEcheaneBulkGenerateIn,
 )
-from app.core.exceptions import ConflictException, NotFoundException
+from app.services.avis_echeance_service import AvisEcheanceService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/avis-echeances", tags=["Avis d'échéances"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _require_manager(user: User) -> None:
     if user.role not in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
@@ -36,8 +37,21 @@ def _require_manager(user: User) -> None:
 
 
 def _avis_to_summary(avis: AvisEcheance) -> dict:
-    months = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-              "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+    months = [
+        "",
+        "Janvier",
+        "Février",
+        "Mars",
+        "Avril",
+        "Mai",
+        "Juin",
+        "Juillet",
+        "Août",
+        "Septembre",
+        "Octobre",
+        "Novembre",
+        "Décembre",
+    ]
     return {
         "id": avis.id,
         "kind": getattr(avis, "kind", "loyer") or "loyer",
@@ -61,7 +75,11 @@ def _avis_to_summary(avis: AvisEcheance) -> dict:
         "sent_at": avis.sent_at,
         "is_auto_generated": avis.generated_by is None,
         "tenant_full_name": avis.tenant.full_name if avis.tenant else "",
-        "property_name": (avis.lease.parent_property.name if getattr(avis, "lease", None) and getattr(avis.lease, "parent_property", None) else ""),
+        "property_name": (
+            avis.lease.parent_property.name
+            if getattr(avis, "lease", None) and getattr(avis.lease, "parent_property", None)
+            else ""
+        ),
         "lease_id": avis.lease_id,
         "tenant_id": avis.tenant_id,
         "notes": avis.notes,
@@ -74,12 +92,13 @@ def _avis_to_summary(avis: AvisEcheance) -> dict:
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+
 @router.get("")
 async def list_avis(
-    lease_id: Optional[uuid.UUID] = None,
-    year: Optional[int] = None,
-    month: Optional[int] = None,
-    status: Optional[str] = None,
+    lease_id: uuid.UUID | None = None,
+    year: int | None = None,
+    month: int | None = None,
+    status: str | None = None,
     skip: int = 0,
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
@@ -94,9 +113,9 @@ async def list_avis(
 
     if current_user.role == Role.LOCATAIRE:
         # Le locataire ne voit que ses avis
-        tenant = (await db.execute(
-            select(Tenant).where(Tenant.user_id == current_user.id)
-        )).scalar_one_or_none()
+        tenant = (
+            await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+        ).scalar_one_or_none()
         if not tenant:
             return []
         tenant_id_filter = tenant.id
@@ -104,20 +123,30 @@ async def list_avis(
     elif current_user.role in (Role.PROPRIETAIRE, Role.GESTIONNAIRE_PROPRIO):
         # Le propriétaire voit les avis de ses biens
         from app.models.property import Property
-        props = (await db.execute(
-            select(Property).where(Property.owner_user_id == current_user.id)
-        )).scalars().all()
+
+        props = (
+            (await db.execute(select(Property).where(Property.owner_user_id == current_user.id)))
+            .scalars()
+            .all()
+        )
         prop_ids = [p.id for p in props]
         if not prop_ids:
             return []
-        leases = (await db.execute(
-            select(Lease).where(Lease.property_id.in_(prop_ids), Lease.is_active == True)
-        )).scalars().all()
+        leases = (
+            (
+                await db.execute(
+                    select(Lease).where(Lease.property_id.in_(prop_ids), Lease.is_active == True)
+                )
+            )
+            .scalars()
+            .all()
+        )
         lease_ids = [l.id for l in leases]
         if not lease_ids:
             return []
         # Filtrer sur lease_ids
         from sqlalchemy import select as sel
+
         q = sel(AvisEcheance)
         if lease_id:
             q = q.where(AvisEcheance.lease_id == lease_id)
@@ -130,13 +159,19 @@ async def list_avis(
         if status:
             q = q.where(AvisEcheance.status == status)
         from sqlalchemy.orm import selectinload
-        q = q.options(
-            selectinload(AvisEcheance.tenant),
-            selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
-        ).order_by(
-            AvisEcheance.period_year.desc(),
-            AvisEcheance.period_month.desc(),
-        ).offset(skip).limit(limit)
+
+        q = (
+            q.options(
+                selectinload(AvisEcheance.tenant),
+                selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
+            )
+            .order_by(
+                AvisEcheance.period_year.desc(),
+                AvisEcheance.period_month.desc(),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
         avis_list = (await db.execute(q)).scalars().all()
         return [_avis_to_summary(a) for a in avis_list]
 
@@ -146,10 +181,17 @@ async def list_avis(
         if lease_id and lease_id not in allowed:
             return []
         all_avis = await AvisEcheanceService.get_list(
-            db, lease_id=lease_id, tenant_id=None, year=year, month=month, status=status, skip=0, limit=5000,
+            db,
+            lease_id=lease_id,
+            tenant_id=None,
+            year=year,
+            month=month,
+            status=status,
+            skip=0,
+            limit=5000,
         )
         filtered = [a for a in all_avis if a.lease_id in allowed]
-        return [_avis_to_summary(a) for a in filtered[skip: skip + limit]]
+        return [_avis_to_summary(a) for a in filtered[skip : skip + limit]]
 
     avis_list = await AvisEcheanceService.get_list(
         db,
@@ -173,9 +215,7 @@ async def generate_one(
     """Génère manuellement un avis d'échéance pour un bail et une période."""
     _require_manager(current_user)
 
-    lease = (await db.execute(
-        select(Lease).where(Lease.id == body.lease_id)
-    )).scalar_one_or_none()
+    lease = (await db.execute(select(Lease).where(Lease.id == body.lease_id))).scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=404, detail="Bail introuvable")
     if not lease.is_active:
@@ -183,20 +223,27 @@ async def generate_one(
 
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         from app.models.property import Property
+
         prop = await db.get(Property, lease.property_id)
         if not prop or str(prop.created_by) != str(current_user.id):
             raise HTTPException(status_code=403, detail="Accès refusé")
 
     try:
         avis = await AvisEcheanceService.generate_for_lease(
-            db, lease, body.period_year, body.period_month,
+            db,
+            lease,
+            body.period_year,
+            body.period_month,
             generated_by=current_user.id,
             apl_override=body.apl_amount_override,
         )
         # Avis d'échéance d'apurement de ce bail pour la même période (le cas échéant).
         await AvisEcheanceService.generate_apurement_avis_for_period(
-            db, body.period_year, body.period_month,
-            lease_id=lease.id, generated_by=current_user.id,
+            db,
+            body.period_year,
+            body.period_month,
+            lease_id=lease.id,
+            generated_by=current_user.id,
         )
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -217,9 +264,8 @@ async def generate_monthly(
     prop_ids_filter = None
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         from app.models.property import Property
-        res = await db.execute(
-            select(Property.id).where(Property.created_by == current_user.id)
-        )
+
+        res = await db.execute(select(Property.id).where(Property.created_by == current_user.id))
         prop_ids_filter = list(res.scalars().all())
 
     count = await AvisEcheanceService.generate_monthly_all(
@@ -227,8 +273,21 @@ async def generate_monthly(
     )
     await db.commit()
 
-    months = ["", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-              "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+    months = [
+        "",
+        "Janvier",
+        "Février",
+        "Mars",
+        "Avril",
+        "Mai",
+        "Juin",
+        "Juillet",
+        "Août",
+        "Septembre",
+        "Octobre",
+        "Novembre",
+        "Décembre",
+    ]
     return {
         "generated": count,
         "period_year": body.period_year,
@@ -263,7 +322,9 @@ async def mark_sent(
     """Marque un avis comme envoyé."""
     _require_manager(current_user)
     try:
-        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
+        await assert_avis_access(
+            db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True
+        )
         avis = await AvisEcheanceService.mark_sent(db, avis_id)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -273,13 +334,16 @@ async def mark_sent(
         _to = getattr(getattr(avis, "tenant", None), "email", None)
         if _to:
             try:
-                from app.services.pdf_service import AvisEcheancePDFService
-                from app.services.email_service import send_avis_echeance
-                from app.services.cc_service import rule_cc_for_lease, rule_message_for_lease
                 from app.services import mail_signature
                 from app.services.automation_engine import render_rule_body, render_subject
+                from app.services.cc_service import rule_cc_for_lease, rule_message_for_lease
+                from app.services.email_service import send_avis_echeance
+                from app.services.pdf_service import AvisEcheancePDFService
+
                 _cc = await rule_cc_for_lease(db, avis.lease_id, "avis_echeance")
-                _sig, _logo, _logosub = await mail_signature.build_for_lease(db, avis.lease_id, "avis_echeance")
+                _sig, _logo, _logosub = await mail_signature.build_for_lease(
+                    db, avis.lease_id, "avis_echeance"
+                )
                 _subjT, _bodyT = await rule_message_for_lease(db, avis.lease_id, "avis_echeance")
                 _ctx = {
                     "tenant_name": (avis.tenant.full_name if avis.tenant else "") or "",
@@ -295,13 +359,19 @@ async def mark_sent(
                     amount_total=float(avis.amount_total or 0),
                     due_date=avis.due_date.strftime("%d/%m/%Y") if avis.due_date else "",
                     pdf_bytes=pdf,
-                    cc=_cc, subject=render_subject(_subjT, _ctx),
-                    signature_html=_sig, inline_logo=_logo, inline_logo_subtype=_logosub,
+                    cc=_cc,
+                    subject=render_subject(_subjT, _ctx),
+                    signature_html=_sig,
+                    inline_logo=_logo,
+                    inline_logo_subtype=_logosub,
                     body_html=render_rule_body(_bodyT, _ctx),
                 )
             except Exception as _exc:  # noqa: BLE001
                 import logging
-                logging.getLogger(__name__).warning("Envoi e-mail avis échoué (%s): %s", avis_id, _exc)
+
+                logging.getLogger(__name__).warning(
+                    "Envoi e-mail avis échoué (%s): %s", avis_id, _exc
+                )
         summary["email_sent"] = email_sent
         return summary
     except NotFoundException as e:
@@ -317,7 +387,9 @@ async def mark_acquitte(
     """Marque un avis comme acquitté (loyer reçu)."""
     _require_manager(current_user)
     try:
-        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
+        await assert_avis_access(
+            db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True
+        )
         avis = await AvisEcheanceService.mark_acquitte(db, avis_id)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -339,8 +411,7 @@ async def delete_avis(
         await assert_avis_access(db, current_user, avis, write=True)
         if avis.status != "brouillon":
             raise HTTPException(
-                status_code=400,
-                detail="Seuls les brouillons peuvent être supprimés"
+                status_code=400, detail="Seuls les brouillons peuvent être supprimés"
             )
         await AvisEcheanceService.delete(db, avis_id)
         await db.commit()
@@ -358,9 +429,12 @@ async def patch_avis(
     """Modifie les montants, la date d'échéance ou les notes d'un avis."""
     _require_manager(current_user)
     try:
-        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
+        await assert_avis_access(
+            db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True
+        )
         avis = await AvisEcheanceService.patch(
-            db, avis_id,
+            db,
+            avis_id,
             amount_rent=body.amount_rent,
             amount_charges=body.amount_charges,
             amount_apl=body.amount_apl,
@@ -383,7 +457,9 @@ async def relancer_avis(
     """Remet un avis en brouillon pour le modifier et le renvoyer."""
     _require_manager(current_user)
     try:
-        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
+        await assert_avis_access(
+            db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True
+        )
         avis = await AvisEcheanceService.relancer(db, avis_id)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -402,7 +478,9 @@ async def patch_apl(
     """Modifie le montant APL d'un avis existant (recalcule total + paiement lié)."""
     _require_manager(current_user)
     try:
-        await assert_avis_access(db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True)
+        await assert_avis_access(
+            db, current_user, await AvisEcheanceService.get_by_id(db, avis_id), write=True
+        )
         avis = await AvisEcheanceService.update_apl(db, avis_id, body.apl_amount)
         await db.commit()
         avis = await AvisEcheanceService.get_by_id(db, avis.id)
@@ -426,14 +504,18 @@ async def download_pdf(
     # Isolation par rôle (locataire→le sien, propriétaire→son bien, mandataire→hors GP).
     await assert_avis_access(db, current_user, avis)
 
-    from app.services.pdf_service import AvisEcheancePDFService
     from fastapi.responses import Response
+
+    from app.services.pdf_service import AvisEcheancePDFService
 
     pdf_bytes = await AvisEcheancePDFService.generate(db, avis)
     from app.utils.filename import doc_filename
-    _prop = (avis.lease.parent_property.name
-             if getattr(avis, "lease", None) and getattr(avis.lease, "parent_property", None)
-             else None)
+
+    _prop = (
+        avis.lease.parent_property.name
+        if getattr(avis, "lease", None) and getattr(avis.lease, "parent_property", None)
+        else None
+    )
     filename = doc_filename(
         "avis_echeance",
         tenant=avis.tenant.full_name if avis.tenant else None,

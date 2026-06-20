@@ -1,11 +1,11 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import Role, role_has_permission
 from app.database import get_db
 from app.models.user import User
 from app.services.auth_service import AuthService
-from app.core.permissions import Role, role_has_permission
 
 # ── Bearer token extractor ─────────────────────────────────────────────────────
 bearer_scheme = HTTPBearer(auto_error=True)
@@ -24,6 +24,7 @@ def require_role(required_role: Role):
     Crée une dependency FastAPI qui vérifie le rôle de l'utilisateur connecté.
     Usage: current_user: User = Depends(require_role(Role.GESTIONNAIRE))
     """
+
     async def _checker(current_user: User = Depends(get_current_user)) -> User:
         if not role_has_permission(Role(current_user.role), required_role):
             raise HTTPException(
@@ -31,6 +32,7 @@ def require_role(required_role: Role):
                 detail=f"Permission insuffisante. Rôle requis : {required_role.value}",
             )
         return current_user
+
     return _checker
 
 
@@ -40,7 +42,10 @@ async def get_current_active_admin(
     """Dependency — administrateurs et gestionnaires (rôles de gestion)."""
     role = Role(current_user.role)
     if role not in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux gestionnaires et administrateurs")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Réservé aux gestionnaires et administrateurs",
+        )
     return current_user
 
 
@@ -49,7 +54,9 @@ async def get_current_gestionnaire(
 ) -> User:
     """Dependency — gestionnaire ou supérieur."""
     if not role_has_permission(Role(current_user.role), Role.GESTIONNAIRE):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux gestionnaires")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Réservé aux gestionnaires"
+        )
     return current_user
 
 

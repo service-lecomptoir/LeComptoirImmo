@@ -4,10 +4,10 @@ Utilise Fernet (cryptography, déjà présent via python-jose[cryptography]). La
 est dérivée du SECRET_KEY de l'application : aucun secret de paiement n'est lisible
 en clair dans la base, même en cas de fuite du dump SQL.
 """
+
 import base64
 import hashlib
 from functools import lru_cache
-from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -22,7 +22,7 @@ def _fernet() -> Fernet:
     return Fernet(key)
 
 
-def encrypt_secret(value: Optional[str]) -> Optional[str]:
+def encrypt_secret(value: str | None) -> str | None:
     """Chiffre une valeur secrète. None/chaîne vide → None (pas de secret)."""
     if value is None:
         return None
@@ -32,7 +32,7 @@ def encrypt_secret(value: Optional[str]) -> Optional[str]:
     return _fernet().encrypt(value.encode("utf-8")).decode("ascii")
 
 
-def decrypt_secret(token: Optional[str]) -> Optional[str]:
+def decrypt_secret(token: str | None) -> str | None:
     """Déchiffre une valeur. None ou jeton invalide → None (jamais d'exception)."""
     if not token:
         return None

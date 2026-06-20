@@ -1,15 +1,15 @@
 import uuid
 from datetime import date, datetime
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.notification import Notification, NotificationType, NotificationPriority
-from app.schemas.notification import NotificationCreate
 from app.core.exceptions import NotFoundException
+from app.models.notification import Notification, NotificationPriority, NotificationType
+from app.schemas.notification import NotificationCreate
 
 
 class NotificationService:
-
     @staticmethod
     async def create(db: AsyncSession, data: NotificationCreate) -> Notification:
         notif = Notification(**data.model_dump())
@@ -51,10 +51,10 @@ class NotificationService:
         unread_count = (await db.execute(unread_q)).scalar_one()
 
         items = (
-            await db.execute(
-                query.order_by(Notification.created_at.desc()).limit(limit)
-            )
-        ).scalars().all()
+            (await db.execute(query.order_by(Notification.created_at.desc()).limit(limit)))
+            .scalars()
+            .all()
+        )
 
         return list(items), total, unread_count
 
@@ -111,20 +111,22 @@ class NotificationService:
 
     @staticmethod
     async def _alert_exists(db, ntype, entity_type, entity_id, user_id) -> bool:
-        return (await db.execute(
-            select(Notification.id).where(
-                Notification.notification_type == ntype,
-                Notification.entity_type == entity_type,
-                Notification.entity_id == entity_id,
-                Notification.user_id == user_id,
+        return (
+            await db.execute(
+                select(Notification.id).where(
+                    Notification.notification_type == ntype,
+                    Notification.entity_type == entity_type,
+                    Notification.entity_id == entity_id,
+                    Notification.user_id == user_id,
+                )
             )
-        )).first() is not None
+        ).first() is not None
 
     @staticmethod
     async def generate_late_payment_alerts(db: AsyncSession) -> int:
         """Crée des notifications de loyer en retard, ciblées sur les comptes concernés."""
-        from app.models.payment import Payment, PaymentStatus
         from app.models.lease import Lease
+        from app.models.payment import Payment, PaymentStatus
 
         result = await db.execute(
             select(Payment, Lease)
@@ -141,19 +143,21 @@ class NotificationService:
                     db, NotificationType.LOYER_RETARD, "payment", payment.id, uid
                 ):
                     continue
-                db.add(Notification(
-                    notification_type=NotificationType.LOYER_RETARD,
-                    priority=NotificationPriority.HIGH,
-                    title="Loyer en retard",
-                    message=(
-                        f"Le loyer de {payment.period_label} "
-                        f"(échéance {payment.due_date.strftime('%d/%m/%Y')}) "
-                        f"n'a pas été reçu. Solde dû : {payment.balance:.2f} €."
-                    ),
-                    entity_type="payment",
-                    entity_id=payment.id,
-                    user_id=uid,
-                ))
+                db.add(
+                    Notification(
+                        notification_type=NotificationType.LOYER_RETARD,
+                        priority=NotificationPriority.HIGH,
+                        title="Loyer en retard",
+                        message=(
+                            f"Le loyer de {payment.period_label} "
+                            f"(échéance {payment.due_date.strftime('%d/%m/%Y')}) "
+                            f"n'a pas été reçu. Solde dû : {payment.balance:.2f} €."
+                        ),
+                        entity_type="payment",
+                        entity_id=payment.id,
+                        user_id=uid,
+                    )
+                )
                 created += 1
 
         if created:
@@ -167,6 +171,7 @@ class NotificationService:
 
         today = date.today()
         from datetime import timedelta
+
         horizon = today + timedelta(days=90)
 
         result = await db.execute(
@@ -190,19 +195,23 @@ class NotificationService:
                     db, NotificationType.BAIL_EXPIRE_SOON, "lease", lease.id, uid
                 ):
                     continue
-                db.add(Notification(
-                    notification_type=NotificationType.BAIL_EXPIRE_SOON,
-                    priority=NotificationPriority.NORMAL if days_left > 30 else NotificationPriority.HIGH,
-                    title=f"Bail expirant dans {days_left} jour(s)",
-                    message=(
-                        f"Le bail arrivera à échéance le "
-                        f"{lease.end_date.strftime('%d/%m/%Y')} "
-                        f"({days_left} jours restants)."
-                    ),
-                    entity_type="lease",
-                    entity_id=lease.id,
-                    user_id=uid,
-                ))
+                db.add(
+                    Notification(
+                        notification_type=NotificationType.BAIL_EXPIRE_SOON,
+                        priority=NotificationPriority.NORMAL
+                        if days_left > 30
+                        else NotificationPriority.HIGH,
+                        title=f"Bail expirant dans {days_left} jour(s)",
+                        message=(
+                            f"Le bail arrivera à échéance le "
+                            f"{lease.end_date.strftime('%d/%m/%Y')} "
+                            f"({days_left} jours restants)."
+                        ),
+                        entity_type="lease",
+                        entity_id=lease.id,
+                        user_id=uid,
+                    )
+                )
                 created += 1
 
         if created:

@@ -1,20 +1,20 @@
-from contextlib import asynccontextmanager
 import logging
-
 import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.config import get_settings
-from app.database import engine, Base, AsyncSessionLocal
 from app.api.v1.router import api_router
+from app.config import get_settings
 from app.core.exceptions import AppException, app_exception_handler, unhandled_exception_handler
-from app.core.security_headers import SecurityHeadersMiddleware
+from app.core.logging_setup import setup_logging
 from app.core.rate_limit import limiter
 from app.core.scheduler import start_scheduler, stop_scheduler
-from app.core.logging_setup import setup_logging
+from app.core.security_headers import SecurityHeadersMiddleware
+from app.database import AsyncSessionLocal, Base, engine
 
 # Journaux fichier (immo.log / immo-error.log) supervisés par Portail360.
 setup_logging()
@@ -32,6 +32,7 @@ async def lifespan(app: FastAPI):
     # Vérifie la connexion DB (ping)
     logger.info("Vérification de la connexion PostgreSQL...")
     from sqlalchemy import text
+
     async with engine.connect() as conn:
         await conn.execute(text("SELECT 1"))
     logger.info("PostgreSQL OK")
@@ -48,7 +49,6 @@ async def lifespan(app: FastAPI):
 
     # ── Création des tables manquantes (idempotent) ───────────────────────────
     try:
-        import app.models  # noqa : importe tous les modèles pour que Base.metadata les connaisse
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Tables vérifiées / créées ✓")
@@ -62,10 +62,12 @@ async def lifespan(app: FastAPI):
     # ALTER TYPE ... ADD VALUE ne doit pas s'exécuter dans une transaction. ──────
     try:
         from sqlalchemy import text as _text
+
         async with engine.connect() as conn:
             conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
-            await conn.execute(_text(
-                "ALTER TYPE ticket_status_enum ADD VALUE IF NOT EXISTS 'pending_closure'"))
+            await conn.execute(
+                _text("ALTER TYPE ticket_status_enum ADD VALUE IF NOT EXISTS 'pending_closure'")
+            )
         logger.info("Enum ticket_status_enum : valeur pending_closure ✓")
     except Exception as _exc:
         logger.warning(f"Migration enum pending_closure ignorée : {_exc!r}")
@@ -74,10 +76,12 @@ async def lifespan(app: FastAPI):
     # elle, l'enregistrement d'un paiement par carte échoue (enum invalide). ──────
     try:
         from sqlalchemy import text as _text
+
         async with engine.connect() as conn:
             conn = await conn.execution_options(isolation_level="AUTOCOMMIT")
-            await conn.execute(_text(
-                "ALTER TYPE payment_method_enum ADD VALUE IF NOT EXISTS 'carte'"))
+            await conn.execute(
+                _text("ALTER TYPE payment_method_enum ADD VALUE IF NOT EXISTS 'carte'")
+            )
         logger.info("Enum payment_method_enum : valeur carte ✓")
     except Exception as _exc:
         logger.warning(f"Migration enum carte ignorée : {_exc!r}")
@@ -85,21 +89,26 @@ async def lifespan(app: FastAPI):
     # ── Modèles par défaut : seed des comptes existants + refonte de mise en page ─
     try:
         from sqlalchemy import text as _text
+
         from app.services.document_template_service import (
-            backfill_all_managers, refresh_default_bodies,
+            backfill_all_managers,
+            refresh_default_bodies,
         )
+
         async with AsyncSessionLocal() as _db:
             # (Sérialisation assurée par le verrou d'init global au démarrage.)
             # Purge des doublons de modèles PAR DÉFAUT (garde le plus ancien par
             # gestionnaire + type), sans toucher aux modèles personnalisés.
-            await _db.execute(_text(
-                "DELETE FROM document_templates a USING document_templates b "
-                "WHERE a.gestionnaire_id = b.gestionnaire_id "
-                "AND a.template_type = b.template_type "
-                "AND a.is_default = true AND b.is_default = true "
-                "AND a.gestionnaire_id IS NOT NULL "
-                "AND (a.created_at, a.ctid) > (b.created_at, b.ctid)"
-            ))
+            await _db.execute(
+                _text(
+                    "DELETE FROM document_templates a USING document_templates b "
+                    "WHERE a.gestionnaire_id = b.gestionnaire_id "
+                    "AND a.template_type = b.template_type "
+                    "AND a.is_default = true AND b.is_default = true "
+                    "AND a.gestionnaire_id IS NOT NULL "
+                    "AND (a.created_at, a.ctid) > (b.created_at, b.ctid)"
+                )
+            )
             seeded = await backfill_all_managers(_db)
             updated = await refresh_default_bodies(_db)
             await _db.commit()
@@ -110,6 +119,7 @@ async def lifespan(app: FastAPI):
     # ── Statuts des avis : aligne les brouillons existants (Envoyé / Acquitté) ──
     try:
         from app.services.avis_echeance_service import AvisEcheanceService
+
         async with AsyncSessionLocal() as _db:
             n = await AvisEcheanceService.sync_statuses(_db)
             n2 = await AvisEcheanceService.sync_apurement_statuses(_db)
@@ -123,30 +133,49 @@ async def lifespan(app: FastAPI):
     # n'en ont aucune → les envois automatiques continuent, pilotés par les règles.
     try:
         from sqlalchemy import text as _text
-        from app.services.automation_engine import backfill_default_rules, backfill_default_content, backfill_rule_types
+
+        from app.services.automation_engine import (
+            backfill_default_content,
+            backfill_default_rules,
+            backfill_rule_types,
+        )
+
         async with AsyncSessionLocal() as _db:
             # (Sérialisation assurée par le verrou d'init global au démarrage.)
             # Nettoyage des doublons des nouveaux types déjà créés par une course
             # multi-workers (garde le plus ancien par gestionnaire + type).
-            await _db.execute(_text(
-                "DELETE FROM automation_rules a USING automation_rules b "
-                "WHERE a.created_by = b.created_by AND a.rule_type = b.rule_type "
-                "AND a.rule_type IN ('revision_loyer','revision_charges','taxe_om','rapport_mensuel') "
-                "AND (a.created_at, a.ctid) > (b.created_at, b.ctid)"
-            ))
+            await _db.execute(
+                _text(
+                    "DELETE FROM automation_rules a USING automation_rules b "
+                    "WHERE a.created_by = b.created_by AND a.rule_type = b.rule_type "
+                    "AND a.rule_type IN ('revision_loyer','revision_charges','taxe_om','rapport_mensuel') "
+                    "AND (a.created_at, a.ctid) > (b.created_at, b.ctid)"
+                )
+            )
             nr = await backfill_default_rules(_db)
             # Nouveaux types (révisions loyer/charges, taxe OM, rapport mensuel) sur
             # les comptes existants, sans recréer des règles supprimées.
-            nr += await backfill_rule_types(_db, [
-                "revision_loyer", "revision_charges", "taxe_om", "rapport_mensuel",
-                # Communications de candidature (e-mails au candidat, pilotables on/off)
-                "candidature_accuse", "candidature_pieces", "candidature_visite",
-                "candidature_relance_visite", "candidature_acceptation", "candidature_refus",
-            ])
+            nr += await backfill_rule_types(
+                _db,
+                [
+                    "revision_loyer",
+                    "revision_charges",
+                    "taxe_om",
+                    "rapport_mensuel",
+                    # Communications de candidature (e-mails au candidat, pilotables on/off)
+                    "candidature_accuse",
+                    "candidature_pieces",
+                    "candidature_visite",
+                    "candidature_relance_visite",
+                    "candidature_acceptation",
+                    "candidature_refus",
+                ],
+            )
             nc = await backfill_default_content(_db)
             # Modèles de courrier multilingues par défaut (« Standard » sélectionné
             # par type), même verrou pour éviter les doublons entre workers.
             from app.services.message_template_defaults import backfill_default_message_templates
+
             nt = await backfill_default_message_templates(_db)
             await _db.commit()
         if nr:
@@ -166,18 +195,21 @@ async def lifespan(app: FastAPI):
     # Attribue un ref_code aux comptes / propriétaires / biens / locataires qui
     # n'en ont pas encore (idempotent). Voir reference_service.
     try:
-        from app.services.reference_service import backfill_table, user_prefix
-        from app.models.user import User as _U
         from app.models.owner import Owner as _O
-        from app.models.tenant import Tenant as _T
         from app.models.property import Property as _P
+        from app.models.tenant import Tenant as _T
+        from app.models.user import User as _U
+        from app.services.reference_service import backfill_table, user_prefix
+
         async with AsyncSessionLocal() as _db:
             nu = await backfill_table(_db, _U, lambda r: user_prefix(getattr(r, "role", None)))
             no = await backfill_table(_db, _O, lambda r: "PR")
             nb = await backfill_table(_db, _P, lambda r: "BN")
             nt = await backfill_table(_db, _T, lambda r: "LO")
             await _db.commit()
-        logger.info(f"Identifiants ref_code (reprise) : {nu} comptes, {no} propriétaires, {nb} biens, {nt} locataires")
+        logger.info(
+            f"Identifiants ref_code (reprise) : {nu} comptes, {no} propriétaires, {nb} biens, {nt} locataires"
+        )
     except Exception as _exc:
         logger.warning(f"Reprise ref_code ignorée : {_exc!r}")
 
@@ -187,7 +219,8 @@ async def lifespan(app: FastAPI):
     rem_hour, rem_minute = 8, 0
     try:
         async with AsyncSessionLocal() as _db:
-            from app.services.settings_service import get_scheduler_config, get_reminder_config
+            from app.services.settings_service import get_reminder_config, get_scheduler_config
+
             _cfg = await get_scheduler_config(_db)
             avis_day, avis_hour, avis_minute = _cfg["day"], _cfg["hour"], _cfg["minute"]
             _rem = await get_reminder_config(_db)
@@ -195,8 +228,11 @@ async def lifespan(app: FastAPI):
     except Exception as _exc:
         logger.warning(f"Lecture config scheduler ignorée : {_exc}")
     start_scheduler(
-        avis_day=avis_day, avis_hour=avis_hour, avis_minute=avis_minute,
-        reminder_hour=rem_hour, reminder_minute=rem_minute,
+        avis_day=avis_day,
+        avis_hour=avis_hour,
+        avis_minute=avis_minute,
+        reminder_hour=rem_hour,
+        reminder_minute=rem_minute,
     )
 
     # Libère le verrou d'initialisation (les autres workers peuvent démarrer).
@@ -219,12 +255,14 @@ async def _seed_default_users() -> None:
     """Crée ou resynchronise les mots de passe des comptes de démonstration."""
     import asyncio
     from concurrent.futures import ThreadPoolExecutor
+
     from sqlalchemy import select
-    from app.models.user import User
-    from app.services.user_service import UserService
-    from app.schemas.user import UserCreate
-    from app.core.security import hash_password, verify_password
+
     from app.core.permissions import Role
+    from app.core.security import hash_password, verify_password
+    from app.models.user import User
+    from app.schemas.user import UserCreate
+    from app.services.user_service import UserService
 
     # Compte initial (toujours créé) depuis la config FIRST_ADMIN_*.
     # Il n'y a PLUS de compte « admin » dans LeComptoirImmo : l'administration est
@@ -302,6 +340,7 @@ async def _apply_column_migrations() -> None:
     """Ajoute les colonnes manquantes (idempotent — IF NOT EXISTS).
     Les erreurs sont loguées mais ne bloquent pas le démarrage."""
     from sqlalchemy import text
+
     migrations = [
         # Quittances sur les paiements
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS anonymized_at TIMESTAMPTZ",

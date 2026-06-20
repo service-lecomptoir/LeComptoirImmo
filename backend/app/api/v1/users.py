@@ -1,20 +1,25 @@
 import re
 import uuid
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.api.deps import get_current_user, get_current_active_admin, get_current_gestionnaire
+from app.api.deps import get_current_active_admin, get_current_gestionnaire, get_current_user
+from app.core.features import get_plan_name, require_feature
 from app.core.permissions import Role
-from app.core.features import require_feature, get_plan_name
-from app.models.user import User
+from app.database import get_db
 from app.models.email_domain import EmailDomain
+from app.models.user import User
 from app.schemas.user import (
-    UserCreate, UserUpdate, UserRoleUpdate,
-    UserPasswordUpdate, AdminPasswordReset, UserResponse, UserCreateResponse
+    AdminPasswordReset,
+    UserCreate,
+    UserCreateResponse,
+    UserPasswordUpdate,
+    UserResponse,
+    UserRoleUpdate,
+    UserUpdate,
 )
 from app.services.user_service import UserService
 
@@ -32,31 +37,45 @@ _MANAGER_LEVEL_ROLES = {Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO
 
 async def _gp_tenant_ids(db: AsyncSession, owner_id: uuid.UUID) -> set[str]:
     """Retourne les user_ids des locataires liés aux biens du gestionnaire-propriétaire."""
-    from app.models.property import Property
     from app.models.lease import Lease
+    from app.models.property import Property
     from app.models.tenant import Tenant
 
-    prop_ids = list((await db.execute(
-        select(Property.id).where(Property.owner_user_id == owner_id)
-    )).scalars().all())
+    prop_ids = list(
+        (await db.execute(select(Property.id).where(Property.owner_user_id == owner_id)))
+        .scalars()
+        .all()
+    )
     if not prop_ids:
         return set()
 
-    tenant_table_ids = list((await db.execute(
-        select(Lease.tenant_id).where(
-            Lease.property_id.in_(prop_ids),
-            Lease.tenant_id.isnot(None),
+    tenant_table_ids = list(
+        (
+            await db.execute(
+                select(Lease.tenant_id).where(
+                    Lease.property_id.in_(prop_ids),
+                    Lease.tenant_id.isnot(None),
+                )
+            )
         )
-    )).scalars().all())
+        .scalars()
+        .all()
+    )
     if not tenant_table_ids:
         return set()
 
-    user_ids = list((await db.execute(
-        select(Tenant.user_id).where(
-            Tenant.id.in_(tenant_table_ids),
-            Tenant.user_id.isnot(None),
+    user_ids = list(
+        (
+            await db.execute(
+                select(Tenant.user_id).where(
+                    Tenant.id.in_(tenant_table_ids),
+                    Tenant.user_id.isnot(None),
+                )
+            )
         )
-    )).scalars().all())
+        .scalars()
+        .all()
+    )
     return {str(uid) for uid in user_ids}
 
 
@@ -77,12 +96,21 @@ async def _require_gp_scope(db: AsyncSession, current_user: User, target_id: uui
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
 
-@router.get("", response_model=List[UserResponse], summary="Liste des utilisateurs")
+@router.get("", response_model=list[UserResponse], summary="Liste des utilisateurs")
 async def list_users(
-    role: Optional[str] = Query(None, description="Filtrer par rôle (ex: proprietaire, locataire)"),
-    unlinked_tenant: bool = Query(False, description="Exclure les comptes déjà liés à un locataire (pour la création d'un locataire)"),
-    unlinked_owner: bool = Query(False, description="Exclure les comptes déjà liés à une fiche propriétaire (pour la création d'un propriétaire)"),
-    owner_id: Optional[uuid.UUID] = Query(None, description="Fiche propriétaire en cours d'édition : son compte lié reste sélectionnable (les comptes liés aux AUTRES fiches sont exclus)"),
+    role: str | None = Query(None, description="Filtrer par rôle (ex: proprietaire, locataire)"),
+    unlinked_tenant: bool = Query(
+        False,
+        description="Exclure les comptes déjà liés à un locataire (pour la création d'un locataire)",
+    ),
+    unlinked_owner: bool = Query(
+        False,
+        description="Exclure les comptes déjà liés à une fiche propriétaire (pour la création d'un propriétaire)",
+    ),
+    owner_id: uuid.UUID | None = Query(
+        None,
+        description="Fiche propriétaire en cours d'édition : son compte lié reste sélectionnable (les comptes liés aux AUTRES fiches sont exclus)",
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
@@ -100,9 +128,11 @@ async def list_users(
         # comptable, lecture…) créés par SON agence. Jamais les comptes de niveau
         # gestionnaire (dont le sien) : il gère le sien dans « Mes informations ».
         from app.api.v1._isolation import agency_member_ids
+
         members = await agency_member_ids(db, current_user)
         users = [
-            u for u in users
+            u
+            for u in users
             if Role(u.role) not in _MANAGER_LEVEL_ROLES
             and u.created_by in members
             and str(u.id) != str(current_user.id)
@@ -110,12 +140,15 @@ async def list_users(
     elif current_role == Role.GESTIONNAIRE_PROPRIO:
         # GP : uniquement les locataires qu'il a créés. Pas son propre compte
         # (géré dans « Mes informations »), ni aucun compte de niveau gestionnaire.
-        created_rows = (await db.execute(
-            select(User.id).where(User.created_by == current_user.id)
-        )).scalars().all()
+        created_rows = (
+            (await db.execute(select(User.id).where(User.created_by == current_user.id)))
+            .scalars()
+            .all()
+        )
         created_ids = {str(uid) for uid in created_rows}
         users = [
-            u for u in users
+            u
+            for u in users
             if str(u.id) in created_ids
             and Role(u.role) not in _MANAGER_LEVEL_ROLES
             and str(u.id) != str(current_user.id)
@@ -128,9 +161,12 @@ async def list_users(
     # Exclut les comptes déjà rattachés à une fiche locataire (un compte = un locataire)
     if unlinked_tenant:
         from app.models.tenant import Tenant
-        linked_rows = (await db.execute(
-            select(Tenant.user_id).where(Tenant.user_id.isnot(None))
-        )).scalars().all()
+
+        linked_rows = (
+            (await db.execute(select(Tenant.user_id).where(Tenant.user_id.isnot(None))))
+            .scalars()
+            .all()
+        )
         linked_ids = {str(uid) for uid in linked_rows}
         users = [u for u in users if str(u.id) not in linked_ids]
 
@@ -139,6 +175,7 @@ async def list_users(
     # on n'exclut que les comptes liés aux AUTRES fiches.
     if unlinked_owner:
         from app.models.owner import Owner
+
         q = select(Owner.user_id).where(Owner.user_id.isnot(None))
         if owner_id is not None:
             q = q.where(Owner.id != owner_id)
@@ -193,20 +230,27 @@ async def create_user(
     # Mot de passe transparent pour le gestionnaire : s'il n'en fournit pas, on
     # en génère un provisoire côté serveur et on l'envoie par e-mail à l'utilisateur.
     # Compte provisoire dans tous les cas → changement forcé à la 1re connexion.
-    generated_password: Optional[str] = None
+    generated_password: str | None = None
     if not (data.password or "").strip():
         generated_password = _generate_temp_password(12)
         data.password = generated_password
 
     # Passer current_user.id pour tracer le créateur (isolation GP).
     new_user = await UserService.create(
-        db, data, created_by=current_user.id, must_change_password=True,
+        db,
+        data,
+        created_by=current_user.id,
+        must_change_password=True,
     )
     from app.services import audit_service
+
     await audit_service.log(
-        db, action=audit_service.USER_CREATE,
-        user_id=current_user.id, user_email=current_user.email,
-        entity_type="user", entity_id=new_user.id,
+        db,
+        action=audit_service.USER_CREATE,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="user",
+        entity_id=new_user.id,
         details={"email": new_user.email, "role": new_user.role},
     )
 
@@ -217,18 +261,28 @@ async def create_user(
         try:
             from app.services.email_service import send_credentials, set_branding
             from app.services.mail_signature import read_logo
+
             # Apparence (thème + logo) du gestionnaire créateur.
             _logo, _sub = read_logo(getattr(current_user, "logo_path", None))
-            set_branding(getattr(current_user, "email_theme", None), logo=_logo, logo_subtype=_sub,
-                         brand_name=getattr(current_user, "full_name", None))
+            set_branding(
+                getattr(current_user, "email_theme", None),
+                logo=_logo,
+                logo_subtype=_sub,
+                brand_name=getattr(current_user, "full_name", None),
+            )
             credentials_email_sent = await send_credentials(
-                to=new_user.email, login=new_user.email,
-                password=generated_password, full_name=new_user.full_name,
+                to=new_user.email,
+                login=new_user.email,
+                password=generated_password,
+                full_name=new_user.full_name,
             )
         except Exception as _exc:  # noqa: BLE001
             import logging
+
             logging.getLogger(__name__).warning(
-                "Envoi identifiants à la création échoué (%s): %s", new_user.id, _exc,
+                "Envoi identifiants à la création échoué (%s): %s",
+                new_user.id,
+                _exc,
             )
 
     resp = UserCreateResponse.model_validate(new_user)
@@ -311,7 +365,10 @@ async def update_role(
     (gestionnaire / gestionnaire-propriétaire / admin) est interdit : ces comptes
     sont gérés exclusivement depuis Alice."""
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Modification de rôle réservée aux administrateurs")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Modification de rôle réservée aux administrateurs",
+        )
     if Role(data.role) in _MANAGER_LEVEL_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -342,7 +399,9 @@ async def delete_user(
     await UserService.delete(db, user_id)
 
 
-@router.patch("/{user_id}/password", status_code=204, summary="Réinitialiser le mot de passe d'un utilisateur")
+@router.patch(
+    "/{user_id}/password", status_code=204, summary="Réinitialiser le mot de passe d'un utilisateur"
+)
 async def admin_reset_password(
     user_id: uuid.UUID,
     data: AdminPasswordReset,
@@ -374,11 +433,14 @@ async def admin_reset_password(
 def _generate_temp_password(length: int = 10) -> str:
     """Mot de passe temporaire lisible (sans caractères ambigus)."""
     import secrets
+
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-@router.post("/{user_id}/send-credentials", summary="Envoyer les identifiants de connexion par e-mail")
+@router.post(
+    "/{user_id}/send-credentials", summary="Envoyer les identifiants de connexion par e-mail"
+)
 async def send_user_credentials(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -400,8 +462,9 @@ async def send_user_credentials(
                 detail="Un gestionnaire ne peut envoyer les identifiants que des comptes propriétaire ou locataire.",
             )
     if not (target.email or "").strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Ce compte n'a pas d'adresse e-mail.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Ce compte n'a pas d'adresse e-mail."
+        )
 
     temp_password = _generate_temp_password()
     await UserService.admin_set_password(db, user_id, temp_password, temporary=True)
@@ -411,42 +474,80 @@ async def send_user_credentials(
     try:
         from app.services.email_service import send_credentials, set_branding
         from app.services.mail_signature import read_logo
+
         _logo, _sub = read_logo(getattr(current_user, "logo_path", None))
-        set_branding(getattr(current_user, "email_theme", None), logo=_logo, logo_subtype=_sub,
-                     brand_name=getattr(current_user, "full_name", None))
+        set_branding(
+            getattr(current_user, "email_theme", None),
+            logo=_logo,
+            logo_subtype=_sub,
+            brand_name=getattr(current_user, "full_name", None),
+        )
         email_sent = await send_credentials(
-            to=target.email, login=target.email,
-            password=temp_password, full_name=target.full_name,
+            to=target.email,
+            login=target.email,
+            password=temp_password,
+            full_name=target.full_name,
         )
     except Exception as _exc:  # noqa: BLE001
         import logging
+
         logging.getLogger(__name__).warning("Envoi identifiants échoué (%s): %s", user_id, _exc)
 
     # Audit : ne jamais journaliser le mot de passe.
     from app.services import audit_service
+
     await audit_service.log(
-        db, action="user.send_credentials",
-        user_id=current_user.id, user_email=current_user.email,
-        entity_type="user", entity_id=target.id,
+        db,
+        action="user.send_credentials",
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="user",
+        entity_id=target.id,
         details={"to": target.email, "email_sent": email_sent},
     )
     await db.commit()
     return {
         "email_sent": email_sent,
         "to": target.email,
-        "detail": ("Identifiants envoyés par e-mail." if email_sent
-                   else "Mot de passe temporaire défini, mais e-mail non envoyé (SMTP désactivé ou erreur)."),
+        "detail": (
+            "Identifiants envoyés par e-mail."
+            if email_sent
+            else "Mot de passe temporaire défini, mais e-mail non envoyé (SMTP désactivé ou erreur)."
+        ),
     }
 
 
 # ── Domaines e-mail autorisés ────────────────────────────────────────────────
 # Domaines de fournisseurs publics : envoi depuis ces domaines impossible.
 _PUBLIC_EMAIL_DOMAINS = {
-    "gmail.com", "googlemail.com", "hotmail.com", "hotmail.fr", "outlook.com",
-    "outlook.fr", "live.com", "live.fr", "msn.com", "yahoo.com", "yahoo.fr",
-    "ymail.com", "icloud.com", "me.com", "mac.com", "aol.com", "gmx.com",
-    "gmx.fr", "proton.me", "protonmail.com", "orange.fr", "wanadoo.fr",
-    "free.fr", "sfr.fr", "laposte.net", "bbox.fr", "neuf.fr", "numericable.fr",
+    "gmail.com",
+    "googlemail.com",
+    "hotmail.com",
+    "hotmail.fr",
+    "outlook.com",
+    "outlook.fr",
+    "live.com",
+    "live.fr",
+    "msn.com",
+    "yahoo.com",
+    "yahoo.fr",
+    "ymail.com",
+    "icloud.com",
+    "me.com",
+    "mac.com",
+    "aol.com",
+    "gmx.com",
+    "gmx.fr",
+    "proton.me",
+    "protonmail.com",
+    "orange.fr",
+    "wanadoo.fr",
+    "free.fr",
+    "sfr.fr",
+    "laposte.net",
+    "bbox.fr",
+    "neuf.fr",
+    "numericable.fr",
 }
 _DOMAIN_RE = re.compile(r"^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$")
 
@@ -472,18 +573,35 @@ class EmailDomainOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get("/me/email-domains", response_model=List[EmailDomainOut], summary="Mes domaines e-mail autorisés")
+@router.get(
+    "/me/email-domains",
+    response_model=list[EmailDomainOut],
+    summary="Mes domaines e-mail autorisés",
+)
 async def list_my_email_domains(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    rows = (await db.execute(
-        select(EmailDomain).where(EmailDomain.user_id == current_user.id).order_by(EmailDomain.created_at)
-    )).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(EmailDomain)
+                .where(EmailDomain.user_id == current_user.id)
+                .order_by(EmailDomain.created_at)
+            )
+        )
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 
-@router.post("/me/email-domains", response_model=EmailDomainOut, status_code=201, summary="Ajouter un domaine e-mail")
+@router.post(
+    "/me/email-domains",
+    response_model=EmailDomainOut,
+    status_code=201,
+    summary="Ajouter un domaine e-mail",
+)
 async def add_my_email_domain(
     data: EmailDomainIn,
     db: AsyncSession = Depends(get_db),
@@ -491,16 +609,22 @@ async def add_my_email_domain(
 ):
     d = _normalize_domain(data.domain)
     if not _DOMAIN_RE.match(d):
-        raise HTTPException(status_code=400, detail="Nom de domaine invalide (exemple : mon-agence.fr).")
+        raise HTTPException(
+            status_code=400, detail="Nom de domaine invalide (exemple : mon-agence.fr)."
+        )
     if d in _PUBLIC_EMAIL_DOMAINS:
         raise HTTPException(
             status_code=400,
             detail="Impossible d'activer l'envoi depuis un domaine d'un fournisseur public "
-                   "(gmail.com, hotmail.com, yahoo.com, etc.). Utilisez votre propre nom de domaine.",
+            "(gmail.com, hotmail.com, yahoo.com, etc.). Utilisez votre propre nom de domaine.",
         )
-    existing = (await db.execute(
-        select(EmailDomain).where(EmailDomain.user_id == current_user.id, EmailDomain.domain == d)
-    )).scalar_one_or_none()
+    existing = (
+        await db.execute(
+            select(EmailDomain).where(
+                EmailDomain.user_id == current_user.id, EmailDomain.domain == d
+            )
+        )
+    ).scalar_one_or_none()
     if existing:
         return EmailDomainOut(id=existing.id, domain=existing.domain)
     obj = EmailDomain(user_id=current_user.id, domain=d)
@@ -509,15 +633,21 @@ async def add_my_email_domain(
     return EmailDomainOut(id=obj.id, domain=obj.domain)
 
 
-@router.delete("/me/email-domains/{domain_id}", status_code=204, summary="Supprimer un domaine e-mail")
+@router.delete(
+    "/me/email-domains/{domain_id}", status_code=204, summary="Supprimer un domaine e-mail"
+)
 async def delete_my_email_domain(
     domain_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    obj = (await db.execute(
-        select(EmailDomain).where(EmailDomain.id == domain_id, EmailDomain.user_id == current_user.id)
-    )).scalar_one_or_none()
+    obj = (
+        await db.execute(
+            select(EmailDomain).where(
+                EmailDomain.id == domain_id, EmailDomain.user_id == current_user.id
+            )
+        )
+    ).scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Domaine introuvable")
     await db.delete(obj)
@@ -526,7 +656,7 @@ async def delete_my_email_domain(
 
 # ── Visibilité de l'espace propriétaire (réglée par le gestionnaire) ──────────
 class VisibilityUpdate(BaseModel):
-    sections: List[str]
+    sections: list[str]
 
 
 async def _agency_root_for(db: AsyncSession, user: User) -> User:
@@ -542,7 +672,11 @@ async def _accessible_proprio(db: AsyncSession, current_user: User, user_id: uui
     if Role(current_user.role) == Role.ADMIN:
         return target
     from app.api.v1._isolation import agency_member_ids
-    if target.id in await agency_member_ids(db, current_user) or target.created_by == current_user.id:
+
+    if (
+        target.id in await agency_member_ids(db, current_user)
+        or target.created_by == current_user.id
+    ):
         return target
     raise HTTPException(status_code=403, detail="Ce propriétaire n'est pas dans votre périmètre.")
 
@@ -552,8 +686,9 @@ async def proprio_visibility_catalog(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    from app.core.proprio_sections import PROPRIO_SECTIONS, LABELS, plan_allowed_keys
     from app.core.features import get_plan_features
+    from app.core.proprio_sections import LABELS, PROPRIO_SECTIONS, plan_allowed_keys
+
     root = await _agency_root_for(db, current_user)
     allowed = set(plan_allowed_keys(await get_plan_features(db, root.id)))
     return {
@@ -572,6 +707,7 @@ async def get_proprio_visibility(
 ):
     target = await _accessible_proprio(db, current_user, user_id)
     from app.services.proprio_visibility_service import effective_sections_for
+
     return {
         "override": target.proprio_visibility,
         "effective": await effective_sections_for(db, target),
@@ -579,7 +715,10 @@ async def get_proprio_visibility(
     }
 
 
-@router.patch("/{user_id}/proprio-visibility", summary="Régler la visibilité d'un propriétaire (0 = compte désactivé)")
+@router.patch(
+    "/{user_id}/proprio-visibility",
+    summary="Régler la visibilité d'un propriétaire (0 = compte désactivé)",
+)
 async def set_proprio_visibility(
     user_id: uuid.UUID,
     data: VisibilityUpdate,
@@ -587,9 +726,10 @@ async def set_proprio_visibility(
     current_user: User = Depends(get_current_gestionnaire),
 ):
     target = await _accessible_proprio(db, current_user, user_id)
-    from app.core.proprio_sections import sanitize, plan_allowed_keys
     from app.core.features import get_plan_features
+    from app.core.proprio_sections import plan_allowed_keys, sanitize
     from app.services.proprio_visibility_service import effective_sections_for
+
     root = await _agency_root_for(db, current_user)
     allowed = set(plan_allowed_keys(await get_plan_features(db, root.id)))
     secs = [k for k in sanitize(data.sections) if k in allowed]

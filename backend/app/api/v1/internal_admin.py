@@ -7,9 +7,10 @@ joignable uniquement par Alice sur le réseau Docker interne.
 
 Protégé par l'en-tête `X-Internal-Key` == `ALICE_INTERNAL_KEY` (clé partagée).
 """
+
+import hmac
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, EmailStr, Field
@@ -31,9 +32,14 @@ router = APIRouter(prefix="/internal", tags=["internal-admin"])
 _MANAGER_ROLES = [Role.GESTIONNAIRE.value, Role.GESTIONNAIRE_PROPRIO.value]
 
 
-def require_internal_key(x_internal_key: Optional[str] = Header(default=None)) -> None:
+def require_internal_key(x_internal_key: str | None = Header(default=None)) -> None:
     cfg = get_settings()
-    if not x_internal_key or x_internal_key != cfg.ALICE_INTERNAL_KEY:
+    # Comparaison constant-time (anti timing-attack) — clé partagée inter-services.
+    if (
+        not x_internal_key
+        or not cfg.ALICE_INTERNAL_KEY
+        or not hmac.compare_digest(x_internal_key, cfg.ALICE_INTERNAL_KEY)
+    ):
         raise HTTPException(status_code=401, detail="Clé interne invalide.")
 
 
@@ -42,14 +48,14 @@ class ManagerOut(BaseModel):
     id: uuid.UUID
     email: EmailStr
     full_name: str
-    owner_kind: Optional[str] = None
-    owner_full_name: Optional[str] = None
-    owner_company: Optional[str] = None
-    owner_national_id: Optional[str] = None
-    phone: Optional[str] = None
+    owner_kind: str | None = None
+    owner_full_name: str | None = None
+    owner_company: str | None = None
+    owner_national_id: str | None = None
+    phone: str | None = None
     role: str
     is_active: bool
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
     property_count: int = 0
 
     model_config = {"from_attributes": True}
@@ -58,9 +64,9 @@ class ManagerOut(BaseModel):
 class PropertyOut(BaseModel):
     id: uuid.UUID
     name: str
-    address: Optional[str] = None
-    zip_code: Optional[str] = None
-    city: Optional[str] = None
+    address: str | None = None
+    zip_code: str | None = None
+    city: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -68,27 +74,27 @@ class PropertyOut(BaseModel):
 class ManagerCreate(BaseModel):
     email: EmailStr
     full_name: str = Field("", max_length=255)
-    owner_kind: Optional[str] = None
-    owner_full_name: Optional[str] = None
-    owner_company: Optional[str] = None
-    owner_national_id: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
+    owner_kind: str | None = None
+    owner_full_name: str | None = None
+    owner_company: str | None = None
+    owner_national_id: str | None = None
+    phone: str | None = None
+    address: str | None = None
     role: str = "gestionnaire"
     password: str = Field(..., min_length=8, max_length=128)
 
 
 class ManagerUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = None
-    owner_kind: Optional[str] = None
-    owner_full_name: Optional[str] = None
-    owner_company: Optional[str] = None
-    owner_national_id: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    role: Optional[str] = None
-    is_active: Optional[bool] = None
+    email: EmailStr | None = None
+    full_name: str | None = None
+    owner_kind: str | None = None
+    owner_full_name: str | None = None
+    owner_company: str | None = None
+    owner_national_id: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    role: str | None = None
+    is_active: bool | None = None
 
 
 class ResetPassword(BaseModel):
@@ -136,12 +142,18 @@ def _manager_out(user: User, property_count: int = 0) -> ManagerOut:
 
 
 @router.get("/managers", response_model=list[ManagerOut])
-async def list_managers(_: None = Depends(require_internal_key), db: AsyncSession = Depends(get_db)):
+async def list_managers(
+    _: None = Depends(require_internal_key), db: AsyncSession = Depends(get_db)
+):
     rows = (
-        await db.execute(
-            select(User).where(User.role.in_(_MANAGER_ROLES)).order_by(User.full_name)
+        (
+            await db.execute(
+                select(User).where(User.role.in_(_MANAGER_ROLES)).order_by(User.full_name)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     counts = await _property_counts(db)
     return [_manager_out(u, counts.get(u.id, 0)) for u in rows]
 
@@ -155,9 +167,10 @@ async def get_manager(
     user = await db.get(User, manager_id)
     if user is None or user.role not in _MANAGER_ROLES:
         raise HTTPException(status_code=404, detail="Gestionnaire introuvable.")
-    count = await db.scalar(
-        select(func.count(Property.id)).where(Property.created_by == manager_id)
-    ) or 0
+    count = (
+        await db.scalar(select(func.count(Property.id)).where(Property.created_by == manager_id))
+        or 0
+    )
     return _manager_out(user, count)
 
 
@@ -168,10 +181,14 @@ async def manager_properties(
     db: AsyncSession = Depends(get_db),
 ):
     rows = (
-        await db.execute(
-            select(Property).where(Property.created_by == manager_id).order_by(Property.name)
+        (
+            await db.execute(
+                select(Property).where(Property.created_by == manager_id).order_by(Property.name)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 
@@ -185,7 +202,9 @@ async def create_manager(
         raise HTTPException(status_code=422, detail="Rôle de gestionnaire invalide.")
     user = await UserService.create(
         db,
-        UserCreate(email=data.email, password=data.password, full_name=data.full_name, role=Role(data.role)),
+        UserCreate(
+            email=data.email, password=data.password, full_name=data.full_name, role=Role(data.role)
+        ),
         created_by=None,  # compte principal (agence), créé par la plateforme
     )
     if data.owner_kind in ("personne", "societe"):
@@ -260,36 +279,56 @@ async def block_manager(
         raise HTTPException(status_code=404, detail="Gestionnaire introuvable.")
 
     prop_ids = [
-        r[0] for r in (await db.execute(
-            text("SELECT id FROM properties WHERE created_by = :g"), {"g": manager_id}
-        )).all()
+        r[0]
+        for r in (
+            await db.execute(
+                text("SELECT id FROM properties WHERE created_by = :g"), {"g": manager_id}
+            )
+        ).all()
     ]
     owners: list[uuid.UUID] = []
     tenant_db_ids: set[uuid.UUID] = set()
     if prop_ids:
         owners = [
-            r[0] for r in (await db.execute(
-                text("SELECT owner_user_id FROM properties WHERE id = ANY(:ids) AND owner_user_id IS NOT NULL"),
-                {"ids": prop_ids},
-            )).all()
+            r[0]
+            for r in (
+                await db.execute(
+                    text(
+                        "SELECT owner_user_id FROM properties WHERE id = ANY(:ids) AND owner_user_id IS NOT NULL"
+                    ),
+                    {"ids": prop_ids},
+                )
+            ).all()
         ]
-        for r in (await db.execute(
-            text("SELECT tenant_id FROM leases WHERE property_id = ANY(:ids) AND is_active = true AND tenant_id IS NOT NULL"),
-            {"ids": prop_ids},
-        )).all():
+        for r in (
+            await db.execute(
+                text(
+                    "SELECT tenant_id FROM leases WHERE property_id = ANY(:ids) AND is_active = true AND tenant_id IS NOT NULL"
+                ),
+                {"ids": prop_ids},
+            )
+        ).all():
             tenant_db_ids.add(r[0])
         # Chemin via units (défensif : la table peut ne pas exister selon le schéma).
         try:
             unit_ids = [
-                r[0] for r in (await db.execute(
-                    text("SELECT id FROM units WHERE property_id = ANY(:ids)"), {"ids": prop_ids}
-                )).all()
+                r[0]
+                for r in (
+                    await db.execute(
+                        text("SELECT id FROM units WHERE property_id = ANY(:ids)"),
+                        {"ids": prop_ids},
+                    )
+                ).all()
             ]
             if unit_ids:
-                for r in (await db.execute(
-                    text("SELECT tenant_id FROM leases WHERE unit_id = ANY(:ids) AND is_active = true AND tenant_id IS NOT NULL"),
-                    {"ids": unit_ids},
-                )).all():
+                for r in (
+                    await db.execute(
+                        text(
+                            "SELECT tenant_id FROM leases WHERE unit_id = ANY(:ids) AND is_active = true AND tenant_id IS NOT NULL"
+                        ),
+                        {"ids": unit_ids},
+                    )
+                ).all():
                     tenant_db_ids.add(r[0])
         except Exception:  # noqa: BLE001
             pass
@@ -297,16 +336,24 @@ async def block_manager(
     tenant_user_ids: list[uuid.UUID] = []
     if tenant_db_ids:
         tenant_user_ids = [
-            r[0] for r in (await db.execute(
-                text("SELECT user_id FROM tenants WHERE id = ANY(:ids) AND user_id IS NOT NULL"),
-                {"ids": list(tenant_db_ids)},
-            )).all()
+            r[0]
+            for r in (
+                await db.execute(
+                    text(
+                        "SELECT user_id FROM tenants WHERE id = ANY(:ids) AND user_id IS NOT NULL"
+                    ),
+                    {"ids": list(tenant_db_ids)},
+                )
+            ).all()
         ]
     direct_tenant_user_ids = [
-        r[0] for r in (await db.execute(
-            text("SELECT user_id FROM tenants WHERE created_by = :g AND user_id IS NOT NULL"),
-            {"g": manager_id},
-        )).all()
+        r[0]
+        for r in (
+            await db.execute(
+                text("SELECT user_id FROM tenants WHERE created_by = :g AND user_id IS NOT NULL"),
+                {"g": manager_id},
+            )
+        ).all()
     ]
 
     cascade = list(set(owners + tenant_user_ids + direct_tenant_user_ids) - {manager_id})
@@ -356,9 +403,17 @@ async def reset_manager_password(
 
 @router.get("/stats", response_model=Stats)
 async def stats(_: None = Depends(require_internal_key), db: AsyncSession = Depends(get_db)):
-    managers = await db.scalar(select(func.count()).select_from(User).where(User.role.in_(_MANAGER_ROLES))) or 0
-    active = await db.scalar(
-        select(func.count()).select_from(User).where(User.role.in_(_MANAGER_ROLES), User.is_active.is_(True))
-    ) or 0
+    managers = (
+        await db.scalar(select(func.count()).select_from(User).where(User.role.in_(_MANAGER_ROLES)))
+        or 0
+    )
+    active = (
+        await db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(User.role.in_(_MANAGER_ROLES), User.is_active.is_(True))
+        )
+        or 0
+    )
     total = await db.scalar(select(func.count()).select_from(User)) or 0
     return Stats(managers=managers, active_managers=active, users=total)

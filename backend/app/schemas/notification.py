@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel
 
-from app.models.notification import NotificationType, NotificationPriority
+from app.models.notification import NotificationPriority, NotificationType
 
 
 class NotificationCreate(BaseModel):
@@ -11,9 +11,9 @@ class NotificationCreate(BaseModel):
     priority: NotificationPriority = NotificationPriority.NORMAL
     title: str
     message: str
-    entity_type: Optional[str] = None
-    entity_id: Optional[uuid.UUID] = None
-    user_id: Optional[uuid.UUID] = None  # None = broadcast
+    entity_type: str | None = None
+    entity_id: uuid.UUID | None = None
+    user_id: uuid.UUID | None = None  # None = broadcast
 
 
 class NotificationResponse(BaseModel):
@@ -22,11 +22,11 @@ class NotificationResponse(BaseModel):
     priority: NotificationPriority
     title: str
     message: str
-    entity_type: Optional[str] = None
-    entity_id: Optional[uuid.UUID] = None
+    entity_type: str | None = None
+    entity_id: uuid.UUID | None = None
     is_read: bool
-    read_at: Optional[datetime] = None
-    user_id: Optional[uuid.UUID] = None
+    read_at: datetime | None = None
+    user_id: uuid.UUID | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

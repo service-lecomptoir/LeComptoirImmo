@@ -1,17 +1,19 @@
 import uuid
 from datetime import date
-from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Date, Numeric, Boolean, Integer, Enum as SAEnum, ForeignKey, Table, Column
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from enum import Enum
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, Numeric, String, Table
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
-    from app.models.tenant import Tenant
-    from app.models.property import Property
     from app.models.inspection import Inspection
+    from app.models.property import Property
+    from app.models.tenant import Tenant
 
 
 # ── Association co-titulaires (locataires secondaires d'un contrat) ────────────
@@ -19,8 +21,18 @@ if TYPE_CHECKING:
 lease_tenants = Table(
     "lease_tenants",
     Base.metadata,
-    Column("lease_id", UUID(as_uuid=True), ForeignKey("leases.id", ondelete="CASCADE"), primary_key=True),
-    Column("tenant_id", UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="RESTRICT"), primary_key=True),
+    Column(
+        "lease_id",
+        UUID(as_uuid=True),
+        ForeignKey("leases.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "tenant_id",
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="RESTRICT"),
+        primary_key=True,
+    ),
 )
 
 
@@ -36,18 +48,20 @@ class PaymentMethod(str, Enum):
     CHEQUE = "cheque"
     PRELEVEMENT = "prelevement"
     ESPECES = "especes"
-    CARTE = "carte"          # paiement en ligne (Stripe / SumUp)
+    CARTE = "carte"  # paiement en ligne (Stripe / SumUp)
 
 
 class RentCallRule(str, Enum):
     """Règle d'appel de loyer : période contractuelle (basée sur la date d'entrée du
     bail) ou période calendaire (du 1er au dernier jour du mois)."""
+
     CONTRACTUELLE = "contractuelle"
     CALENDRIER = "calendrier"
 
 
 class PaymentFrequency(str, Enum):
     """Fréquence d'appel du loyer."""
+
     MENSUELLE = "mensuelle"
     BIMESTRIELLE = "bimestrielle"
     TRIMESTRIELLE = "trimestrielle"
@@ -58,9 +72,7 @@ class PaymentFrequency(str, Enum):
 class Lease(Base, TimestampMixin):
     __tablename__ = "leases"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # ── Liens ─────────────────────────────────────────────────────────────────
     property_id: Mapped[uuid.UUID] = mapped_column(
@@ -78,16 +90,20 @@ class Lease(Base, TimestampMixin):
 
     # ── Type de contrat ───────────────────────────────────────────────────────
     lease_type: Mapped[str] = mapped_column(
-        SAEnum(LeaseType, name="lease_type_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
+        SAEnum(
+            LeaseType,
+            name="lease_type_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=LeaseType.VIDE,
     )
 
     # ── Dates ─────────────────────────────────────────────────────────────────
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    notice_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notice_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # ── Finances ──────────────────────────────────────────────────────────────
     rent_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
@@ -95,8 +111,12 @@ class Lease(Base, TimestampMixin):
     deposit_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, default=0)
     payment_day: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     payment_method: Mapped[str] = mapped_column(
-        SAEnum(PaymentMethod, name="payment_method_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
+        SAEnum(
+            PaymentMethod,
+            name="payment_method_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=PaymentMethod.VIREMENT,
     )
@@ -112,31 +132,31 @@ class Lease(Base, TimestampMixin):
     # ── Révision du loyer (IRL) ─────────────────────────────────────────────────
     # Trimestre de référence (1..4) et indice IRL de référence (valeur au dernier
     # calage), + date de la dernière révision. Révision annuelle à l'anniversaire.
-    irl_quarter: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    irl_base_index: Mapped[Optional[float]] = mapped_column(Numeric(8, 2), nullable=True)
-    last_revision_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    irl_quarter: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    irl_base_index: Mapped[float | None] = mapped_column(Numeric(8, 2), nullable=True)
+    last_revision_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # ── APL ───────────────────────────────────────────────────────────────────
-    apl_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
+    apl_amount: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     apl_tiers_payant: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # ── Garant ────────────────────────────────────────────────────────────────
     has_guarantor: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    guarantor_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    guarantor_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    guarantor_phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    guarantor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    guarantor_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    guarantor_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
     # ── État ──────────────────────────────────────────────────────────────────
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
-    notes: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
     # ── Suivi de la relation locataire (scoring) ────────────────────────────────
     # Liste d'événements éditables : [{id, date, kind, note, author_name, created_at}].
     # Le « kind » porte une polarité/poids qui alimente le score de qualité de payeur.
-    relationship_events: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    relationship_events: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     # ── Audit ─────────────────────────────────────────────────────────────────
-    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
@@ -144,7 +164,9 @@ class Lease(Base, TimestampMixin):
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="leases")
     # Co-titulaires secondaires (le principal est `tenant` ci-dessus)
     co_tenants: Mapped[list["Tenant"]] = relationship(
-        "Tenant", secondary=lease_tenants, lazy="selectin",
+        "Tenant",
+        secondary=lease_tenants,
+        lazy="selectin",
     )
     parent_property: Mapped["Property"] = relationship("Property", back_populates="leases")
     inspections: Mapped[list["Inspection"]] = relationship(

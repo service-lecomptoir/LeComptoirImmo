@@ -1,10 +1,12 @@
 """Modèle DocumentTemplate — templates personnalisables pour documents générés."""
+
 import uuid
-from typing import Optional, Any
-from sqlalchemy import String, Text, Boolean, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID, JSONB
 from enum import Enum
+from typing import Any
+
+from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base, TimestampMixin
 
@@ -40,35 +42,33 @@ ATELIER_ORDER = [
 class DocumentTemplate(Base, TimestampMixin):
     __tablename__ = "document_templates"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     template_type: Mapped[str] = mapped_column(String(30), nullable=False)
 
     # Personnalisation visuelle
-    logo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    logo_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    header_color: Mapped[Optional[str]] = mapped_column(String(20), default="#1E3A5F", nullable=True)
-    company_name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    company_address: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
-    company_phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    company_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    company_siret: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    logo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    header_color: Mapped[str | None] = mapped_column(String(20), default="#1E3A5F", nullable=True)
+    company_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    company_address: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    company_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    company_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    company_siret: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Contenu HTML du template
-    content_html: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    footer_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    content_html: Mapped[str | None] = mapped_column(Text, nullable=True)
+    footer_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Éditeur par blocs (avis d'échéance et autres documents de l'atelier) :
     # liste ordonnée de blocs réordonnables + thème (palette/police). NULL = pas
     # encore migré → on retombe sur le rendu HTML classique (content_html).
-    blocks: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
-    theme: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
+    blocks: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+    theme: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
 
     # Isolation par gestionnaire (NULL = ancien template global, visible admin seulement)
-    gestionnaire_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    gestionnaire_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
 

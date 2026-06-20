@@ -4,6 +4,7 @@ Léger (ASGI pur, sans BaseHTTPMiddleware). Couvre l'API JSON et les fichiers
 servis sous /uploads. Les en-têtes côté navigateur (SPA) sont en plus posés par
 le reverse-proxy edge ; ceci est une défense en profondeur côté application.
 """
+
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 

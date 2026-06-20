@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Cerveau LLM des agents IA (Phase 2) — client compatible API OpenAI.
 
 Un seul connecteur (chat completions) → fonctionne avec Groq (défaut, gratuit),
@@ -8,8 +7,8 @@ Conception défensive : si aucune clé n'est configurée OU si l'appel échoue,
 `chat()` retourne None → l'appelant retombe sur le routeur déterministe
 (Phase 1). L'application n'est jamais bloquée par le LLM.
 """
+
 import logging
-from typing import Optional, List, Dict
 
 from app.config import get_settings
 
@@ -21,12 +20,12 @@ def enabled() -> bool:
 
 
 async def chat(
-    messages: List[Dict[str, str]],
+    messages: list[dict[str, str]],
     *,
     temperature: float = 0.3,
     max_tokens: int = 600,
     timeout: float = 30.0,
-) -> Optional[str]:
+) -> str | None:
     """Appelle l'endpoint chat completions. Retourne le texte ou None (repli)."""
     s = get_settings()
     if not s.agent_llm_enabled:
@@ -41,6 +40,7 @@ async def chat(
     }
     try:
         import httpx
+
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
                 url,

@@ -1,7 +1,7 @@
 """Service d'audit — enregistre les actions critiques dans audit_logs."""
+
 import logging
 import uuid
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,12 +31,12 @@ RGPD_ERASE = "rgpd.erase"
 async def log(
     db: AsyncSession,
     action: str,
-    user_id: Optional[uuid.UUID] = None,
-    user_email: Optional[str] = None,
-    entity_type: Optional[str] = None,
-    entity_id: Optional[uuid.UUID] = None,
-    details: Optional[dict] = None,
-    ip_address: Optional[str] = None,
+    user_id: uuid.UUID | None = None,
+    user_email: str | None = None,
+    entity_type: str | None = None,
+    entity_id: uuid.UUID | None = None,
+    details: dict | None = None,
+    ip_address: str | None = None,
 ) -> None:
     """Insère une ligne dans audit_logs. Silencieux en cas d'erreur pour ne pas bloquer."""
     try:

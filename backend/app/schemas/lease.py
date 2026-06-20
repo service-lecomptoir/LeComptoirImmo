@@ -1,6 +1,7 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.models.lease import LeaseType, PaymentMethod
@@ -13,12 +14,13 @@ PaymentFrequencyT = Literal[
 
 # ── Sous-schémas pour les relations chargées ───────────────────────────────────
 
+
 class TenantInLease(BaseModel):
     id: uuid.UUID
     full_name: str
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    national_id: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
+    national_id: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -33,6 +35,7 @@ class PropertyInLease(BaseModel):
 
 # ── CRUD schemas ───────────────────────────────────────────────────────────────
 
+
 class LeaseCreate(BaseModel):
     property_id: uuid.UUID
     tenant_id: uuid.UUID
@@ -40,8 +43,8 @@ class LeaseCreate(BaseModel):
     secondary_tenant_ids: list[uuid.UUID] = Field(default_factory=list)
     lease_type: LeaseType = LeaseType.VIDE
     start_date: date
-    end_date: Optional[date] = None
-    notice_date: Optional[date] = None
+    end_date: date | None = None
+    notice_date: date | None = None
     rent_amount: float = Field(..., gt=0)
     charges_amount: float = Field(0.0, ge=0)
     deposit_amount: float = Field(0.0, ge=0)
@@ -49,45 +52,45 @@ class LeaseCreate(BaseModel):
     payment_method: PaymentMethod = PaymentMethod.VIREMENT
     rent_call_rule: RentCallRuleT = "calendrier"
     payment_frequency: PaymentFrequencyT = "mensuelle"
-    apl_amount: Optional[float] = Field(None, ge=0)
+    apl_amount: float | None = Field(None, ge=0)
     apl_tiers_payant: bool = False
     has_guarantor: bool = False
-    guarantor_name: Optional[str] = None
-    guarantor_email: Optional[str] = None
-    guarantor_phone: Optional[str] = None
-    notes: Optional[str] = None
+    guarantor_name: str | None = None
+    guarantor_email: str | None = None
+    guarantor_phone: str | None = None
+    notes: str | None = None
 
 
 class LeaseUpdate(BaseModel):
     # Le locataire principal peut être réassigné en modification (pas le bien).
-    tenant_id: Optional[uuid.UUID] = None
-    lease_type: Optional[LeaseType] = None
+    tenant_id: uuid.UUID | None = None
+    lease_type: LeaseType | None = None
     # Si fourni, remplace la liste des co-titulaires secondaires
-    secondary_tenant_ids: Optional[list[uuid.UUID]] = None
-    end_date: Optional[date] = None
-    notice_date: Optional[date] = None
-    rent_amount: Optional[float] = Field(None, gt=0)
-    charges_amount: Optional[float] = Field(None, ge=0)
+    secondary_tenant_ids: list[uuid.UUID] | None = None
+    end_date: date | None = None
+    notice_date: date | None = None
+    rent_amount: float | None = Field(None, gt=0)
+    charges_amount: float | None = Field(None, ge=0)
     # Date d'effet d'une modification du loyer/charges (défaut : 1er du mois suivant).
     # Le mois en cours n'est pas impacté ; l'ancien montant est conservé en historique.
-    rent_effective_date: Optional[date] = None
-    deposit_amount: Optional[float] = Field(None, ge=0)
-    payment_day: Optional[int] = Field(None, ge=1, le=28)
-    payment_method: Optional[PaymentMethod] = None
-    rent_call_rule: Optional[RentCallRuleT] = None
-    payment_frequency: Optional[PaymentFrequencyT] = None
-    apl_amount: Optional[float] = Field(None, ge=0)
-    apl_tiers_payant: Optional[bool] = None
-    has_guarantor: Optional[bool] = None
-    guarantor_name: Optional[str] = None
-    guarantor_email: Optional[str] = None
-    guarantor_phone: Optional[str] = None
-    notes: Optional[str] = None
+    rent_effective_date: date | None = None
+    deposit_amount: float | None = Field(None, ge=0)
+    payment_day: int | None = Field(None, ge=1, le=28)
+    payment_method: PaymentMethod | None = None
+    rent_call_rule: RentCallRuleT | None = None
+    payment_frequency: PaymentFrequencyT | None = None
+    apl_amount: float | None = Field(None, ge=0)
+    apl_tiers_payant: bool | None = None
+    has_guarantor: bool | None = None
+    guarantor_name: str | None = None
+    guarantor_email: str | None = None
+    guarantor_phone: str | None = None
+    notes: str | None = None
 
 
 class LeaseTerminate(BaseModel):
     end_date: date
-    notice_date: Optional[date] = None
+    notice_date: date | None = None
 
 
 class LeaseResponse(BaseModel):
@@ -96,8 +99,8 @@ class LeaseResponse(BaseModel):
     tenant_id: uuid.UUID
     lease_type: LeaseType
     start_date: date
-    end_date: Optional[date] = None
-    notice_date: Optional[date] = None
+    end_date: date | None = None
+    notice_date: date | None = None
     rent_amount: float
     charges_amount: float
     deposit_amount: float
@@ -105,21 +108,21 @@ class LeaseResponse(BaseModel):
     payment_method: PaymentMethod
     rent_call_rule: str = "calendrier"
     payment_frequency: str = "mensuelle"
-    apl_amount: Optional[float] = None
+    apl_amount: float | None = None
     apl_tiers_payant: bool
     has_guarantor: bool
-    guarantor_name: Optional[str] = None
-    guarantor_email: Optional[str] = None
-    guarantor_phone: Optional[str] = None
+    guarantor_name: str | None = None
+    guarantor_email: str | None = None
+    guarantor_phone: str | None = None
     is_active: bool
-    notes: Optional[str] = None
+    notes: str | None = None
     total_monthly: float
     net_rent: float
     # Relations
-    tenant: Optional[TenantInLease] = None
+    tenant: TenantInLease | None = None
     co_tenants: list[TenantInLease] = Field(default_factory=list)
-    all_tenant_names: Optional[str] = None
-    parent_property: Optional[PropertyInLease] = None
+    all_tenant_names: str | None = None
+    parent_property: PropertyInLease | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -132,10 +135,10 @@ class LeaseListItem(BaseModel):
     tenant_id: uuid.UUID
     tenant_full_name: str
     property_name: str
-    owner_name: Optional[str] = None
+    owner_name: str | None = None
     lease_type: str
     start_date: date
-    end_date: Optional[date] = None
+    end_date: date | None = None
     rent_amount: float
     charges_amount: float
     is_active: bool

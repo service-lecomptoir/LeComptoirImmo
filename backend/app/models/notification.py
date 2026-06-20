@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import String, Boolean, Text, Enum as SAEnum, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
+
+from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base, TimestampMixin
 
@@ -27,20 +28,26 @@ class NotificationPriority(str, Enum):
 class Notification(Base, TimestampMixin):
     __tablename__ = "notifications"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     # ── Type & contenu ────────────────────────────────────────────────────────
     notification_type: Mapped[str] = mapped_column(
-        SAEnum(NotificationType, name="notification_type_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
+        SAEnum(
+            NotificationType,
+            name="notification_type_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         index=True,
     )
     priority: Mapped[str] = mapped_column(
-        SAEnum(NotificationPriority, name="notification_priority_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
+        SAEnum(
+            NotificationPriority,
+            name="notification_priority_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=NotificationPriority.NORMAL,
     )
@@ -48,15 +55,15 @@ class Notification(Base, TimestampMixin):
     message: Mapped[str] = mapped_column(Text, nullable=False)
 
     # ── Entité liée (polymorphique) ────────────────────────────────────────────
-    entity_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    entity_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
     # ── Lecture ───────────────────────────────────────────────────────────────
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
-    read_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     # ── Destinataire (NULL = tous les utilisateurs) ────────────────────────────
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,

@@ -1,10 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Text, Boolean, ForeignKey, Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
@@ -17,7 +19,7 @@ class TicketStatus(str, Enum):
     OPEN = "open"
     IN_PROGRESS = "in_progress"
     RESOLVED = "resolved"
-    PENDING_CLOSURE = "pending_closure"   # clôture proposée par le gestionnaire, en attente de validation du demandeur
+    PENDING_CLOSURE = "pending_closure"  # clôture proposée par le gestionnaire, en attente de validation du demandeur
     CLOSED = "closed"
 
 
@@ -45,44 +47,65 @@ class Ticket(Base, TimestampMixin):
 
     # Sujet déclaré par le locataire — pilote l'agent IA notifié au gestionnaire
     # (voisinage → Sécurité, logement → Administratif…). Voir services/agent_events.py.
-    topic: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    topic: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
 
     category: Mapped[str] = mapped_column(
-        SAEnum(TicketCategory, name="ticket_category_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False, default=TicketCategory.AUTRE, index=True,
+        SAEnum(
+            TicketCategory,
+            name="ticket_category_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+        default=TicketCategory.AUTRE,
+        index=True,
     )
     status: Mapped[str] = mapped_column(
-        SAEnum(TicketStatus, name="ticket_status_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False, default=TicketStatus.OPEN, index=True,
+        SAEnum(
+            TicketStatus,
+            name="ticket_status_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+        default=TicketStatus.OPEN,
+        index=True,
     )
     priority: Mapped[str] = mapped_column(
-        SAEnum(TicketPriority, name="ticket_priority_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False, default=TicketPriority.MEDIUM,
+        SAEnum(
+            TicketPriority,
+            name="ticket_priority_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+        default=TicketPriority.MEDIUM,
     )
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    lease_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    lease_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("leases.id", ondelete="SET NULL"), nullable=True
     )
-    assigned_to_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    assigned_to_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
-    closed_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     # Photo optionnelle jointe par le locataire à la création de la démarche.
-    photo_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    photo_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     messages: Mapped[list["TicketMessage"]] = relationship(
-        "TicketMessage", back_populates="ticket", lazy="select",
+        "TicketMessage",
+        back_populates="ticket",
+        lazy="select",
         order_by="TicketMessage.created_at",
     )
     tenant: Mapped["Tenant"] = relationship("Tenant", lazy="select")
-    assigned_to: Mapped[Optional["User"]] = relationship("User", foreign_keys=[assigned_to_id], lazy="select")
+    assigned_to: Mapped[Optional["User"]] = relationship(
+        "User", foreign_keys=[assigned_to_id], lazy="select"
+    )
 
     def __repr__(self) -> str:
         return f"<Ticket {self.title!r} [{self.status}]>"

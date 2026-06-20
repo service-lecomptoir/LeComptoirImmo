@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Identifiants lisibles uniques (« ref_code ») attribués à la création.
 
 Nomenclature : « PREFIXE-NNNNN » (séquence à 5 chiffres, propre à chaque préfixe).
@@ -11,6 +10,7 @@ Nomenclature : « PREFIXE-NNNNN » (séquence à 5 chiffres, propre à chaque pr
 
 Utilisé partout où un « numéro associé » est demandé (avatar, quittance, avis…).
 """
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,9 +42,7 @@ def _seq_of(ref) -> int:
 
 async def make_ref(db: AsyncSession, column, prefix: str) -> str:
     """Prochain identifiant disponible pour ce préfixe (max existant + 1)."""
-    rows = (await db.execute(
-        select(column).where(column.like(f"{prefix}-%"))
-    )).scalars().all()
+    rows = (await db.execute(select(column).where(column.like(f"{prefix}-%")))).scalars().all()
     nxt = max((_seq_of(r) for r in rows), default=0) + 1
     return f"{prefix}-{nxt:05d}"
 
@@ -53,9 +51,7 @@ async def backfill_table(db: AsyncSession, model, prefix_for) -> int:
     """Attribue un ref_code aux lignes existantes qui n'en ont pas (reprise
     historique). `prefix_for(row)` donne le préfixe. Idempotent : ne touche que
     les ref_code vides. Numérotation stable par ordre de création."""
-    rows = (await db.execute(
-        select(model).order_by(model.created_at, model.id)
-    )).scalars().all()
+    rows = (await db.execute(select(model).order_by(model.created_at, model.id))).scalars().all()
     counters: dict[str, int] = {}
     for r in rows:
         rc = getattr(r, "ref_code", None)

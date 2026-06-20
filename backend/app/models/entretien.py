@@ -1,10 +1,12 @@
 import uuid
 from datetime import date
-from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Text, Boolean, Date, Numeric, ForeignKey, Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, Text
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base, TimestampMixin
 
@@ -38,14 +40,16 @@ class Prestataire(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
-    specialty: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    phone: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    siret: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    specialty: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    siret: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    entretiens: Mapped[list["Entretien"]] = relationship("Entretien", back_populates="prestataire", lazy="select")
+    entretiens: Mapped[list["Entretien"]] = relationship(
+        "Entretien", back_populates="prestataire", lazy="select"
+    )
 
     def __repr__(self) -> str:
         return f"<Prestataire {self.name!r}>"
@@ -57,41 +61,63 @@ class Entretien(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     title: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     type: Mapped[str] = mapped_column(
-        SAEnum(EntretienType, name="entretien_type_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False, default=EntretienType.PREVENTIF, index=True,
+        SAEnum(
+            EntretienType,
+            name="entretien_type_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+        default=EntretienType.PREVENTIF,
+        index=True,
     )
     status: Mapped[str] = mapped_column(
-        SAEnum(EntretienStatus, name="entretien_status_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False, default=EntretienStatus.PLANIFIE, index=True,
+        SAEnum(
+            EntretienStatus,
+            name="entretien_status_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+        default=EntretienStatus.PLANIFIE,
+        index=True,
     )
     frequency: Mapped[str] = mapped_column(
-        SAEnum(EntretienFrequency, name="entretien_frequency_enum", create_type=False,
-               values_callable=lambda obj: [e.value for e in obj]),
-        nullable=False, default=EntretienFrequency.UNIQUE,
+        SAEnum(
+            EntretienFrequency,
+            name="entretien_frequency_enum",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
+        nullable=False,
+        default=EntretienFrequency.UNIQUE,
     )
 
     scheduled_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    completed_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    next_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    completed_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    next_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
-    cost: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
+    cost: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
-    property_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("properties.id", ondelete="SET NULL"), nullable=True, index=True
+    property_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("properties.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
-    prestataire_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    prestataire_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("prestataires.id", ondelete="SET NULL"), nullable=True
     )
 
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     property: Mapped[Optional["Property"]] = relationship("Property", lazy="select")
-    prestataire: Mapped[Optional["Prestataire"]] = relationship("Prestataire", back_populates="entretiens", lazy="select")
+    prestataire: Mapped[Optional["Prestataire"]] = relationship(
+        "Prestataire", back_populates="entretiens", lazy="select"
+    )
 
     def __repr__(self) -> str:
         return f"<Entretien {self.title!r} [{self.status}]>"

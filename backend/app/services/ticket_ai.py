@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
 """Aide IA à la rédaction d'une démarche par le locataire.
 
 À partir du TYPE de signalement choisi (et d'un éventuel mot du locataire), propose
 un Sujet + une Description polis et clairs. LLM si configuré (ancré, sans inventer
 de détails non fournis) ; sinon repli déterministe (modèle). Jamais bloquant.
 """
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 _TOPIC = {
     "logement": {
@@ -30,33 +28,41 @@ def _fallback(topic: str, hint: str) -> dict:
     hint = (hint or "").strip()
     title = meta["title"]
     if topic == "logement":
-        body = ("Bonjour,\n\nJe vous signale un problème dans le logement"
-                + (f" : {hint}" if hint else ".")
-                + "\n\nPourriez-vous m'indiquer la marche à suivre et programmer une intervention "
-                  "si nécessaire ? Je reste disponible pour convenir d'un rendez-vous.\n\nCordialement.")
+        body = (
+            "Bonjour,\n\nJe vous signale un problème dans le logement"
+            + (f" : {hint}" if hint else ".")
+            + "\n\nPourriez-vous m'indiquer la marche à suivre et programmer une intervention "
+            "si nécessaire ? Je reste disponible pour convenir d'un rendez-vous.\n\nCordialement."
+        )
     elif topic == "voisinage":
-        body = ("Bonjour,\n\nJe souhaite vous signaler un problème de voisinage"
-                + (f" : {hint}" if hint else ".")
-                + "\n\nPouvez-vous m'indiquer les démarches possibles ? Je vous remercie de votre "
-                  "aide.\n\nCordialement.")
+        body = (
+            "Bonjour,\n\nJe souhaite vous signaler un problème de voisinage"
+            + (f" : {hint}" if hint else ".")
+            + "\n\nPouvez-vous m'indiquer les démarches possibles ? Je vous remercie de votre "
+            "aide.\n\nCordialement."
+        )
     else:
-        body = ("Bonjour,\n\n"
-                + (f"{hint}" if hint else "J'ai une demande concernant mon logement.")
-                + "\n\nJe vous remercie par avance de votre retour.\n\nCordialement.")
+        body = (
+            "Bonjour,\n\n"
+            + (f"{hint}" if hint else "J'ai une demande concernant mon logement.")
+            + "\n\nJe vous remercie par avance de votre retour.\n\nCordialement."
+        )
     return {"title": title, "description": body, "source": "modele"}
 
 
-async def generate_ticket_draft(topic: Optional[str], hint: Optional[str]) -> dict:
+async def generate_ticket_draft(topic: str | None, hint: str | None) -> dict:
     key = (topic or "autre").strip().lower()
     if key not in _TOPIC:
         key = "autre"
     hint = (hint or "").strip()
 
     from app.services import llm_service
+
     if llm_service.enabled():
         try:
             import json
             import re as _re
+
             system = (
                 "Tu aides un LOCATAIRE à rédiger une demande claire et polie à son gestionnaire "
                 "immobilier, en français, à la première personne. Reste factuel ; n'invente pas de "
@@ -65,10 +71,15 @@ async def generate_ticket_draft(topic: Optional[str], hint: Optional[str]) -> di
                 '{"title": "<sujet court, max 70 caractères>", "description": "<message de 40 à 120 mots>"}.'
             )
             user = f"Type de signalement : {_TOPIC[key]['label']}.\n"
-            user += f"Précisions du locataire : {hint}" if hint else "Précisions du locataire : (aucune)"
+            user += (
+                f"Précisions du locataire : {hint}"
+                if hint
+                else "Précisions du locataire : (aucune)"
+            )
             reply = await llm_service.chat(
                 [{"role": "system", "content": system}, {"role": "user", "content": user}],
-                temperature=0.6, max_tokens=400,
+                temperature=0.6,
+                max_tokens=400,
             )
             if reply:
                 txt = _re.sub(r"^```(?:json)?|```$", "", reply.strip(), flags=_re.MULTILINE).strip()

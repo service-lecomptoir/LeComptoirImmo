@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Déclencheurs « push » de l'équipe d'agents IA.
 
 Lorsqu'un locataire déclare un événement (paiement, problème de voisinage,
@@ -13,10 +12,10 @@ Best-effort : jamais bloquant pour le flux appelant : toute erreur est avalée.
 (sujet → clé d'agent) et son libellé dans TOPIC_LABEL. Rien d'autre à câbler :
 les points d'appel passent simplement un nouveau `topic`.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,13 +28,13 @@ logger = logging.getLogger(__name__)
 
 # Sujet d'événement → agent compétent. EXTENSIBLE : une ligne par cas d'usage.
 EVENT_AGENT: dict[str, str] = {
-    "paiement": "comptable",      # déclaration de paiement       → Agent Comptable
-    "voisinage": "securite",      # trouble / conflit de voisinage → Agent Sécurité
+    "paiement": "comptable",  # déclaration de paiement       → Agent Comptable
+    "voisinage": "securite",  # trouble / conflit de voisinage → Agent Sécurité
     "logement": "administratif",  # problème dans le logement      → Agent Administratif
-    "preavis": "administratif",   # préavis de départ du locataire → Agent Administratif
+    "preavis": "administratif",  # préavis de départ du locataire → Agent Administratif
     "candidature": "administratif",  # nouvelle candidature à une annonce → Agent Administratif
-    "vacance": "administratif",   # annonce publiée sans candidature → Agent Administratif
-    "autre": "administratif",     # divers (catch-all)             → Agent Administratif
+    "vacance": "administratif",  # annonce publiée sans candidature → Agent Administratif
+    "autre": "administratif",  # divers (catch-all)             → Agent Administratif
 }
 
 # Libellé humain du sujet (titre du message poussé).
@@ -52,7 +51,7 @@ TOPIC_LABEL: dict[str, str] = {
 _DEFAULT_AGENT = "administratif"
 
 
-def agent_for_topic(topic: Optional[str]) -> dict:
+def agent_for_topic(topic: str | None) -> dict:
     """Descripteur de l'agent compétent pour un sujet (repli : Administratif)."""
     key = EVENT_AGENT.get((topic or "").strip().lower(), _DEFAULT_AGENT)
     return {"key": key, **AGENTS[key]}
@@ -64,7 +63,7 @@ async def notify_manager(
     topic: str,
     body: str,
     *,
-    cta: Optional[str] = None,
+    cta: str | None = None,
 ) -> bool:
     """Pousse un message de l'agent compétent au gestionnaire (Telegram, best-effort).
 
@@ -75,9 +74,9 @@ async def notify_manager(
     try:
         if not manager_id:
             return False
-        link = (await db.execute(
-            select(TelegramLink).where(TelegramLink.user_id == manager_id)
-        )).scalar_one_or_none()
+        link = (
+            await db.execute(select(TelegramLink).where(TelegramLink.user_id == manager_id))
+        ).scalar_one_or_none()
         if not link or not link.chat_id or not link.opt_in:
             return False
         agent = agent_for_topic(topic)

@@ -14,14 +14,14 @@ Mise en page (commune à tous les documents) : cadre « pro » sur fond blanc :
 Si aucun template par défaut n'existe pour le gestionnaire + type, on retourne None
 → l'appelant retombe sur le fichier .j2 historique.
 """
+
 from __future__ import annotations
 
-import re
-import os
 import base64
 import html as _html
+import os
+import re
 import uuid
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +44,7 @@ _VAR_RE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
 
 def substitute(content_html: str, variables: dict) -> str:
     """Applique les blocs {{#if}} puis substitue les {{variables}} (valeurs échappées)."""
+
     def _if_repl(m: re.Match) -> str:
         key, inner = m.group(1), m.group(2)
         val = variables.get(key)
@@ -85,14 +86,18 @@ def _format_address_html(addr: str) -> str:
     return "<br/>".join(_html.escape(p) for p in parts)
 
 
-def _logo_data_uri(logo_path: Optional[str]) -> Optional[str]:
+def _logo_data_uri(logo_path: str | None) -> str | None:
     """Encode le logo en data-URI base64 (xhtml2pdf n'a pas de link_callback)."""
     try:
         if logo_path and os.path.exists(logo_path):
             ext = logo_path.rsplit(".", 1)[-1].lower()
             mime = {
-                "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
-                "svg": "image/svg+xml", "webp": "image/webp", "gif": "image/gif",
+                "png": "image/png",
+                "jpg": "image/jpeg",
+                "jpeg": "image/jpeg",
+                "svg": "image/svg+xml",
+                "webp": "image/webp",
+                "gif": "image/gif",
             }.get(ext, "image/png")
             with open(logo_path, "rb") as f:
                 b64 = base64.b64encode(f.read()).decode("ascii")
@@ -134,12 +139,16 @@ def _wrap(
     logo_uri = _logo_data_uri(getattr(template, "logo_path", None))
     brand_parts = []
     if logo_uri:
-        brand_parts.append(f'<div><img src="{logo_uri}" style="width:150px; height:100px;" alt="logo"/></div>')
+        brand_parts.append(
+            f'<div><img src="{logo_uri}" style="width:150px; height:100px;" alt="logo"/></div>'
+        )
     brand_parts.append(f'<div class="sender-name">{company}</div>')
     if sender_company:
         brand_parts.append(f'<div class="sender-company">{_html.escape(sender_company)}</div>')
     if sender_national_id:
-        brand_parts.append(f'<div class="sender-siret">SIRET&nbsp;: {_html.escape(sender_national_id)}</div>')
+        brand_parts.append(
+            f'<div class="sender-siret">SIRET&nbsp;: {_html.escape(sender_national_id)}</div>'
+        )
     if company_addr:
         brand_parts.append(f'<div class="sender-addr">{company_addr}</div>')
     sender_brand = "".join(brand_parts)
@@ -176,12 +185,12 @@ def _wrap(
     </td>
     <td style="width: 45%;" class="recipient">
       {recipient}
-      {f'<div class="rc-prop">{prop}</div>' if prop else ''}
+      {f'<div class="rc-prop">{prop}</div>' if prop else ""}
     </td>
   </tr></table>
   <hr class="rule"/>
   <div class="body">{body_html}</div>
-  {f'<div class="footer">{footer}</div>' if footer else ''}
+  {f'<div class="footer">{footer}</div>' if footer else ""}
 </body></html>"""
 
 
@@ -190,7 +199,7 @@ def build_document_html(
     header_color: str,
     footer_text: str,
     content_html: str,
-    logo_path: Optional[str],
+    logo_path: str | None,
     sender_name: str,
     sender_addr: str,
     recipient_lines: list[str],
@@ -203,39 +212,54 @@ def build_document_html(
     """Construit le HTML d'un document à partir de champs bruts (brouillon d'éditeur),
     avec EXACTEMENT la même mise en page que le document final (`_wrap`)."""
     from types import SimpleNamespace
+
     tmpl = SimpleNamespace(
-        header_color=header_color, footer_text=footer_text,
-        company_name="", company_address="", logo_path=logo_path,
+        header_color=header_color,
+        footer_text=footer_text,
+        company_name="",
+        company_address="",
+        logo_path=logo_path,
     )
     vars2 = {**variables}
     if not vars2.get("company_name"):
         vars2["company_name"] = sender_name
-    return _wrap(tmpl, substitute(content_html or "", vars2), recipient_lines, property_address,
-                 layout, sender_name, sender_addr, sender_company, sender_national_id)
+    return _wrap(
+        tmpl,
+        substitute(content_html or "", vars2),
+        recipient_lines,
+        property_address,
+        layout,
+        sender_name,
+        sender_addr,
+        sender_company,
+        sender_national_id,
+    )
 
 
 async def render_saved_document(
     db: AsyncSession,
     *,
     template_type: str,
-    gestionnaire_id: Optional[uuid.UUID],
+    gestionnaire_id: uuid.UUID | None,
     variables: dict,
     recipient_lines: list[str],
     property_address: str = "",
     layout: dict,
-) -> Optional[str]:
+) -> str | None:
     """Rend le HTML d'un document à partir du template par défaut enregistré.
     Retourne None si aucun template par défaut → fallback .j2 côté appelant."""
     if not gestionnaire_id:
         return None
-    tmpl = (await db.execute(
-        select(DocumentTemplate).where(
-            DocumentTemplate.gestionnaire_id == gestionnaire_id,
-            DocumentTemplate.template_type == template_type,
-            DocumentTemplate.is_default.is_(True),
-            DocumentTemplate.is_active.is_(True),
+    tmpl = (
+        await db.execute(
+            select(DocumentTemplate).where(
+                DocumentTemplate.gestionnaire_id == gestionnaire_id,
+                DocumentTemplate.template_type == template_type,
+                DocumentTemplate.is_default.is_(True),
+                DocumentTemplate.is_active.is_(True),
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
     if not tmpl or not tmpl.content_html:
         return None
 
@@ -245,9 +269,10 @@ async def render_saved_document(
     sender_company, sender_national_id = "", ""
     try:
         from app.models.user import User
-        user = (await db.execute(
-            select(User).where(User.id == gestionnaire_id)
-        )).scalar_one_or_none()
+
+        user = (
+            await db.execute(select(User).where(User.id == gestionnaire_id))
+        ).scalar_one_or_none()
         if user:
             sender_name = user.full_name or tmpl.company_name or ""
             sender_addr = (getattr(user, "full_address", None) or "") or tmpl.company_address or ""
@@ -261,5 +286,14 @@ async def render_saved_document(
         variables = {**variables, "company_name": sender_name}
 
     body = substitute(tmpl.content_html, variables)
-    return _wrap(tmpl, body, recipient_lines, property_address, layout, sender_name, sender_addr,
-                 sender_company, sender_national_id)
+    return _wrap(
+        tmpl,
+        body,
+        recipient_lines,
+        property_address,
+        layout,
+        sender_name,
+        sender_addr,
+        sender_company,
+        sender_national_id,
+    )

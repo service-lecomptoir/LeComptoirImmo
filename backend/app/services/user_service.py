@@ -1,24 +1,21 @@
 import uuid
-from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
-from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate, UserRoleUpdate, UserPasswordUpdate
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.core.security import hash_password, verify_password
-from app.core.exceptions import (
-    NotFoundException, ConflictException, BadRequestException
-)
+from app.models.user import User
+from app.schemas.user import UserCreate, UserPasswordUpdate, UserRoleUpdate, UserUpdate
 from app.utils.address import normalize_address_fields
 
 
 class UserService:
-
     @staticmethod
     async def create(
         db: AsyncSession,
         data: UserCreate,
-        created_by: Optional[uuid.UUID] = None,
+        created_by: uuid.UUID | None = None,
         *,
         must_change_password: bool = False,
     ) -> User:
@@ -36,7 +33,9 @@ class UserService:
         # principal (sans créateur) est sa propre agence.
         agency_id = None
         if created_by is not None:
-            creator = (await db.execute(select(User).where(User.id == created_by))).scalar_one_or_none()
+            creator = (
+                await db.execute(select(User).where(User.id == created_by))
+            ).scalar_one_or_none()
             if creator is not None:
                 agency_id = creator.agency_id or creator.id
 
@@ -45,9 +44,11 @@ class UserService:
         raw_password = data.password
         if not (raw_password or "").strip():
             import secrets
+
             raw_password = secrets.token_urlsafe(16)
 
         from app.services.reference_service import make_ref, user_prefix
+
         user = User(
             email=data.email,
             hashed_password=hash_password(raw_password),
@@ -71,13 +72,16 @@ class UserService:
         # (gestionnaire / GP / admin). N'échoue jamais la création de compte.
         try:
             from app.services.document_template_service import (
-                TEMPLATE_OWNER_ROLES, ensure_default_templates,
+                TEMPLATE_OWNER_ROLES,
+                ensure_default_templates,
             )
+
             role_val = user.role.value if hasattr(user.role, "value") else str(user.role)
             if role_val in TEMPLATE_OWNER_ROLES:
                 await ensure_default_templates(db, user.id)
                 # Règles d'automatisation par défaut (avis/quittance/rappels/relances).
                 from app.services.automation_engine import ensure_default_rules
+
                 await ensure_default_rules(db, user.id)
         except Exception:
             pass
@@ -93,19 +97,17 @@ class UserService:
         return user
 
     @staticmethod
-    async def get_by_email(db: AsyncSession, email: str) -> Optional[User]:
+    async def get_by_email(db: AsyncSession, email: str) -> User | None:
         result = await db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def list_all(db: AsyncSession) -> List[User]:
+    async def list_all(db: AsyncSession) -> list[User]:
         result = await db.execute(select(User).order_by(User.full_name))
         return list(result.scalars().all())
 
     @staticmethod
-    async def update(
-        db: AsyncSession, user_id: uuid.UUID, data: UserUpdate
-    ) -> User:
+    async def update(db: AsyncSession, user_id: uuid.UUID, data: UserUpdate) -> User:
         user = await UserService.get_by_id(db, user_id)
 
         if data.email and data.email != user.email:
@@ -125,9 +127,10 @@ class UserService:
             # Le téléphone du compte est lié à la fiche locataire rattachée : on
             # propage la modif (« Mes informations » du locataire → fiche locataire).
             from app.models.tenant import Tenant
-            linked = (await db.execute(
-                select(Tenant).where(Tenant.user_id == user.id)
-            )).scalar_one_or_none()
+
+            linked = (
+                await db.execute(select(Tenant).where(Tenant.user_id == user.id))
+            ).scalar_one_or_none()
             if linked is not None and (linked.phone or None) != (user.phone or None):
                 linked.phone = user.phone or None
         if data.address is not None:
@@ -146,8 +149,11 @@ class UserService:
         if getattr(data, "template_pinned_vars", None) is not None:
             user.template_pinned_vars = data.template_pinned_vars or None
         if getattr(data, "email_theme", None) is not None:
-            from app.services.email_service import EMAIL_THEMES, DEFAULT_EMAIL_THEME
-            user.email_theme = data.email_theme if data.email_theme in EMAIL_THEMES else DEFAULT_EMAIL_THEME
+            from app.services.email_service import DEFAULT_EMAIL_THEME, EMAIL_THEMES
+
+            user.email_theme = (
+                data.email_theme if data.email_theme in EMAIL_THEMES else DEFAULT_EMAIL_THEME
+            )
         if getattr(data, "owner_kind", None) in ("personne", "societe"):
             user.owner_kind = data.owner_kind
         if getattr(data, "owner_full_name", None) is not None:
@@ -172,9 +178,7 @@ class UserService:
         return user
 
     @staticmethod
-    async def update_role(
-        db: AsyncSession, user_id: uuid.UUID, data: UserRoleUpdate
-    ) -> User:
+    async def update_role(db: AsyncSession, user_id: uuid.UUID, data: UserRoleUpdate) -> User:
         user = await UserService.get_by_id(db, user_id)
         user.role = data.role
         await db.flush()
@@ -182,9 +186,7 @@ class UserService:
         return user
 
     @staticmethod
-    async def update_password(
-        db: AsyncSession, user: User, data: UserPasswordUpdate
-    ) -> None:
+    async def update_password(db: AsyncSession, user: User, data: UserPasswordUpdate) -> None:
         if not verify_password(data.current_password, user.hashed_password):
             raise BadRequestException("Mot de passe actuel incorrect")
         user.hashed_password = hash_password(data.new_password)
@@ -195,8 +197,11 @@ class UserService:
 
     @staticmethod
     async def admin_set_password(
-        db: AsyncSession, user_id: uuid.UUID, new_password: str,
-        *, temporary: bool = False,
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        new_password: str,
+        *,
+        temporary: bool = False,
     ) -> None:
         """Réinitialise le mot de passe sans vérifier l'ancien (action gestionnaire/admin).
 

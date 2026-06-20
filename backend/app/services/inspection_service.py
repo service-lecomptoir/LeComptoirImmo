@@ -1,19 +1,16 @@
 import uuid
-from typing import Optional
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import NotFoundException
 from app.models.inspection import Inspection
 from app.schemas.inspection import InspectionCreate, InspectionUpdate
-from app.core.exceptions import NotFoundException
 
 
 class InspectionService:
-
     @staticmethod
-    async def create(
-        db: AsyncSession, data: InspectionCreate, created_by: uuid.UUID
-    ) -> Inspection:
+    async def create(db: AsyncSession, data: InspectionCreate, created_by: uuid.UUID) -> Inspection:
         inspection = Inspection(**data.model_dump(), created_by=created_by)
         db.add(inspection)
         await db.flush()
@@ -21,9 +18,7 @@ class InspectionService:
         return inspection
 
     @staticmethod
-    async def get_by_id(
-        db: AsyncSession, inspection_id: uuid.UUID
-    ) -> Inspection:
+    async def get_by_id(db: AsyncSession, inspection_id: uuid.UUID) -> Inspection:
         inspection = await db.get(Inspection, inspection_id)
         if not inspection:
             raise NotFoundException("État des lieux introuvable")
@@ -33,8 +28,8 @@ class InspectionService:
     async def list_all(
         db: AsyncSession,
         *,
-        lease_id: Optional[uuid.UUID] = None,
-        property_id: Optional[uuid.UUID] = None,
+        lease_id: uuid.UUID | None = None,
+        property_id: uuid.UUID | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[Inspection], int]:
@@ -48,12 +43,14 @@ class InspectionService:
         total = (await db.execute(count_q)).scalar_one()
 
         items = (
-            await db.execute(
-                query.order_by(Inspection.inspection_date.desc())
-                .offset(skip)
-                .limit(limit)
+            (
+                await db.execute(
+                    query.order_by(Inspection.inspection_date.desc()).offset(skip).limit(limit)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         return list(items), total
 

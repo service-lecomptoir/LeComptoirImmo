@@ -1,29 +1,29 @@
 import uuid
-from datetime import date, datetime, timezone
-from typing import Optional
-from sqlalchemy import select, func, or_, and_
+from datetime import UTC, date, datetime
+
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.payment import Payment, PaymentStatus
+from app.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.models.lease import Lease
-from app.models.tenant import Tenant
+from app.models.payment import Payment, PaymentStatus
 from app.models.property import Property
+from app.models.tenant import Tenant
 from app.schemas.payment import (
-    PaymentRecordIn,
-    PaymentListItem,
-    MonthlyStats,
     DashboardStats,
+    MonthlyStats,
+    PaymentListItem,
+    PaymentRecordIn,
 )
-from app.core.exceptions import NotFoundException, BadRequestException, ConflictException
 
 
 class PaymentService:
-
     @staticmethod
     def _compute_due_date(year: int, month: int, payment_day: int) -> date:
         """Calcule la date d'échéance."""
         import calendar
+
         max_day = calendar.monthrange(year, month)[1]
         day = min(payment_day, max_day)
         return date(year, month, day)
@@ -34,23 +34,33 @@ class PaymentService:
 
         = Σ trop-perçus (montant payé au-delà du dû) − Σ crédits déjà appliqués.
         """
-        rows = (await db.execute(
-            select(Payment.amount_paid, Payment.amount_due, Payment.credit_applied)
-            .where(Payment.lease_id == lease_id, Payment.status != PaymentStatus.CANCELLED)
-        )).all()
+        rows = (
+            await db.execute(
+                select(Payment.amount_paid, Payment.amount_due, Payment.credit_applied).where(
+                    Payment.lease_id == lease_id, Payment.status != PaymentStatus.CANCELLED
+                )
+            )
+        ).all()
         overpaid = sum(max(0.0, float(paid) - float(due)) for paid, due, _ in rows)
         applied = sum(float(credit or 0) for _, _, credit in rows)
 
         # Trop-perçus de régularisation de charges (remboursements) → crédit du bail,
         # déduit automatiquement des prochaines échéances (comme une avance).
         from app.models.charge_regularization import ChargeRegularization
-        reg_refunds = (await db.execute(
-            select(ChargeRegularization.balance).where(
-                ChargeRegularization.lease_id == lease_id,
-                ChargeRegularization.status == "applied",
-                ChargeRegularization.balance > 0,
+
+        reg_refunds = (
+            (
+                await db.execute(
+                    select(ChargeRegularization.balance).where(
+                        ChargeRegularization.lease_id == lease_id,
+                        ChargeRegularization.status == "applied",
+                        ChargeRegularization.balance > 0,
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         overpaid += sum(float(b or 0) for b in reg_refunds)
 
         return max(0.0, round(overpaid - applied, 2))
@@ -61,7 +71,7 @@ class PaymentService:
         lease: Lease,
         year: int,
         month: int,
-        created_by: Optional[uuid.UUID] = None,
+        created_by: uuid.UUID | None = None,
     ) -> Payment:
         """Génère un enregistrement de loyer pour un bail et une période.
 
@@ -73,9 +83,7 @@ class PaymentService:
 
         bp = compute_period(lease, year, month)
         if bp is None:
-            raise BadRequestException(
-                f"Le bail ne couvre pas la période {month:02d}/{year}."
-            )
+            raise BadRequestException(f"Le bail ne couvre pas la période {month:02d}/{year}.")
 
         # Vérifier unicité sur la clé de période (premier mois couvert)
         existing = (
@@ -97,6 +105,7 @@ class PaymentService:
         # d'effet précède le début de période (le mois courant déjà appelé n'est
         # jamais modifié ; une hausse programmée s'applique au mois suivant).
         from app.services.rent_revision_service import RentRevisionService
+
         eff_rent, eff_charges = RentRevisionService.effective_amounts(
             lease,
             await RentRevisionService.list_for_lease(db, lease.id),
@@ -108,7 +117,8 @@ class PaymentService:
         await RentRevisionService.sync_lease_current(db, lease)
         amount_apl = (
             round(float(lease.apl_amount) * bp.covered_count, 2)
-            if lease.apl_tiers_payant and lease.apl_amount else None
+            if lease.apl_tiers_payant and lease.apl_amount
+            else None
         )
         # amount_due = montant brut total (loyer + charges), avant déduction APL
         amount_due = amount_rent + amount_charges
@@ -118,10 +128,14 @@ class PaymentService:
         # Si tiers-payant CAF : la CAF verse sa part dès la génération de l'avis
         if amount_apl and amount_apl > 0:
             initial_paid = min(amount_apl, amount_due)
-            initial_status = PaymentStatus.PAID if initial_paid >= amount_due else PaymentStatus.PARTIAL
+            initial_status = (
+                PaymentStatus.PAID if initial_paid >= amount_due else PaymentStatus.PARTIAL
+            )
             initial_payment_date = due_date
             initial_method = "virement"
-            initial_notes = "Aide personnelle au logement – tiers-payant CAF – versement automatique"
+            initial_notes = (
+                "Aide personnelle au logement – tiers-payant CAF – versement automatique"
+            )
         else:
             initial_paid = 0.0
             initial_status = PaymentStatus.PENDING
@@ -178,7 +192,7 @@ class PaymentService:
         db: AsyncSession,
         year: int,
         month: int,
-        created_by: Optional[uuid.UUID] = None,
+        created_by: uuid.UUID | None = None,
         property_ids: list | None = None,
     ) -> int:
         """Génère les loyers pour tous les baux actifs d'une période. Retourne le nombre créé.
@@ -235,19 +249,22 @@ class PaymentService:
             payment.status = PaymentStatus.PAID
             # Quittance auto-générée dès que le loyer est intégralement payé
             if not payment.quittance_generated_at:
-                payment.quittance_generated_at = datetime.now(timezone.utc)
+                payment.quittance_generated_at = datetime.now(UTC)
             # L'avis d'échéance de LOYER correspondant passe « Acquitté ».
             # Filtrer sur kind='loyer' : sinon un avis d'apurement de la même
             # période ferait remonter 2 lignes → MultipleResultsFound (erreur 500).
             from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
-            avis = (await db.execute(
-                select(AvisEcheance).where(
-                    AvisEcheance.lease_id == payment.lease_id,
-                    AvisEcheance.period_year == payment.period_year,
-                    AvisEcheance.period_month == payment.period_month,
-                    (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
+
+            avis = (
+                await db.execute(
+                    select(AvisEcheance).where(
+                        AvisEcheance.lease_id == payment.lease_id,
+                        AvisEcheance.period_year == payment.period_year,
+                        AvisEcheance.period_month == payment.period_month,
+                        (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
+                    )
                 )
-            )).scalar_one_or_none()
+            ).scalar_one_or_none()
             if avis and avis.status != AvisEcheanceStatus.ACQUITTE:
                 avis.status = AvisEcheanceStatus.ACQUITTE
             # Envoi de la quittance : piloté par la règle d'automatisation « quittance »
@@ -255,6 +272,7 @@ class PaymentService:
             # que si une règle active existe pour le gestionnaire.
             try:
                 from app.services.automation_engine import send_quittance_for_payment
+
                 await send_quittance_for_payment(db, payment)
             except Exception:
                 pass
@@ -307,12 +325,12 @@ class PaymentService:
     async def list_all(
         db: AsyncSession,
         *,
-        search: Optional[str] = None,
-        lease_id: Optional[uuid.UUID] = None,
-        tenant_id: Optional[uuid.UUID] = None,
-        status: Optional[PaymentStatus] = None,
-        year: Optional[int] = None,
-        month: Optional[int] = None,
+        search: str | None = None,
+        lease_id: uuid.UUID | None = None,
+        tenant_id: uuid.UUID | None = None,
+        status: PaymentStatus | None = None,
+        year: int | None = None,
+        month: int | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[Payment], int]:
@@ -353,10 +371,16 @@ class PaymentService:
 
         total = (await db.execute(select(func.count()).select_from(base_q.subquery()))).scalar_one()
         items = (
-            await db.execute(
-                base_q.order_by(Payment.period_year.desc(), Payment.period_month.desc()).offset(skip).limit(limit)
+            (
+                await db.execute(
+                    base_q.order_by(Payment.period_year.desc(), Payment.period_month.desc())
+                    .offset(skip)
+                    .limit(limit)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         return list(items), total
 
@@ -397,22 +421,39 @@ class PaymentService:
         )
 
     @staticmethod
-    async def get_monthly_stats(
-        db: AsyncSession, year: int, month: int
-    ) -> MonthlyStats:
+    async def get_monthly_stats(db: AsyncSession, year: int, month: int) -> MonthlyStats:
         months_fr = [
-            "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-            "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+            "",
+            "Janvier",
+            "Février",
+            "Mars",
+            "Avril",
+            "Mai",
+            "Juin",
+            "Juillet",
+            "Août",
+            "Septembre",
+            "Octobre",
+            "Novembre",
+            "Décembre",
         ]
         result = await db.execute(
             select(
                 func.count(Payment.id).label("total_count"),
                 func.coalesce(func.sum(Payment.amount_due), 0).label("total_due"),
                 func.coalesce(func.sum(Payment.amount_paid), 0).label("total_paid"),
-                func.count(Payment.id).filter(Payment.status == PaymentStatus.PAID).label("paid_count"),
-                func.count(Payment.id).filter(Payment.status == PaymentStatus.PENDING).label("pending_count"),
-                func.count(Payment.id).filter(Payment.status == PaymentStatus.PARTIAL).label("partial_count"),
-                func.count(Payment.id).filter(Payment.status == PaymentStatus.LATE).label("late_count"),
+                func.count(Payment.id)
+                .filter(Payment.status == PaymentStatus.PAID)
+                .label("paid_count"),
+                func.count(Payment.id)
+                .filter(Payment.status == PaymentStatus.PENDING)
+                .label("pending_count"),
+                func.count(Payment.id)
+                .filter(Payment.status == PaymentStatus.PARTIAL)
+                .label("partial_count"),
+                func.count(Payment.id)
+                .filter(Payment.status == PaymentStatus.LATE)
+                .label("late_count"),
             ).where(
                 Payment.period_year == year,
                 Payment.period_month == month,
@@ -472,7 +513,7 @@ class PaymentService:
             raise BadRequestException(
                 "La quittance n'est disponible que lorsque le loyer du mois est intégralement payé."
             )
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if not payment.quittance_generated_at:
             payment.quittance_generated_at = now
         payment.quittance_sent_at = now

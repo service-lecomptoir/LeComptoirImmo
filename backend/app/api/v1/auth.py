@@ -1,20 +1,26 @@
 import os
-from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException
+from datetime import UTC
+
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_user
-from app.models.user import User
-from app.schemas.auth import (
-    LoginRequest, TokenResponse, RefreshRequest, AccessTokenResponse, ForgotPasswordRequest,
-)
-from app.schemas.user import UserMeResponse, ProfileUpdate
-from app.services.auth_service import AuthService
-from app.services.user_service import UserService
-from app.services import audit_service
 from app.core.exceptions import UnauthorizedException
 from app.core.passwords import generate_temp_password
 from app.core.rate_limit import limiter
+from app.database import get_db
+from app.models.user import User
+from app.schemas.auth import (
+    AccessTokenResponse,
+    ForgotPasswordRequest,
+    LoginRequest,
+    RefreshRequest,
+    TokenResponse,
+)
+from app.schemas.user import ProfileUpdate, UserMeResponse
+from app.services import audit_service
+from app.services.auth_service import AuthService
+from app.services.user_service import UserService
 
 router = APIRouter(prefix="/auth", tags=["Authentification"])
 
@@ -37,17 +43,24 @@ async def login(
         user = await AuthService.authenticate(db, data.email, data.password)
     except UnauthorizedException:
         await audit_service.log(
-            db, action=audit_service.LOGIN_FAILED,
-            user_email=data.email, details={"reason": "auth_failed"}, ip_address=ip,
+            db,
+            action=audit_service.LOGIN_FAILED,
+            user_email=data.email,
+            details={"reason": "auth_failed"},
+            ip_address=ip,
         )
         raise
     await audit_service.log(
-        db, action=audit_service.LOGIN,
-        user_id=user.id, user_email=user.email, ip_address=ip,
+        db,
+        action=audit_service.LOGIN,
+        user_id=user.id,
+        user_email=user.email,
+        ip_address=ip,
     )
     # Horodate la dernière connexion (visible dans « Gestion des utilisateurs »).
-    from datetime import datetime, timezone
-    user.last_login_at = datetime.now(timezone.utc)
+    from datetime import datetime
+
+    user.last_login_at = datetime.now(UTC)
     await db.commit()
     return AuthService.generate_tokens(user)
 
@@ -66,7 +79,7 @@ async def forgot_password(
     ip = request.client.host if request.client else None
     generic = {
         "detail": "Si un compte est associé à cette adresse, un e-mail contenant un "
-                  "mot de passe temporaire vient d'être envoyé.",
+        "mot de passe temporaire vient d'être envoyé.",
     }
     user = await UserService.get_by_email(db, data.email)
     if user is None or not getattr(user, "is_active", True):
@@ -80,18 +93,26 @@ async def forgot_password(
     email_sent = False
     try:
         from app.services.email_service import send_credentials
+
         email_sent = await send_credentials(
-            to=user.email, login=user.email, password=temp_password,
-            full_name=user.full_name, reset=True,
+            to=user.email,
+            login=user.email,
+            password=temp_password,
+            full_name=user.full_name,
+            reset=True,
         )
     except Exception as _exc:  # noqa: BLE001
         import logging
+
         logging.getLogger(__name__).warning("Envoi reset mot de passe échoué: %s", _exc)
 
     await audit_service.log(
-        db, action="user.forgot_password",
-        user_id=user.id, user_email=user.email,
-        details={"email_sent": email_sent}, ip_address=ip,
+        db,
+        action="user.forgot_password",
+        user_id=user.id,
+        user_email=user.email,
+        details={"email_sent": email_sent},
+        ip_address=ip,
     )
     await db.commit()
     return generic
@@ -116,6 +137,7 @@ async def get_me(
     Pour un propriétaire : ajoute les rubriques visibles (visibilité effective ∩ plan)."""
     if str(current_user.role) == "proprietaire":
         from app.services.proprio_visibility_service import effective_sections_for
+
         current_user.proprio_sections = await effective_sections_for(db, current_user)
     return current_user
 
@@ -147,8 +169,14 @@ async def upload_my_logo(
 ):
     """Téléverse le logo du gestionnaire (affiché en en-tête des documents)."""
     if file.content_type not in ("image/png", "image/jpeg", "image/svg+xml", "image/webp"):
-        raise HTTPException(status_code=400, detail="Format d'image non supporté (PNG, JPG, SVG, WebP)")
-    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else "png"
+        raise HTTPException(
+            status_code=400, detail="Format d'image non supporté (PNG, JPG, SVG, WebP)"
+        )
+    ext = (
+        file.filename.rsplit(".", 1)[-1].lower()
+        if file.filename and "." in file.filename
+        else "png"
+    )
     if ext not in ("png", "jpg", "jpeg", "svg", "webp"):
         ext = "png"
     filename = f"user_{current_user.id}.{ext}"

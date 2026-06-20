@@ -1,4 +1,5 @@
 """Génération de mots de passe temporaires (identifiants envoyés par e-mail)."""
+
 import secrets
 
 # Alphabet lisible (sans caractères ambigus : 0/O, 1/l/I).

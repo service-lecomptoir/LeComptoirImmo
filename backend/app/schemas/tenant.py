@@ -1,29 +1,30 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional
-from pydantic import BaseModel, EmailStr, field_validator, model_validator
+
+from pydantic import BaseModel, EmailStr, model_validator
+
 from app.models.tenant import Civility
 
 
 class TenantCreate(BaseModel):
-    civility: Optional[Civility] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company_name: Optional[str] = None
-    siret: Optional[str] = None
-    birth_date: Optional[date] = None
-    birth_place: Optional[str] = None
-    national_id: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    phone2: Optional[str] = None
-    language: Optional[str] = "fr"  # langue des courriers (fr/en/pt-BR/ht/srn)
-    employer: Optional[str] = None
-    employer_phone: Optional[str] = None
-    monthly_income: Optional[float] = None
-    income_source: Optional[str] = None
-    notes: Optional[str] = None
-    user_id: Optional[uuid.UUID] = None  # Lien vers le compte utilisateur locataire
+    civility: Civility | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    company_name: str | None = None
+    siret: str | None = None
+    birth_date: date | None = None
+    birth_place: str | None = None
+    national_id: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    phone2: str | None = None
+    language: str | None = "fr"  # langue des courriers (fr/en/pt-BR/ht/srn)
+    employer: str | None = None
+    employer_phone: str | None = None
+    monthly_income: float | None = None
+    income_source: str | None = None
+    notes: str | None = None
+    user_id: uuid.UUID | None = None  # Lien vers le compte utilisateur locataire
 
     @model_validator(mode="after")
     def check_identity(self):
@@ -45,48 +46,48 @@ class TenantCreate(BaseModel):
 
 
 class TenantUpdate(BaseModel):
-    civility: Optional[Civility] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company_name: Optional[str] = None
-    siret: Optional[str] = None
-    birth_date: Optional[date] = None
-    birth_place: Optional[str] = None
-    national_id: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    phone2: Optional[str] = None
-    language: Optional[str] = None
-    employer: Optional[str] = None
-    employer_phone: Optional[str] = None
-    monthly_income: Optional[float] = None
-    income_source: Optional[str] = None
-    notes: Optional[str] = None
-    user_id: Optional[uuid.UUID] = None  # Lien vers le compte utilisateur locataire
+    civility: Civility | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    company_name: str | None = None
+    siret: str | None = None
+    birth_date: date | None = None
+    birth_place: str | None = None
+    national_id: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    phone2: str | None = None
+    language: str | None = None
+    employer: str | None = None
+    employer_phone: str | None = None
+    monthly_income: float | None = None
+    income_source: str | None = None
+    notes: str | None = None
+    user_id: uuid.UUID | None = None  # Lien vers le compte utilisateur locataire
 
 
 class TenantResponse(BaseModel):
     id: uuid.UUID
-    ref_code: Optional[str] = None
-    civility: Optional[Civility]
+    ref_code: str | None = None
+    civility: Civility | None
     first_name: str
     last_name: str
-    company_name: Optional[str] = None
-    siret: Optional[str] = None
+    company_name: str | None = None
+    siret: str | None = None
     full_name: str
-    birth_date: Optional[date]
-    birth_place: Optional[str]
-    national_id: Optional[str]
-    email: Optional[str]
-    phone: Optional[str]
-    phone2: Optional[str]
-    language: Optional[str] = "fr"
-    employer: Optional[str]
-    employer_phone: Optional[str]
-    monthly_income: Optional[float]
-    income_source: Optional[str]
-    notes: Optional[str]
-    user_id: Optional[uuid.UUID] = None
+    birth_date: date | None
+    birth_place: str | None
+    national_id: str | None
+    email: str | None
+    phone: str | None
+    phone2: str | None
+    language: str | None = "fr"
+    employer: str | None
+    employer_phone: str | None
+    monthly_income: float | None
+    income_source: str | None
+    notes: str | None
+    user_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -95,16 +96,17 @@ class TenantResponse(BaseModel):
 
 class TenantListItem(BaseModel):
     """Version allégée pour les listes."""
+
     id: uuid.UUID
-    ref_code: Optional[str] = None
+    ref_code: str | None = None
     full_name: str
-    civility: Optional[Civility]
+    civility: Civility | None
     first_name: str
     last_name: str
-    company_name: Optional[str] = None
-    email: Optional[str]
-    phone: Optional[str]
-    user_id: Optional[uuid.UUID] = None
+    company_name: str | None = None
+    email: str | None
+    phone: str | None
+    user_id: uuid.UUID | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

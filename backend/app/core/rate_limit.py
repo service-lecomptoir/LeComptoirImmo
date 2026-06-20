@@ -5,6 +5,7 @@ posé par l'edge nginx), avec repli sur l'adresse de pair. Activé uniquement en
 production : en dev/test, la limite est désactivée pour ne pas gêner la suite de
 tests ni le développement.
 """
+
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from starlette.requests import Request

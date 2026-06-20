@@ -1,27 +1,26 @@
 """
 Service AvisEcheance : Génération des avis d'échéances (manuelle et automatique).
 """
-import uuid
+
 import calendar
 import logging
+import uuid
 from datetime import date, datetime
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
 from app.models.lease import Lease
-from app.models.tenant import Tenant
 from app.models.payment import Payment, PaymentStatus
-from app.core.exceptions import ConflictException, NotFoundException, BadRequestException
+from app.models.tenant import Tenant
 
 logger = logging.getLogger(__name__)
 
 
 class AvisEcheanceService:
-
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     @staticmethod
@@ -38,6 +37,7 @@ class AvisEcheanceService:
         """Période couverte + facteur de prorata pour UN mois (délègue au module
         partagé `billing_period`). Conservé pour compat (tests + APL)."""
         from app.services.billing_period import month_period_and_factor
+
         return month_period_and_factor(
             lease.start_date,
             getattr(lease, "end_date", None),
@@ -47,7 +47,7 @@ class AvisEcheanceService:
         )
 
     @staticmethod
-    def _compute_total(rent: float, charges: float, apl: Optional[float]) -> float:
+    def _compute_total(rent: float, charges: float, apl: float | None) -> float:
         total = float(rent) + float(charges)
         if apl:
             total = max(0.0, total - float(apl))
@@ -62,8 +62,8 @@ class AvisEcheanceService:
         lease: Lease,
         year: int,
         month: int,
-        generated_by: Optional[uuid.UUID] = None,
-        apl_override: Optional[float] = None,
+        generated_by: uuid.UUID | None = None,
+        apl_override: float | None = None,
     ) -> AvisEcheance:
         """Génère un avis d'échéance pour un bail et une période donnés.
 
@@ -78,22 +78,22 @@ class AvisEcheanceService:
 
         bp = compute_period(lease, year, month)
         if bp is None:
-            raise BadRequestException(
-                f"Le bail ne couvre pas la période {month:02d}/{year}."
-            )
+            raise BadRequestException(f"Le bail ne couvre pas la période {month:02d}/{year}.")
 
         # Vérifier unicité sur la clé de période (premier mois couvert).
         # IMPORTANT : seuls les avis de LOYER comptent ici. Un avis d'apurement
         # (kind='apurement') pour la même période ne doit PAS bloquer la création
         # de l'avis de loyer — ils coexistent (cf. index uq_avis_loyer_period).
-        existing = (await db.execute(
-            select(AvisEcheance).where(
-                AvisEcheance.lease_id == lease.id,
-                AvisEcheance.period_year == bp.key_year,
-                AvisEcheance.period_month == bp.key_month,
-                (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
+        existing = (
+            await db.execute(
+                select(AvisEcheance).where(
+                    AvisEcheance.lease_id == lease.id,
+                    AvisEcheance.period_year == bp.key_year,
+                    AvisEcheance.period_month == bp.key_month,
+                    (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
+                )
             )
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
 
         if existing:
             raise ConflictException(
@@ -139,20 +139,29 @@ class AvisEcheanceService:
 
         # ── Paiement de la période (systématique, montants agrégés/proratisés) ──
         await cls._ensure_payment(
-            db, lease, bp.key_year, bp.key_month, apl, due,
-            amount_rent, amount_charges,
-            period_start=bp.period_start, period_end=bp.period_end,
+            db,
+            lease,
+            bp.key_year,
+            bp.key_month,
+            apl,
+            due,
+            amount_rent,
+            amount_charges,
+            period_start=bp.period_start,
+            period_end=bp.period_end,
         )
 
         # Si le loyer est déjà soldé dès la génération (APL/avance couvrant tout),
         # l'avis passe directement « Acquitté ».
-        pay = (await db.execute(
-            select(Payment).where(
-                Payment.lease_id == lease.id,
-                Payment.period_year == bp.key_year,
-                Payment.period_month == bp.key_month,
+        pay = (
+            await db.execute(
+                select(Payment).where(
+                    Payment.lease_id == lease.id,
+                    Payment.period_year == bp.key_year,
+                    Payment.period_month == bp.key_month,
+                )
             )
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
         if pay and pay.status == PaymentStatus.PAID:
             avis.status = AvisEcheanceStatus.ACQUITTE
             await db.flush()
@@ -170,7 +179,8 @@ class AvisEcheanceService:
         notification pour le locataire et envoie un e-mail (no-op tant que SMTP off).
         Best-effort : n'interrompt jamais la génération de l'avis."""
         try:
-            from app.services.irl_notice import upcoming_revision_notice, notice_text
+            from app.services.irl_notice import notice_text, upcoming_revision_notice
+
             notice = await upcoming_revision_notice(db, lease, year, month)
             if not notice:
                 return
@@ -179,23 +189,29 @@ class AvisEcheanceService:
             tenant = await db.get(Tenant, lease.tenant_id)
             if tenant and getattr(tenant, "user_id", None):
                 from app.models.notification import (
-                    Notification, NotificationType, NotificationPriority,
+                    Notification,
+                    NotificationPriority,
+                    NotificationType,
                 )
-                db.add(Notification(
-                    title="Révision de loyer à venir",
-                    message=text,
-                    notification_type=NotificationType.SYSTEME,
-                    priority=NotificationPriority.NORMAL,
-                    entity_type="lease",
-                    entity_id=lease.id,
-                    user_id=tenant.user_id,
-                ))
+
+                db.add(
+                    Notification(
+                        title="Révision de loyer à venir",
+                        message=text,
+                        notification_type=NotificationType.SYSTEME,
+                        priority=NotificationPriority.NORMAL,
+                        entity_type="lease",
+                        entity_id=lease.id,
+                        user_id=tenant.user_id,
+                    )
+                )
                 await db.flush()
 
             # E-mail (no-op si SMTP désactivé).
             email = getattr(tenant, "email", None) if tenant else None
             if email:
                 from app.services.email_service import send_revision_loyer
+
                 await send_revision_loyer(
                     to=email,
                     tenant_name=tenant.full_name if tenant else "",
@@ -215,23 +231,33 @@ class AvisEcheanceService:
         (pas seulement les brouillons), pour rattraper les mois soldés après coup
         (ex. fin d'un plan d'apurement). Les avis d'apurement sont gérés à part
         (sync_apurement_statuses). Idempotent."""
-        avis_list = (await db.execute(
-            select(AvisEcheance).where(
-                (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None))
+        avis_list = (
+            (
+                await db.execute(
+                    select(AvisEcheance).where(
+                        (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None))
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         n = 0
         for a in avis_list:
-            pay = (await db.execute(
-                select(Payment).where(
-                    Payment.lease_id == a.lease_id,
-                    Payment.period_year == a.period_year,
-                    Payment.period_month == a.period_month,
+            pay = (
+                await db.execute(
+                    select(Payment).where(
+                        Payment.lease_id == a.lease_id,
+                        Payment.period_year == a.period_year,
+                        Payment.period_month == a.period_month,
+                    )
                 )
-            )).scalar_one_or_none()
-            target = (AvisEcheanceStatus.ACQUITTE
-                      if (pay and pay.status == PaymentStatus.PAID)
-                      else AvisEcheanceStatus.ENVOYE)
+            ).scalar_one_or_none()
+            target = (
+                AvisEcheanceStatus.ACQUITTE
+                if (pay and pay.status == PaymentStatus.PAID)
+                else AvisEcheanceStatus.ENVOYE
+            )
             if a.status != target:
                 a.status = target
                 if target == AvisEcheanceStatus.ENVOYE and a.sent_at is None:
@@ -247,9 +273,12 @@ class AvisEcheanceService:
         Acquitté si l'échéance est payée, sinon Envoyé. Idempotent. Corrige les
         avis générés avant le pointage de l'échéance."""
         from app.models.apurement_plan import ApurementPlan
-        avis_list = (await db.execute(
-            select(AvisEcheance).where(AvisEcheance.kind == "apurement")
-        )).scalars().all()
+
+        avis_list = (
+            (await db.execute(select(AvisEcheance).where(AvisEcheance.kind == "apurement")))
+            .scalars()
+            .all()
+        )
         n = 0
         for a in avis_list:
             if not a.plan_id:
@@ -257,12 +286,12 @@ class AvisEcheanceService:
             plan = await db.get(ApurementPlan, a.plan_id)
             if plan is None:
                 continue
-            inst = next((i for i in (plan.installments or [])
-                         if i.get("seq") == a.installment_seq), None)
+            inst = next(
+                (i for i in (plan.installments or []) if i.get("seq") == a.installment_seq), None
+            )
             if inst is None:
                 continue
-            target = (AvisEcheanceStatus.ACQUITTE if inst.get("paid")
-                      else AvisEcheanceStatus.ENVOYE)
+            target = AvisEcheanceStatus.ACQUITTE if inst.get("paid") else AvisEcheanceStatus.ENVOYE
             if a.status != target:
                 a.status = target
                 if a.sent_at is None:
@@ -279,25 +308,27 @@ class AvisEcheanceService:
         lease: Lease,
         year: int,
         month: int,
-        apl: Optional[float],
+        apl: float | None,
         due_date: date,
         amount_rent: float,
         amount_charges: float,
-        period_start: Optional[date] = None,
-        period_end: Optional[date] = None,
+        period_start: date | None = None,
+        period_end: date | None = None,
     ) -> None:
         """Crée ou met à jour le paiement de la période (montants déjà proratisés).
 
         Sans APL : paiement PENDING, montant dû = loyer + charges, rien d'encaissé.
         Avec APL tiers-payant : APL pré-créditée, solde restant à la charge du locataire.
         """
-        existing = (await db.execute(
-            select(Payment).where(
-                Payment.lease_id == lease.id,
-                Payment.period_year == year,
-                Payment.period_month == month,
+        existing = (
+            await db.execute(
+                select(Payment).where(
+                    Payment.lease_id == lease.id,
+                    Payment.period_year == year,
+                    Payment.period_month == month,
+                )
             )
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
 
         amount_rent = float(amount_rent)
         amount_charges = float(amount_charges)
@@ -395,8 +426,8 @@ class AvisEcheanceService:
         year: int,
         month: int,
         property_ids: list | None = None,
-        lease_id: Optional[uuid.UUID] = None,
-        generated_by: Optional[uuid.UUID] = None,
+        lease_id: uuid.UUID | None = None,
+        generated_by: uuid.UUID | None = None,
     ) -> int:
         """Crée un avis d'échéance pour chaque échéance de plan d'apurement dont la
         date d'échéance tombe sur (year, month), comme un appel de loyer. Idempotent
@@ -413,7 +444,7 @@ class AvisEcheanceService:
                 continue
             if property_ids is not None and lease.property_id not in property_ids:
                 continue
-            for inst in (pl.installments or []):
+            for inst in pl.installments or []:
                 raw = inst.get("due_date")
                 try:
                     due = date.fromisoformat(raw) if raw else None
@@ -422,12 +453,14 @@ class AvisEcheanceService:
                 if not due or due.year != year or due.month != month:
                     continue
                 seq = inst.get("seq")
-                existing = (await db.execute(
-                    select(AvisEcheance).where(
-                        AvisEcheance.plan_id == pl.id,
-                        AvisEcheance.installment_seq == seq,
+                existing = (
+                    await db.execute(
+                        select(AvisEcheance).where(
+                            AvisEcheance.plan_id == pl.id,
+                            AvisEcheance.installment_seq == seq,
+                        )
                     )
-                )).scalar_one_or_none()
+                ).scalar_one_or_none()
                 if existing:
                     continue
                 amount = round(float(inst.get("amount", 0) or 0), 2)
@@ -463,11 +496,11 @@ class AvisEcheanceService:
     @staticmethod
     async def get_list(
         db: AsyncSession,
-        lease_id: Optional[uuid.UUID] = None,
-        tenant_id: Optional[uuid.UUID] = None,
-        year: Optional[int] = None,
-        month: Optional[int] = None,
-        status: Optional[str] = None,
+        lease_id: uuid.UUID | None = None,
+        tenant_id: uuid.UUID | None = None,
+        year: int | None = None,
+        month: int | None = None,
+        status: str | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> list[AvisEcheance]:
@@ -485,22 +518,28 @@ class AvisEcheanceService:
             q = q.where(AvisEcheance.period_month == month)
         if status:
             q = q.where(AvisEcheance.status == status)
-        q = q.order_by(
-            AvisEcheance.period_year.desc(),
-            AvisEcheance.period_month.desc(),
-        ).offset(skip).limit(limit)
+        q = (
+            q.order_by(
+                AvisEcheance.period_year.desc(),
+                AvisEcheance.period_month.desc(),
+            )
+            .offset(skip)
+            .limit(limit)
+        )
         return (await db.execute(q)).scalars().all()
 
     @staticmethod
     async def get_by_id(db: AsyncSession, avis_id: uuid.UUID) -> AvisEcheance:
-        avis = (await db.execute(
-            select(AvisEcheance)
-            .options(
-                selectinload(AvisEcheance.tenant),
-                selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
+        avis = (
+            await db.execute(
+                select(AvisEcheance)
+                .options(
+                    selectinload(AvisEcheance.tenant),
+                    selectinload(AvisEcheance.lease).selectinload(Lease.parent_property),
+                )
+                .where(AvisEcheance.id == avis_id)
             )
-            .where(AvisEcheance.id == avis_id)
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
         if not avis:
             raise NotFoundException("Avis d'échéance introuvable")
         return avis
@@ -510,6 +549,7 @@ class AvisEcheanceService:
     @staticmethod
     async def mark_sent(db: AsyncSession, avis_id: uuid.UUID) -> AvisEcheance:
         from datetime import datetime
+
         avis = await AvisEcheanceService.get_by_id(db, avis_id)
         avis.status = AvisEcheanceStatus.ENVOYE
         avis.sent_at = datetime.utcnow()
@@ -528,7 +568,7 @@ class AvisEcheanceService:
         cls,
         db: AsyncSession,
         avis_id: uuid.UUID,
-        new_apl: Optional[float],
+        new_apl: float | None,
     ) -> "AvisEcheance":
         """Met à jour le montant APL d'un avis existant et recalcule le total.
         Met aussi à jour le paiement lié si présent.
@@ -543,13 +583,15 @@ class AvisEcheanceService:
         await db.flush()
 
         # Synchronise le paiement lié (s'il existe)
-        existing_payment = (await db.execute(
-            select(Payment).where(
-                Payment.lease_id == avis.lease_id,
-                Payment.period_year == avis.period_year,
-                Payment.period_month == avis.period_month,
+        existing_payment = (
+            await db.execute(
+                select(Payment).where(
+                    Payment.lease_id == avis.lease_id,
+                    Payment.period_year == avis.period_year,
+                    Payment.period_month == avis.period_month,
+                )
             )
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
 
         if existing_payment is not None:
             amount_due = float(existing_payment.amount_due)  # brut inchangé
@@ -583,11 +625,11 @@ class AvisEcheanceService:
         cls,
         db: AsyncSession,
         avis_id: uuid.UUID,
-        amount_rent: Optional[float] = None,
-        amount_charges: Optional[float] = None,
-        amount_apl: Optional[float] = None,
-        due_date: Optional[date] = None,
-        notes: Optional[str] = None,
+        amount_rent: float | None = None,
+        amount_charges: float | None = None,
+        amount_apl: float | None = None,
+        due_date: date | None = None,
+        notes: str | None = None,
     ) -> "AvisEcheance":
         """Modifie un ou plusieurs champs d'un avis et recalcule le total."""
         avis = await AvisEcheanceService.get_by_id(db, avis_id)

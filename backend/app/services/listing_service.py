@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Diffusion des annonces : contenu/photos pré-enregistrés par bien, publication
 sur une page d'annonce hébergée + partage, et programmation de la publication.
 
@@ -7,11 +6,11 @@ servie par Le Comptoir ; les « plateformes » sont des cibles de partage libres
 définies par le gestionnaire. La programmation s'appuie sur le scheduler APScheduler
 (job `publish_scheduled_listings`).
 """
+
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,17 +19,23 @@ from app.core.exceptions import BadRequestException
 from app.models.document import Document
 from app.models.publishing import Listing
 
-
 _PROPERTY_TYPE_LABELS = {
-    "appartement": "Appartement", "maison": "Maison",
-    "local_commercial": "Local commercial", "autre": "Bien",
+    "appartement": "Appartement",
+    "maison": "Maison",
+    "local_commercial": "Local commercial",
+    "autre": "Bien",
 }
 _AMENITIES = [
-    ("furnished", "meublé"), ("kitchen_equipped", "cuisine équipée"),
-    ("has_elevator", "ascenseur"), ("has_balcony", "balcon"),
-    ("has_terrace", "terrasse"), ("has_garden", "jardin"),
-    ("has_parking", "parking"), ("has_cellar", "cave"),
-    ("has_fiber", "fibre optique"), ("has_air_conditioning", "climatisation"),
+    ("furnished", "meublé"),
+    ("kitchen_equipped", "cuisine équipée"),
+    ("has_elevator", "ascenseur"),
+    ("has_balcony", "balcon"),
+    ("has_terrace", "terrasse"),
+    ("has_garden", "jardin"),
+    ("has_parking", "parking"),
+    ("has_cellar", "cave"),
+    ("has_fiber", "fibre optique"),
+    ("has_air_conditioning", "climatisation"),
 ]
 
 
@@ -74,9 +79,13 @@ def _fallback_draft(prop, facts: list[str]) -> dict:
     if getattr(prop, "city", None):
         title += f" à {prop.city}"
     equip = [label for attr, label in _AMENITIES if getattr(prop, attr, False)]
-    sentences = [f"{ptype}" + (f" de type {prop.typology}" if getattr(prop, 'typology', None) else "")
-                 + (f" d'environ {float(prop.area_sqm):g} m²" if getattr(prop, 'area_sqm', None) else "")
-                 + (f", situé à {prop.city}" if getattr(prop, 'city', None) else "") + "."]
+    sentences = [
+        f"{ptype}"
+        + (f" de type {prop.typology}" if getattr(prop, "typology", None) else "")
+        + (f" d'environ {float(prop.area_sqm):g} m²" if getattr(prop, "area_sqm", None) else "")
+        + (f", situé à {prop.city}" if getattr(prop, "city", None) else "")
+        + "."
+    ]
     if equip:
         sentences.append("Il dispose de : " + ", ".join(equip) + ".")
     if getattr(prop, "energy_class", None):
@@ -93,6 +102,7 @@ async def generate_listing_draft(prop, price=None) -> dict:
     l'édition côté gestionnaire (jamais enregistré automatiquement)."""
     import json
     import re as _re
+
     from app.services import llm_service
 
     facts = _property_facts(prop, price)
@@ -115,14 +125,21 @@ async def generate_listing_draft(prop, price=None) -> dict:
                 "Phrases courtes et rythmées, 150 à 230 mots.\n"
                 "- Titre accrocheur et spécifique : type + typologie + ville + 1 atout fort, "
                 "80 caractères max, sans point final.\n"
-                'Réponds STRICTEMENT en JSON valide, sans texte autour : '
+                "Réponds STRICTEMENT en JSON valide, sans texte autour : "
                 '{"title": "...", "description": "..."}.'
             )
             reply = await llm_service.chat(
-                [{"role": "system", "content": system},
-                 {"role": "user", "content": "CARACTÉRISTIQUES DU BIEN :\n- " + "\n- ".join(facts)
-                  + "\n\nRédige maintenant le titre et la description."}],
-                temperature=0.8, max_tokens=800,
+                [
+                    {"role": "system", "content": system},
+                    {
+                        "role": "user",
+                        "content": "CARACTÉRISTIQUES DU BIEN :\n- "
+                        + "\n- ".join(facts)
+                        + "\n\nRédige maintenant le titre et la description.",
+                    },
+                ],
+                temperature=0.8,
+                max_tokens=800,
             )
             if reply:
                 txt = _re.sub(r"^```(?:json)?|```$", "", reply.strip(), flags=_re.MULTILINE).strip()
@@ -136,7 +153,7 @@ async def generate_listing_draft(prop, price=None) -> dict:
     return {**_fallback_draft(prop, facts), "source": "modele"}
 
 
-def build_photo_url(file_path: Optional[str]) -> Optional[str]:
+def build_photo_url(file_path: str | None) -> str | None:
     """URL servie pour un document uploadé (mount StaticFiles « /uploads »).
 
     `file_path` est stocké sous la forme « uploads/property/<id>/<fichier> » ;
@@ -153,15 +170,15 @@ def _token() -> str:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ListingService:
     @staticmethod
     async def get_or_create(db: AsyncSession, property_id, user_id) -> Listing:
-        listing = (await db.execute(
-            select(Listing).where(Listing.property_id == property_id)
-        )).scalar_one_or_none()
+        listing = (
+            await db.execute(select(Listing).where(Listing.property_id == property_id))
+        ).scalar_one_or_none()
         if listing is None:
             listing = Listing(property_id=property_id, status="draft", created_by=user_id)
             db.add(listing)
@@ -203,7 +220,7 @@ class ListingService:
     @staticmethod
     async def schedule(db: AsyncSession, listing: Listing, when: datetime) -> Listing:
         if when.tzinfo is None:
-            when = when.replace(tzinfo=timezone.utc)
+            when = when.replace(tzinfo=UTC)
         if when <= _now():
             raise BadRequestException("La date de publication doit être dans le futur.")
         if not listing.public_token:
@@ -224,13 +241,19 @@ class ListingService:
     async def publish_due(db: AsyncSession) -> int:
         """Publie les annonces programmées dont l'échéance est atteinte (scheduler)."""
         now = _now()
-        rows = (await db.execute(
-            select(Listing).where(
-                Listing.status == "scheduled",
-                Listing.scheduled_at.isnot(None),
-                Listing.scheduled_at <= now,
+        rows = (
+            (
+                await db.execute(
+                    select(Listing).where(
+                        Listing.status == "scheduled",
+                        Listing.scheduled_at.isnot(None),
+                        Listing.scheduled_at <= now,
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         for listing in rows:
             listing.status = "published"
             listing.published_at = now
@@ -239,20 +262,30 @@ class ListingService:
     @staticmethod
     async def property_photos(db: AsyncSession, property_id) -> list[dict]:
         """Documents-images rattachés au bien, candidats pour l'annonce."""
-        docs = (await db.execute(
-            select(Document).where(
-                Document.entity_type == "property",
-                Document.entity_id == property_id,
-            ).order_by(Document.created_at)
-        )).scalars().all()
+        docs = (
+            (
+                await db.execute(
+                    select(Document)
+                    .where(
+                        Document.entity_type == "property",
+                        Document.entity_id == property_id,
+                    )
+                    .order_by(Document.created_at)
+                )
+            )
+            .scalars()
+            .all()
+        )
         out = []
         for d in docs:
             mime = (d.mime_type or "").lower()
             if not mime.startswith("image/"):
                 continue
-            out.append({
-                "id": str(d.id),
-                "url": build_photo_url(d.file_path),
-                "label": d.label or d.file_name,
-            })
+            out.append(
+                {
+                    "id": str(d.id),
+                    "url": build_photo_url(d.file_path),
+                    "label": d.label or d.file_name,
+                }
+            )
         return out

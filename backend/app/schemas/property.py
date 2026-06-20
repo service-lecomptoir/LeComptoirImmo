@@ -1,34 +1,35 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, EmailStr
+
 from app.models.property import PropertyType
 
 
 class PropertyCreate(BaseModel):
     name: str
-    reference: Optional[str] = None
+    reference: str | None = None
     address: str
-    address2: Optional[str] = None
+    address2: str | None = None
     zip_code: str
     city: str
     country: str = "France"
     property_type: PropertyType = PropertyType.APPARTEMENT
-    owner_id: Optional[uuid.UUID] = None
-    owner_user_id: Optional[uuid.UUID] = None
-    owner_name: Optional[str] = None
-    owner_email: Optional[EmailStr] = None
-    owner_phone: Optional[str] = None
-    description: Optional[str] = None
-    notes: Optional[str] = None
-    year_built: Optional[int] = None
+    owner_id: uuid.UUID | None = None
+    owner_user_id: uuid.UUID | None = None
+    owner_name: str | None = None
+    owner_email: EmailStr | None = None
+    owner_phone: str | None = None
+    description: str | None = None
+    notes: str | None = None
+    year_built: int | None = None
     # ── Caractéristiques du logement ──────────────────────────────────────────
-    typology: Optional[str] = None          # T1 … T10
-    floor: Optional[int] = None
-    area_sqm: Optional[float] = None
-    bathrooms: Optional[int] = None         # salles d'eau / de bain
-    heating_type: Optional[str] = None
-    energy_class: Optional[str] = None
+    typology: str | None = None  # T1 … T10
+    floor: int | None = None
+    area_sqm: float | None = None
+    bathrooms: int | None = None  # salles d'eau / de bain
+    heating_type: str | None = None
+    energy_class: str | None = None
     # ── Équipements & extérieurs ──────────────────────────────────────────────
     furnished: bool = False
     kitchen_equipped: bool = False
@@ -43,66 +44,66 @@ class PropertyCreate(BaseModel):
 
 
 class PropertyUpdate(BaseModel):
-    name: Optional[str] = None
-    reference: Optional[str] = None
-    address: Optional[str] = None
-    address2: Optional[str] = None
-    zip_code: Optional[str] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    property_type: Optional[PropertyType] = None
-    owner_id: Optional[uuid.UUID] = None
-    owner_user_id: Optional[uuid.UUID] = None
-    owner_name: Optional[str] = None
-    owner_email: Optional[EmailStr] = None
-    owner_phone: Optional[str] = None
-    description: Optional[str] = None
-    notes: Optional[str] = None
-    year_built: Optional[int] = None
-    typology: Optional[str] = None
-    floor: Optional[int] = None
-    area_sqm: Optional[float] = None
-    bathrooms: Optional[int] = None
-    heating_type: Optional[str] = None
-    energy_class: Optional[str] = None
-    furnished: Optional[bool] = None
-    kitchen_equipped: Optional[bool] = None
-    has_elevator: Optional[bool] = None
-    has_balcony: Optional[bool] = None
-    has_terrace: Optional[bool] = None
-    has_garden: Optional[bool] = None
-    has_parking: Optional[bool] = None
-    has_cellar: Optional[bool] = None
-    has_fiber: Optional[bool] = None
-    has_air_conditioning: Optional[bool] = None
+    name: str | None = None
+    reference: str | None = None
+    address: str | None = None
+    address2: str | None = None
+    zip_code: str | None = None
+    city: str | None = None
+    country: str | None = None
+    property_type: PropertyType | None = None
+    owner_id: uuid.UUID | None = None
+    owner_user_id: uuid.UUID | None = None
+    owner_name: str | None = None
+    owner_email: EmailStr | None = None
+    owner_phone: str | None = None
+    description: str | None = None
+    notes: str | None = None
+    year_built: int | None = None
+    typology: str | None = None
+    floor: int | None = None
+    area_sqm: float | None = None
+    bathrooms: int | None = None
+    heating_type: str | None = None
+    energy_class: str | None = None
+    furnished: bool | None = None
+    kitchen_equipped: bool | None = None
+    has_elevator: bool | None = None
+    has_balcony: bool | None = None
+    has_terrace: bool | None = None
+    has_garden: bool | None = None
+    has_parking: bool | None = None
+    has_cellar: bool | None = None
+    has_fiber: bool | None = None
+    has_air_conditioning: bool | None = None
 
 
 class PropertyResponse(BaseModel):
     id: uuid.UUID
-    ref_code: Optional[str] = None
+    ref_code: str | None = None
     name: str
-    reference: Optional[str]
+    reference: str | None
     address: str
-    address2: Optional[str]
+    address2: str | None
     zip_code: str
     city: str
     country: str
     property_type: PropertyType
     full_address: str
-    owner_id: Optional[uuid.UUID] = None
-    owner_user_id: Optional[uuid.UUID] = None
-    owner_name: Optional[str]
-    owner_email: Optional[str]
-    owner_phone: Optional[str]
-    description: Optional[str]
-    notes: Optional[str]
-    year_built: Optional[int]
-    typology: Optional[str] = None
-    floor: Optional[int] = None
-    area_sqm: Optional[float] = None
-    bathrooms: Optional[int] = None
-    heating_type: Optional[str] = None
-    energy_class: Optional[str] = None
+    owner_id: uuid.UUID | None = None
+    owner_user_id: uuid.UUID | None = None
+    owner_name: str | None
+    owner_email: str | None
+    owner_phone: str | None
+    description: str | None
+    notes: str | None
+    year_built: int | None
+    typology: str | None = None
+    floor: int | None = None
+    area_sqm: float | None = None
+    bathrooms: int | None = None
+    heating_type: str | None = None
+    energy_class: str | None = None
     furnished: bool = False
     kitchen_equipped: bool = False
     has_elevator: bool = False
@@ -125,16 +126,16 @@ class PropertyResponse(BaseModel):
 
 class PropertyListItem(BaseModel):
     id: uuid.UUID
-    ref_code: Optional[str] = None
+    ref_code: str | None = None
     name: str
     city: str
     property_type: PropertyType
     full_address: str
-    owner_id: Optional[uuid.UUID] = None
-    owner_user_id: Optional[uuid.UUID] = None
-    owner_name: Optional[str]
-    typology: Optional[str] = None
-    area_sqm: Optional[float] = None
+    owner_id: uuid.UUID | None = None
+    owner_user_id: uuid.UUID | None = None
+    owner_name: str | None
+    typology: str | None = None
+    area_sqm: float | None = None
     is_occupied: bool = False
     unit_count: int = 0
     occupied_count: int = 0

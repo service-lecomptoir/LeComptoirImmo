@@ -1,8 +1,11 @@
 """Modèle AppSetting — configuration dynamique de l'application."""
+
 from datetime import datetime
+
 from sqlalchemy import String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import TIMESTAMP
+from sqlalchemy.orm import Mapped, mapped_column
+
 from app.database import Base
 
 

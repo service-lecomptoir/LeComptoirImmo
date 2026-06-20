@@ -9,14 +9,16 @@ Rôles disponibles (hiérarchie croissante) :
 """
 
 from enum import Enum
-from typing import Set
+
 from fastapi import HTTPException, status
 
 
 class Role(str, Enum):
     ADMIN = "admin"
     GESTIONNAIRE = "gestionnaire"
-    GESTIONNAIRE_PROPRIO = "gestionnaire_proprio"  # gestionnaire qui est aussi propriétaire de ses biens
+    GESTIONNAIRE_PROPRIO = (
+        "gestionnaire_proprio"  # gestionnaire qui est aussi propriétaire de ses biens
+    )
     PROPRIETAIRE = "proprietaire"
     LOCATAIRE = "locataire"
     # Legacy (gardés pour compatibilité DB, non utilisés dans la nouvelle archi)
@@ -26,22 +28,42 @@ class Role(str, Enum):
 
 # Hiérarchie : admin et gestionnaire ont accès à tout en gestion
 # gestionnaire_proprio = mêmes droits que gestionnaire + accès aux vues propriétaire
-ROLE_HIERARCHY: dict[Role, Set[Role]] = {
-    Role.ADMIN:                {Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO,
-                                Role.PROPRIETAIRE, Role.LOCATAIRE, Role.LECTURE, Role.COMPTABLE},
-    Role.GESTIONNAIRE:         {Role.GESTIONNAIRE, Role.PROPRIETAIRE, Role.LOCATAIRE,
-                                Role.LECTURE, Role.COMPTABLE},
-    Role.GESTIONNAIRE_PROPRIO: {Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO, Role.PROPRIETAIRE,
-                                Role.LOCATAIRE, Role.LECTURE, Role.COMPTABLE},
-    Role.PROPRIETAIRE:         {Role.PROPRIETAIRE, Role.LECTURE},
-    Role.LOCATAIRE:            {Role.LOCATAIRE},
-    Role.LECTURE:              {Role.LECTURE},
-    Role.COMPTABLE:            {Role.LECTURE, Role.COMPTABLE},
+ROLE_HIERARCHY: dict[Role, set[Role]] = {
+    Role.ADMIN: {
+        Role.ADMIN,
+        Role.GESTIONNAIRE,
+        Role.GESTIONNAIRE_PROPRIO,
+        Role.PROPRIETAIRE,
+        Role.LOCATAIRE,
+        Role.LECTURE,
+        Role.COMPTABLE,
+    },
+    Role.GESTIONNAIRE: {
+        Role.GESTIONNAIRE,
+        Role.PROPRIETAIRE,
+        Role.LOCATAIRE,
+        Role.LECTURE,
+        Role.COMPTABLE,
+    },
+    Role.GESTIONNAIRE_PROPRIO: {
+        Role.GESTIONNAIRE,
+        Role.GESTIONNAIRE_PROPRIO,
+        Role.PROPRIETAIRE,
+        Role.LOCATAIRE,
+        Role.LECTURE,
+        Role.COMPTABLE,
+    },
+    Role.PROPRIETAIRE: {Role.PROPRIETAIRE, Role.LECTURE},
+    Role.LOCATAIRE: {Role.LOCATAIRE},
+    Role.LECTURE: {Role.LECTURE},
+    Role.COMPTABLE: {Role.LECTURE, Role.COMPTABLE},
 }
+
 
 def is_manager(role: "Role") -> bool:
     """Retourne True si le rôle a accès au panneau de gestion complet."""
     return role in (Role.ADMIN, Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
+
 
 def is_owner_or_manager(role: "Role") -> bool:
     """Retourne True si le rôle peut voir des biens immobiliers."""
@@ -60,6 +82,7 @@ def require_role(required_role: Role):
     Usage:
         @router.get("/", dependencies=[Depends(require_role(Role.GESTIONNAIRE))])
     """
+
     def _checker(current_user):
         user_role = Role(current_user.role)
         if not role_has_permission(user_role, required_role):
@@ -68,4 +91,5 @@ def require_role(required_role: Role):
                 detail=f"Permission insuffisante. Rôle requis : {required_role.value}",
             )
         return current_user
+
     return _checker

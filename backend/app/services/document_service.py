@@ -1,17 +1,16 @@
 import uuid
-from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from fastapi import UploadFile
 
-from app.models.document import Document, EntityType, DocumentType
-from app.schemas.document import DocumentUpdate
-from app.utils.file_handler import save_file, delete_file
+from fastapi import UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.exceptions import NotFoundException
+from app.models.document import Document, DocumentType, EntityType
+from app.schemas.document import DocumentUpdate
+from app.utils.file_handler import delete_file, save_file
 
 
 class DocumentService:
-
     @staticmethod
     async def upload(
         db: AsyncSession,
@@ -58,6 +57,7 @@ class DocumentService:
         rattaché à une entité (ex. le locataire). Utilisé pour que les courriers
         produits par le gestionnaire apparaissent dans « Mes documents »."""
         from app.utils.file_handler import save_bytes
+
         file_path, file_size = save_bytes(content, entity_type.value, str(entity_id), file_name)
         doc = Document(
             entity_type=entity_type,
@@ -77,11 +77,11 @@ class DocumentService:
     @staticmethod
     async def list_for_entities(
         db: AsyncSession,
-        entity_ids: List[uuid.UUID],
-        entity_type: Optional[EntityType] = None,
+        entity_ids: list[uuid.UUID],
+        entity_type: EntityType | None = None,
         limit: int = 50,
         skip: int = 0,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Retourne les documents liés à une liste d'entités (tenant, lease, etc.)."""
         q = select(Document).where(Document.entity_id.in_(entity_ids))
         if entity_type:
@@ -94,10 +94,10 @@ class DocumentService:
     async def list_excluding_entities(
         db: AsyncSession,
         excluded_entity_ids: set,
-        entity_type: Optional[EntityType] = None,
+        entity_type: EntityType | None = None,
         limit: int = 50,
         skip: int = 0,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Retourne tous les documents sauf ceux liés aux entités exclues (isolation mandataire)."""
         q = select(Document)
         if excluded_entity_ids:
@@ -111,10 +111,10 @@ class DocumentService:
     @staticmethod
     async def list_all(
         db: AsyncSession,
-        entity_type: Optional[EntityType] = None,
+        entity_type: EntityType | None = None,
         limit: int = 50,
         skip: int = 0,
-    ) -> List[Document]:
+    ) -> list[Document]:
         """Retourne tous les documents (gestionnaire/admin)."""
         q = select(Document)
         if entity_type:
@@ -128,7 +128,7 @@ class DocumentService:
         db: AsyncSession,
         entity_type: EntityType,
         entity_id: uuid.UUID,
-    ) -> List[Document]:
+    ) -> list[Document]:
         result = await db.execute(
             select(Document)
             .where(
@@ -148,9 +148,7 @@ class DocumentService:
         return doc
 
     @staticmethod
-    async def update(
-        db: AsyncSession, doc_id: uuid.UUID, data: DocumentUpdate
-    ) -> Document:
+    async def update(db: AsyncSession, doc_id: uuid.UUID, data: DocumentUpdate) -> Document:
         doc = await DocumentService.get_by_id(db, doc_id)
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():

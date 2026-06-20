@@ -1,14 +1,16 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
 
 
 class EmailDomain(Base):
     """Domaine e-mail autorisé pour l'envoi des communications d'un gestionnaire."""
+
     __tablename__ = "user_email_domains"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

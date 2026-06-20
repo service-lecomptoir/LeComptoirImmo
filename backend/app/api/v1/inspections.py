@@ -1,28 +1,28 @@
 import uuid
-from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.core.permissions import Role
 from app.api.deps import require_role
+from app.api.v1._isolation import agency_member_ids, assert_manager_scope
+from app.core.permissions import Role
+from app.database import get_db
 from app.models.user import User
 from app.schemas.inspection import (
     InspectionCreate,
-    InspectionUpdate,
-    InspectionResponse,
     InspectionListResponse,
+    InspectionResponse,
+    InspectionUpdate,
 )
 from app.services.inspection_service import InspectionService
-from app.api.v1._isolation import agency_member_ids, assert_manager_scope
 
 router = APIRouter(prefix="/inspections", tags=["Inspections"])
 
 
 @router.get("", response_model=InspectionListResponse)
 async def list_inspections(
-    lease_id: Optional[uuid.UUID] = Query(None),
-    property_id: Optional[uuid.UUID] = Query(None),
+    lease_id: uuid.UUID | None = Query(None),
+    property_id: uuid.UUID | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -39,7 +39,7 @@ async def list_inspections(
         members = await agency_member_ids(db, current_user)
         items = [i for i in items if getattr(i, "created_by", None) in members]
     total = len(items)
-    page = items[skip: skip + limit]
+    page = items[skip : skip + limit]
     return InspectionListResponse(items=page, total=total, skip=skip, limit=limit)
 
 
@@ -61,7 +61,9 @@ async def get_inspection(
     current_user: User = Depends(require_role(Role.LECTURE)),
 ):
     inspection = await InspectionService.get_by_id(db, inspection_id)
-    await assert_manager_scope(db, current_user, getattr(inspection, "created_by", None), "cet état des lieux")
+    await assert_manager_scope(
+        db, current_user, getattr(inspection, "created_by", None), "cet état des lieux"
+    )
     return inspection
 
 
@@ -73,7 +75,9 @@ async def update_inspection(
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     _existing = await InspectionService.get_by_id(db, inspection_id)
-    await assert_manager_scope(db, current_user, getattr(_existing, "created_by", None), "cet état des lieux")
+    await assert_manager_scope(
+        db, current_user, getattr(_existing, "created_by", None), "cet état des lieux"
+    )
     inspection = await InspectionService.update(db, inspection_id, data)
     await db.commit()
     return inspection
@@ -86,6 +90,8 @@ async def delete_inspection(
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     _existing = await InspectionService.get_by_id(db, inspection_id)
-    await assert_manager_scope(db, current_user, getattr(_existing, "created_by", None), "cet état des lieux")
+    await assert_manager_scope(
+        db, current_user, getattr(_existing, "created_by", None), "cet état des lieux"
+    )
     await InspectionService.delete(db, inspection_id)
     await db.commit()

@@ -1,18 +1,19 @@
 """Schémas Pydantic pour les offres et services."""
+
 import uuid
-from typing import Optional
-from pydantic import BaseModel
 from datetime import datetime
+
+from pydantic import BaseModel
 
 CATEGORIES = ["article", "service", "promotion", "autre"]
 
 
 class OfferBase(BaseModel):
     title: str
-    description: Optional[str] = None
-    price: Optional[float] = None
+    description: str | None = None
+    price: float | None = None
     category: str = "service"
-    contact_info: Optional[str] = None
+    contact_info: str | None = None
     is_active: bool = True
 
 
@@ -21,18 +22,18 @@ class OfferCreate(OfferBase):
 
 
 class OfferUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    price: Optional[float] = None
-    category: Optional[str] = None
-    contact_info: Optional[str] = None
-    is_active: Optional[bool] = None
+    title: str | None = None
+    description: str | None = None
+    price: float | None = None
+    category: str | None = None
+    contact_info: str | None = None
+    is_active: bool | None = None
 
 
 class OfferResponse(OfferBase):
     id: uuid.UUID
-    gestionnaire_id: Optional[uuid.UUID]
-    image_url: Optional[str]
+    gestionnaire_id: uuid.UUID | None
+    image_url: str | None
     created_at: datetime
     updated_at: datetime
 

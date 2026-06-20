@@ -4,9 +4,9 @@ CID), nom du service (signature de la règle) et mention d'envoi automatique.
 Le logo est lu depuis le fichier (`User.logo_path`) et embarqué en pièce inline,
 ce qui le rend fiable dans tous les clients mail (pas de dépendance à une URL
 publique ni au déblocage des images distantes)."""
+
 import logging
 import os
-from typing import Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 _IMG_SUBTYPE = {"png": "png", "jpg": "jpeg", "jpeg": "jpeg", "gif": "gif"}
 
 
-def read_logo(logo_path: Optional[str]) -> Tuple[Optional[bytes], str]:
+def read_logo(logo_path: str | None) -> tuple[bytes | None, str]:
     """(octets, sous-type MIME) du logo, ou (None, 'png') si absent/non géré."""
     if not logo_path:
         return None, "png"
@@ -33,11 +33,12 @@ def read_logo(logo_path: Optional[str]) -> Tuple[Optional[bytes], str]:
         return None, "png"
 
 
-async def build_for_manager(db: AsyncSession, manager_id, service_name: Optional[str]):
+async def build_for_manager(db: AsyncSession, manager_id, service_name: str | None):
     """Renvoie (signature_html, logo_bytes, logo_subtype) pour un gestionnaire et
     un nom de service donné."""
     from app.models.user import User
     from app.services.email_service import build_signature_html, set_branding
+
     logo, sub = None, "png"
     theme = None
     brand = None
@@ -54,21 +55,26 @@ async def build_for_manager(db: AsyncSession, manager_id, service_name: Optional
 async def build_for_lease(db: AsyncSession, lease_id, *rule_types: str):
     """Résout la règle active (parmi `rule_types`) du gestionnaire du bail pour en
     tirer la signature (service), puis renvoie (signature_html, logo_bytes, subtype)."""
-    from app.models.lease import Lease
     from app.models.automation import AutomationRule
+    from app.models.lease import Lease
+
     manager_id = None
     service = None
     try:
         lease = await db.get(Lease, lease_id) if lease_id else None
         manager_id = getattr(lease, "created_by", None) if lease else None
         if manager_id and rule_types:
-            row = (await db.execute(
-                select(AutomationRule.signature).where(
-                    AutomationRule.created_by == manager_id,
-                    AutomationRule.rule_type.in_(list(rule_types)),
-                    AutomationRule.is_active.is_(True),
-                ).limit(1)
-            )).first()
+            row = (
+                await db.execute(
+                    select(AutomationRule.signature)
+                    .where(
+                        AutomationRule.created_by == manager_id,
+                        AutomationRule.rule_type.in_(list(rule_types)),
+                        AutomationRule.is_active.is_(True),
+                    )
+                    .limit(1)
+                )
+            ).first()
             service = row[0] if row else None
     except Exception as exc:  # noqa: BLE001
         logger.warning("build_for_lease(%s) échec: %s", lease_id, exc)

@@ -1,31 +1,35 @@
 import uuid
-from typing import List, Optional
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy import select
-from app.database import get_db
-from app.api.deps import get_current_user, get_current_gestionnaire
+from app.api.deps import get_current_gestionnaire, get_current_user
+from app.api.v1._isolation import agency_owner_ids as _agency_owner_ids
+from app.api.v1._isolation import assert_manager_scope
+from app.core.features import require_any_feature, require_feature
 from app.core.permissions import Role
-from app.core.features import require_feature, require_any_feature
-from app.api.v1._isolation import agency_owner_ids as _agency_owner_ids, assert_manager_scope
-from app.models.user import User
-from app.models.owner import Owner
+from app.database import get_db
 from app.models.document import EntityType
-from app.schemas.owner import OwnerCreate, OwnerUpdate, OwnerResponse, OwnerListItem
+from app.models.owner import Owner
+from app.models.user import User
 from app.schemas.document import DocumentResponse
-from app.services.owner_service import OwnerService
+from app.schemas.owner import OwnerCreate, OwnerListItem, OwnerResponse, OwnerUpdate
 from app.services.document_service import DocumentService
+from app.services.owner_service import OwnerService
 
 router = APIRouter(prefix="/owners", tags=["Propriétaires"])
 
 
 @router.get("", response_model=dict, summary="Liste des propriétaires")
 async def list_owners(
-    search: Optional[str] = Query(None, description="Recherche par nom, société, email, téléphone"),
+    search: str | None = Query(None, description="Recherche par nom, société, email, téléphone"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    available_only: bool = Query(False, description="Exclure les propriétaires déjà rattachés à un bien"),
+    available_only: bool = Query(
+        False, description="Exclure les propriétaires déjà rattachés à un bien"
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -45,15 +49,19 @@ async def list_owners(
 
     if available_only:
         from app.models.property import Property
+
         linked_ids = {
-            oid for oid in (await db.execute(
-                select(Property.owner_id).where(Property.owner_id.isnot(None))
-            )).scalars().all()
+            oid
+            for oid in (
+                await db.execute(select(Property.owner_id).where(Property.owner_id.isnot(None)))
+            )
+            .scalars()
+            .all()
         }
         owners = [o for o in owners if o.id not in linked_ids]
 
     total = len(owners)
-    page = owners[skip: skip + limit]
+    page = owners[skip : skip + limit]
     return {
         "items": [OwnerListItem.model_validate(o) for o in page],
         "total": total,
@@ -78,9 +86,9 @@ async def get_my_owner(
 ):
     """Fiche propriétaire liée au compte connecté (ou null). Sert au propriétaire/GP
     pour consulter et éditer ses coordonnées de règlement (RIB) depuis son profil."""
-    owner = (await db.execute(
-        select(Owner).where(Owner.user_id == current_user.id)
-    )).scalars().first()
+    owner = (
+        (await db.execute(select(Owner).where(Owner.user_id == current_user.id))).scalars().first()
+    )
     return owner
 
 
@@ -91,9 +99,9 @@ async def update_my_owner(
     current_user: User = Depends(get_current_user),
 ):
     """Le propriétaire/GP met à jour sa propre fiche (coordonnées + RIB)."""
-    owner = (await db.execute(
-        select(Owner).where(Owner.user_id == current_user.id)
-    )).scalars().first()
+    owner = (
+        (await db.execute(select(Owner).where(Owner.user_id == current_user.id))).scalars().first()
+    )
     if not owner:
         raise HTTPException(status_code=404, detail="Aucune fiche propriétaire liée à ce compte")
     # Un propriétaire ne change pas son propre rattachement de compte via son profil.
@@ -160,17 +168,22 @@ async def owner_fiscal_pdf(
     _feat: User = Depends(require_feature("liasse_fiscale")),
 ):
     from fastapi.responses import Response
-    from app.services.pdf_service import render_template, html_to_pdf
+
+    from app.services.pdf_service import html_to_pdf, render_template
     from app.services.template_layout_service import get_layout
     from app.utils.filename import doc_filename
 
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
     data = await OwnerService.get_finances(db, owner_id, year)
-    html = render_template("liasse_fiscale.html.j2", {
-        "data": data, "layout": get_layout(),
-        "signature_uri": (getattr(current_user, "signature", None) or ""),
-    })
+    html = render_template(
+        "liasse_fiscale.html.j2",
+        {
+            "data": data,
+            "layout": get_layout(),
+            "signature_uri": (getattr(current_user, "signature", None) or ""),
+        },
+    )
     pdf = html_to_pdf(html)
     filename = doc_filename("liasse_fiscale", tenant=data["owner_name"], year=year)
     return Response(
@@ -181,7 +194,7 @@ async def owner_fiscal_pdf(
 
 
 # ── Documents du propriétaire ──────────────────────────────────────────────────
-@router.get("/{owner_id}/documents", response_model=List[DocumentResponse])
+@router.get("/{owner_id}/documents", response_model=list[DocumentResponse])
 async def list_owner_documents(
     owner_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Communications de candidature pilotées par « Communication et automatisation ».
 
 Chaque e-mail adressé à un candidat correspond à un type de règle (AutomationRule)
@@ -12,13 +11,14 @@ par défaut (aucune régression). Les candidats n'ont pas de langue enregistrée
 on reste en français (champ `subject`/`body_template` de la règle, pas le modèle
 multilingue réservé aux locataires).
 """
+
 from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.automation import AutomationRule
-from app.services.automation_engine import render_subject, render_rule_body, _msg_templates
+from app.services.automation_engine import _msg_templates, render_rule_body, render_subject
 
 # Types de règles « candidature » (event-driven).
 ACCUSE = "candidature_accuse"
@@ -42,12 +42,16 @@ async def resolve(db: AsyncSession, gestionnaire_id, rule_type: str, ctx: dict) 
     if not gestionnaire_id:
         return default
     try:
-        rule = (await db.execute(
-            select(AutomationRule).where(
-                AutomationRule.created_by == gestionnaire_id,
-                AutomationRule.rule_type == rule_type,
-            ).limit(1)
-        )).scalar_one_or_none()
+        rule = (
+            await db.execute(
+                select(AutomationRule)
+                .where(
+                    AutomationRule.created_by == gestionnaire_id,
+                    AutomationRule.rule_type == rule_type,
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
     except Exception:  # noqa: BLE001
         return default
     if rule is None:

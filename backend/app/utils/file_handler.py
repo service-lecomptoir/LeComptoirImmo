@@ -2,11 +2,11 @@
 Gestion des fichiers uploadés.
 Les fichiers sont stockés dans : uploads/{entity_type}/{entity_id}/{uuid}_{filename}
 """
+
 import uuid
 from pathlib import Path
-from typing import Optional
 
-from fastapi import UploadFile, HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 
 # Types MIME autorisés et leurs extensions
 ALLOWED_MIME_TYPES: dict[str, str] = {
@@ -38,7 +38,7 @@ def validate_file(file: UploadFile) -> None:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail=f"Type de fichier non autorisé : {file.content_type}. "
-                   f"Types acceptés : PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX",
+            f"Types acceptés : PDF, JPG, PNG, WEBP, DOC, DOCX, XLS, XLSX",
         )
 
 
@@ -66,7 +66,7 @@ async def save_file(
                 dest.unlink(missing_ok=True)
                 raise HTTPException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail=f"Fichier trop volumineux. Taille max : 20 Mo",
+                    detail="Fichier trop volumineux. Taille max : 20 Mo",
                 )
             f.write(chunk)
 
@@ -93,7 +93,7 @@ def delete_file(file_path: str) -> None:
         path.unlink()
 
 
-def get_file_path(file_path: str) -> Optional[Path]:
+def get_file_path(file_path: str) -> Path | None:
     """Retourne le Path absolu si le fichier existe."""
     path = Path(file_path)
     return path if path.exists() else None

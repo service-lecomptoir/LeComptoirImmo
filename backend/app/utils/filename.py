@@ -3,14 +3,14 @@
 Miroir backend de `frontend/src/utils/filename.ts` : tout document porte un
 suffixe `nom_prenom_locataire_nom_bien_mmaaaa` (séparés par `_`).
 """
+
 from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Optional
 
 
-def _slug(value: Optional[str]) -> str:
+def _slug(value: str | None) -> str:
     """Translittère, retire les accents, remplace tout non-alphanumérique par '_'."""
     if not value:
         return ""
@@ -23,10 +23,10 @@ def _slug(value: Optional[str]) -> str:
 def doc_filename(
     prefix: str,
     *,
-    tenant: Optional[str] = None,
-    property_name: Optional[str] = None,
-    month: Optional[int] = None,
-    year: Optional[int] = None,
+    tenant: str | None = None,
+    property_name: str | None = None,
+    month: int | None = None,
+    year: int | None = None,
 ) -> str:
     """Retourne `prefix_Tenant_Property_mmaaaa.pdf`.
 

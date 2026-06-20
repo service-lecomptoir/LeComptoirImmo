@@ -1,27 +1,28 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, EmailStr, model_validator
+
 from app.models.tenant import Civility
 
 
 class OwnerCreate(BaseModel):
-    civility: Optional[Civility] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company_name: Optional[str] = None
-    national_id: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None  # rue (n° + voie)
-    zip_code: Optional[str] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    iban: Optional[str] = None
-    bic: Optional[str] = None
-    bank_holder: Optional[str] = None
-    notes: Optional[str] = None
-    user_id: Optional[uuid.UUID] = None  # Compte de connexion (optionnel)
+    civility: Civility | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    company_name: str | None = None
+    national_id: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    address: str | None = None  # rue (n° + voie)
+    zip_code: str | None = None
+    city: str | None = None
+    country: str | None = None
+    iban: str | None = None
+    bic: str | None = None
+    bank_holder: str | None = None
+    notes: str | None = None
+    user_id: uuid.UUID | None = None  # Compte de connexion (optionnel)
 
     @model_validator(mode="after")
     def check_identity(self):
@@ -45,44 +46,44 @@ class OwnerCreate(BaseModel):
 
 
 class OwnerUpdate(BaseModel):
-    civility: Optional[Civility] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company_name: Optional[str] = None
-    national_id: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None  # rue (n° + voie)
-    zip_code: Optional[str] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    iban: Optional[str] = None
-    bic: Optional[str] = None
-    bank_holder: Optional[str] = None
-    notes: Optional[str] = None
-    user_id: Optional[uuid.UUID] = None
+    civility: Civility | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    company_name: str | None = None
+    national_id: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    address: str | None = None  # rue (n° + voie)
+    zip_code: str | None = None
+    city: str | None = None
+    country: str | None = None
+    iban: str | None = None
+    bic: str | None = None
+    bank_holder: str | None = None
+    notes: str | None = None
+    user_id: uuid.UUID | None = None
 
 
 class OwnerResponse(BaseModel):
     id: uuid.UUID
-    ref_code: Optional[str] = None
-    civility: Optional[Civility]
-    first_name: Optional[str]
+    ref_code: str | None = None
+    civility: Civility | None
+    first_name: str | None
     last_name: str
-    company_name: Optional[str]
+    company_name: str | None
     full_name: str
-    national_id: Optional[str]
-    email: Optional[str]
-    phone: Optional[str]
-    address: Optional[str]
-    zip_code: Optional[str] = None
-    city: Optional[str] = None
-    country: Optional[str] = None
-    iban: Optional[str]
-    bic: Optional[str]
-    bank_holder: Optional[str]
-    notes: Optional[str]
-    user_id: Optional[uuid.UUID] = None
+    national_id: str | None
+    email: str | None
+    phone: str | None
+    address: str | None
+    zip_code: str | None = None
+    city: str | None = None
+    country: str | None = None
+    iban: str | None
+    bic: str | None
+    bank_holder: str | None
+    notes: str | None
+    user_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -91,16 +92,17 @@ class OwnerResponse(BaseModel):
 
 class OwnerListItem(BaseModel):
     """Version allégée pour les listes."""
+
     id: uuid.UUID
-    ref_code: Optional[str] = None
+    ref_code: str | None = None
     full_name: str
-    civility: Optional[Civility]
-    first_name: Optional[str]
+    civility: Civility | None
+    first_name: str | None
     last_name: str
-    company_name: Optional[str]
-    email: Optional[str]
-    phone: Optional[str]
-    user_id: Optional[uuid.UUID] = None
+    company_name: str | None
+    email: str | None
+    phone: str | None
+    user_id: uuid.UUID | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

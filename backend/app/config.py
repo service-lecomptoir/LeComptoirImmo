@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import List
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:3000"
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     # ── URL publique de l'app (liens de retour Stripe/SumUp, webhooks) ───────
@@ -79,8 +79,8 @@ class Settings(BaseSettings):
     # ── Agents IA via Telegram (canal gratuit) ───────────────────────────────
     # Bot créé via @BotFather. Vide → envoi désactivé (no-op), l'app reste OK.
     TELEGRAM_BOT_TOKEN: str = ""
-    TELEGRAM_BOT_USERNAME: str = ""        # ex. "LeComptoirImmoBot" (pour les instructions)
-    TELEGRAM_WEBHOOK_SECRET: str = ""      # secret d'en-tête vérifié sur le webhook entrant
+    TELEGRAM_BOT_USERNAME: str = ""  # ex. "LeComptoirImmoBot" (pour les instructions)
+    TELEGRAM_WEBHOOK_SECRET: str = ""  # secret d'en-tête vérifié sur le webhook entrant
 
     @property
     def telegram_enabled(self) -> bool:
@@ -120,17 +120,19 @@ class Settings(BaseSettings):
         de développement (clé interne, mot de passe admin par défaut)."""
         if self.is_production:
             leaked = [
-                name for name, default in _INSECURE_DEFAULTS.items()
+                name
+                for name, default in _INSECURE_DEFAULTS.items()
                 if getattr(self, name, None) == default
             ]
             if leaked:
                 raise ValueError(
-                    "Secrets non configurés en production : " + ", ".join(leaked)
+                    "Secrets non configurés en production : "
+                    + ", ".join(leaked)
                     + ". Définissez-les dans le fichier .env."
                 )
         return self
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     return Settings()

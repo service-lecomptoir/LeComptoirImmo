@@ -7,16 +7,28 @@ et déclenche une notification + un e-mail (no-op tant que SMTP est désactivé)
 Logique précise pour le rythme mensuel : on affiche la mention si la révision
 prend effet le mois SUIVANT immédiatement la période de l'avis/quittance.
 """
+
 from datetime import date, timedelta
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.lease import Lease
 from app.services.irl_service import IrlService
 
-_MONTHS_FR = ["janvier", "février", "mars", "avril", "mai", "juin",
-              "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+_MONTHS_FR = [
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
 
 
 def next_revision_date(lease: Lease) -> date:
@@ -34,7 +46,7 @@ def _month_after(year: int, month: int) -> tuple[int, int]:
 
 async def upcoming_revision_notice(
     db: AsyncSession, lease: Lease, period_year: int, period_month: int
-) -> Optional[dict]:
+) -> dict | None:
     """Renvoie les infos de la mention si une révision IRL prend effet le mois
     suivant cette période (sinon None)."""
     if not lease or not getattr(lease, "irl_quarter", None) or lease.irl_base_index is None:
@@ -98,7 +110,7 @@ def notice_html(notice: dict) -> str:
         '<div style="margin-top:16px;padding:10px 12px;border:1px solid #d1d5db;'
         'border-left:4px solid #2563eb;background:#f8fafc;font-size:11px;color:#374151;">'
         '<strong style="color:#1e3a8a;">Information : révision de loyer à venir</strong><br/>'
-        f'{body}</div>'
+        f"{body}</div>"
     )
 
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Journalisation fichier de LeComptoir Immo (supervisée par Portail360).
 
 Écrit deux journaux rotatifs (taille bornée → ne sature pas le disque) dans
@@ -8,7 +7,9 @@
 
 La sortie console (docker logs) est conservée. Idempotent : n'ajoute pas deux
 fois les mêmes handlers (workers uvicorn multiples)."""
+
 from __future__ import annotations
+
 import logging
 import os
 from logging.handlers import RotatingFileHandler
@@ -33,7 +34,9 @@ def setup_logging() -> None:
     if "all" not in present:
         fh = RotatingFileHandler(
             os.path.join(log_dir, "immo.log"),
-            maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8",
+            maxBytes=10 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
         )
         fh.setLevel(logging.INFO)
         fh.setFormatter(fmt)
@@ -43,7 +46,9 @@ def setup_logging() -> None:
     if "err" not in present:
         eh = RotatingFileHandler(
             os.path.join(log_dir, "immo-error.log"),
-            maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8",
+            maxBytes=5 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
         )
         eh.setLevel(logging.WARNING)
         eh.setFormatter(fmt)

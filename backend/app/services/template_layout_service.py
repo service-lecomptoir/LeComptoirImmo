@@ -1,4 +1,5 @@
 """Service de lecture/écriture de la configuration de mise en page des templates PDF."""
+
 import json
 from pathlib import Path
 

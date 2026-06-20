@@ -1,6 +1,5 @@
 import uuid
 from datetime import date, datetime
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +8,7 @@ from app.models.lease import Lease
 from app.models.rent_revision import RentRevision
 
 
-def first_of_next_month(d: Optional[date] = None) -> date:
+def first_of_next_month(d: date | None = None) -> date:
     """1er jour du mois qui suit `d` (par défaut aujourd'hui). Date d'effet par
     défaut d'une révision : jamais le mois en cours."""
     d = d or date.today()
@@ -22,15 +21,23 @@ class RentRevisionService:
 
     @staticmethod
     async def list_for_lease(db: AsyncSession, lease_id: uuid.UUID) -> list[RentRevision]:
-        rows = (await db.execute(
-            select(RentRevision)
-            .where(RentRevision.lease_id == lease_id)
-            .order_by(RentRevision.effective_date.desc(), RentRevision.created_at.desc())
-        )).scalars().all()
+        rows = (
+            (
+                await db.execute(
+                    select(RentRevision)
+                    .where(RentRevision.lease_id == lease_id)
+                    .order_by(RentRevision.effective_date.desc(), RentRevision.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
         return list(rows)
 
     @staticmethod
-    def _effective_field(base_value: float, revisions: list[RentRevision], kind: str, on_date: date) -> float:
+    def _effective_field(
+        base_value: float, revisions: list[RentRevision], kind: str, on_date: date
+    ) -> float:
         """Montant applicable d'un champ à `on_date` = dernière révision de ce champ
         dont la date d'effet précède (ou égale) `on_date` ; sinon `base_value`."""
         rows = [r for r in revisions if r.kind == kind and r.effective_date <= on_date]
@@ -40,10 +47,14 @@ class RentRevisionService:
         return float(base_value)
 
     @staticmethod
-    def effective_amounts(lease: Lease, revisions: list[RentRevision], on_date: date) -> tuple[float, float]:
+    def effective_amounts(
+        lease: Lease, revisions: list[RentRevision], on_date: date
+    ) -> tuple[float, float]:
         """(loyer, charges) applicables à `on_date`, chaque champ indépendamment."""
         rent = RentRevisionService._effective_field(lease.rent_amount, revisions, "rent", on_date)
-        charges = RentRevisionService._effective_field(lease.charges_amount, revisions, "charges", on_date)
+        charges = RentRevisionService._effective_field(
+            lease.charges_amount, revisions, "charges", on_date
+        )
         return rent, charges
 
     @staticmethod
@@ -51,12 +62,12 @@ class RentRevisionService:
         db: AsyncSession,
         lease: Lease,
         *,
-        kind: str,                      # 'rent' | 'charges'
+        kind: str,  # 'rent' | 'charges'
         new_amount: float,
         effective_date: date,
         source: str,
-        reason: Optional[str] = None,
-        created_by: Optional[uuid.UUID] = None,
+        reason: str | None = None,
+        created_by: uuid.UUID | None = None,
         notify: bool = True,
     ) -> RentRevision:
         """Programme la révision d'UN champ. S'il existe déjà une révision de ce
@@ -83,9 +94,15 @@ class RentRevisionService:
             base = lease.rent_amount if kind == "rent" else lease.charges_amount
             prev = RentRevisionService._effective_field(base, revisions, kind, today)
             rev = RentRevision(
-                lease_id=lease.id, kind=kind, amount=new_amount, prev_amount=round(prev, 2),
-                effective_date=effective_date, source=source, reason=reason,
-                created_by=created_by, applied=effective_date <= today,
+                lease_id=lease.id,
+                kind=kind,
+                amount=new_amount,
+                prev_amount=round(prev, 2),
+                effective_date=effective_date,
+                source=source,
+                reason=reason,
+                created_by=created_by,
+                applied=effective_date <= today,
             )
             db.add(rev)
             await db.flush()
@@ -111,21 +128,34 @@ class RentRevisionService:
             if kind == "rent" and source == "irl":
                 try:
                     from app.services.document_blocks_pdf_service import RevisionLoyerPDFService
+
                     pdf_bytes = await RevisionLoyerPDFService.generate(db, lease)
                     pdf_name = f"revision-loyer-{lease.id}.pdf"
                 except Exception:  # noqa: BLE001
                     import logging
-                    logging.getLogger(__name__).warning("[revision] PDF IRL indisponible", exc_info=True)
+
+                    logging.getLogger(__name__).warning(
+                        "[revision] PDF IRL indisponible", exc_info=True
+                    )
             try:
                 from app.services.automation_engine import send_revision_email
+
                 await send_revision_email(
-                    db, lease, kind=kind, old_amount=old_for_email,
-                    new_amount=new_amount, effective_date=effective_date,
-                    pdf_bytes=pdf_bytes, pdf_name=pdf_name,
+                    db,
+                    lease,
+                    kind=kind,
+                    old_amount=old_for_email,
+                    new_amount=new_amount,
+                    effective_date=effective_date,
+                    pdf_bytes=pdf_bytes,
+                    pdf_name=pdf_name,
                 )
             except Exception:  # noqa: BLE001
                 import logging
-                logging.getLogger(__name__).warning("[revision] e-mail locataire non envoyé", exc_info=True)
+
+                logging.getLogger(__name__).warning(
+                    "[revision] e-mail locataire non envoyé", exc_info=True
+                )
         return rev
 
     @staticmethod

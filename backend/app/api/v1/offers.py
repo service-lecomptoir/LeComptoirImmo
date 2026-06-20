@@ -1,18 +1,19 @@
 """API Offres & Services — gestion et consultation."""
-import uuid
+
 import os
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+import uuid
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.core.permissions import Role
-from app.models.offer import Offer
+from app.database import get_db
 from app.models.lease import Lease
-from app.schemas.offer import OfferCreate, OfferUpdate, OfferResponse
+from app.models.offer import Offer
 from app.models.user import User
+from app.schemas.offer import OfferCreate, OfferResponse, OfferUpdate
 
 router = APIRouter(prefix="/offers", tags=["Offres & Services"])
 
@@ -33,7 +34,8 @@ def _check_ownership(offer: Offer, user: User) -> None:
 
 # ── Locataire : voir les offres de son gestionnaire ───────────────────────────
 
-@router.get("/me", response_model=List[OfferResponse])
+
+@router.get("/me", response_model=list[OfferResponse])
 async def list_offers_for_tenant(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -51,17 +53,20 @@ async def list_offers_for_tenant(
         return []
 
     result = await db.execute(
-        select(Offer).where(
+        select(Offer)
+        .where(
             Offer.gestionnaire_id == lease.created_by,
             Offer.is_active.is_(True),
-        ).order_by(Offer.created_at.desc())
+        )
+        .order_by(Offer.created_at.desc())
     )
     return list(result.scalars().all())
 
 
 # ── Gestionnaire : CRUD offres ────────────────────────────────────────────────
 
-@router.get("", response_model=List[OfferResponse])
+
+@router.get("", response_model=list[OfferResponse])
 async def list_offers(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

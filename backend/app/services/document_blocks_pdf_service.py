@@ -1,19 +1,33 @@
-# -*- coding: utf-8 -*-
 """Génération par BLOCS (mise en page moderne) des documents de l'atelier autres que
 l'avis d'échéance : quittance, régularisation de charges, révision de loyer,
 décompte de taxes foncières. Réutilise le moteur de blocs et le thème.
 """
+
 from __future__ import annotations
 
 from datetime import date as _date
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.pdf_service import html_to_pdf, _civil_name, tenant_reference, civility_greeting
 from app.services.document_render_service import eur
+from app.services.pdf_service import _civil_name, civility_greeting, html_to_pdf, tenant_reference
 
-_MOIS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
-            "août", "septembre", "octobre", "novembre", "décembre"]
+_MOIS_FR = [
+    "",
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
 
 
 def _fr_date(d) -> str:
@@ -35,38 +49,58 @@ def _doc_common_vars(tenant, property_obj, today_fr: str) -> dict:
         "tenant_login": tenant_reference(tenant),
         "tenant_reference": tenant_reference(tenant),
         "property_name": (getattr(property_obj, "name", "") or "") if property_obj else "",
-        "property_reference": ((getattr(property_obj, "ref_code", "") or
-                                getattr(property_obj, "reference", "") or
-                                getattr(property_obj, "name", "")) if property_obj else ""),
+        "property_reference": (
+            (
+                getattr(property_obj, "ref_code", "")
+                or getattr(property_obj, "reference", "")
+                or getattr(property_obj, "name", "")
+            )
+            if property_obj
+            else ""
+        ),
         "property_address": property_obj.full_address_block if property_obj else "",
         "property_address2": (getattr(property_obj, "address2", "") or "") if property_obj else "",
         "property_street": (getattr(property_obj, "address", "") or "") if property_obj else "",
-        "property_city_line": (" ".join(p for p in [getattr(property_obj, "zip_code", ""),
-                                                    getattr(property_obj, "city", "")] if p)
-                               if property_obj else ""),
+        "property_city_line": (
+            " ".join(
+                p
+                for p in [getattr(property_obj, "zip_code", ""), getattr(property_obj, "city", "")]
+                if p
+            )
+            if property_obj
+            else ""
+        ),
         "today_date": today_fr,
     }
 
 
-async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, template_type: str,
-                                 variables: dict, line_items=None) -> bytes:
+async def render_blocks_document(
+    db: AsyncSession, gestionnaire_user_id, template_type: str, variables: dict, line_items=None
+) -> bytes:
     """Rend un document par blocs : template par défaut du gestionnaire (ses
     blocs/thème) sinon blocs par défaut du type. Logo = profil gestionnaire."""
     from app.models.document_template import DocumentTemplate
     from app.models.user import User
     from app.services.avis_blocks_render_service import (
-        render_avis_blocks_html, default_blocks, DEFAULT_THEME)
+        DEFAULT_THEME,
+        default_blocks,
+        render_avis_blocks_html,
+    )
 
     tmpl = None
     if gestionnaire_user_id:
-        tmpl = (await db.execute(select(DocumentTemplate).where(
-            DocumentTemplate.gestionnaire_id == gestionnaire_user_id,
-            DocumentTemplate.template_type == template_type,
-            DocumentTemplate.is_default.is_(True),
-            DocumentTemplate.is_active.is_(True),
-        ))).scalar_one_or_none()
+        tmpl = (
+            await db.execute(
+                select(DocumentTemplate).where(
+                    DocumentTemplate.gestionnaire_id == gestionnaire_user_id,
+                    DocumentTemplate.template_type == template_type,
+                    DocumentTemplate.is_default.is_(True),
+                    DocumentTemplate.is_active.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
 
-    blocks = (getattr(tmpl, "blocks", None) or default_blocks(template_type) or [])
+    blocks = getattr(tmpl, "blocks", None) or default_blocks(template_type) or []
     theme = getattr(tmpl, "theme", None) or DEFAULT_THEME
 
     logo_path = None
@@ -74,7 +108,9 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
     owner_company, owner_national_id = "", ""
     user_signature = ""
     if gestionnaire_user_id:
-        user = (await db.execute(select(User).where(User.id == gestionnaire_user_id))).scalar_one_or_none()
+        user = (
+            await db.execute(select(User).where(User.id == gestionnaire_user_id))
+        ).scalar_one_or_none()
         if user:
             logo_path = getattr(user, "logo_path", None)
             sender_name = user.full_name or ""
@@ -84,23 +120,29 @@ async def render_blocks_document(db: AsyncSession, gestionnaire_user_id, templat
             user_signature = getattr(user, "signature", "") or ""
 
     from app.services.document_render_service import build_emitter_address
+
     variables = dict(variables)
     if not variables.get("company_name"):
         variables["company_name"] = sender_name
     if not variables.get("company_address"):
         # Émetteur enrichi : Société + « SIRET : … » + adresse (sidebar de l'en-tête).
-        variables["company_address"] = build_emitter_address(sender_addr, owner_company, owner_national_id)
+        variables["company_address"] = build_emitter_address(
+            sender_addr, owner_company, owner_national_id
+        )
     # Signature du gestionnaire (apposée en pied par le bloc « signature »).
     if not variables.get("signature_uri"):
         variables["signature_uri"] = user_signature
 
-    html = render_avis_blocks_html(blocks, theme, variables, line_items=line_items, logo_path=logo_path)
+    html = render_avis_blocks_html(
+        blocks, theme, variables, line_items=line_items, logo_path=logo_path
+    )
     return html_to_pdf(html)
 
 
 async def _load_tenant_property(db: AsyncSession, lease):
     from app.models.property import Property
     from app.models.tenant import Tenant
+
     tenant = await db.get(Tenant, lease.tenant_id) if lease is not None else None
     property_obj = None
     if lease is not None and getattr(lease, "property_id", None):
@@ -112,29 +154,35 @@ class ChargeRegularizationPDFService:
     @staticmethod
     async def generate(db: AsyncSession, reg) -> bytes:
         from app.models.lease import Lease
+
         lease = await db.get(Lease, reg.lease_id)
         tenant, property_obj = await _load_tenant_property(db, lease)
-        period = (f"du {reg.period_start.strftime('%d/%m/%Y')} "
-                  f"au {reg.period_end.strftime('%d/%m/%Y')}")
+        period = (
+            f"du {reg.period_start.strftime('%d/%m/%Y')} au {reg.period_end.strftime('%d/%m/%Y')}"
+        )
         balance = float(reg.balance)
         result_label = "Montant en votre faveur" if balance >= 0 else "Complément à régler"
         v = _doc_common_vars(tenant, property_obj, _fr_date(_date.today()))
-        v.update({
-            "period_range": period,
-            "regul_real": _eur_sym(reg.real_total),
-            "regul_quote_part": _eur_sym(reg.real_total),
-            "regul_provisions": _eur_sym(reg.provisions_total),
-            "regul_result_label": result_label,
-            "regul_result_amount": _eur_sym(abs(balance)),
-        })
-        return await render_blocks_document(db, getattr(lease, "created_by", None),
-                                            "regularisation_charges", v)
+        v.update(
+            {
+                "period_range": period,
+                "regul_real": _eur_sym(reg.real_total),
+                "regul_quote_part": _eur_sym(reg.real_total),
+                "regul_provisions": _eur_sym(reg.provisions_total),
+                "regul_result_label": result_label,
+                "regul_result_amount": _eur_sym(abs(balance)),
+            }
+        )
+        return await render_blocks_document(
+            db, getattr(lease, "created_by", None), "regularisation_charges", v
+        )
 
 
 class RevisionLoyerPDFService:
     @staticmethod
     async def generate(db: AsyncSession, lease) -> bytes:
         from app.services.irl_service import IrlService
+
         tenant, property_obj = await _load_tenant_property(db, lease)
         quarter = lease.irl_quarter
         base = float(lease.irl_base_index) if lease.irl_base_index else None
@@ -156,21 +204,27 @@ class RevisionLoyerPDFService:
             return f"{float(x):.2f}".replace(".", ",")
 
         v = _doc_common_vars(tenant, property_obj, _fr_date(_date.today()))
-        v.update({
-            "period_range": "",
-            "rev_old_rent": _eur_sym(old_rent),
-            "rev_old_index": _idx(base) if base else "—",
-            "rev_new_index": _idx(latest.value) if latest else "—",
-            "rev_quarter": str(quarter or ""),
-            "rev_old_index_year": str((latest.year - 1) if latest else ""),
-            "rev_new_index_year": str(latest.year if latest else ""),
-            "rev_coeff": (f"{_idx(latest.value)} / {_idx(base)} = "
-                          f"{coeff:.8f}".replace(".", ",")) if coeff else "—",
-            "rev_new_rent": _eur_sym(new_rent) if new_rent is not None else "—",
-            "rev_effective_date": _fr_date(eff),
-        })
-        return await render_blocks_document(db, getattr(lease, "created_by", None),
-                                            "revision_loyer", v)
+        v.update(
+            {
+                "period_range": "",
+                "rev_old_rent": _eur_sym(old_rent),
+                "rev_old_index": _idx(base) if base else "—",
+                "rev_new_index": _idx(latest.value) if latest else "—",
+                "rev_quarter": str(quarter or ""),
+                "rev_old_index_year": str((latest.year - 1) if latest else ""),
+                "rev_new_index_year": str(latest.year if latest else ""),
+                "rev_coeff": (
+                    f"{_idx(latest.value)} / {_idx(base)} = {coeff:.8f}".replace(".", ",")
+                )
+                if coeff
+                else "—",
+                "rev_new_rent": _eur_sym(new_rent) if new_rent is not None else "—",
+                "rev_effective_date": _fr_date(eff),
+            }
+        )
+        return await render_blocks_document(
+            db, getattr(lease, "created_by", None), "revision_loyer", v
+        )
 
 
 class TaxesFoncieresPDFService:
@@ -184,16 +238,19 @@ class TaxesFoncieresPDFService:
         days = (end - start).days + 1 if end >= start else 0
         quote = round(float(teom_amount) * days / total_days, 2) if total_days else 0.0
         v = _doc_common_vars(tenant, property_obj, _fr_date(_date.today()))
-        v.update({
-            "period_range": f"du 01/01/{year} au 31/12/{year}",
-            "tax_label": f"TAXE ENLÈVEMENT O.M. {year}",
-            "tax_total": _eur_sym(teom_amount),
-            "tax_days": str(days),
-            "tax_quote_part": _eur_sym(quote),
-            "tax_provisions": _eur_sym(0),
-        })
-        return await render_blocks_document(db, getattr(lease, "created_by", None),
-                                            "taxes_foncieres", v)
+        v.update(
+            {
+                "period_range": f"du 01/01/{year} au 31/12/{year}",
+                "tax_label": f"TAXE ENLÈVEMENT O.M. {year}",
+                "tax_total": _eur_sym(teom_amount),
+                "tax_days": str(days),
+                "tax_quote_part": _eur_sym(quote),
+                "tax_provisions": _eur_sym(0),
+            }
+        )
+        return await render_blocks_document(
+            db, getattr(lease, "created_by", None), "taxes_foncieres", v
+        )
 
 
 class RapportGestionPDFService:
@@ -202,6 +259,7 @@ class RapportGestionPDFService:
         """Rapport mensuel de gestion (réservé gestionnaire) via le modèle de la
         atelier de documents « rapport_gestion ». Les statistiques viennent d'automation_engine."""
         from app.services.automation_engine import _manager_stats_vars
+
         v = await _manager_stats_vars(db, manager_id, year, month)
         v["today_date"] = _fr_date(_date.today())
         return await render_blocks_document(db, manager_id, "rapport_gestion", v)

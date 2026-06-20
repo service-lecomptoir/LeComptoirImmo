@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Phase 3 — Actions exécutées par les agents IA (avec confirmation).
 
 Boucle sûre : le LLM interprète la demande → action structurée (liste blanche),
@@ -8,33 +7,59 @@ sur « OUI » l'action s'exécute. Aucune action n'est exécutée sans confirmat
 Actions (v1) : générer/envoyer un avis d'échéance, générer/envoyer une quittance,
 enregistrer un paiement reçu, créer une démarche (ticket).
 """
+
 from __future__ import annotations
+
 import json
 import re
 import uuid
 from datetime import date
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import Role
-from app.models.user import User
-from app.models.tenant import Tenant
 from app.models.lease import Lease
-from app.models.property import Property
 from app.models.payment import Payment, PaymentStatus
+from app.models.property import Property
+from app.models.tenant import Tenant
+from app.models.user import User
 from app.services import llm_service
 
 _MANAGER_ROLES = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO, Role.ADMIN)
-_CONFIRM_WORDS = {"oui", "ok", "okay", "confirme", "confirmer", "je confirme", "valide",
-                  "valider", "go", "yes", "d'accord", "daccord", "c'est bon"}
+_CONFIRM_WORDS = {
+    "oui",
+    "ok",
+    "okay",
+    "confirme",
+    "confirmer",
+    "je confirme",
+    "valide",
+    "valider",
+    "go",
+    "yes",
+    "d'accord",
+    "daccord",
+    "c'est bon",
+}
 _CANCEL_WORDS = {"non", "annule", "annuler", "stop", "cancel", "abandonne", "laisse tomber"}
 
 _MONTHS = {
-    "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4, "mai": 5,
-    "juin": 6, "juillet": 7, "août": 8, "aout": 8, "septembre": 9, "octobre": 10,
-    "novembre": 11, "décembre": 12, "decembre": 12,
+    "janvier": 1,
+    "février": 2,
+    "fevrier": 2,
+    "mars": 3,
+    "avril": 4,
+    "mai": 5,
+    "juin": 6,
+    "juillet": 7,
+    "août": 8,
+    "aout": 8,
+    "septembre": 9,
+    "octobre": 10,
+    "novembre": 11,
+    "décembre": 12,
+    "decembre": 12,
 }
 
 
@@ -82,7 +107,7 @@ _ACTION_PROMPT = (
 )
 
 
-def _parse_json(raw: str) -> Optional[dict]:
+def _parse_json(raw: str) -> dict | None:
     if not raw:
         return None
     m = re.search(r"\{.*\}", raw, re.DOTALL)
@@ -94,12 +119,13 @@ def _parse_json(raw: str) -> Optional[dict]:
         return None
 
 
-async def _llm_intent(text: str) -> Optional[dict]:
+async def _llm_intent(text: str) -> dict | None:
     if not llm_service.enabled():
         return None
     raw = await llm_service.chat(
         [{"role": "system", "content": _ACTION_PROMPT}, {"role": "user", "content": text}],
-        temperature=0.0, max_tokens=300,
+        temperature=0.0,
+        max_tokens=300,
     )
     return _parse_json(raw or "")
 
@@ -107,8 +133,9 @@ async def _llm_intent(text: str) -> Optional[dict]:
 # ── Résolution d'entités dans le périmètre ───────────────────────────────────
 async def _find_tenants(db: AsyncSession, user: User, name: str) -> list[Tenant]:
     """Locataires correspondant au nom, restreints au périmètre du gestionnaire."""
-    from app.services.tenant_service import TenantService
     from app.api.v1._isolation import agency_member_ids
+    from app.services.tenant_service import TenantService
+
     tenants, _ = await TenantService.list_all(db, search=name, limit=25)
     role = Role(user.role)
     if role == Role.ADMIN:
@@ -120,29 +147,39 @@ async def _find_tenants(db: AsyncSession, user: User, name: str) -> list[Tenant]
     return [t for t in tenants if t.created_by in members]
 
 
-async def _active_lease(db: AsyncSession, tenant_id: uuid.UUID) -> Optional[Lease]:
-    return (await db.execute(
-        select(Lease).where(Lease.tenant_id == tenant_id, Lease.is_active.is_(True))
-        .order_by(Lease.start_date.desc())
-    )).scalars().first()
+async def _active_lease(db: AsyncSession, tenant_id: uuid.UUID) -> Lease | None:
+    return (
+        (
+            await db.execute(
+                select(Lease)
+                .where(Lease.tenant_id == tenant_id, Lease.is_active.is_(True))
+                .order_by(Lease.start_date.desc())
+            )
+        )
+        .scalars()
+        .first()
+    )
 
 
 async def _find_properties(db: AsyncSession, user: User, name: str) -> list[Property]:
     """Biens correspondant au nom, restreints au périmètre du gestionnaire."""
-    rows = list((await db.execute(
-        select(Property).where(Property.name.ilike(f"%{name}%")).limit(25)
-    )).scalars().all())
+    rows = list(
+        (await db.execute(select(Property).where(Property.name.ilike(f"%{name}%")).limit(25)))
+        .scalars()
+        .all()
+    )
     role = Role(user.role)
     if role == Role.ADMIN:
         return rows
     if role == Role.GESTIONNAIRE_PROPRIO:
         return [p for p in rows if p.created_by == user.id]
     from app.api.v1._isolation import agency_property_ids
+
     ids = await agency_property_ids(db, user)
     return [p for p in rows if p.id in ids]
 
 
-def _parse_date(raw) -> Optional[date]:
+def _parse_date(raw) -> date | None:
     """Parse une date « AAAA-MM-JJ », « JJ/MM/AAAA » ou « JJ/MM » (année courante)."""
     if not raw:
         return None
@@ -162,14 +199,16 @@ def _parse_date(raw) -> Optional[date]:
     return None
 
 
-async def _payment(db, lease_id, year, month) -> Optional[Payment]:
-    return (await db.execute(
-        select(Payment).where(
-            Payment.lease_id == lease_id,
-            Payment.period_year == year,
-            Payment.period_month == month,
+async def _payment(db, lease_id, year, month) -> Payment | None:
+    return (
+        await db.execute(
+            select(Payment).where(
+                Payment.lease_id == lease_id,
+                Payment.period_year == year,
+                Payment.period_month == month,
+            )
         )
-    )).scalar_one_or_none()
+    ).scalar_one_or_none()
 
 
 def _eur(v) -> str:
@@ -177,11 +216,11 @@ def _eur(v) -> str:
 
 
 # ── Construction de la proposition (avec confirmation) ───────────────────────
-async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
+async def interpret(db: AsyncSession, user: User, text: str) -> dict | None:
     """Retourne :
-      - None  → pas une action (l'appelant bascule sur la Q&R) ;
-      - {"reply": str}  → message immédiat (erreur / clarification, pas d'action en attente) ;
-      - {"reply": str, "pending": {...}}  → proposition à confirmer (à stocker).
+    - None  → pas une action (l'appelant bascule sur la Q&R) ;
+    - {"reply": str}  → message immédiat (erreur / clarification, pas d'action en attente) ;
+    - {"reply": str, "pending": {...}}  → proposition à confirmer (à stocker).
     """
     if not is_manager(user):
         return None
@@ -212,39 +251,62 @@ async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
             prop = props[0]
         sched = _parse_date(intent.get("date"))
         if not sched:
-            return {"reply": ("🔧 Je peux planifier un entretien : indiquez une <b>date</b>, "
-                              "ex. : « planifie un entretien chaudière le 15/07 pour Rivoli ».")}
+            return {
+                "reply": (
+                    "🔧 Je peux planifier un entretien : indiquez une <b>date</b>, "
+                    "ex. : « planifie un entretien chaudière le 15/07 pour Rivoli »."
+                )
+            }
         title = (intent.get("title") or intent.get("note") or "Entretien").strip()[:200]
         pending = {
-            "action": "entretien", "title": title, "scheduled_date": sched.isoformat(),
+            "action": "entretien",
+            "title": title,
+            "scheduled_date": sched.isoformat(),
             "property_id": str(prop.id) if prop else None,
-            "property_name": (prop.name if prop else None), "note": (intent.get("note") or ""),
+            "property_name": (prop.name if prop else None),
+            "note": (intent.get("note") or ""),
         }
         cible = f" pour <b>{prop.name}</b>" if prop and prop.name else ""
-        return {"reply": (f"🔧 Je vais planifier l'entretien « <b>{title}</b> »{cible} le "
-                          f"<b>{sched.strftime('%d/%m/%Y')}</b>.\nConfirmez ? Répondez <b>OUI</b>."),
-                "pending": pending}
+        return {
+            "reply": (
+                f"🔧 Je vais planifier l'entretien « <b>{title}</b> »{cible} le "
+                f"<b>{sched.strftime('%d/%m/%Y')}</b>.\nConfirmez ? Répondez <b>OUI</b>."
+            ),
+            "pending": pending,
+        }
 
     # Démarche : pas besoin d'un paiement, mais d'un locataire + titre
-    _LABELS = {"avis": "générer un avis d'échéance", "quittance": "générer une quittance",
-               "paiement": "enregistrer un paiement", "demarche": "ouvrir une démarche",
-               "cloture": "proposer la clôture d'une démarche"}
+    _LABELS = {
+        "avis": "générer un avis d'échéance",
+        "quittance": "générer une quittance",
+        "paiement": "enregistrer un paiement",
+        "demarche": "ouvrir une démarche",
+        "cloture": "proposer la clôture d'une démarche",
+    }
     name = (intent.get("tenant") or "").strip()
     if not name and action in ("avis", "quittance", "paiement", "demarche", "cloture"):
-        ex = {"avis": "génère l'avis de juin pour Dupont",
-              "quittance": "envoie la quittance de mai à Dupont",
-              "paiement": "enregistre le paiement de Dupont pour ce mois",
-              "demarche": "ouvre une démarche pour Dupont : fuite d'eau",
-              "cloture": "clôture la démarche de Dupont"}.get(action, "")
-        return {"reply": (f"Oui, je peux <b>{_LABELS.get(action, 'le faire')}</b> 👍 "
-                          f"Indiquez le locataire en une phrase, ex. : « {ex} ».")}
+        ex = {
+            "avis": "génère l'avis de juin pour Dupont",
+            "quittance": "envoie la quittance de mai à Dupont",
+            "paiement": "enregistre le paiement de Dupont pour ce mois",
+            "demarche": "ouvre une démarche pour Dupont : fuite d'eau",
+            "cloture": "clôture la démarche de Dupont",
+        }.get(action, "")
+        return {
+            "reply": (
+                f"Oui, je peux <b>{_LABELS.get(action, 'le faire')}</b> 👍 "
+                f"Indiquez le locataire en une phrase, ex. : « {ex} »."
+            )
+        }
 
     tenants = await _find_tenants(db, user, name)
     if not tenants:
         return {"reply": f"Aucun locataire « {name} » trouvé dans votre portefeuille."}
     if len(tenants) > 1:
         noms = ", ".join(t.full_name for t in tenants[:6])
-        return {"reply": f"Plusieurs locataires correspondent à « {name} » : {noms}. Précisez le nom complet."}
+        return {
+            "reply": f"Plusieurs locataires correspondent à « {name} » : {noms}. Précisez le nom complet."
+        }
     tenant = tenants[0]
 
     lease = await _active_lease(db, tenant.id)
@@ -256,30 +318,54 @@ async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
 
     if action == "avis":
         pending = {
-            "action": "avis", "tenant_id": str(tenant.id), "lease_id": str(lease.id),
-            "year": year, "month": month, "send_email": send_email,
+            "action": "avis",
+            "tenant_id": str(tenant.id),
+            "lease_id": str(lease.id),
+            "year": year,
+            "month": month,
+            "send_email": send_email,
         }
         envoi = " et l'<b>envoyer par e-mail</b>" if send_email else ""
-        return {"reply": (f"📄 Je vais générer l'avis d'échéance <b>{mois_lbl}</b> pour "
-                          f"<b>{tenant.full_name}</b>{envoi}.\nConfirmez ? Répondez <b>OUI</b>."),
-                "pending": pending}
+        return {
+            "reply": (
+                f"📄 Je vais générer l'avis d'échéance <b>{mois_lbl}</b> pour "
+                f"<b>{tenant.full_name}</b>{envoi}.\nConfirmez ? Répondez <b>OUI</b>."
+            ),
+            "pending": pending,
+        }
 
     if action == "quittance":
         pay = await _payment(db, lease.id, year, month)
         if not pay:
             return {"reply": f"Aucun loyer trouvé pour {tenant.full_name} en {mois_lbl}."}
-        if pay.status not in (PaymentStatus.PAID, PaymentStatus.PARTIAL,
-                              PaymentStatus.PAID.value, PaymentStatus.PARTIAL.value):
-            return {"reply": (f"Le loyer {mois_lbl} de {tenant.full_name} n'est pas réglé "
-                              f"(statut : {pay.status}). Une quittance n'est émise que pour un loyer payé.")}
+        if pay.status not in (
+            PaymentStatus.PAID,
+            PaymentStatus.PARTIAL,
+            PaymentStatus.PAID.value,
+            PaymentStatus.PARTIAL.value,
+        ):
+            return {
+                "reply": (
+                    f"Le loyer {mois_lbl} de {tenant.full_name} n'est pas réglé "
+                    f"(statut : {pay.status}). Une quittance n'est émise que pour un loyer payé."
+                )
+            }
         pending = {
-            "action": "quittance", "tenant_id": str(tenant.id), "payment_id": str(pay.id),
-            "year": year, "month": month, "send_email": send_email,
+            "action": "quittance",
+            "tenant_id": str(tenant.id),
+            "payment_id": str(pay.id),
+            "year": year,
+            "month": month,
+            "send_email": send_email,
         }
         envoi = " et l'<b>envoyer</b> au locataire" if send_email else ""
-        return {"reply": (f"🧾 Je vais générer la quittance <b>{mois_lbl}</b> pour "
-                          f"<b>{tenant.full_name}</b>{envoi}.\nConfirmez ? Répondez <b>OUI</b>."),
-                "pending": pending}
+        return {
+            "reply": (
+                f"🧾 Je vais générer la quittance <b>{mois_lbl}</b> pour "
+                f"<b>{tenant.full_name}</b>{envoi}.\nConfirmez ? Répondez <b>OUI</b>."
+            ),
+            "pending": pending,
+        }
 
     if action == "paiement":
         pay = await _payment(db, lease.id, year, month)
@@ -295,32 +381,56 @@ async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
             return {"reply": f"Le loyer {mois_lbl} de {tenant.full_name} est déjà soldé."}
         method = intent.get("method") or "virement"
         pending = {
-            "action": "paiement", "tenant_id": str(tenant.id), "payment_id": str(pay.id),
-            "amount": amount, "method": method, "year": year, "month": month,
+            "action": "paiement",
+            "tenant_id": str(tenant.id),
+            "payment_id": str(pay.id),
+            "amount": amount,
+            "method": method,
+            "year": year,
+            "month": month,
         }
-        return {"reply": (f"💶 Je vais enregistrer un paiement de <b>{_eur(amount)}</b> "
-                          f"({method}) pour <b>{tenant.full_name}</b> : loyer {mois_lbl}.\n"
-                          f"Confirmez ? Répondez <b>OUI</b>."),
-                "pending": pending}
+        return {
+            "reply": (
+                f"💶 Je vais enregistrer un paiement de <b>{_eur(amount)}</b> "
+                f"({method}) pour <b>{tenant.full_name}</b> : loyer {mois_lbl}.\n"
+                f"Confirmez ? Répondez <b>OUI</b>."
+            ),
+            "pending": pending,
+        }
 
     if action == "demarche":
         title = (intent.get("title") or "Démarche").strip()[:200]
         note = (intent.get("note") or title).strip()
         pending = {
-            "action": "demarche", "tenant_id": str(tenant.id),
-            "title": title, "note": note,
+            "action": "demarche",
+            "tenant_id": str(tenant.id),
+            "title": title,
+            "note": note,
         }
-        return {"reply": (f"🗂️ Je vais ouvrir une démarche « <b>{title}</b> » pour "
-                          f"<b>{tenant.full_name}</b>.\nConfirmez ? Répondez <b>OUI</b>."),
-                "pending": pending}
+        return {
+            "reply": (
+                f"🗂️ Je vais ouvrir une démarche « <b>{title}</b> » pour "
+                f"<b>{tenant.full_name}</b>.\nConfirmez ? Répondez <b>OUI</b>."
+            ),
+            "pending": pending,
+        }
 
     if action == "cloture":
         from app.models.ticket import Ticket
-        tickets = list((await db.execute(
-            select(Ticket).where(Ticket.tenant_id == tenant.id,
-                                  Ticket.status.in_(["open", "in_progress"]))
-            .order_by(Ticket.created_at.desc())
-        )).scalars().all())
+
+        tickets = list(
+            (
+                await db.execute(
+                    select(Ticket)
+                    .where(
+                        Ticket.tenant_id == tenant.id, Ticket.status.in_(["open", "in_progress"])
+                    )
+                    .order_by(Ticket.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
         if not tickets:
             return {"reply": f"Aucune démarche en cours à clôturer pour {tenant.full_name}."}
         want = (intent.get("title") or "").strip().lower()
@@ -328,15 +438,27 @@ async def interpret(db: AsyncSession, user: User, text: str) -> Optional[dict]:
             tickets = [t for t in tickets if want in (t.title or "").lower()] or tickets
         if len(tickets) > 1:
             noms = " ; ".join(t.title for t in tickets[:6])
-            return {"reply": (f"{tenant.full_name} a plusieurs démarches en cours : {noms}. "
-                              f"Précisez le titre de celle à clôturer.")}
+            return {
+                "reply": (
+                    f"{tenant.full_name} a plusieurs démarches en cours : {noms}. "
+                    f"Précisez le titre de celle à clôturer."
+                )
+            }
         tk = tickets[0]
-        pending = {"action": "cloture", "ticket_id": str(tk.id),
-                   "tenant_id": str(tenant.id), "title": tk.title}
-        return {"reply": (f"🛡️ Je vais proposer la clôture de la démarche « <b>{tk.title}</b> » de "
-                          f"<b>{tenant.full_name}</b> (le locataire devra la valider).\n"
-                          f"Confirmez ? Répondez <b>OUI</b>."),
-                "pending": pending}
+        pending = {
+            "action": "cloture",
+            "ticket_id": str(tk.id),
+            "tenant_id": str(tenant.id),
+            "title": tk.title,
+        }
+        return {
+            "reply": (
+                f"🛡️ Je vais proposer la clôture de la démarche « <b>{tk.title}</b> » de "
+                f"<b>{tenant.full_name}</b> (le locataire devra la valider).\n"
+                f"Confirmez ? Répondez <b>OUI</b>."
+            ),
+            "pending": pending,
+        }
 
     return None
 
@@ -363,9 +485,10 @@ async def execute(db: AsyncSession, user: User, pending: dict) -> str:
 
 
 async def _exec_avis(db, user, p) -> str:
-    from app.services.avis_echeance_service import AvisEcheanceService
-    from app.models.avis_echeance import AvisEcheance
     from app.core.exceptions import ConflictException
+    from app.models.avis_echeance import AvisEcheance
+    from app.services.avis_echeance_service import AvisEcheanceService
+
     lease = await db.get(Lease, uuid.UUID(p["lease_id"]))
     tenant = await db.get(Tenant, uuid.UUID(p["tenant_id"]))
     year, month = int(p["year"]), int(p["month"])
@@ -381,28 +504,35 @@ async def _exec_avis(db, user, p) -> str:
         # d'échouer. Filtrer kind='loyer' (un avis d'apurement de la même période
         # ne doit pas faire remonter 2 lignes → MultipleResultsFound).
         await db.rollback()
-        avis = (await db.execute(
-            select(AvisEcheance).where(
-                AvisEcheance.lease_id == lease.id,
-                AvisEcheance.period_year == year,
-                AvisEcheance.period_month == month,
-                (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
+        avis = (
+            await db.execute(
+                select(AvisEcheance).where(
+                    AvisEcheance.lease_id == lease.id,
+                    AvisEcheance.period_year == year,
+                    AvisEcheance.period_month == month,
+                    (AvisEcheance.kind == "loyer") | (AvisEcheance.kind.is_(None)),
+                )
             )
-        )).scalar_one_or_none()
+        ).scalar_one_or_none()
         if avis is None:
-            return (f"ℹ️ Un avis d'échéance {mois} existe déjà pour {tenant.full_name} "
-                    f"(consultable dans « Avis d'échéances »).")
+            return (
+                f"ℹ️ Un avis d'échéance {mois} existe déjà pour {tenant.full_name} "
+                f"(consultable dans « Avis d'échéances »)."
+            )
         already = True
     extra = ""
     if p.get("send_email") and tenant and tenant.email:
         try:
             from app.services.email_service import send_avis_echeance
+
             ok = await send_avis_echeance(
                 to=tenant.email,
                 tenant_name=tenant.full_name or tenant.email,
                 period_label=getattr(avis, "period_range_label", None) or mois,
                 amount_total=float(avis.amount_total),
-                due_date=avis.due_date.strftime("%d/%m/%Y") if getattr(avis, "due_date", None) else "",
+                due_date=avis.due_date.strftime("%d/%m/%Y")
+                if getattr(avis, "due_date", None)
+                else "",
             )
             extra = " et envoyé par e-mail" if ok else " (e-mail non envoyé : SMTP désactivé)"
         except Exception:  # noqa: BLE001
@@ -413,6 +543,7 @@ async def _exec_avis(db, user, p) -> str:
 
 async def _exec_quittance(db, user, p) -> str:
     from app.services.payment_service import PaymentService
+
     pay = await PaymentService.send_quittance(db, uuid.UUID(p["payment_id"]))
     await db.commit()
     tenant = await db.get(Tenant, uuid.UUID(p["tenant_id"]))
@@ -421,6 +552,7 @@ async def _exec_quittance(db, user, p) -> str:
     if p.get("send_email") and tenant and tenant.email:
         try:
             from app.services.email_service import send_quittance as email_quittance
+
             ok = await email_quittance(
                 to=tenant.email,
                 tenant_name=tenant.full_name or tenant.email,
@@ -430,13 +562,16 @@ async def _exec_quittance(db, user, p) -> str:
             extra = " et envoyée par e-mail" if ok else " (e-mail non envoyé : SMTP désactivé)"
         except Exception:  # noqa: BLE001
             extra = " (e-mail non envoyé)"
-    return (f"✅ Quittance {mois} prête pour {tenant.full_name}{extra}. "
-            f"Téléchargeable dans l'application (Paiements / Quittances).")
+    return (
+        f"✅ Quittance {mois} prête pour {tenant.full_name}{extra}. "
+        f"Téléchargeable dans l'application (Paiements / Quittances)."
+    )
 
 
 async def _exec_paiement(db, user, p) -> str:
-    from app.services.payment_service import PaymentService
     from app.schemas.payment import PaymentRecordIn
+    from app.services.payment_service import PaymentService
+
     data = PaymentRecordIn(
         amount_paid=float(p["amount"]),
         payment_date=date.today(),
@@ -448,16 +583,21 @@ async def _exec_paiement(db, user, p) -> str:
     tenant = await db.get(Tenant, uuid.UUID(p["tenant_id"]))
     balance = float(pay.amount_due) - float(pay.amount_paid)
     solde = "soldé ✅" if balance <= 0 else f"reste dû {_eur(balance)}"
-    return (f"✅ Paiement de {_eur(p['amount'])} enregistré pour {tenant.full_name} "
-            f"(loyer {int(p['month']):02d}/{int(p['year'])}) : statut : {pay.status}, {solde}.")
+    return (
+        f"✅ Paiement de {_eur(p['amount'])} enregistré pour {tenant.full_name} "
+        f"(loyer {int(p['month']):02d}/{int(p['year'])}) : statut : {pay.status}, {solde}."
+    )
 
 
 async def _exec_demarche(db, user, p) -> str:
     from app.services.ticket_service import TicketService
+
     tenant = await db.get(Tenant, uuid.UUID(p["tenant_id"]))
     ticket = await TicketService.create_for_tenant(
-        db, tenant_id=uuid.UUID(p["tenant_id"]),
-        title=p["title"], description=p.get("note") or p["title"],
+        db,
+        tenant_id=uuid.UUID(p["tenant_id"]),
+        title=p["title"],
+        description=p.get("note") or p["title"],
         author_user_id=user.id,
     )
     await db.commit()
@@ -465,8 +605,9 @@ async def _exec_demarche(db, user, p) -> str:
 
 
 async def _exec_entretien(db, user, p) -> str:
-    from app.services.entretien_service import EntretienService
     from app.schemas.entretien import EntretienCreate
+    from app.services.entretien_service import EntretienService
+
     sched = date.fromisoformat(p["scheduled_date"])
     data = EntretienCreate(
         title=p["title"],
@@ -482,7 +623,10 @@ async def _exec_entretien(db, user, p) -> str:
 
 async def _exec_cloture(db, user, p) -> str:
     from app.services.ticket_service import TicketService
+
     ticket = await TicketService.propose_closure(db, uuid.UUID(p["ticket_id"]), user.id)
     await db.commit()
-    return (f"✅ Clôture proposée pour la démarche « {ticket.title} ». "
-            f"Le locataire est invité à la valider.")
+    return (
+        f"✅ Clôture proposée pour la démarche « {ticket.title} ». "
+        f"Le locataire est invité à la valider."
+    )

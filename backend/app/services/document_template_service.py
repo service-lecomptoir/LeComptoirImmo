@@ -3,12 +3,18 @@
 Utilisé à la création d'un compte gestionnaire (UserService.create) et par
 l'endpoint POST /templates/initialize-defaults.
 """
+
 import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document_template import DocumentTemplate, TemplateType
-from app.services.avis_blocks_render_service import default_avis_blocks, default_blocks, DEFAULT_THEME
+from app.services.avis_blocks_render_service import (
+    DEFAULT_THEME,
+    default_avis_blocks,
+    default_blocks,
+)
 
 # Rôles qui génèrent des documents → reçoivent les templates par défaut.
 TEMPLATE_OWNER_ROLES = {"admin", "gestionnaire", "gestionnaire_proprio"}
@@ -111,7 +117,8 @@ DEFAULT_TEMPLATES = {
 # Types de documents retirés de l'atelier de documents (désactivés au démarrage).
 _RETIRED_TYPES = [
     TemplateType.LETTRE_RESILIATION.value,
-    TemplateType.CONTRAT_BAIL.value, TemplateType.ETAT_DES_LIEUX.value,
+    TemplateType.CONTRAT_BAIL.value,
+    TemplateType.ETAT_DES_LIEUX.value,
 ]
 
 
@@ -120,9 +127,8 @@ async def backfill_all_managers(db: AsyncSession) -> int:
     n'en ont pas encore (comptes créés avant l'auto-seed). Idempotent. Retourne le
     nombre de gestionnaires nouvellement dotés."""
     from app.models.user import User
-    users = (await db.execute(
-        select(User.id, User.role)
-    )).all()
+
+    users = (await db.execute(select(User.id, User.role))).all()
     seeded = 0
     for uid, role in users:
         role_val = role.value if hasattr(role, "value") else str(role)
@@ -147,12 +153,18 @@ async def refresh_default_bodies(db: AsyncSession) -> int:
     jamais modifiés."""
     updated = 0
     for ttype, d in DEFAULT_TEMPLATES.items():
-        rows = (await db.execute(
-            select(DocumentTemplate).where(
-                DocumentTemplate.template_type == ttype,
-                DocumentTemplate.is_default.is_(True),
+        rows = (
+            (
+                await db.execute(
+                    select(DocumentTemplate).where(
+                        DocumentTemplate.template_type == ttype,
+                        DocumentTemplate.is_default.is_(True),
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         for t in rows:
             if t.content_html != d["content_html"] or t.footer_text != d["footer_text"]:
                 t.content_html = d["content_html"]
@@ -194,13 +206,15 @@ async def ensure_default_templates(db: AsyncSession, gestionnaire_id: uuid.UUID)
             .where(DocumentTemplate.gestionnaire_id == gestionnaire_id)
         )
         if existing.scalar_one_or_none() is None:
-            db.add(DocumentTemplate(
-                template_type=ttype,
-                is_default=True,
-                is_active=True,
-                gestionnaire_id=gestionnaire_id,
-                **defaults,
-            ))
+            db.add(
+                DocumentTemplate(
+                    template_type=ttype,
+                    is_default=True,
+                    is_active=True,
+                    gestionnaire_id=gestionnaire_id,
+                    **defaults,
+                )
+            )
             created += 1
     if created:
         await db.flush()

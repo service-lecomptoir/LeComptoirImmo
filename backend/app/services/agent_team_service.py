@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Équipe d'agents IA spécialisés au service du gestionnaire.
 
 Trois experts métier, chacun avec SA spécialité, SON périmètre de données (scopé
@@ -18,45 +17,113 @@ Architecture (inchangée, fail-open) :
     d'inventer). Repli automatique sur la Phase 1 si le LLM est absent/échoue.
   - Phase 3 (agent_action_service) : actions avec confirmation.
 """
+
 from __future__ import annotations
+
 import re
 from datetime import date, timedelta
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import Role
-from app.models.user import User
-from app.models.lease import Lease
-from app.models.property import Property
-from app.models.tenant import Tenant
-from app.models.payment import Payment
-from app.models.ticket import Ticket
-from app.models.signalement import Signalement, SignalementStatus
-from app.models.entretien import Entretien, EntretienStatus
 from app.models.candidature import Candidature
+from app.models.entretien import Entretien, EntretienStatus
+from app.models.lease import Lease
+from app.models.payment import Payment
+from app.models.property import Property
+from app.models.signalement import Signalement, SignalementStatus
+from app.models.tenant import Tenant
+from app.models.ticket import Ticket
+from app.models.user import User
 from app.services import llm_service
 
 AGENTS = {
-    "comptable": {"name": "Agent Comptable", "emoji": "📊",
-                  "desc": "Loyers, impayés, encaissements, recouvrement, quittances."},
-    "securite": {"name": "Agent Sécurité", "emoji": "🛡️",
-                 "desc": "Démarches, signalements de la résidence, voisinage."},
-    "administratif": {"name": "Agent Administratif", "emoji": "🗂️",
-                      "desc": "Biens, contrats, baux à échéance, candidatures, entretiens."},
+    "comptable": {
+        "name": "Agent Comptable",
+        "emoji": "📊",
+        "desc": "Loyers, impayés, encaissements, recouvrement, quittances.",
+    },
+    "securite": {
+        "name": "Agent Sécurité",
+        "emoji": "🛡️",
+        "desc": "Démarches, signalements de la résidence, voisinage.",
+    },
+    "administratif": {
+        "name": "Agent Administratif",
+        "emoji": "🗂️",
+        "desc": "Biens, contrats, baux à échéance, candidatures, entretiens.",
+    },
 }
 
 _KEYWORDS = {
-    "comptable": ("impay", "retard", "loyer", "encaiss", "revenu", "paiement", "paie",
-                  "quittance", "comptable", "argent", "solde", "recouvr",
-                  "régularis", "regularis", "relance", "caution", "dépôt", "depot"),
-    "securite": ("démarche", "demarche", "incident", "conflit", "voisin", "litige",
-                 "sécur", "secur", "plainte", "trouble", "signalement", "bruit",
-                 "ascenseur", "propreté", "proprete", "dégrad", "degrad", "urgent", "résidence", "residence"),
-    "administratif": ("bien", "logement", "propriété", "propriete", "locataire", "bail",
-                      "baux", "contrat", "administ", "entretien", "maintenance", "occupation",
-                      "vacant", "vacance", "candidat", "candidature", "visite", "dossier",
-                      "renouvel", "échéance", "echeance", "préavis", "preavis"),
+    "comptable": (
+        "impay",
+        "retard",
+        "loyer",
+        "encaiss",
+        "revenu",
+        "paiement",
+        "paie",
+        "quittance",
+        "comptable",
+        "argent",
+        "solde",
+        "recouvr",
+        "régularis",
+        "regularis",
+        "relance",
+        "caution",
+        "dépôt",
+        "depot",
+    ),
+    "securite": (
+        "démarche",
+        "demarche",
+        "incident",
+        "conflit",
+        "voisin",
+        "litige",
+        "sécur",
+        "secur",
+        "plainte",
+        "trouble",
+        "signalement",
+        "bruit",
+        "ascenseur",
+        "propreté",
+        "proprete",
+        "dégrad",
+        "degrad",
+        "urgent",
+        "résidence",
+        "residence",
+    ),
+    "administratif": (
+        "bien",
+        "logement",
+        "propriété",
+        "propriete",
+        "locataire",
+        "bail",
+        "baux",
+        "contrat",
+        "administ",
+        "entretien",
+        "maintenance",
+        "occupation",
+        "vacant",
+        "vacance",
+        "candidat",
+        "candidature",
+        "visite",
+        "dossier",
+        "renouvel",
+        "échéance",
+        "echeance",
+        "préavis",
+        "preavis",
+    ),
 }
 
 
@@ -67,7 +134,10 @@ def classify(text: str) -> str:
         return "help"
     if any(k in t for k in ("aide", "help", "bonjour", "salut", "menu", "/start", "/help")):
         return "help"
-    if any(k in t for k in ("rappel", "résumé", "resume", "synthèse", "synthese", "point du jour", "/rappels")):
+    if any(
+        k in t
+        for k in ("rappel", "résumé", "resume", "synthèse", "synthese", "point du jour", "/rappels")
+    ):
         return "reminders"
     best, score = "help", 0
     for agent, kws in _KEYWORDS.items():
@@ -82,7 +152,10 @@ def _is_help_command(t: str) -> bool:
 
 
 def _is_reminders_command(t: str) -> bool:
-    return any(k in t for k in ("rappel", "résumé", "resume", "synthèse", "synthese", "point du jour", "/rappels"))
+    return any(
+        k in t
+        for k in ("rappel", "résumé", "resume", "synthèse", "synthese", "point du jour", "/rappels")
+    )
 
 
 # ── Périmètre (isolation rôle) ───────────────────────────────────────────────
@@ -92,12 +165,15 @@ async def _scope(db: AsyncSession, user: User):
     if role == Role.ADMIN:
         return "all", None
     if role == Role.GESTIONNAIRE_PROPRIO:
-        ids = set((await db.execute(
-            select(Property.id).where(Property.created_by == user.id)
-        )).scalars().all())
+        ids = set(
+            (await db.execute(select(Property.id).where(Property.created_by == user.id)))
+            .scalars()
+            .all()
+        )
         return "include", ids
     # Mandataire : uniquement les biens de SON agence
     from app.api.v1._isolation import agency_property_ids
+
     return "include", await agency_property_ids(db, user)
 
 
@@ -117,8 +193,21 @@ def _months_label(months: int) -> str:
     return MONTHS_FR[months] if 0 <= months < len(MONTHS_FR) else str(months)
 
 
-MONTHS_FR = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet",
-             "août", "septembre", "octobre", "novembre", "décembre"]
+MONTHS_FR = [
+    "",
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
 
 
 # ── Collecteurs scopés (réutilisés par les réponses ET l'instantané LLM) ──────
@@ -129,18 +218,26 @@ async def _sum_paid_month(db, mode, ids, year, month) -> float:
         select(func.coalesce(func.sum(Payment.amount_paid), 0))
         .join(Lease, Payment.lease_id == Lease.id)
         .join(Property, Lease.property_id == Property.id)
-        .where(Payment.payment_date >= first, Payment.payment_date < nxt), mode, ids)
+        .where(Payment.payment_date >= first, Payment.payment_date < nxt),
+        mode,
+        ids,
+    )
     return float((await db.execute(q)).scalar_one() or 0)
 
 
 async def _called_month(db, mode, ids, year, month) -> tuple[float, float]:
     """(total appelé, total encaissé) sur les échéances dont la période est ce mois."""
     q = _apply(
-        select(func.coalesce(func.sum(Payment.amount_due), 0),
-               func.coalesce(func.sum(Payment.amount_paid), 0))
+        select(
+            func.coalesce(func.sum(Payment.amount_due), 0),
+            func.coalesce(func.sum(Payment.amount_paid), 0),
+        )
         .join(Lease, Payment.lease_id == Lease.id)
         .join(Property, Lease.property_id == Property.id)
-        .where(Payment.period_year == year, Payment.period_month == month), mode, ids)
+        .where(Payment.period_year == year, Payment.period_month == month),
+        mode,
+        ids,
+    )
     due, paid = (await db.execute(q)).one()
     return float(due or 0), float(paid or 0)
 
@@ -148,13 +245,23 @@ async def _called_month(db, mode, ids, year, month) -> tuple[float, float]:
 async def _impayes_rows(db, mode, ids):
     today = date.today()
     q = _apply(
-        select(Tenant.first_name, Tenant.last_name, Payment.amount_due, Payment.amount_paid,
-               Payment.period_year, Payment.period_month, Payment.due_date)
+        select(
+            Tenant.first_name,
+            Tenant.last_name,
+            Payment.amount_due,
+            Payment.amount_paid,
+            Payment.period_year,
+            Payment.period_month,
+            Payment.due_date,
+        )
         .join(Lease, Payment.lease_id == Lease.id)
         .join(Property, Lease.property_id == Property.id)
         .join(Tenant, Payment.tenant_id == Tenant.id)
         .where(Payment.due_date < today, Payment.status.in_(["pending", "partial", "late"]))
-        .order_by(Payment.due_date), mode, ids)
+        .order_by(Payment.due_date),
+        mode,
+        ids,
+    )
     return list((await db.execute(q)).all())
 
 
@@ -162,11 +269,20 @@ async def _a_venir(db, mode, ids, days=7) -> tuple[int, float]:
     today = date.today()
     until = today + timedelta(days=days)
     q = _apply(
-        select(func.count(Payment.id), func.coalesce(func.sum(Payment.amount_due - Payment.amount_paid), 0))
+        select(
+            func.count(Payment.id),
+            func.coalesce(func.sum(Payment.amount_due - Payment.amount_paid), 0),
+        )
         .join(Lease, Payment.lease_id == Lease.id)
         .join(Property, Lease.property_id == Property.id)
-        .where(Payment.due_date >= today, Payment.due_date <= until,
-               Payment.status.in_(["pending", "partial", "late"])), mode, ids)
+        .where(
+            Payment.due_date >= today,
+            Payment.due_date <= until,
+            Payment.status.in_(["pending", "partial", "late"]),
+        ),
+        mode,
+        ids,
+    )
     cnt, total = (await db.execute(q)).one()
     return int(cnt or 0), float(total or 0)
 
@@ -177,30 +293,56 @@ async def _tickets_open(db, mode, ids):
         .join(Tenant, Ticket.tenant_id == Tenant.id)
         .join(Lease, Lease.tenant_id == Tenant.id)
         .join(Property, Lease.property_id == Property.id)
-        .where(Ticket.status.in_(["open", "in_progress", "pending_closure"])), mode, ids)
+        .where(Ticket.status.in_(["open", "in_progress", "pending_closure"])),
+        mode,
+        ids,
+    )
     return list((await db.execute(q)).all())
 
 
 async def _signalements_open(db, mode, ids):
     q = _apply(
-        select(Signalement.category, Signalement.urgency, Signalement.title, Signalement.occurred_at)
+        select(
+            Signalement.category, Signalement.urgency, Signalement.title, Signalement.occurred_at
+        )
         .join(Property, Signalement.property_id == Property.id)
-        .where(Signalement.status.in_([SignalementStatus.NOUVEAU.value, SignalementStatus.EN_COURS.value]))
-        .order_by(Signalement.occurred_at.desc()), mode, ids)
+        .where(
+            Signalement.status.in_(
+                [SignalementStatus.NOUVEAU.value, SignalementStatus.EN_COURS.value]
+            )
+        )
+        .order_by(Signalement.occurred_at.desc()),
+        mode,
+        ids,
+    )
     return list((await db.execute(q)).all())
 
 
 async def _biens_stats(db, mode, ids) -> tuple[int, int, int]:
     """(biens, biens occupés, contrats actifs)."""
     props = (await db.execute(_apply(select(func.count(Property.id)), mode, ids))).scalar_one() or 0
-    occ = (await db.execute(_apply(
-        select(func.count(func.distinct(Lease.property_id)))
-        .join(Property, Lease.property_id == Property.id)
-        .where(Lease.is_active.is_(True)), mode, ids))).scalar_one() or 0
-    leases = (await db.execute(_apply(
-        select(func.count(Lease.id))
-        .join(Property, Lease.property_id == Property.id)
-        .where(Lease.is_active.is_(True)), mode, ids))).scalar_one() or 0
+    occ = (
+        await db.execute(
+            _apply(
+                select(func.count(func.distinct(Lease.property_id)))
+                .join(Property, Lease.property_id == Property.id)
+                .where(Lease.is_active.is_(True)),
+                mode,
+                ids,
+            )
+        )
+    ).scalar_one() or 0
+    leases = (
+        await db.execute(
+            _apply(
+                select(func.count(Lease.id))
+                .join(Property, Lease.property_id == Property.id)
+                .where(Lease.is_active.is_(True)),
+                mode,
+                ids,
+            )
+        )
+    ).scalar_one() or 0
     return int(props), int(occ), int(leases)
 
 
@@ -211,22 +353,43 @@ async def _baux_echeance(db, mode, ids, days=90):
         select(Tenant.first_name, Tenant.last_name, Lease.end_date, Property.name)
         .join(Property, Lease.property_id == Property.id)
         .join(Tenant, Lease.tenant_id == Tenant.id)
-        .where(Lease.is_active.is_(True), Lease.end_date.isnot(None),
-               Lease.end_date >= today, Lease.end_date <= until)
-        .order_by(Lease.end_date), mode, ids)
+        .where(
+            Lease.is_active.is_(True),
+            Lease.end_date.isnot(None),
+            Lease.end_date >= today,
+            Lease.end_date <= until,
+        )
+        .order_by(Lease.end_date),
+        mode,
+        ids,
+    )
     return list((await db.execute(q)).all())
 
 
 async def _candidatures_stats(db, mode, ids) -> tuple[int, int]:
     """(candidatures en cours, visites proposées)."""
-    en_cours = (await db.execute(_apply(
-        select(func.count(Candidature.id))
-        .join(Property, Candidature.property_id == Property.id)
-        .where(Candidature.status.in_(["nouvelle", "documents_demandes", "en_etude"])), mode, ids))).scalar_one() or 0
-    visites = (await db.execute(_apply(
-        select(func.count(Candidature.id))
-        .join(Property, Candidature.property_id == Property.id)
-        .where(Candidature.visit_invited_at.isnot(None), Candidature.status != "refusee"), mode, ids))).scalar_one() or 0
+    en_cours = (
+        await db.execute(
+            _apply(
+                select(func.count(Candidature.id))
+                .join(Property, Candidature.property_id == Property.id)
+                .where(Candidature.status.in_(["nouvelle", "documents_demandes", "en_etude"])),
+                mode,
+                ids,
+            )
+        )
+    ).scalar_one() or 0
+    visites = (
+        await db.execute(
+            _apply(
+                select(func.count(Candidature.id))
+                .join(Property, Candidature.property_id == Property.id)
+                .where(Candidature.visit_invited_at.isnot(None), Candidature.status != "refusee"),
+                mode,
+                ids,
+            )
+        )
+    ).scalar_one() or 0
     return int(en_cours), int(visites)
 
 
@@ -236,7 +399,11 @@ async def _entretiens_avenir(db, mode, ids, limit=10):
         select(Entretien.title, Entretien.scheduled_date, Property.name)
         .join(Property, Entretien.property_id == Property.id)
         .where(Entretien.scheduled_date >= today, Entretien.status != EntretienStatus.TERMINE)
-        .order_by(Entretien.scheduled_date).limit(limit), mode, ids)
+        .order_by(Entretien.scheduled_date)
+        .limit(limit),
+        mode,
+        ids,
+    )
     return list((await db.execute(q)).all())
 
 
@@ -246,8 +413,10 @@ async def _comptable(db, user, t, mode, ids) -> str:
     if any(k in t for k in ("recouvr", "taux")):
         due, paid = await _called_month(db, mode, ids, today.year, today.month)
         taux = (paid / due * 100) if due else 100.0
-        return (f"📊 <b>Recouvrement {_months_label(today.month)} :</b> "
-                f"{taux:.0f}% ({_eur(paid)} sur {_eur(due)} appelés).")
+        return (
+            f"📊 <b>Recouvrement {_months_label(today.month)} :</b> "
+            f"{taux:.0f}% ({_eur(paid)} sur {_eur(due)} appelés)."
+        )
     if any(k in t for k in ("à venir", "a venir", "échéance", "echeance", "prochain")):
         cnt, total = await _a_venir(db, mode, ids, 7)
         if not cnt:
@@ -309,9 +478,11 @@ async def _securite(db, user, t, mode, ids) -> str:
 async def _administratif(db, user, t, mode, ids) -> str:
     props, occ, leases = await _biens_stats(db, mode, ids)
     vacants = max(0, props - occ)
-    lines = ["🗂️ <b>Synthèse administrative :</b>",
-             f"• Biens : {props} (occupés : {occ}, vacants : {vacants})",
-             f"• Contrats actifs : {leases}"]
+    lines = [
+        "🗂️ <b>Synthèse administrative :</b>",
+        f"• Biens : {props} (occupés : {occ}, vacants : {vacants})",
+        f"• Contrats actifs : {leases}",
+    ]
     baux = await _baux_echeance(db, mode, ids, 90)
     if baux:
         lines.append(f"• Baux à échéance (< 90 j) : {len(baux)}")
@@ -361,8 +532,10 @@ async def reminders(db: AsyncSession, user: User) -> str:
     cnt_venir, total_venir = await _a_venir(db, mode, ids, 7)
     due, paid = await _called_month(db, mode, ids, today.year, today.month)
     taux = (paid / due * 100) if due else 100.0
-    c = [f"📊 <b>Comptable</b> : {len(impayes)} impayé(s) ({_eur(total_du)}), "
-         f"recouvrement {taux:.0f}%."]
+    c = [
+        f"📊 <b>Comptable</b> : {len(impayes)} impayé(s) ({_eur(total_du)}), "
+        f"recouvrement {taux:.0f}%."
+    ]
     if cnt_venir:
         c.append(f"À venir 7 j : {cnt_venir} échéance(s), {_eur(total_venir)}.")
     parts.append("\n".join(c))
@@ -380,8 +553,10 @@ async def reminders(db: AsyncSession, user: User) -> str:
     props, occ, leases = await _biens_stats(db, mode, ids)
     baux = await _baux_echeance(db, mode, ids, 90)
     cand, visites = await _candidatures_stats(db, mode, ids)
-    a = (f"🗂️ <b>Administratif</b> : {max(0, props - occ)} bien(s) vacant(s), "
-         f"{len(baux)} bail/baux à échéance, {cand} candidature(s)")
+    a = (
+        f"🗂️ <b>Administratif</b> : {max(0, props - occ)} bien(s) vacant(s), "
+        f"{len(baux)} bail/baux à échéance, {cand} candidature(s)"
+    )
     a += f", {visites} visite(s) proposée(s)." if visites else "."
     parts.append(a)
 
@@ -402,7 +577,8 @@ async def _snapshot(db, user, mode, ids) -> str:
     secu = await _securite(db, user, "signalements démarches", mode, ids)
     admin = await _administratif(db, user, "synthèse", mode, ids)
     parts = [
-        "[COMPTABLE]\n" + "\n".join(_strip_html(x) for x in (encaisse, recouvrement, avenir, impayes)),
+        "[COMPTABLE]\n"
+        + "\n".join(_strip_html(x) for x in (encaisse, recouvrement, avenir, impayes)),
         "[SÉCURITÉ]\n" + _strip_html(secu),
         "[ADMINISTRATIF]\n" + _strip_html(admin),
     ]
@@ -441,16 +617,14 @@ PERSONAS = {
         "sûreté des résidences : signalements (bruit, sécurité des accès, ascenseur, propreté des "
         "communs, dégradations), démarches et incidents, conflits de voisinage. Tu hiérarchises par "
         "URGENCE, tu alertes sur ce qui doit être traité vite et tu suggères d'ouvrir/suivre une "
-        "démarche. Tu t'appuies sur la section [SÉCURITÉ] des données.\n\n"
-        + _COMMON_RULES
+        "démarche. Tu t'appuies sur la section [SÉCURITÉ] des données.\n\n" + _COMMON_RULES
     ),
     "administratif": (
         "Tu es l'Agent Administratif de « Le Comptoir Immo », expert du cycle de vie locatif : biens "
         "et leur occupation/vacance, contrats, baux arrivant à échéance et renouvellements, "
         "candidatures et visites, entretiens et interventions. Tu anticipes les échéances (bail qui "
         "se termine, vacance à combler, entretien à planifier) et tu proposes l'étape suivante. "
-        "Tu t'appuies sur la section [ADMINISTRATIF] des données.\n\n"
-        + _COMMON_RULES
+        "Tu t'appuies sur la section [ADMINISTRATIF] des données.\n\n" + _COMMON_RULES
     ),
     "general": (
         "Tu es l'équipe d'agents IA de « Le Comptoir Immo » (Comptable, Sécurité, Administratif). "
@@ -486,11 +660,16 @@ async def answer(db: AsyncSession, user: User, text: str) -> str:
     if llm_service.enabled():
         try:
             snapshot = await _snapshot(db, user, mode, ids)
-            reply = await llm_service.chat([
-                {"role": "system", "content": PERSONAS.get(domain, _SYSTEM_PROMPT)},
-                {"role": "user", "content": f"DONNÉES (périmètre de l'utilisateur) :\n{snapshot}\n\n"
-                                            f"QUESTION : {text}"},
-            ])
+            reply = await llm_service.chat(
+                [
+                    {"role": "system", "content": PERSONAS.get(domain, _SYSTEM_PROMPT)},
+                    {
+                        "role": "user",
+                        "content": f"DONNÉES (périmètre de l'utilisateur) :\n{snapshot}\n\n"
+                        f"QUESTION : {text}",
+                    },
+                ]
+            )
             if reply:
                 return reply
         except Exception:  # noqa: BLE001 : ne jamais casser le canal

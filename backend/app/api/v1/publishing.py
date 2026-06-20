@@ -1,27 +1,26 @@
-# -*- coding: utf-8 -*-
 """Diffusion d'annonces (gestionnaire) : plateformes de partage + annonce par bien.
 
 - Plateformes : cibles de partage libres, définies au préalable et réutilisables.
 - Annonce : contenu/photos pré-enregistrés par bien, actualisables, puis publication
   immédiate ou programmée sur une page d'annonce publique partageable.
 """
+
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_role, get_manager_or_owner
+from app.api.deps import get_manager_or_owner, require_role
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.permissions import Role
 from app.database import get_db
 from app.models.property import Property
 from app.models.publishing import Listing, PublishPlatform
 from app.models.user import User
-from app.services.listing_service import ListingService, build_photo_url, generate_listing_draft
+from app.services.listing_service import ListingService, generate_listing_draft
 
 router = APIRouter(prefix="/publishing", tags=["Diffusion"])
 
@@ -30,7 +29,7 @@ router = APIRouter(prefix="/publishing", tags=["Diffusion"])
 class PlatformIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     kind: str = Field("lien", pattern="^(reseau|site|email|lien|autre)$")
-    target: Optional[str] = Field(None, max_length=400)
+    target: str | None = Field(None, max_length=400)
     is_active: bool = True
 
 
@@ -38,19 +37,19 @@ class PlatformOut(BaseModel):
     id: uuid.UUID
     name: str
     kind: str
-    target: Optional[str] = None
+    target: str | None = None
     is_active: bool
 
     model_config = {"from_attributes": True}
 
 
 class ListingIn(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    price: Optional[float] = None      # loyer hors charges
-    charges: Optional[float] = None    # charges mensuelles
-    photo_ids: Optional[list[str]] = None
-    platform_ids: Optional[list[str]] = None
+    title: str | None = None
+    description: str | None = None
+    price: float | None = None  # loyer hors charges
+    charges: float | None = None  # charges mensuelles
+    photo_ids: list[str] | None = None
+    platform_ids: list[str] | None = None
 
 
 class ScheduleIn(BaseModel):
@@ -73,6 +72,7 @@ async def _accessible_property(db: AsyncSession, user: User, property_id: uuid.U
     if role == Role.ADMIN or prop.created_by == user.id or prop.owner_user_id == user.id:
         return prop
     from app.api.v1._isolation import agency_property_ids
+
     if prop.id in await agency_property_ids(db, user):
         return prop
     raise ForbiddenException("Ce bien n'est pas dans votre périmètre.")
@@ -106,22 +106,34 @@ async def list_platforms(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
-    rows = (await db.execute(
-        select(PublishPlatform).where(PublishPlatform.owner_user_id == user.id)
-        .order_by(PublishPlatform.created_at)
-    )).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(PublishPlatform)
+                .where(PublishPlatform.owner_user_id == user.id)
+                .order_by(PublishPlatform.created_at)
+            )
+        )
+        .scalars()
+        .all()
+    )
     return rows
 
 
-@router.post("/platforms", response_model=PlatformOut, status_code=201, summary="Ajouter une plateforme")
+@router.post(
+    "/platforms", response_model=PlatformOut, status_code=201, summary="Ajouter une plateforme"
+)
 async def create_platform(
     data: PlatformIn,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     p = PublishPlatform(
-        owner_user_id=user.id, name=data.name.strip(), kind=data.kind,
-        target=(data.target or "").strip() or None, is_active=data.is_active,
+        owner_user_id=user.id,
+        name=data.name.strip(),
+        kind=data.kind,
+        target=(data.target or "").strip() or None,
+        is_active=data.is_active,
     )
     db.add(p)
     await db.commit()
@@ -129,7 +141,9 @@ async def create_platform(
     return p
 
 
-@router.put("/platforms/{platform_id}", response_model=PlatformOut, summary="Modifier une plateforme")
+@router.put(
+    "/platforms/{platform_id}", response_model=PlatformOut, summary="Modifier une plateforme"
+)
 async def update_platform(
     platform_id: uuid.UUID,
     data: PlatformIn,
@@ -169,18 +183,27 @@ async def list_listings(
     if role == Role.ADMIN:
         prop_ids = None
     elif role == Role.GESTIONNAIRE_PROPRIO:
-        prop_ids = set((await db.execute(
-            select(Property.id).where(
-                (Property.created_by == user.id) | (Property.owner_user_id == user.id)
+        prop_ids = set(
+            (
+                await db.execute(
+                    select(Property.id).where(
+                        (Property.created_by == user.id) | (Property.owner_user_id == user.id)
+                    )
+                )
             )
-        )).scalars().all())
+            .scalars()
+            .all()
+        )
     elif role == Role.PROPRIETAIRE:
         # Lecture seule : strictement les biens dont il est le bailleur rattaché.
-        prop_ids = set((await db.execute(
-            select(Property.id).where(Property.owner_user_id == user.id)
-        )).scalars().all())
+        prop_ids = set(
+            (await db.execute(select(Property.id).where(Property.owner_user_id == user.id)))
+            .scalars()
+            .all()
+        )
     else:
         from app.api.v1._isolation import agency_property_ids
+
         prop_ids = await agency_property_ids(db, user)
 
     q = select(Listing)
@@ -193,9 +216,9 @@ async def list_listings(
     names: dict = {}
     pids = list({l.property_id for l in rows})
     if pids:
-        for pid, pname in (await db.execute(
-            select(Property.id, Property.name).where(Property.id.in_(pids))
-        )).all():
+        for pid, pname in (
+            await db.execute(select(Property.id, Property.name).where(Property.id.in_(pids)))
+        ).all():
             names[pid] = pname
     return [
         {
@@ -203,7 +226,9 @@ async def list_listings(
             "property_name": names.get(l.property_id),
             "title": getattr(l, "title", None),
             "status": l.status,
-            "public_path": f"/annonce/{l.public_token}" if l.public_token and l.status == "published" else None,
+            "public_path": f"/annonce/{l.public_token}"
+            if l.public_token and l.status == "published"
+            else None,
             "scheduled_at": l.scheduled_at,
             "published_at": l.published_at,
             "views_count": int(l.views_count or 0),
@@ -240,8 +265,11 @@ async def save_listing(
     return await _listing_out(db, listing)
 
 
-@router.delete("/properties/{property_id}/photos/{document_id}", status_code=204,
-               summary="Supprimer définitivement une photo du bien")
+@router.delete(
+    "/properties/{property_id}/photos/{document_id}",
+    status_code=204,
+    summary="Supprimer définitivement une photo du bien",
+)
 async def delete_property_photo(
     property_id: uuid.UUID,
     document_id: uuid.UUID,
@@ -259,9 +287,9 @@ async def delete_property_photo(
         raise NotFoundException("Photo", str(document_id))
     await DocumentService.delete(db, document_id)
 
-    listing = (await db.execute(
-        select(Listing).where(Listing.property_id == property_id)
-    )).scalar_one_or_none()
+    listing = (
+        await db.execute(select(Listing).where(Listing.property_id == property_id))
+    ).scalar_one_or_none()
     if listing and listing.photo_ids:
         kept = [x for x in listing.photo_ids if str(x) != str(document_id)]
         if kept != listing.photo_ids:

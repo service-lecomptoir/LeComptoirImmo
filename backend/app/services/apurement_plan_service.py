@@ -1,6 +1,6 @@
 import uuid
 from datetime import date
-from typing import Optional, List
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,8 +14,7 @@ def compute_summary(installments: list, total: float) -> dict:
     remaining = round(float(total or 0) - paid_total, 2)
     today = date.today().isoformat()
     overdue = any(
-        (not i.get("paid")) and i.get("due_date") and str(i["due_date"]) < today
-        for i in insts
+        (not i.get("paid")) and i.get("due_date") and str(i["due_date"]) < today for i in insts
     )
     return {
         "paid_total": paid_total,
@@ -45,43 +44,64 @@ def plan_to_dict(plan: ApurementPlan, tenant_name=None, property_name=None) -> d
 
 
 class ApurementPlanService:
-
     @staticmethod
-    async def create(db: AsyncSession, *, lease_id, tenant_id, origin_payment_id,
-                     total, installments, created_by, label) -> ApurementPlan:
+    async def create(
+        db: AsyncSession,
+        *,
+        lease_id,
+        tenant_id,
+        origin_payment_id,
+        total,
+        installments,
+        created_by,
+        label,
+    ) -> ApurementPlan:
         plan = ApurementPlan(
-            lease_id=lease_id, tenant_id=tenant_id, origin_payment_id=origin_payment_id,
-            total_amount=total, installments=installments, created_by=created_by,
-            label=label, status="active",
+            lease_id=lease_id,
+            tenant_id=tenant_id,
+            origin_payment_id=origin_payment_id,
+            total_amount=total,
+            installments=installments,
+            created_by=created_by,
+            label=label,
+            status="active",
         )
         db.add(plan)
         await db.flush()
         return plan
 
     @staticmethod
-    async def get(db: AsyncSession, plan_id: uuid.UUID) -> Optional[ApurementPlan]:
-        return (await db.execute(
-            select(ApurementPlan).where(ApurementPlan.id == plan_id)
-        )).scalar_one_or_none()
+    async def get(db: AsyncSession, plan_id: uuid.UUID) -> ApurementPlan | None:
+        return (
+            await db.execute(select(ApurementPlan).where(ApurementPlan.id == plan_id))
+        ).scalar_one_or_none()
 
     @staticmethod
-    async def list_for_tenant(db: AsyncSession, tenant_id: uuid.UUID) -> List[ApurementPlan]:
-        return list((await db.execute(
-            select(ApurementPlan)
-            .where(ApurementPlan.tenant_id == tenant_id)
-            .order_by(ApurementPlan.created_at.desc())
-        )).scalars().all())
+    async def list_for_tenant(db: AsyncSession, tenant_id: uuid.UUID) -> list[ApurementPlan]:
+        return list(
+            (
+                await db.execute(
+                    select(ApurementPlan)
+                    .where(ApurementPlan.tenant_id == tenant_id)
+                    .order_by(ApurementPlan.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
 
     @staticmethod
-    async def mark_installment(db: AsyncSession, plan: ApurementPlan, seq: int,
-                               paid: bool, paid_date) -> tuple[ApurementPlan, bool]:
+    async def mark_installment(
+        db: AsyncSession, plan: ApurementPlan, seq: int, paid: bool, paid_date
+    ) -> tuple[ApurementPlan, bool]:
         insts = [dict(i) for i in (plan.installments or [])]
         found = False
         for i in insts:
             if int(i.get("seq", -1)) == int(seq):
                 i["paid"] = bool(paid)
                 i["paid_date"] = (
-                    paid_date.isoformat() if paid_date
+                    paid_date.isoformat()
+                    if paid_date
                     else (date.today().isoformat() if paid else None)
                 )
                 if paid:
@@ -96,8 +116,9 @@ class ApurementPlanService:
         return plan, found
 
     @staticmethod
-    async def declare_installment(db: AsyncSession, plan: ApurementPlan, seq: int,
-                                  declared_date=None) -> tuple[ApurementPlan, bool]:
+    async def declare_installment(
+        db: AsyncSession, plan: ApurementPlan, seq: int, declared_date=None
+    ) -> tuple[ApurementPlan, bool]:
         """Le locataire déclare avoir réglé une échéance (en attente de validation
         du gestionnaire). On pose un drapeau `declared` sans marquer `paid`."""
         insts = [dict(i) for i in (plan.installments or [])]
@@ -113,16 +134,23 @@ class ApurementPlanService:
         return plan, found
 
     @staticmethod
-    async def list_active_for_tenants(db: AsyncSession, tenant_ids) -> List[ApurementPlan]:
+    async def list_active_for_tenants(db: AsyncSession, tenant_ids) -> list[ApurementPlan]:
         tenant_ids = list(tenant_ids or [])
         if not tenant_ids:
             return []
-        return list((await db.execute(
-            select(ApurementPlan)
-            .where(ApurementPlan.tenant_id.in_(tenant_ids),
-                   ApurementPlan.status == "active")
-            .order_by(ApurementPlan.created_at.desc())
-        )).scalars().all())
+        return list(
+            (
+                await db.execute(
+                    select(ApurementPlan)
+                    .where(
+                        ApurementPlan.tenant_id.in_(tenant_ids), ApurementPlan.status == "active"
+                    )
+                    .order_by(ApurementPlan.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
 
     @staticmethod
     async def delete(db: AsyncSession, plan: ApurementPlan) -> None:

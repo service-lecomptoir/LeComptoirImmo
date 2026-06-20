@@ -14,23 +14,23 @@ la création (voir PropertyService.create, TenantService.create).
   - Baux portant sur ces propriétés ou liés à ces locataires
   - Paiements, tickets, avis, entretiens qui en dépendent
 """
+
 import uuid
-from sqlalchemy import select, func
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
+from app.core.permissions import Role
+from app.models.lease import Lease
+from app.models.owner import Owner
 from app.models.property import Property
 from app.models.tenant import Tenant
-from app.models.owner import Owner
-from app.models.lease import Lease
-from app.core.permissions import Role
+from app.models.user import User
 
 
 async def _gp_user_ids(db: AsyncSession) -> list[uuid.UUID]:
     """IDs de tous les utilisateurs avec le rôle gestionnaire_proprio."""
-    result = await db.execute(
-        select(User.id).where(User.role == Role.GESTIONNAIRE_PROPRIO.value)
-    )
+    result = await db.execute(select(User.id).where(User.role == Role.GESTIONNAIRE_PROPRIO.value))
     return list(result.scalars().all())
 
 
@@ -44,9 +44,7 @@ async def gp_property_ids(db: AsyncSession) -> set[uuid.UUID]:
     gp_ids = await _gp_user_ids(db)
     if not gp_ids:
         return set()
-    result = await db.execute(
-        select(Property.id).where(Property.created_by.in_(gp_ids))
-    )
+    result = await db.execute(select(Property.id).where(Property.created_by.in_(gp_ids)))
     return set(result.scalars().all())
 
 
@@ -55,9 +53,7 @@ async def gp_tenant_ids(db: AsyncSession) -> set[uuid.UUID]:
     gp_ids = await _gp_user_ids(db)
     if not gp_ids:
         return set()
-    result = await db.execute(
-        select(Tenant.id).where(Tenant.created_by.in_(gp_ids))
-    )
+    result = await db.execute(select(Tenant.id).where(Tenant.created_by.in_(gp_ids)))
     return set(result.scalars().all())
 
 
@@ -66,9 +62,7 @@ async def gp_owner_ids(db: AsyncSession) -> set[uuid.UUID]:
     gp_ids = await _gp_user_ids(db)
     if not gp_ids:
         return set()
-    result = await db.execute(
-        select(Owner.id).where(Owner.created_by.in_(gp_ids))
-    )
+    result = await db.execute(select(Owner.id).where(Owner.created_by.in_(gp_ids)))
     return set(result.scalars().all())
 
 
@@ -84,9 +78,8 @@ async def gp_lease_ids(db: AsyncSession) -> set[uuid.UUID]:
     if tenant_ids:
         conditions.append(Lease.tenant_id.in_(tenant_ids))
     from sqlalchemy import or_
-    result = await db.execute(
-        select(Lease.id).where(or_(*conditions))
-    )
+
+    result = await db.execute(select(Lease.id).where(or_(*conditions)))
     return set(result.scalars().all())
 
 
@@ -95,6 +88,7 @@ async def gp_lease_ids(db: AsyncSession) -> set[uuid.UUID]:
 # Périmètre effectif d'un utilisateur : COALESCE(agency_id, id). Un manager ne voit
 # QUE les ressources dont `created_by` appartient à sa propre agence.
 
+
 def agency_root(user: User) -> uuid.UUID:
     return getattr(user, "agency_id", None) or user.id
 
@@ -102,9 +96,7 @@ def agency_root(user: User) -> uuid.UUID:
 async def agency_member_ids(db: AsyncSession, user: User) -> set[uuid.UUID]:
     """IDs des utilisateurs de la même agence que `user` (principal + sous-comptes)."""
     root = agency_root(user)
-    rows = await db.execute(
-        select(User.id).where(func.coalesce(User.agency_id, User.id) == root)
-    )
+    rows = await db.execute(select(User.id).where(func.coalesce(User.agency_id, User.id) == root))
     return set(rows.scalars().all())
 
 
@@ -138,6 +130,7 @@ async def agency_lease_ids(db: AsyncSession, user: User) -> set[uuid.UUID]:
     prop_ids = await agency_property_ids(db, user)
     tenant_ids = await agency_tenant_ids(db, user)
     from sqlalchemy import or_
+
     conds = [Lease.created_by.in_(members)] if members else []
     if prop_ids:
         conds.append(Lease.property_id.in_(prop_ids))
@@ -173,7 +166,9 @@ async def _manager_in_agency_any(db: AsyncSession, user: User, *created_bys) -> 
     return bool(cands & members)
 
 
-async def assert_manager_scope(db: AsyncSession, user: User, created_by, label: str = "cette ressource") -> None:
+async def assert_manager_scope(
+    db: AsyncSession, user: User, created_by, label: str = "cette ressource"
+) -> None:
     """Garde-fou d'isolation pour les endpoints de gestion identifiés par `created_by`.
 
     - admin : accès total ;
@@ -217,8 +212,11 @@ async def assert_lease_access(db: AsyncSession, user: User, lease, *, write: boo
 
     if role in _MANAGER_ROLES_ISO:
         if await _manager_in_agency_any(
-            db, user, created_by,
-            getattr(_prop, "created_by", None), getattr(_tenant, "created_by", None),
+            db,
+            user,
+            created_by,
+            getattr(_prop, "created_by", None),
+            getattr(_tenant, "created_by", None),
         ):
             return
         raise ForbiddenException("Accès refusé à ce contrat.")
@@ -236,7 +234,9 @@ async def assert_lease_access(db: AsyncSession, user: User, lease, *, write: boo
     raise ForbiddenException("Accès refusé à ce contrat.")
 
 
-async def assert_ticket_access(db: AsyncSession, user: User, ticket, *, manager_only: bool = False) -> None:
+async def assert_ticket_access(
+    db: AsyncSession, user: User, ticket, *, manager_only: bool = False
+) -> None:
     """Isolation par rôle d'une démarche (ticket), via le locataire rattaché.
 
     - admin : tout ;
@@ -264,18 +264,26 @@ async def assert_ticket_access(db: AsyncSession, user: User, ticket, *, manager_
             if tenant is not None and str(getattr(tenant, "user_id", None)) == str(user.id):
                 return
         if role == Role.PROPRIETAIRE:
-            owners = (await db.execute(
-                select(Property.owner_user_id)
-                .join(Lease, Lease.property_id == Property.id)
-                .where(Lease.tenant_id == ticket.tenant_id)
-            )).scalars().all()
+            owners = (
+                (
+                    await db.execute(
+                        select(Property.owner_user_id)
+                        .join(Lease, Lease.property_id == Property.id)
+                        .where(Lease.tenant_id == ticket.tenant_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
             if any(str(o) == str(user.id) for o in owners):
                 return
 
     raise ForbiddenException("Accès refusé à cette démarche.")
 
 
-async def assert_payment_access(db: AsyncSession, user: User, payment, *, write: bool = False) -> None:
+async def assert_payment_access(
+    db: AsyncSession, user: User, payment, *, write: bool = False
+) -> None:
     """Isolation par rôle d'un paiement (chargé avec `load_relations=True`).
 
     Périmètre :
@@ -302,8 +310,12 @@ async def assert_payment_access(db: AsyncSession, user: User, payment, *, write:
     # Rôles de gestion : uniquement les paiements de leur agence
     if role in _MANAGER_ROLES_ISO:
         if await _manager_in_agency_any(
-            db, user, created_by, getattr(lease, "created_by", None),
-            getattr(_prop, "created_by", None), getattr(_tenant, "created_by", None),
+            db,
+            user,
+            created_by,
+            getattr(lease, "created_by", None),
+            getattr(_prop, "created_by", None),
+            getattr(_tenant, "created_by", None),
         ):
             return
         raise ForbiddenException("Accès refusé à ce paiement.")
@@ -341,8 +353,11 @@ async def assert_avis_access(db: AsyncSession, user: User, avis, *, write: bool 
 
     if role in _MANAGER_ROLES_ISO:
         if await _manager_in_agency_any(
-            db, user, created_by,
-            getattr(_prop, "created_by", None), getattr(_tenant, "created_by", None),
+            db,
+            user,
+            created_by,
+            getattr(_prop, "created_by", None),
+            getattr(_tenant, "created_by", None),
         ):
             return
         raise ForbiddenException("Accès refusé à cet avis d'échéance.")
@@ -360,7 +375,9 @@ async def assert_avis_access(db: AsyncSession, user: User, avis, *, write: bool 
     raise ForbiddenException("Accès refusé à cet avis d'échéance.")
 
 
-async def assert_document_access(db: AsyncSession, user: User, document, *, write: bool = False) -> None:
+async def assert_document_access(
+    db: AsyncSession, user: User, document, *, write: bool = False
+) -> None:
     """Isolation par rôle d'un document, selon son entité de rattachement
     (`entity_type` ∈ tenant / lease / property / owner : autres types = gestion seule).
 
@@ -408,9 +425,17 @@ async def assert_document_access(db: AsyncSession, user: User, document, *, writ
         raise ForbiddenException("Accès refusé à ce document.")
 
     if not write:
-        if role == Role.PROPRIETAIRE and owner_user_id is not None and str(owner_user_id) == str(user.id):
+        if (
+            role == Role.PROPRIETAIRE
+            and owner_user_id is not None
+            and str(owner_user_id) == str(user.id)
+        ):
             return
-        if role == Role.LOCATAIRE and tenant_user_id is not None and str(tenant_user_id) == str(user.id):
+        if (
+            role == Role.LOCATAIRE
+            and tenant_user_id is not None
+            and str(tenant_user_id) == str(user.id)
+        ):
             return
 
     raise ForbiddenException("Accès refusé à ce document.")

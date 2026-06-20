@@ -5,6 +5,7 @@ sa part déjà payée doit toujours compter comme encaissée. Le reste reporté 
 ensuite reconnu au fil des échéances réellement payées du plan. Ces utilitaires
 centralisent ces deux règles pour le tableau de bord, la performance et le fiscal.
 """
+
 from datetime import date
 
 from sqlalchemy import or_, select
@@ -24,9 +25,7 @@ def received_status():
     )
 
 
-async def apurement_installments(
-    db: AsyncSession, prop_ids, *, year=None, month=None
-):
+async def apurement_installments(db: AsyncSession, prop_ids, *, year=None, month=None):
     """Échéances d'apurement réellement encaissées sur la période, avec contexte.
 
     `prop_ids=None` => tout le périmètre. Retourne une liste de dicts :
@@ -42,7 +41,7 @@ async def apurement_installments(
     plans = (await db.execute(q)).scalars().all()
     rows = []
     for pl in plans:
-        for it in (pl.installments or []):
+        for it in pl.installments or []:
             if not it.get("paid"):
                 continue
             raw = it.get("paid_date") or it.get("due_date")
@@ -56,12 +55,14 @@ async def apurement_installments(
                 continue
             if month is not None and d.month != month:
                 continue
-            rows.append({
-                "plan": pl,
-                "seq": it.get("seq"),
-                "amount": float(it.get("amount", 0) or 0),
-                "date": d,
-            })
+            rows.append(
+                {
+                    "plan": pl,
+                    "seq": it.get("seq"),
+                    "amount": float(it.get("amount", 0) or 0),
+                    "date": d,
+                }
+            )
     return rows
 
 

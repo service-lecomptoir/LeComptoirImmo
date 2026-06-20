@@ -1,21 +1,18 @@
 import uuid
-from typing import Optional
-from sqlalchemy import select, func, or_, and_
+
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.exceptions import BadRequestException, ConflictException, NotFoundException
 from app.models.lease import Lease
 from app.models.property import Property
-from app.schemas.lease import LeaseCreate, LeaseUpdate, LeaseTerminate, LeaseListItem
-from app.core.exceptions import NotFoundException, BadRequestException, ConflictException
+from app.schemas.lease import LeaseCreate, LeaseListItem, LeaseTerminate, LeaseUpdate
 
 
 class LeaseService:
-
     @staticmethod
-    async def create(
-        db: AsyncSession, data: LeaseCreate, created_by: uuid.UUID
-    ) -> Lease:
+    async def create(db: AsyncSession, data: LeaseCreate, created_by: uuid.UUID) -> Lease:
         # Vérifier que le bien existe et est disponible
         prop = await db.get(Property, data.property_id)
         if not prop:
@@ -48,6 +45,7 @@ class LeaseService:
         # Rattacher les co-titulaires secondaires
         if secondary_ids:
             from app.models.tenant import Tenant
+
             res = await db.execute(select(Tenant).where(Tenant.id.in_(secondary_ids)))
             lease.co_tenants = list(res.scalars().all())
 
@@ -58,9 +56,10 @@ class LeaseService:
         # L'annonce du bien passe automatiquement en « loué » (retirée de la
         # diffusion publique) dès qu'un bail est signé.
         from app.models.publishing import Listing
-        listing = (await db.execute(
-            select(Listing).where(Listing.property_id == data.property_id)
-        )).scalar_one_or_none()
+
+        listing = (
+            await db.execute(select(Listing).where(Listing.property_id == data.property_id))
+        ).scalar_one_or_none()
         if listing and listing.status in ("published", "scheduled"):
             listing.status = "loue"
 
@@ -96,15 +95,15 @@ class LeaseService:
     async def list_all(
         db: AsyncSession,
         *,
-        search: Optional[str] = None,
-        tenant_id: Optional[uuid.UUID] = None,
-        property_id: Optional[uuid.UUID] = None,
-        is_active: Optional[bool] = None,
+        search: str | None = None,
+        tenant_id: uuid.UUID | None = None,
+        property_id: uuid.UUID | None = None,
+        is_active: bool | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[Lease], int]:
-        from app.models.tenant import Tenant
         from app.models.property import Property
+        from app.models.tenant import Tenant
 
         base_q = (
             select(Lease)
@@ -141,10 +140,10 @@ class LeaseService:
         total = (await db.execute(count_q)).scalar_one()
 
         items = (
-            await db.execute(
-                base_q.order_by(Lease.start_date.desc()).offset(skip).limit(limit)
-            )
-        ).scalars().all()
+            (await db.execute(base_q.order_by(Lease.start_date.desc()).offset(skip).limit(limit)))
+            .scalars()
+            .all()
+        )
 
         return list(items), total
 
@@ -155,13 +154,9 @@ class LeaseService:
             id=lease.id,
             property_id=lease.property_id,
             tenant_id=lease.tenant_id,
-            tenant_full_name=(
-                lease.tenant.full_name if lease.tenant else str(lease.tenant_id)
-            ),
+            tenant_full_name=(lease.tenant.full_name if lease.tenant else str(lease.tenant_id)),
             property_name=(
-                lease.parent_property.name
-                if lease.parent_property
-                else str(lease.property_id)
+                lease.parent_property.name if lease.parent_property else str(lease.property_id)
             ),
             owner_name=(lease.parent_property.owner_name if lease.parent_property else None),
             lease_type=lease.lease_type,
@@ -174,9 +169,7 @@ class LeaseService:
         )
 
     @staticmethod
-    async def update(
-        db: AsyncSession, lease_id: uuid.UUID, data: LeaseUpdate
-    ) -> Lease:
+    async def update(db: AsyncSession, lease_id: uuid.UUID, data: LeaseUpdate) -> Lease:
         # Charger avec co_tenants pour pouvoir réassigner la collection (async-safe)
         result = await db.execute(
             select(Lease).options(selectinload(Lease.co_tenants)).where(Lease.id == lease_id)
@@ -199,19 +192,33 @@ class LeaseService:
         cur_charges = float(lease.charges_amount)
         want_rent = float(new_rent) if new_rent is not None else cur_rent
         want_charges = float(new_charges) if new_charges is not None else cur_charges
-        if round(want_rent, 2) != round(cur_rent, 2) or round(want_charges, 2) != round(cur_charges, 2):
+        if round(want_rent, 2) != round(cur_rent, 2) or round(want_charges, 2) != round(
+            cur_charges, 2
+        ):
             from datetime import date
+
             from app.services.rent_revision_service import RentRevisionService, first_of_next_month
+
             eff = rent_eff or first_of_next_month(date.today())
             if round(want_rent, 2) != round(cur_rent, 2):
                 await RentRevisionService.schedule(
-                    db, lease, kind="rent", new_amount=want_rent, effective_date=eff,
-                    source="manuel", reason="Modification du contrat",
+                    db,
+                    lease,
+                    kind="rent",
+                    new_amount=want_rent,
+                    effective_date=eff,
+                    source="manuel",
+                    reason="Modification du contrat",
                 )
             if round(want_charges, 2) != round(cur_charges, 2):
                 await RentRevisionService.schedule(
-                    db, lease, kind="charges", new_amount=want_charges, effective_date=eff,
-                    source="manuel", reason="Modification du contrat",
+                    db,
+                    lease,
+                    kind="charges",
+                    new_amount=want_charges,
+                    effective_date=eff,
+                    source="manuel",
+                    reason="Modification du contrat",
                 )
 
         # Remplacer les co-titulaires si la liste est fournie
@@ -219,6 +226,7 @@ class LeaseService:
             secondary_ids = [tid for tid in secondary_ids if str(tid) != str(lease.tenant_id)]
             if secondary_ids:
                 from app.models.tenant import Tenant
+
                 res = await db.execute(select(Tenant).where(Tenant.id.in_(secondary_ids)))
                 lease.co_tenants = list(res.scalars().all())
             else:
@@ -229,9 +237,7 @@ class LeaseService:
         return lease
 
     @staticmethod
-    async def terminate(
-        db: AsyncSession, lease_id: uuid.UUID, data: LeaseTerminate
-    ) -> Lease:
+    async def terminate(db: AsyncSession, lease_id: uuid.UUID, data: LeaseTerminate) -> Lease:
         lease = await LeaseService.get_by_id(db, lease_id)
         if not lease.is_active:
             raise BadRequestException("Ce contrat est déjà résilié")

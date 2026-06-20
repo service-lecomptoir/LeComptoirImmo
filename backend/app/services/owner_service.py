@@ -1,17 +1,16 @@
 import uuid
-from typing import List, Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, update
 
+from sqlalchemy import func, or_, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import NotFoundException
 from app.models.owner import Owner
 from app.models.property import Property
 from app.schemas.owner import OwnerCreate, OwnerUpdate
-from app.core.exceptions import NotFoundException
 from app.utils.address import normalize_address_fields
 
 
 class OwnerService:
-
     @staticmethod
     async def sync_properties(db: AsyncSession, owner: Owner) -> None:
         """Répercute l'identité/RIB/compte de la fiche sur les biens liés.
@@ -33,6 +32,7 @@ class OwnerService:
     async def get_finances(db: AsyncSession, owner_id: uuid.UUID, year: int) -> dict:
         """Agrège revenus, performance par bien et synthèse fiscale d'un propriétaire/année."""
         from sqlalchemy.orm import selectinload
+
         from app.models.lease import Lease
         from app.models.payment import Payment, PaymentStatus
 
@@ -40,29 +40,39 @@ class OwnerService:
         if not owner:
             raise NotFoundException("Propriétaire introuvable")
 
-        props = (await db.execute(
-            select(Property).where(Property.owner_id == owner_id)
-        )).scalars().all()
+        props = (
+            (await db.execute(select(Property).where(Property.owner_id == owner_id)))
+            .scalars()
+            .all()
+        )
         prop_ids = [p.id for p in props]
 
         leases = []
         if prop_ids:
-            leases = (await db.execute(
-                select(Lease).where(Lease.property_id.in_(prop_ids))
-            )).scalars().all()
+            leases = (
+                (await db.execute(select(Lease).where(Lease.property_id.in_(prop_ids))))
+                .scalars()
+                .all()
+            )
         lease_ids = [l.id for l in leases]
 
         payments = []
         if lease_ids:
-            payments = (await db.execute(
-                select(Payment)
-                .options(
-                    selectinload(Payment.tenant),
-                    selectinload(Payment.lease).selectinload(Lease.parent_property),
+            payments = (
+                (
+                    await db.execute(
+                        select(Payment)
+                        .options(
+                            selectinload(Payment.tenant),
+                            selectinload(Payment.lease).selectinload(Lease.parent_property),
+                        )
+                        .where(Payment.lease_id.in_(lease_ids), Payment.period_year == year)
+                        .order_by(Payment.period_month)
+                    )
                 )
-                .where(Payment.lease_id.in_(lease_ids), Payment.period_year == year)
-                .order_by(Payment.period_month)
-            )).scalars().all()
+                .scalars()
+                .all()
+            )
 
         lignes = []
         total_du = total_percu = loyers = charges = apl = 0.0
@@ -72,18 +82,22 @@ class OwnerService:
             loyers += float(p.amount_rent or 0)
             charges += float(p.amount_charges or 0)
             apl += float(p.amount_apl or 0)
-            lignes.append({
-                "period_label": p.period_label,
-                "period_month": p.period_month,
-                "property_name": p.lease.parent_property.name if p.lease and p.lease.parent_property else "",
-                "tenant_full_name": p.tenant.full_name if p.tenant else "",
-                "amount_due": float(p.amount_due),
-                "amount_paid": float(p.amount_paid),
-                # Un mois reporté sur un plan d'apurement n'est pas « annulé » : il est
-                # « reporté » (le revenu sera reconnu au fil des échéances du plan).
-                "status": "reporte" if getattr(p, "settled_by_plan", False) else p.status,
-                "payment_date": p.payment_date,
-            })
+            lignes.append(
+                {
+                    "period_label": p.period_label,
+                    "period_month": p.period_month,
+                    "property_name": p.lease.parent_property.name
+                    if p.lease and p.lease.parent_property
+                    else "",
+                    "tenant_full_name": p.tenant.full_name if p.tenant else "",
+                    "amount_due": float(p.amount_due),
+                    "amount_paid": float(p.amount_paid),
+                    # Un mois reporté sur un plan d'apurement n'est pas « annulé » : il est
+                    # « reporté » (le revenu sera reconnu au fil des échéances du plan).
+                    "status": "reporte" if getattr(p, "settled_by_plan", False) else p.status,
+                    "payment_date": p.payment_date,
+                }
+            )
 
         # ── Calcul fiscal type 2044 : part loyer/charges RÉELLEMENT encaissée ──────
         # (paiements payés/partiels, proratisés sur amount_paid), frais de gestion 8%.
@@ -93,8 +107,9 @@ class OwnerService:
         for p in payments:
             # Mois payés/partiels ET mois reportés sur un plan (leur part déjà payée
             # compte ; le reste reporté est reconnu via les échéances ci-dessous).
-            _counts = (p.status in (PaymentStatus.PAID, PaymentStatus.PARTIAL)
-                       or getattr(p, "settled_by_plan", False))
+            _counts = p.status in (PaymentStatus.PAID, PaymentStatus.PARTIAL) or getattr(
+                p, "settled_by_plan", False
+            )
             if _counts and float(p.amount_due) > 0:
                 rent_part = float(p.amount_paid) * float(p.amount_rent) / float(p.amount_due)
                 ch_part = float(p.amount_paid) * float(p.amount_charges) / float(p.amount_due)
@@ -109,16 +124,26 @@ class OwnerService:
         # devient une ligne « Apurement » comptée dans le perçu et le fiscal.
         if lease_ids:
             from datetime import date
+
             from app.models.apurement_plan import ApurementPlan
             from app.models.tenant import Tenant as _Tenant
-            _prop_by_lease = {l.id: next((pr for pr in props if pr.id == l.property_id), None) for l in leases}
-            _plans = (await db.execute(
-                select(ApurementPlan).where(ApurementPlan.lease_id.in_(lease_ids))
-            )).scalars().all()
+
+            _prop_by_lease = {
+                l.id: next((pr for pr in props if pr.id == l.property_id), None) for l in leases
+            }
+            _plans = (
+                (
+                    await db.execute(
+                        select(ApurementPlan).where(ApurementPlan.lease_id.in_(lease_ids))
+                    )
+                )
+                .scalars()
+                .all()
+            )
             for _pl in _plans:
                 _prop = _prop_by_lease.get(_pl.lease_id)
                 _ten = await db.get(_Tenant, _pl.tenant_id)
-                for _i in (_pl.installments or []):
+                for _i in _pl.installments or []:
                     if not _i.get("paid"):
                         continue
                     _pd = _i.get("paid_date") or _i.get("due_date")
@@ -133,14 +158,18 @@ class OwnerService:
                     gross_rent += _amt
                     if _prop is not None:
                         per_prop_rent[_prop.id] = per_prop_rent.get(_prop.id, 0.0) + _amt
-                    lignes.append({
-                        "period_label": f"Apurement · échéance {_i.get('seq')}",
-                        "period_month": _pdate.month,
-                        "property_name": _prop.name if _prop else "",
-                        "tenant_full_name": _ten.full_name if _ten else "",
-                        "amount_due": _amt, "amount_paid": _amt,
-                        "status": "apurement", "payment_date": _pdate,
-                    })
+                    lignes.append(
+                        {
+                            "period_label": f"Apurement · échéance {_i.get('seq')}",
+                            "period_month": _pdate.month,
+                            "property_name": _prop.name if _prop else "",
+                            "tenant_full_name": _ten.full_name if _ten else "",
+                            "amount_due": _amt,
+                            "amount_paid": _amt,
+                            "status": "apurement",
+                            "payment_date": _pdate,
+                        }
+                    )
 
         management_fees = round(gross_rent * 0.08, 2)
         total_gross = gross_rent + charges_received
@@ -152,19 +181,21 @@ class OwnerService:
             active = next((l for l in leases if l.property_id == prop.id and l.is_active), None)
             pp = [p for p in payments if p.lease and p.lease.property_id == prop.id]
             active_count = sum(1 for l in leases if l.property_id == prop.id and l.is_active)
-            biens.append({
-                "property_id": prop.id,
-                "property_name": prop.name,
-                "city": prop.city,
-                "address": prop.full_address,
-                "rent": float(active.rent_amount) if active else 0.0,
-                "charges": float(active.charges_amount) if active else 0.0,
-                "total_du": round(sum(float(x.amount_due) for x in pp), 2),
-                "total_percu": round(sum(float(x.amount_paid) for x in pp), 2),
-                "annual_rent": round(per_prop_rent.get(prop.id, 0.0), 2),
-                "active_leases": active_count,
-                "is_occupied": bool(prop.is_occupied),
-            })
+            biens.append(
+                {
+                    "property_id": prop.id,
+                    "property_name": prop.name,
+                    "city": prop.city,
+                    "address": prop.full_address,
+                    "rent": float(active.rent_amount) if active else 0.0,
+                    "charges": float(active.charges_amount) if active else 0.0,
+                    "total_du": round(sum(float(x.amount_due) for x in pp), 2),
+                    "total_percu": round(sum(float(x.amount_paid) for x in pp), 2),
+                    "annual_rent": round(per_prop_rent.get(prop.id, 0.0), 2),
+                    "active_leases": active_count,
+                    "is_occupied": bool(prop.is_occupied),
+                }
+            )
 
         return {
             "owner_id": owner.id,
@@ -188,10 +219,9 @@ class OwnerService:
         }
 
     @staticmethod
-    async def create(
-        db: AsyncSession, data: OwnerCreate, created_by: uuid.UUID
-    ) -> Owner:
+    async def create(db: AsyncSession, data: OwnerCreate, created_by: uuid.UUID) -> Owner:
         from app.services.reference_service import make_ref
+
         owner = Owner(**data.model_dump(), created_by=created_by)
         owner.address, owner.zip_code, owner.city = normalize_address_fields(
             owner.address, owner.zip_code, owner.city
@@ -212,10 +242,10 @@ class OwnerService:
     @staticmethod
     async def list_all(
         db: AsyncSession,
-        search: Optional[str] = None,
+        search: str | None = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[List[Owner], int]:
+    ) -> tuple[list[Owner], int]:
         query = select(Owner)
         count_query = select(func.count(Owner.id))
 
@@ -239,9 +269,7 @@ class OwnerService:
         return list(results.scalars().all()), count_result.scalar_one()
 
     @staticmethod
-    async def update(
-        db: AsyncSession, owner_id: uuid.UUID, data: OwnerUpdate
-    ) -> Owner:
+    async def update(db: AsyncSession, owner_id: uuid.UUID, data: OwnerUpdate) -> Owner:
         owner = await OwnerService.get_by_id(db, owner_id)
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():

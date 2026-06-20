@@ -1,61 +1,62 @@
 import uuid
-from typing import Optional
 from datetime import datetime
+
 from pydantic import BaseModel
+
 from app.models.contact import ContactCategory
 
 
 class ContactCreate(BaseModel):
-    first_name: Optional[str] = None
+    first_name: str | None = None
     last_name: str
-    company_name: Optional[str] = None
+    company_name: str | None = None
     category: ContactCategory = ContactCategory.AUTRE
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    phone2: Optional[str] = None
-    address: Optional[str] = None
-    zip_code: Optional[str] = None
-    city: Optional[str] = None
-    siret: Optional[str] = None
-    website: Optional[str] = None
-    notes: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
+    phone2: str | None = None
+    address: str | None = None
+    zip_code: str | None = None
+    city: str | None = None
+    siret: str | None = None
+    website: str | None = None
+    notes: str | None = None
     is_favorite: bool = False
 
 
 class ContactUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    company_name: Optional[str] = None
-    category: Optional[ContactCategory] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    phone2: Optional[str] = None
-    address: Optional[str] = None
-    zip_code: Optional[str] = None
-    city: Optional[str] = None
-    siret: Optional[str] = None
-    website: Optional[str] = None
-    notes: Optional[str] = None
-    is_favorite: Optional[bool] = None
+    first_name: str | None = None
+    last_name: str | None = None
+    company_name: str | None = None
+    category: ContactCategory | None = None
+    email: str | None = None
+    phone: str | None = None
+    phone2: str | None = None
+    address: str | None = None
+    zip_code: str | None = None
+    city: str | None = None
+    siret: str | None = None
+    website: str | None = None
+    notes: str | None = None
+    is_favorite: bool | None = None
 
 
 class ContactResponse(BaseModel):
     id: uuid.UUID
-    first_name: Optional[str] = None
+    first_name: str | None = None
     last_name: str
-    company_name: Optional[str] = None
+    company_name: str | None = None
     display_name: str
     full_name: str
     category: ContactCategory
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    phone2: Optional[str] = None
-    address: Optional[str] = None
-    zip_code: Optional[str] = None
-    city: Optional[str] = None
-    siret: Optional[str] = None
-    website: Optional[str] = None
-    notes: Optional[str] = None
+    email: str | None = None
+    phone: str | None = None
+    phone2: str | None = None
+    address: str | None = None
+    zip_code: str | None = None
+    city: str | None = None
+    siret: str | None = None
+    website: str | None = None
+    notes: str | None = None
     is_favorite: bool
     created_at: datetime
     updated_at: datetime

@@ -1,20 +1,22 @@
 import uuid
-from typing import Optional
-from fastapi import APIRouter, Depends, Query, UploadFile, File
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.api.deps import get_current_user, require_role
 from app.api.v1._isolation import agency_tenant_ids, assert_ticket_access
-from app.models.user import User
-from app.models.ticket import Ticket
+from app.core.permissions import Role
+from app.database import get_db
 from app.models.lease import Lease
 from app.models.property import Property
-from app.core.permissions import Role
+from app.models.ticket import Ticket
+from app.models.user import User
 from app.schemas.ticket import (
-    TicketCreate, TicketUpdate, TicketMessageCreate,
+    TicketCreate,
+    TicketMessageCreate,
+    TicketUpdate,
 )
 from app.services.ticket_service import TicketService
 
@@ -36,7 +38,9 @@ def _enrich_ticket(ticket, include_messages: bool = False) -> dict:
         "assigned_to_id": ticket.assigned_to_id,
         "assigned_to_name": ticket.assigned_to.full_name if ticket.assigned_to else None,
         "closed_at": ticket.closed_at,
-        "photo_url": ("/" + ticket.photo_path.replace("\\", "/").lstrip("/")) if getattr(ticket, "photo_path", None) else None,
+        "photo_url": ("/" + ticket.photo_path.replace("\\", "/").lstrip("/"))
+        if getattr(ticket, "photo_path", None)
+        else None,
         "created_at": ticket.created_at,
         "updated_at": ticket.updated_at,
     }
@@ -59,6 +63,7 @@ def _enrich_ticket(ticket, include_messages: bool = False) -> dict:
 
 # ── Routes Locataire ─────────────────────────────────────────────────────────
 
+
 @router.get("/mine", summary="Mes tickets (locataire)")
 async def my_tickets(
     db: AsyncSession = Depends(get_db),
@@ -76,6 +81,7 @@ async def attach_ticket_photo(
     current_user: User = Depends(get_current_user),
 ):
     from app.utils.file_handler import save_file
+
     ticket = await TicketService.get(db, ticket_id)
     await assert_ticket_access(db, current_user, ticket)
     path, _size = await save_file(file, "ticket", str(ticket.id))
@@ -99,6 +105,7 @@ async def create_ticket(
     try:
         from app.models.tenant import Tenant
         from app.services import agent_events
+
         tenant = await db.get(Tenant, ticket.tenant_id)
         manager_id = getattr(tenant, "created_by", None) if tenant else None
         tenant_name = (getattr(tenant, "full_name", None) if tenant else None) or "Un locataire"
@@ -109,7 +116,10 @@ async def create_ticket(
         if detail and detail != ticket.title:
             body += f"\n{detail}"
         await agent_events.notify_manager(
-            db, manager_id, ticket.topic or "autre", body,
+            db,
+            manager_id,
+            ticket.topic or "autre",
+            body,
             cta="Ouvrez la démarche dans l'application pour répondre.",
         )
     except Exception:  # noqa: BLE001 : la notification ne doit jamais bloquer la création
@@ -119,23 +129,34 @@ async def create_ticket(
 
 # ── Routes Gestionnaire / Admin ───────────────────────────────────────────────
 
+
 @router.get("", summary="Liste tous les tickets")
 async def list_tickets(
-    status: Optional[str] = Query(None),
+    status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
-        prop_ids = [p.id for p in (await db.execute(
-            select(Property).where(Property.owner_user_id == current_user.id)
-        )).scalars().all()]
+        prop_ids = [
+            p.id
+            for p in (
+                await db.execute(select(Property).where(Property.owner_user_id == current_user.id))
+            )
+            .scalars()
+            .all()
+        ]
         if not prop_ids:
             return {"total": 0, "items": []}
-        tenant_ids = [row[0] for row in (await db.execute(
-            select(Lease.tenant_id).where(Lease.property_id.in_(prop_ids)).distinct()
-        )).all()]
+        tenant_ids = [
+            row[0]
+            for row in (
+                await db.execute(
+                    select(Lease.tenant_id).where(Lease.property_id.in_(prop_ids)).distinct()
+                )
+            ).all()
+        ]
         if not tenant_ids:
             return {"total": 0, "items": []}
         q = (
@@ -154,7 +175,7 @@ async def list_tickets(
         allowed = await agency_tenant_ids(db, current_user)
         all_items, _ = await TicketService.list_all(db, status=status, limit=5000, offset=0)
         filtered = [t for t in all_items if t.tenant_id in allowed]
-        page = filtered[offset: offset + limit]
+        page = filtered[offset : offset + limit]
         return {"total": len(filtered), "items": [_enrich_ticket(t) for t in page]}
 
     items, total = await TicketService.list_all(db, status=status, limit=limit, offset=offset)
@@ -170,15 +191,19 @@ async def ticket_stats(
     current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
 ):
     from sqlalchemy import func
+
     from app.models.tenant import Tenant
+
     role = Role(current_user.role)
     if role == Role.ADMIN:
         return {"open": await TicketService.count_open(db)}
     q = select(func.count(Ticket.id)).where(Ticket.status == "open")
     if role == Role.GESTIONNAIRE_PROPRIO:
-        tenant_ids = list((await db.execute(
-            select(Tenant.id).where(Tenant.created_by == current_user.id)
-        )).scalars().all())
+        tenant_ids = list(
+            (await db.execute(select(Tenant.id).where(Tenant.created_by == current_user.id)))
+            .scalars()
+            .all()
+        )
         if not tenant_ids:
             return {"open": 0}
         q = q.where(Ticket.tenant_id.in_(tenant_ids))
@@ -192,15 +217,13 @@ async def ticket_stats(
 
 @router.get("/proprietaire", summary="Tickets des biens du propriétaire")
 async def proprietaire_tickets(
-    status: Optional[str] = Query(None),
+    status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Liste les tickets des locataires pour les biens appartenant au propriétaire connecté."""
     # Trouver les biens du propriétaire
-    props_res = await db.execute(
-        select(Property).where(Property.owner_user_id == current_user.id)
-    )
+    props_res = await db.execute(select(Property).where(Property.owner_user_id == current_user.id))
     prop_ids = [p.id for p in props_res.scalars().all()]
 
     if not prop_ids:
@@ -208,9 +231,11 @@ async def proprietaire_tickets(
 
     # Trouver les tenant_ids pour ces biens via les baux
     leases_res = await db.execute(
-        select(Lease.tenant_id).where(
+        select(Lease.tenant_id)
+        .where(
             Lease.property_id.in_(prop_ids),
-        ).distinct()
+        )
+        .distinct()
     )
     tenant_ids = [row[0] for row in leases_res.all()]
 
@@ -288,16 +313,17 @@ async def add_message(
 
 # ── Workflow de démarche : clôture proposée / validée / refusée, relance ─────
 from pydantic import BaseModel
+
 from app.models.tenant import Tenant
 
 
 class _CommentIn(BaseModel):
-    comment: Optional[str] = None
+    comment: str | None = None
 
 
 class _DraftIn(BaseModel):
-    topic: Optional[str] = None
-    hint: Optional[str] = None
+    topic: str | None = None
+    hint: str | None = None
 
 
 @router.post("/draft", summary="Rédiger une démarche avec l'IA (aide locataire)")
@@ -308,6 +334,7 @@ async def draft_ticket(
     """Propose un Sujet + une Description selon le type de signalement choisi
     (et un éventuel mot du locataire). Non enregistré : à éditer puis envoyer."""
     from app.services.ticket_ai import generate_ticket_draft
+
     return await generate_ticket_draft(data.topic, data.hint)
 
 
@@ -322,6 +349,7 @@ async def _assert_requester(db: AsyncSession, ticket, user: User) -> None:
     tenant = await db.get(Tenant, ticket.tenant_id)
     if not tenant or str(getattr(tenant, "user_id", None)) != str(user.id):
         from app.core.exceptions import ForbiddenException
+
         raise ForbiddenException("Cette démarche ne vous appartient pas.")
 
 
@@ -390,8 +418,12 @@ async def edit_message(
     msg = await TicketService.edit_message(db, ticket_id, message_id, current_user.id, data.content)
     await db.commit()
     return {
-        "id": msg.id, "ticket_id": msg.ticket_id, "author_id": msg.author_id,
+        "id": msg.id,
+        "ticket_id": msg.ticket_id,
+        "author_id": msg.author_id,
         "author_name": msg.author.full_name if msg.author else None,
         "author_role": msg.author.role if msg.author else None,
-        "content": msg.content, "is_internal": msg.is_internal, "created_at": msg.created_at,
+        "content": msg.content,
+        "is_internal": msg.is_internal,
+        "created_at": msg.created_at,
     }

@@ -1,8 +1,8 @@
 """Service d'envoi d'emails transactionnels via SMTP (aiosmtplib)."""
+
 import contextvars
 import logging
 from email.message import EmailMessage
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +17,26 @@ _GOLD = "#C9A227"
 _TEAL = "#1F7A6B"
 
 _DEFAULT_BRAND = "Le Comptoir Immo"
-_ctx_theme: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar("email_theme", default=None)
-_ctx_logo_bytes: "contextvars.ContextVar[Optional[bytes]]" = contextvars.ContextVar("email_logo_bytes", default=None)
-_ctx_logo_sub: "contextvars.ContextVar[str]" = contextvars.ContextVar("email_logo_sub", default="png")
-_ctx_brand: "contextvars.ContextVar[Optional[str]]" = contextvars.ContextVar("email_brand", default=None)
+_ctx_theme: "contextvars.ContextVar[str | None]" = contextvars.ContextVar(
+    "email_theme", default=None
+)
+_ctx_logo_bytes: "contextvars.ContextVar[bytes | None]" = contextvars.ContextVar(
+    "email_logo_bytes", default=None
+)
+_ctx_logo_sub: "contextvars.ContextVar[str]" = contextvars.ContextVar(
+    "email_logo_sub", default="png"
+)
+_ctx_brand: "contextvars.ContextVar[str | None]" = contextvars.ContextVar(
+    "email_brand", default=None
+)
 
 
-def set_branding(theme: Optional[str] = None, logo: Optional[bytes] = None,
-                 logo_subtype: str = "png", brand_name: Optional[str] = None) -> None:
+def set_branding(
+    theme: str | None = None,
+    logo: bytes | None = None,
+    logo_subtype: str = "png",
+    brand_name: str | None = None,
+) -> None:
     """Pose l'apparence des e-mails rendus ensuite dans le même contexte : thème,
     logo du gestionnaire (octets), et nom du compte affiché dans l'en-tête/pied
     (« Mes informations »). Le logo est attaché automatiquement par ``send_email``
@@ -39,12 +51,12 @@ async def send_email(
     to: str,
     subject: str,
     html_body: str,
-    text_body: Optional[str] = None,
-    attachment_bytes: Optional[bytes] = None,
-    attachment_filename: Optional[str] = None,
+    text_body: str | None = None,
+    attachment_bytes: bytes | None = None,
+    attachment_filename: str | None = None,
     attachment_mime: str = "application/pdf",
-    cc: Optional[str] = None,
-    inline_logo: Optional[bytes] = None,
+    cc: str | None = None,
+    inline_logo: bytes | None = None,
     inline_logo_subtype: str = "png",
 ) -> bool:
     """Envoie un email via SMTP. Retourne True si envoyé, False si désactivé ou erreur.
@@ -55,6 +67,7 @@ async def send_email(
     référençable dans le HTML via ``cid:managerlogo`` (signature des e-mails).
     """
     from app.config import get_settings
+
     cfg = get_settings()
     if not cfg.smtp_enabled:
         logger.debug("SMTP désactivé : email simulé vers %s: %s", to, subject)
@@ -82,8 +95,10 @@ async def send_email(
             try:
                 html_part = msg.get_payload()[-1]
                 html_part.add_related(
-                    inline_logo, maintype="image",
-                    subtype=(inline_logo_subtype or "png"), cid="managerlogo",
+                    inline_logo,
+                    maintype="image",
+                    subtype=(inline_logo_subtype or "png"),
+                    cid="managerlogo",
                 )
             except Exception as _exc:  # noqa: BLE001 : le logo ne doit jamais bloquer l'envoi
                 logger.warning("Logo inline non joint: %s", _exc)
@@ -115,10 +130,11 @@ async def send_email(
 def _html_to_text(html: str) -> str:
     """Conversion HTML → texte brut minimaliste (supprime balises)."""
     import re
+
     return re.sub(r"<[^>]+>", "", html).strip()
 
 
-def build_signature_html(service_name: Optional[str], has_logo: bool = False) -> str:
+def build_signature_html(service_name: str | None, has_logo: bool = False) -> str:
     """Bloc signature des e-mails : « Cordialement », logo gestionnaire (image
     inline via cid:managerlogo), nom du service, puis la mention d'envoi
     automatique. Utilisé par les envois pilotés par les règles d'automatisation."""
@@ -126,29 +142,43 @@ def build_signature_html(service_name: Optional[str], has_logo: bool = False) ->
     if has_logo:
         rows.append('<img src="cid:managerlogo" alt="" style="max-height:54px;margin:6px 0">')
     if service_name and service_name.strip():
-        rows.append(f'<p style="margin:2px 0;font-weight:600;color:#111827">{service_name.strip()}</p>')
-    rows.append('<p style="margin:12px 0 0;color:#9ca3af;font-size:12px">'
-                'Cette communication a été envoyée automatiquement par le système Le Comptoir.</p>')
-    return ('<div style="margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px">'
-            + "".join(rows) + '</div>')
+        rows.append(
+            f'<p style="margin:2px 0;font-weight:600;color:#111827">{service_name.strip()}</p>'
+        )
+    rows.append(
+        '<p style="margin:12px 0 0;color:#9ca3af;font-size:12px">'
+        "Cette communication a été envoyée automatiquement par le système Le Comptoir.</p>"
+    )
+    return (
+        '<div style="margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px">'
+        + "".join(rows)
+        + "</div>"
+    )
 
 
 # ── Templates email ───────────────────────────────────────────────────────────
+
 
 def _avatar_html(*, on_dark: bool, has_logo: bool, dim: int = 44) -> str:
     """Médaillon d'en-tête : logo du gestionnaire (cid:managerlogo) s'il existe,
     sinon un monogramme « LC » lisible dans les e-mails (pas d'icône/SVG, peu fiable)."""
     if has_logo:
-        return (f'<img src="cid:managerlogo" alt="Logo" '
-                f'style="height:{dim}px;max-width:140px;border-radius:8px;background:#fff;padding:3px;'
-                f'vertical-align:middle">')
+        return (
+            f'<img src="cid:managerlogo" alt="Logo" '
+            f'style="height:{dim}px;max-width:140px;border-radius:8px;background:#fff;padding:3px;'
+            f'vertical-align:middle">'
+        )
     if on_dark:
-        return (f'<div style="display:inline-block;width:{dim}px;height:{dim}px;border-radius:{dim}px;'
-                f'background:rgba(255,255,255,.16);color:#fff;font-size:{int(dim*0.4)}px;font-weight:bold;'
-                f'line-height:{dim}px;text-align:center">LC</div>')
-    return (f'<div style="display:inline-block;width:{dim}px;height:{dim}px;border-radius:10px;'
-            f'background:{_NAVY};color:#fff;font-size:{int(dim*0.4)}px;font-weight:bold;'
-            f'line-height:{dim}px;text-align:center">LC</div>')
+        return (
+            f'<div style="display:inline-block;width:{dim}px;height:{dim}px;border-radius:{dim}px;'
+            f"background:rgba(255,255,255,.16);color:#fff;font-size:{int(dim * 0.4)}px;font-weight:bold;"
+            f'line-height:{dim}px;text-align:center">LC</div>'
+        )
+    return (
+        f'<div style="display:inline-block;width:{dim}px;height:{dim}px;border-radius:10px;'
+        f"background:{_NAVY};color:#fff;font-size:{int(dim * 0.4)}px;font-weight:bold;"
+        f'line-height:{dim}px;text-align:center">LC</div>'
+    )
 
 
 def _band_header(bg: str, sub_color: str, title: str, has_logo: bool, brand: str) -> str:
@@ -159,7 +189,7 @@ def _band_header(bg: str, sub_color: str, title: str, has_logo: bool, brand: str
         f'<td style="padding-right:13px">{_avatar_html(on_dark=True, has_logo=has_logo, dim=44)}</td>'
         f'<td><div style="color:#fff;font-size:17px;font-weight:bold">{brand}</div>'
         f'<div style="color:{sub_color};font-size:12px">Gestion locative · {title}</div></td>'
-        f'</tr></table></td></tr>'
+        f"</tr></table></td></tr>"
     )
 
 
@@ -171,7 +201,7 @@ def _email_header(title: str, theme: str, has_logo: bool, brand: str) -> str:
             f'<td style="padding-right:12px">{_avatar_html(on_dark=False, has_logo=has_logo, dim=40)}</td>'
             f'<td><div style="color:{_NAVY};font-size:16px;font-weight:bold">{brand}</div>'
             f'<div style="color:#64748b;font-size:12px">Gestion locative · {title}</div></td>'
-            f'</tr></table></td></tr>'
+            f"</tr></table></td></tr>"
         )
     if theme == "epure_center":
         return (
@@ -198,13 +228,19 @@ def _email_header(title: str, theme: str, has_logo: bool, brand: str) -> str:
 def _email_footer(theme: str, brand: str) -> str:
     txt = f"{brand} · Gestion locative · Ce message est automatique, merci de ne pas y répondre."
     if theme in ("epure", "epure_center"):
-        return (f'<tr><td style="background:#f4f6fb;border-top:1px solid #e5e7eb;padding:14px 28px;'
-                f'text-align:center;font-size:12px;color:#94a3b8">{txt}</td></tr>')
+        return (
+            f'<tr><td style="background:#f4f6fb;border-top:1px solid #e5e7eb;padding:14px 28px;'
+            f'text-align:center;font-size:12px;color:#94a3b8">{txt}</td></tr>'
+        )
     if theme == "teal_band":
-        return (f'<tr><td style="background:{_TEAL};padding:14px 28px;text-align:center;'
-                f'font-size:12px;color:#cdeae3">{txt}</td></tr>')
-    return (f'<tr><td style="background:{_NAVY};padding:14px 28px;text-align:center;'
-            f'font-size:12px;color:#a9c2e8">{txt}</td></tr>')
+        return (
+            f'<tr><td style="background:{_TEAL};padding:14px 28px;text-align:center;'
+            f'font-size:12px;color:#cdeae3">{txt}</td></tr>'
+        )
+    return (
+        f'<tr><td style="background:{_NAVY};padding:14px 28px;text-align:center;'
+        f'font-size:12px;color:#a9c2e8">{txt}</td></tr>'
+    )
 
 
 def _base_template(title: str, content: str) -> str:
@@ -238,16 +274,19 @@ async def send_avis_echeance(
     period_label: str,
     amount_total: float,
     due_date: str,
-    pdf_bytes: Optional[bytes] = None,
-    cc: Optional[str] = None,
-    subject: Optional[str] = None,
-    signature_html: Optional[str] = None,
-    inline_logo: Optional[bytes] = None,
+    pdf_bytes: bytes | None = None,
+    cc: str | None = None,
+    subject: str | None = None,
+    signature_html: str | None = None,
+    inline_logo: bytes | None = None,
     inline_logo_subtype: str = "png",
-    body_html: Optional[str] = None,
+    body_html: str | None = None,
 ) -> bool:
     # Corps : celui de la règle (body_html, éditable) sinon corps par défaut.
-    inner = body_html if body_html else f"""
+    inner = (
+        body_html
+        if body_html
+        else f"""
 <p>Bonjour {tenant_name},</p>
 <p>Vous trouverez ci-dessous votre avis d'échéance pour la période <strong>{period_label}</strong>.</p>
 <table style="width:100%;border-collapse:collapse;margin:16px 0">
@@ -257,6 +296,7 @@ async def send_avis_echeance(
       <td style="padding:8px;font-weight:600">{due_date}</td></tr>
 </table>
 {"<p>Le détail de votre avis est joint à cet email en PDF.</p>" if pdf_bytes else ""}"""
+    )
     content = f"""{inner}
 {signature_html or "<p>Cordialement,<br>Votre gestionnaire</p>"}
 """
@@ -265,8 +305,12 @@ async def send_avis_echeance(
         subject=subject or f"Avis d'échéance : {period_label}",
         html_body=_base_template(f"Avis d'échéance {period_label}", content),
         attachment_bytes=pdf_bytes,
-        attachment_filename=f"avis-echeance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
-        cc=cc, inline_logo=inline_logo, inline_logo_subtype=inline_logo_subtype,
+        attachment_filename=f"avis-echeance-{period_label.lower().replace(' ', '-')}.pdf"
+        if pdf_bytes
+        else None,
+        cc=cc,
+        inline_logo=inline_logo,
+        inline_logo_subtype=inline_logo_subtype,
     )
 
 
@@ -275,18 +319,22 @@ async def send_quittance(
     tenant_name: str,
     period_label: str,
     amount: float,
-    pdf_bytes: Optional[bytes] = None,
-    cc: Optional[str] = None,
-    subject: Optional[str] = None,
-    signature_html: Optional[str] = None,
-    inline_logo: Optional[bytes] = None,
+    pdf_bytes: bytes | None = None,
+    cc: str | None = None,
+    subject: str | None = None,
+    signature_html: str | None = None,
+    inline_logo: bytes | None = None,
     inline_logo_subtype: str = "png",
-    body_html: Optional[str] = None,
+    body_html: str | None = None,
 ) -> bool:
-    inner = body_html if body_html else f"""
+    inner = (
+        body_html
+        if body_html
+        else f"""
 <p>Bonjour {tenant_name},</p>
 <p>Votre paiement de <strong>{amount:.2f} €</strong> pour la période <strong>{period_label}</strong> a bien été enregistré.</p>
 {"<p>Votre quittance de loyer est jointe à cet email en PDF.</p>" if pdf_bytes else ""}"""
+    )
     content = f"""{inner}
 {signature_html or "<p>Cordialement,<br>Votre gestionnaire</p>"}
 """
@@ -295,8 +343,12 @@ async def send_quittance(
         subject=subject or f"Quittance de loyer : {period_label}",
         html_body=_base_template(f"Quittance {period_label}", content),
         attachment_bytes=pdf_bytes,
-        attachment_filename=f"quittance-{period_label.lower().replace(' ', '-')}.pdf" if pdf_bytes else None,
-        cc=cc, inline_logo=inline_logo, inline_logo_subtype=inline_logo_subtype,
+        attachment_filename=f"quittance-{period_label.lower().replace(' ', '-')}.pdf"
+        if pdf_bytes
+        else None,
+        cc=cc,
+        inline_logo=inline_logo,
+        inline_logo_subtype=inline_logo_subtype,
     )
 
 
@@ -306,18 +358,18 @@ async def send_candidature_documents_request(
     property_name: str,
     doc_labels: list[str],
     upload_url: str,
-    manager_name: Optional[str] = None,
-    custom_message: Optional[str] = None,
-    cc: Optional[str] = None,
-    subject_override: Optional[str] = None,
-    body_html_override: Optional[str] = None,
-    signature_override: Optional[str] = None,
+    manager_name: str | None = None,
+    custom_message: str | None = None,
+    cc: str | None = None,
+    subject_override: str | None = None,
+    body_html_override: str | None = None,
+    signature_override: str | None = None,
 ) -> bool:
     """Demande de pièces justificatives à un candidat, avec le lien sécurisé de
     dépôt. Le candidat n'a pas de compte : il dépose ses pièces via ce lien.
     `*_override` (depuis la règle Communication) priment sur le contenu par défaut."""
     items = "".join(f"<li>{lbl}</li>" for lbl in doc_labels) or "<li>Pièces du dossier</li>"
-    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    intro = f"<p>{custom_message}</p>" if custom_message else ""
     head = body_html_override or (
         f"<p>Bonjour {candidate_name},</p>"
         f"<p>Dans le cadre de votre candidature pour <strong>{property_name}</strong>, nous vous "
@@ -350,15 +402,15 @@ async def send_candidature_acknowledged(
     to: str,
     candidate_name: str,
     property_html: str = "",
-    custom_message: Optional[str] = None,
-    cc: Optional[str] = None,
-    subject_override: Optional[str] = None,
-    body_html_override: Optional[str] = None,
-    signature_override: Optional[str] = None,
+    custom_message: str | None = None,
+    cc: str | None = None,
+    subject_override: str | None = None,
+    body_html_override: str | None = None,
+    signature_override: str | None = None,
 ) -> bool:
     """Accusé de réception d'une candidature, décrivant le logement (adresse,
     caractéristiques, loyer). `*_override` priment (règle Communication)."""
-    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    intro = f"<p>{custom_message}</p>" if custom_message else ""
     head = body_html_override or (
         f"<p>Bonjour {candidate_name},</p>"
         f"<p>Nous vous confirmons que <strong>votre demande de logement a bien été prise en "
@@ -385,16 +437,16 @@ async def send_visit_invitation(
     property_ref: str,
     booking_url: str,
     property_html: str = "",
-    custom_message: Optional[str] = None,
-    cc: Optional[str] = None,
-    subject_override: Optional[str] = None,
-    body_html_override: Optional[str] = None,
-    signature_override: Optional[str] = None,
+    custom_message: str | None = None,
+    cc: str | None = None,
+    subject_override: str | None = None,
+    body_html_override: str | None = None,
+    signature_override: str | None = None,
 ) -> bool:
     """Invitation à réserver un créneau de visite. Décrit le logement (adresse,
     caractéristiques, loyer) mais jamais le nom du logement, et mentionne qu'il y a
     d'autres candidats. `*_override` priment (règle Communication)."""
-    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    intro = f"<p>{custom_message}</p>" if custom_message else ""
     head = body_html_override or (
         f"<p>Bonjour {candidate_name},</p>"
         f"<p>Votre dossier a retenu notre attention pour le logement ci-dessous. Nous vous "
@@ -431,10 +483,10 @@ async def send_visit_reminder(
     property_ref: str,
     when_str: str,
     property_html: str = "",
-    cc: Optional[str] = None,
-    subject_override: Optional[str] = None,
-    body_html_override: Optional[str] = None,
-    signature_override: Optional[str] = None,
+    cc: str | None = None,
+    subject_override: str | None = None,
+    body_html_override: str | None = None,
+    signature_override: str | None = None,
 ) -> bool:
     """Relance avant la visite : rappelle la date et l'adresse du logement.
     `*_override` priment (règle Communication)."""
@@ -461,17 +513,17 @@ async def send_candidature_accepted(
     to: str,
     candidate_name: str,
     property_ref: str,
-    property_address: Optional[str] = None,
+    property_address: str | None = None,
     property_html: str = "",
-    custom_message: Optional[str] = None,
-    cc: Optional[str] = None,
-    subject_override: Optional[str] = None,
-    body_html_override: Optional[str] = None,
-    signature_override: Optional[str] = None,
+    custom_message: str | None = None,
+    cc: str | None = None,
+    subject_override: str | None = None,
+    body_html_override: str | None = None,
+    signature_override: str | None = None,
 ) -> bool:
     """E-mail d'acceptation d'une candidature, avec les prochaines étapes et le
     descriptif du logement. `*_override` priment (règle Communication)."""
-    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    intro = f"<p>{custom_message}</p>" if custom_message else ""
     where = f"{property_address} ({property_ref})" if property_address else f"bien {property_ref}"
     head = body_html_override or (
         f"<p>Bonjour {candidate_name},</p>"
@@ -505,16 +557,16 @@ async def send_candidature_rejected(
     to: str,
     candidate_name: str,
     property_ref: str = "",
-    custom_message: Optional[str] = None,
-    cc: Optional[str] = None,
-    subject_override: Optional[str] = None,
-    body_html_override: Optional[str] = None,
-    signature_override: Optional[str] = None,
+    custom_message: str | None = None,
+    cc: str | None = None,
+    subject_override: str | None = None,
+    body_html_override: str | None = None,
+    signature_override: str | None = None,
 ) -> bool:
     """E-mail de réponse négative courtoise : informe le candidat que son dossier
     n'a pas été retenu, sans détailler de motif (et sans critère discriminatoire).
     `*_override` priment (règle Communication)."""
-    intro = (f"<p>{custom_message}</p>" if custom_message else "")
+    intro = f"<p>{custom_message}</p>" if custom_message else ""
     bien = f" pour le bien {property_ref}" if property_ref else ""
     head = body_html_override or (
         f"<p>Bonjour {candidate_name},</p>"
@@ -544,10 +596,10 @@ def build_credentials_email(
     *,
     login: str,
     password: str,
-    full_name: Optional[str] = None,
+    full_name: str | None = None,
     login_url: str = "https://immo.lecomptoir.services/login",
     product_label: str = "Le Comptoir Immo",
-    plan_label: Optional[str] = None,
+    plan_label: str | None = None,
     reset: bool = False,
 ) -> tuple[str, str]:
     """Modèle d'e-mail professionnel des identifiants de connexion.
@@ -607,17 +659,22 @@ async def send_credentials(
     to: str,
     login: str,
     password: str,
-    full_name: Optional[str] = None,
+    full_name: str | None = None,
     login_url: str = "https://immo.lecomptoir.services/login",
     product_label: str = "Le Comptoir Immo",
-    plan_label: Optional[str] = None,
+    plan_label: str | None = None,
     reset: bool = False,
 ) -> bool:
     """Envoie les identifiants de connexion (identifiant + mot de passe TEMPORAIRE).
     Le mot de passe devra être changé à la 1re connexion."""
     subject, html = build_credentials_email(
-        login=login, password=password, full_name=full_name, login_url=login_url,
-        product_label=product_label, plan_label=plan_label, reset=reset,
+        login=login,
+        password=password,
+        full_name=full_name,
+        login_url=login_url,
+        product_label=product_label,
+        plan_label=plan_label,
+        reset=reset,
     )
     return await send_email(to=to, subject=subject, html_body=html)
 
@@ -627,9 +684,9 @@ async def send_revision_loyer(
     tenant_name: str,
     effective_date: str,
     old_rent: float,
-    new_rent: Optional[float] = None,
-    irl_quarter: Optional[int] = None,
-    irl_year: Optional[int] = None,
+    new_rent: float | None = None,
+    irl_quarter: int | None = None,
+    irl_year: int | None = None,
 ) -> bool:
     """Prévient le locataire d'une révision de loyer à venir (1 mois à l'avance)."""
     if new_rent is not None:
@@ -675,14 +732,18 @@ async def send_charge_regularization(
 ) -> bool:
     """Notifie le locataire d'une régularisation annuelle des charges."""
     if balance > 0:
-        solde = (f'<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">'
-                 f'Trop-perçu remboursé</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;'
-                 f'font-weight:600;color:#047857">{balance:.2f} €</td></tr>')
+        solde = (
+            f'<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">'
+            f'Trop-perçu remboursé</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;'
+            f'font-weight:600;color:#047857">{balance:.2f} €</td></tr>'
+        )
         note = "<p>Ce trop-perçu sera déduit automatiquement de vos prochains loyers.</p>"
     elif balance < 0:
-        solde = (f'<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">'
-                 f'Complément à régler</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;'
-                 f'font-weight:600;color:#b91c1c">{abs(balance):.2f} €</td></tr>')
+        solde = (
+            f'<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280">'
+            f'Complément à régler</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;'
+            f'font-weight:600;color:#b91c1c">{abs(balance):.2f} €</td></tr>'
+        )
         note = "<p>Un complément de charges reste à régler. Votre gestionnaire vous précisera les modalités.</p>"
     else:
         solde = ""
@@ -713,12 +774,13 @@ async def send_subscription_lead_notification(
     to: str,
     full_name: str,
     email: str,
-    phone: Optional[str] = None,
-    company: Optional[str] = None,
-    message: Optional[str] = None,
+    phone: str | None = None,
+    company: str | None = None,
+    message: str | None = None,
 ) -> bool:
     """Notifie l'équipe d'une nouvelle demande de souscription (page d'accueil)."""
-    def _row(label: str, value: Optional[str]) -> str:
+
+    def _row(label: str, value: str | None) -> str:
         if not value:
             return ""
         return (
@@ -734,7 +796,7 @@ async def send_subscription_lead_notification(
   {_row("Téléphone", phone)}
   {_row("Société", company)}
 </table>
-{f'<p style="color:#6b7280;margin:0 0 4px">Besoin exprimé :</p><p style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px">{message}</p>' if message else ''}
+{f'<p style="color:#6b7280;margin:0 0 4px">Besoin exprimé :</p><p style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px">{message}</p>' if message else ""}
 <p style="margin-top:16px">À traiter dans Alice → <strong>Demandes</strong>.</p>
 """
     return await send_email(
@@ -748,13 +810,13 @@ async def send_group_message(
     to: str,
     subject: str,
     body: str,
-    cc: Optional[str] = None,
-    signature_html: Optional[str] = None,
-    inline_logo: Optional[bytes] = None,
+    cc: str | None = None,
+    signature_html: str | None = None,
+    inline_logo: bytes | None = None,
     inline_logo_subtype: str = "png",
 ) -> bool:
     content = f"""
-<p>{body.replace(chr(10), '<br>')}</p>
+<p>{body.replace(chr(10), "<br>")}</p>
 {signature_html or ""}
 """
     return await send_email(
@@ -762,5 +824,7 @@ async def send_group_message(
         subject=subject,
         html_body=_base_template(subject, content),
         text_body=body,
-        cc=cc, inline_logo=inline_logo, inline_logo_subtype=inline_logo_subtype,
+        cc=cc,
+        inline_logo=inline_logo,
+        inline_logo_subtype=inline_logo_subtype,
     )

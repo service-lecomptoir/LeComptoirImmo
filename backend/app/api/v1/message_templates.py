@@ -1,16 +1,18 @@
 """API Modèles de courrier multilingues (onglet Communication)."""
+
 import uuid
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
 from app.api.deps import get_current_gestionnaire
+from app.database import get_db
+from app.models.message_template import TEMPLATE_LANGS, MessageTemplate
 from app.models.user import User
-from app.models.message_template import MessageTemplate, TEMPLATE_LANGS
 
 router = APIRouter(prefix="/message-templates", tags=["Modèles de courrier"])
 
@@ -18,22 +20,22 @@ router = APIRouter(prefix="/message-templates", tags=["Modèles de courrier"])
 class MTCreate(BaseModel):
     rule_type: str
     name: str
-    content: Dict[str, Any] = {}
+    content: dict[str, Any] = {}
     is_selected: bool = False
 
 
 class MTUpdate(BaseModel):
-    name: Optional[str] = None
-    content: Optional[Dict[str, Any]] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    content: dict[str, Any] | None = None
+    is_active: bool | None = None
 
 
 class MTResponse(BaseModel):
     id: uuid.UUID
-    gestionnaire_id: Optional[uuid.UUID] = None
+    gestionnaire_id: uuid.UUID | None = None
     rule_type: str
     name: str
-    content: Dict[str, Any] = {}
+    content: dict[str, Any] = {}
     is_selected: bool
     is_active: bool
     created_at: datetime
@@ -41,9 +43,9 @@ class MTResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-def _clean_content(content: Dict[str, Any]) -> Dict[str, Any]:
+def _clean_content(content: dict[str, Any]) -> dict[str, Any]:
     """Ne garde que les langues connues et les clés subject/body/sms (chaînes)."""
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     for lang, v in (content or {}).items():
         if lang not in TEMPLATE_LANGS or not isinstance(v, dict):
             continue
@@ -59,19 +61,27 @@ async def _owned(db: AsyncSession, tpl_id: uuid.UUID, user: User) -> MessageTemp
 
 
 async def _unselect_others(db: AsyncSession, user_id, rule_type: str, keep_id) -> None:
-    rows = (await db.execute(select(MessageTemplate).where(
-        MessageTemplate.gestionnaire_id == user_id,
-        MessageTemplate.rule_type == rule_type,
-        MessageTemplate.is_selected.is_(True),
-    ))).scalars().all()
+    rows = (
+        (
+            await db.execute(
+                select(MessageTemplate).where(
+                    MessageTemplate.gestionnaire_id == user_id,
+                    MessageTemplate.rule_type == rule_type,
+                    MessageTemplate.is_selected.is_(True),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     for r in rows:
         if r.id != keep_id:
             r.is_selected = False
 
 
-@router.get("", response_model=List[MTResponse])
+@router.get("", response_model=list[MTResponse])
 async def list_templates(
-    rule_type: Optional[str] = Query(None),
+    rule_type: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
@@ -82,6 +92,7 @@ async def list_templates(
     rows = list((await db.execute(q)).scalars().all())
     # Masquer les modèles dont la fonctionnalité n'est pas incluse au plan.
     from app.core.features import get_plan_features, rule_type_allowed
+
     feats = await get_plan_features(db, current_user.id)
     return [t for t in rows if rule_type_allowed(t.rule_type, feats)]
 
@@ -93,8 +104,11 @@ async def create_template(
     current_user: User = Depends(get_current_gestionnaire),
 ):
     tpl = MessageTemplate(
-        gestionnaire_id=current_user.id, rule_type=data.rule_type, name=data.name,
-        content=_clean_content(data.content), is_selected=data.is_selected,
+        gestionnaire_id=current_user.id,
+        rule_type=data.rule_type,
+        name=data.name,
+        content=_clean_content(data.content),
+        is_selected=data.is_selected,
     )
     db.add(tpl)
     await db.flush()
@@ -142,9 +156,9 @@ async def select_template(
 
 class AIAssistIn(BaseModel):
     rule_type: str
-    langs: List[str] = ["fr"]
-    base_text: Optional[str] = None  # consigne / brouillon fourni par le gestionnaire
-    tone: Optional[str] = None       # ex. « courtois », « ferme »
+    langs: list[str] = ["fr"]
+    base_text: str | None = None  # consigne / brouillon fourni par le gestionnaire
+    tone: str | None = None  # ex. « courtois », « ferme »
 
 
 @router.post("/ai-assist")
@@ -155,43 +169,54 @@ async def ai_assist(
     """Assistance IA : génère/traduit le contenu d'un modèle pour les langues
     demandées. Repli sur les modèles par défaut si le LLM n'est pas configuré."""
     import json
+
     from app.services import llm_service
-    from app.services.message_template_defaults import default_content, TYPE_PLACEHOLDERS
+    from app.services.message_template_defaults import TYPE_PLACEHOLDERS, default_content
 
     langs = [l for l in data.langs if l in TEMPLATE_LANGS] or ["fr"]
     type_label = data.rule_type
     placeholders = TYPE_PLACEHOLDERS.get(data.rule_type, "{{tenant_name}} {{period}}")
-    lang_names = {"fr": "français", "en": "anglais", "pt-BR": "portugais du Brésil",
-                  "ht": "créole haïtien", "srn": "sranan tongo (taki-taki)"}
-    fallback = {l: default_content(data.rule_type).get(l) or default_content(data.rule_type).get("fr") or {}
-                for l in langs}
+    lang_names = {
+        "fr": "français",
+        "en": "anglais",
+        "pt-BR": "portugais du Brésil",
+        "ht": "créole haïtien",
+        "srn": "sranan tongo (taki-taki)",
+    }
+    fallback = {
+        l: default_content(data.rule_type).get(l) or default_content(data.rule_type).get("fr") or {}
+        for l in langs
+    }
 
     if llm_service.enabled():
-        wanted = ", ".join(f"\"{l}\"" for l in langs)
-        sys = ("Tu rédiges des courriers de gestion locative (e-mail + SMS) pour un bailleur, "
-               "courtois et professionnels, courts. Tu DOIS conserver telles quelles les variables "
-               f"entre doubles accolades : {placeholders}. Réponds UNIQUEMENT en JSON valide.")
+        wanted = ", ".join(f'"{l}"' for l in langs)
+        sys = (
+            "Tu rédiges des courriers de gestion locative (e-mail + SMS) pour un bailleur, "
+            "courtois et professionnels, courts. Tu DOIS conserver telles quelles les variables "
+            f"entre doubles accolades : {placeholders}. Réponds UNIQUEMENT en JSON valide."
+        )
         user = (
             f"Type de courrier : {type_label}.\n"
             f"Langues demandées (codes) : {wanted}.\n"
             f"{'Consigne/brouillon : ' + data.base_text if data.base_text else ''}\n"
             f"{'Ton souhaité : ' + data.tone if data.tone else ''}\n"
-            "Pour CHAQUE langue, fournis un objet {\"subject\":..., \"body\":..., \"sms\":...} "
+            'Pour CHAQUE langue, fournis un objet {"subject":..., "body":..., "sms":...} '
             "(sms = version courte, ~160 caractères). "
-            "Renvoie un JSON: {\"<code_langue>\": {\"subject\":\"\",\"body\":\"\",\"sms\":\"\"}, ...} "
+            'Renvoie un JSON: {"<code_langue>": {"subject":"","body":"","sms":""}, ...} '
             f"avec exactement ces langues : {', '.join(lang_names.get(l, l) for l in langs)}."
         )
         raw = await llm_service.chat(
             [{"role": "system", "content": sys}, {"role": "user", "content": user}],
-            temperature=0.4, max_tokens=1400,
+            temperature=0.4,
+            max_tokens=1400,
         )
         if raw:
             txt = raw.strip()
             if txt.startswith("```"):
                 txt = txt.strip("`")
-                txt = txt[txt.find("{"):txt.rfind("}") + 1] if "{" in txt else txt
+                txt = txt[txt.find("{") : txt.rfind("}") + 1] if "{" in txt else txt
             try:
-                parsed = json.loads(txt[txt.find("{"):txt.rfind("}") + 1])
+                parsed = json.loads(txt[txt.find("{") : txt.rfind("}") + 1])
                 out = {}
                 for l in langs:
                     b = parsed.get(l) or {}
