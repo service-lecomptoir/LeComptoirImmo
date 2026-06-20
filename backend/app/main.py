@@ -302,6 +302,7 @@ async def _apply_column_migrations() -> None:
     from sqlalchemy import text
     migrations = [
         # Quittances sur les paiements
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS anonymized_at TIMESTAMPTZ",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_generated_at TIMESTAMPTZ",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_sent_at TIMESTAMPTZ",
         # Déclaration de paiement par le locataire (à valider par le gestionnaire)

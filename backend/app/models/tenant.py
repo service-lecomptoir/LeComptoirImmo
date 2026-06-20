@@ -1,7 +1,7 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Date, Numeric, Enum as SAEnum, ForeignKey
+from sqlalchemy import String, Date, DateTime, Numeric, Enum as SAEnum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from enum import Enum
@@ -70,6 +70,14 @@ class Tenant(Base, TimestampMixin):
     # ── Audit ─────────────────────────────────────────────────────────────────
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+    # ── RGPD ──────────────────────────────────────────────────────────────────
+    # Horodatage d'anonymisation (droit à l'effacement). Non NULL = identité
+    # effacée ; l'historique comptable est conservé (obligation légale) mais
+    # pseudonymisé. Empêche la réutilisation/réidentification.
+    anonymized_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # ── Relations ─────────────────────────────────────────────────────────────

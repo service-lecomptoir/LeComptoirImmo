@@ -23,6 +23,9 @@ USER_BLOCK = "user.block"
 USER_UNBLOCK = "user.unblock"
 DOCUMENT_UPLOAD = "document.upload"
 DOCUMENT_DELETE = "document.delete"
+# RGPD : droit d'accès (export) et droit à l'effacement (anonymisation)
+RGPD_EXPORT = "rgpd.export"
+RGPD_ERASE = "rgpd.erase"
 
 
 async def log(
