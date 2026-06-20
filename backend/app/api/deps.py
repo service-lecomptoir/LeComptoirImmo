@@ -8,14 +8,23 @@ from app.models.user import User
 from app.services.auth_service import AuthService
 
 # ── Bearer token extractor ─────────────────────────────────────────────────────
-bearer_scheme = HTTPBearer(auto_error=True)
+# auto_error=False : on gère nous-mêmes l'absence de jeton pour renvoyer un 401
+# (et non le 403 par défaut de HTTPBearer) — cohérent avec Alice/Séjour : « non
+# authentifié » = 401, « authentifié mais sans droit » = 403.
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """Dependency principale — retourne l'utilisateur courant authentifié."""
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentification requise",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return await AuthService.get_current_user(db, credentials.credentials)
 
 

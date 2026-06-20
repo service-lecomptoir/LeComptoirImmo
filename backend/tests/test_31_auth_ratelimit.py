@@ -31,3 +31,16 @@ async def test_login_invalide_reste_401_avec_limiter_actif(client, admin_user):
     finally:
         limiter.enabled = False
     assert resp.status_code == 401, resp.text
+
+
+@pytest.mark.asyncio
+async def test_endpoint_protege_sans_jeton_renvoie_401(client):
+    """Recette : absence de jeton = 401 (non authentifié), pas 403."""
+    resp = await client.get("/api/v1/auth/me")
+    assert resp.status_code == 401, resp.text
+
+
+@pytest.mark.asyncio
+async def test_endpoint_protege_jeton_invalide_renvoie_401(client):
+    resp = await client.get("/api/v1/auth/me", headers={"Authorization": "Bearer faux"})
+    assert resp.status_code == 401, resp.text
