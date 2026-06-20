@@ -10,7 +10,7 @@ une personne identifiable.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,11 @@ from app.models.payment import Payment
 from app.models.avis_echeance import AvisEcheance
 from app.models.ticket import Ticket
 from app.models.document import Document
+from app.models.candidature import Candidature
+
+# Durées de rétention par défaut (RGPD — minimisation des données).
+RETENTION_TENANT_YEARS = 3          # après la fin du dernier bail
+RETENTION_CANDIDATURE_MONTHS = 12   # après une candidature refusée
 
 
 def _model_to_dict(obj, fields: list[str]) -> dict:
@@ -118,3 +123,67 @@ async def anonymize_tenant(db: AsyncSession, tenant: Tenant) -> dict:
     await db.flush()
     return {"already": False, "documents_deleted": docs_deleted,
             "anonymized_at": tenant.anonymized_at.isoformat()}
+
+
+async def apply_retention(
+    db: AsyncSession,
+    *,
+    tenant_years: int = RETENTION_TENANT_YEARS,
+    candidature_months: int = RETENTION_CANDIDATURE_MONTHS,
+    dry_run: bool = False,
+) -> dict:
+    """Politique de rétention (RGPD) : anonymise les données dont la durée de
+    conservation est dépassée. Conservateur et idempotent.
+      - Locataires : SANS bail actif, dont le dernier bail s'est terminé il y a
+        plus de `tenant_years` ans (jamais ceux avec un bail en cours).
+      - Candidatures REFUSÉES de plus de `candidature_months` mois (PII effacée).
+    `dry_run=True` ne modifie rien et renvoie seulement le décompte des éligibles.
+    """
+    today = date.today()
+    cutoff_tenant = today - timedelta(days=365 * tenant_years)
+
+    tenants = list((await db.execute(
+        select(Tenant).where(Tenant.anonymized_at.is_(None)))).scalars())
+    tenant_done = 0
+    for t in tenants:
+        leases = list((await db.execute(
+            select(Lease).where(Lease.tenant_id == t.id))).scalars())
+        if not leases or any(l.is_active for l in leases):
+            continue  # pas de bail, ou bail encore actif → on conserve
+        last_end = max((l.end_date for l in leases if l.end_date), default=None)
+        if last_end is None or last_end > cutoff_tenant:
+            continue  # bail clos récent, ou sans date de fin → on conserve
+        if not dry_run:
+            await anonymize_tenant(db, t)
+        tenant_done += 1
+
+    # candidatures.created_at est un timestamp NAÏF (sans fuseau) → cutoff naïf.
+    cutoff_cand = datetime.utcnow() - timedelta(days=30 * candidature_months)
+    cands = list((await db.execute(
+        select(Candidature).where(
+            Candidature.status == "refusee",
+            Candidature.created_at < cutoff_cand,
+        ))).scalars())
+    cand_done = 0
+    for c in cands:
+        if (c.full_name or "") == "Anonymisé":
+            continue  # déjà traité
+        if not dry_run:
+            c.full_name = "Anonymisé"
+            c.email = None
+            c.phone = None
+            c.employment = None
+            c.monthly_income = None
+            c.message = None
+            c.docs = None
+        cand_done += 1
+
+    if not dry_run:
+        await db.flush()
+    return {
+        "tenants_anonymized": tenant_done,
+        "candidatures_anonymized": cand_done,
+        "tenant_years": tenant_years,
+        "candidature_months": candidature_months,
+        "dry_run": dry_run,
+    }

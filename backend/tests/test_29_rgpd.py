@@ -1,15 +1,23 @@
 """Tests RGPD — export (droit d'accès) et anonymisation (droit à l'effacement)."""
 import pytest
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 
 from app.models.tenant import Tenant
 from app.models.lease import Lease
 from app.models.payment import Payment, PaymentStatus
 from app.models.property import Property
+from app.models.candidature import Candidature
 from app.models.audit_log import AuditLog
 from app.services import rgpd_service
 from tests.conftest import auth
+
+
+async def _prop(db, owner_id, name="P"):
+    p = Property(name=name, address="x", zip_code="75001", city="Paris",
+                 country="France", property_type="appartement", created_by=owner_id)
+    db.add(p); await db.flush()
+    return p
 
 
 async def _tenant_with_history(db, owner_id, email="rgpd@test.fr"):
@@ -95,3 +103,77 @@ async def test_api_other_manager_cannot_export(client, db, gestionnaire_user, ad
     tenant = await _tenant_with_history(db, admin_user.id, email="foreign@test.fr")
     r = await client.get(f"/api/v1/rgpd/tenants/{tenant.id}/export", headers=auth(gestionnaire_token))
     assert r.status_code == 403
+
+
+# ── Rétention (purge automatique) ────────────────────────────────────────────
+async def _departed_tenant(db, owner_id, end: date, email):
+    prop = await _prop(db, owner_id, name=f"P-{email}")
+    t = Tenant(first_name="Parti", last_name="Locataire", email=email, created_by=owner_id)
+    db.add(t); await db.flush()
+    db.add(Lease(tenant_id=t.id, property_id=prop.id, start_date=date(2015, 1, 1),
+                 end_date=end, rent_amount=800, charges_amount=0, lease_type="vide",
+                 payment_day=1, is_active=False, created_by=owner_id))
+    await db.flush()
+    return t
+
+
+@pytest.mark.asyncio
+async def test_retention_anonymizes_long_departed_tenant(db, gestionnaire_user):
+    t = await _departed_tenant(db, gestionnaire_user.id, date(2019, 1, 1), "longgone@test.fr")
+    res = await rgpd_service.apply_retention(db, tenant_years=3, candidature_months=12)
+    await db.refresh(t)
+    assert res["tenants_anonymized"] >= 1
+    assert t.anonymized_at is not None
+    assert t.email is None
+
+
+@pytest.mark.asyncio
+async def test_retention_keeps_active_tenant(db, gestionnaire_user):
+    t = await _tenant_with_history(db, gestionnaire_user.id, email="stillhere@test.fr")  # bail actif
+    await rgpd_service.apply_retention(db)
+    await db.refresh(t)
+    assert t.anonymized_at is None
+
+
+@pytest.mark.asyncio
+async def test_retention_keeps_recently_departed_tenant(db, gestionnaire_user):
+    recent = date.today() - timedelta(days=200)   # parti il y a < 3 ans
+    t = await _departed_tenant(db, gestionnaire_user.id, recent, "recent@test.fr")
+    await rgpd_service.apply_retention(db, tenant_years=3)
+    await db.refresh(t)
+    assert t.anonymized_at is None
+
+
+@pytest.mark.asyncio
+async def test_retention_dry_run_changes_nothing(db, gestionnaire_user):
+    t = await _departed_tenant(db, gestionnaire_user.id, date(2019, 1, 1), "dry@test.fr")
+    res = await rgpd_service.apply_retention(db, dry_run=True)
+    await db.refresh(t)
+    assert res["dry_run"] is True
+    assert res["tenants_anonymized"] >= 1
+    assert t.anonymized_at is None     # rien modifié en dry-run
+
+
+@pytest.mark.asyncio
+async def test_retention_anonymizes_old_refused_candidature(db, gestionnaire_user):
+    prop = await _prop(db, gestionnaire_user.id, name="P-cand")
+    old = datetime.utcnow() - timedelta(days=400)
+    c = Candidature(property_id=prop.id, full_name="Refusé Ancien", email="ref@test.fr",
+                    phone="0600", status="refusee", created_at=old)
+    db.add(c); await db.flush()
+    await rgpd_service.apply_retention(db, candidature_months=12)
+    await db.refresh(c)
+    assert c.full_name == "Anonymisé"
+    assert c.email is None
+
+
+@pytest.mark.asyncio
+async def test_retention_keeps_recent_refused_candidature(db, gestionnaire_user):
+    prop = await _prop(db, gestionnaire_user.id, name="P-cand2")
+    recent = datetime.utcnow() - timedelta(days=30)
+    c = Candidature(property_id=prop.id, full_name="Refusé Récent", email="recent.ref@test.fr",
+                    status="refusee", created_at=recent)
+    db.add(c); await db.flush()
+    await rgpd_service.apply_retention(db, candidature_months=12)
+    await db.refresh(c)
+    assert c.full_name == "Refusé Récent"   # trop récent → conservé
