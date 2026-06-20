@@ -19,7 +19,9 @@ on:
 
 concurrency:
   group: deploy-immo
-  cancel-in-progress: false
+  # true : un déploiement plus récent annule un run précédent bloqué (pas de file
+  # d'attente figée). La logique de deploy est idempotente (force-recreate + vérif).
+  cancel-in-progress: true
 
 env:
   BACKEND_IMAGE: ghcr.io/service-lecomptoir/immo-backend
@@ -74,6 +76,7 @@ jobs:
   deploy:
     needs: build-push
     runs-on: ubuntu-latest
+    timeout-minutes: 15        # un déploiement ne doit jamais rester bloqué
     # Tant que les secrets VPS ne sont pas configurés, on n'active pas le déploiement
     # SSH (évite un run rouge). À activer : repo → Settings → Variables → Actions →
     # New variable : DEPLOY_ENABLED = true (après avoir ajouté les secrets VPS_*).
