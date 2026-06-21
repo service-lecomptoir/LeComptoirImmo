@@ -4,7 +4,7 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts'
 import {
-  Building2, TrendingUp, AlertTriangle, Home,
+  Building2, AlertTriangle, Home,
   CreditCard, CheckCircle, ArrowUpRight, ArrowDownRight,
   Activity, Euro, RefreshCw, Wrench, KeyRound, FileText
 } from 'lucide-react'
@@ -234,23 +234,20 @@ export default function Dashboard() {
         <KPICard title={`Occupation à venir (${moisSuivant()})`} value={`${stats.occupancy_next_rate}%`}
           sub={`${stats.occupancy_next_occupied}/${stats.occupancy.total_units} loué${stats.occupancy_next_occupied > 1 ? 's' : ''}`}
           icon={Home} color="blue" />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
           sub={stats.alerts.overdue_payments > 0
             ? `${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''} en retard`
             : 'À jour'} icon={AlertTriangle}
           color={stats.financial.total_outstanding > 0 ? 'red' : 'green'} />
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard title={`Loyers attendus pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
           icon={Euro} color="blue" />
         <KPICard title={`Loyers encaissés pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
           sub={`Recouvrement : ${stats.financial.collection_rate}%`} icon={CheckCircle} color="green" />
         <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
           sub="Cautions détenues" icon={CreditCard} color="purple" />
-        <KPICard title="Taux de recouvrement" value={`${stats.financial.collection_rate}%`}
-          icon={TrendingUp}
-          color={stats.financial.collection_rate >= 95 ? 'green' : stats.financial.collection_rate >= 80 ? 'orange' : 'red'} />
       </div>
 
       {/* Graphiques */}
