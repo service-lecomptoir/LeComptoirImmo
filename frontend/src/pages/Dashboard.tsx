@@ -28,6 +28,12 @@ function fmtEur(n: number) {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
 }
 
+// Mois courant en clair, ex. « juin 2026 » (les stats financières/occupation
+// portent toujours sur le mois en cours).
+function moisCourant() {
+  return new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+}
+
 interface Stats {
   occupancy: { total_units: number; occupied_units: number; vacant_units: number; occupancy_rate: number }
   financial: { total_rent_expected: number; total_rent_received: number; total_outstanding: number; collection_rate: number; total_deposits: number }
@@ -195,7 +201,7 @@ export default function Dashboard() {
           sub={stats.total_leases_future > 0
             ? `${stats.total_leases_future} à venir`
             : 'Aucun à venir'} icon={Users} color="green" />
-        <KPICard title="Taux d'occupation" value={`${stats.occupancy.occupancy_rate}%`}
+        <KPICard title={`Occupation du parc ${moisCourant()}`} value={`${stats.occupancy.occupancy_rate}%`}
           sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`}
           icon={Home} color="purple" />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
@@ -204,9 +210,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title="Loyers attendus / mois" value={fmtEur(stats.financial.total_rent_expected)}
+        <KPICard title={`Loyers attendus ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
           icon={Euro} color="blue" />
-        <KPICard title="Loyers encaissés / mois" value={fmtEur(stats.financial.total_rent_received)}
+        <KPICard title={`Loyers encaissés ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
           sub={`Recouvrement : ${stats.financial.collection_rate}%`} icon={CheckCircle} color="green" />
         <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
           sub="Cautions détenues" icon={CreditCard} color="purple" />
