@@ -178,22 +178,12 @@ export default function LocataireDashboard() {
                 </span>
               </div>
               {lease.apl_tiers_payant && (
-                <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Aide personnelle au logement (tiers-payant)</span>
-                    <span className="text-green-600 font-medium">
-                      {lease.apl_amount ? `− ${fmtEuro(lease.apl_amount)} / mois` : 'Oui'}
-                    </span>
-                  </div>
-                  {lease.apl_amount ? (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Reste à votre charge</span>
-                      <span className="font-semibold text-gray-900">
-                        {fmtEuro(Math.max(0, lease.rent_amount + lease.charges_amount - lease.apl_amount))} / mois
-                      </span>
-                    </div>
-                  ) : null}
-                </>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Aide personnelle au logement (tiers-payant)</span>
+                  <span className="text-green-600 font-medium">
+                    {lease.apl_amount ? `${fmtEuro(lease.apl_amount)} / mois` : 'Oui'}
+                  </span>
+                </div>
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Début du bail</span>

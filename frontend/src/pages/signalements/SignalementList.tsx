@@ -76,10 +76,11 @@ export default function SignalementList() {
     <div className="p-4 sm:p-6">
       <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <AlertTriangle size={22} className="text-amber-500" /> Signalements
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-amber-100 text-xl leading-none">🧑‍🔧</span>
+            Espace gardien
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Problèmes remontés par vos locataires : suivi, logements à problème, historique.</p>
+          <p className="text-gray-500 text-sm mt-1">Votre poste de gardien : tous les signalements remontés par vos locataires, le suivi des résolutions, les logements à problème et l'historique, réunis au même endroit.</p>
         </div>
         <button onClick={exportCsv}
           className="inline-flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700">

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import {
-  AlertTriangle, Volume2, ShieldAlert, Trash2, ArrowUpDown, Trees, Hammer, HelpCircle,
+  Volume2, ShieldAlert, Trash2, ArrowUpDown, Trees, Hammer, HelpCircle,
   Camera, Clock, Send, X, MapPin,
 } from 'lucide-react'
 import { signalementsApi, type Signalement, type SignalementCategory, type SignalementUrgency } from '@/api/signalements'
@@ -95,13 +95,15 @@ export default function LocataireSignaler() {
   return (
     <div className="max-w-3xl p-4 sm:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <AlertTriangle size={22} className="text-amber-500" /> Vie de la résidence
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-amber-100 text-xl leading-none">🧑‍🔧</span>
+          Allô gardien !
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Signalez un problème lié à la résidence ou à l'immeuble : parties communes, ascenseur,
-          sécurité des accès, propreté, espaces extérieurs, nuisances de voisinage… Votre gestionnaire est alerté immédiatement.
-          Pour un souci dans votre logement, passez par une demande d'intervention.
+          Un souci dans la résidence ? Allô gardien ! Signalez en un instant un problème dans les
+          parties communes ou aux abords (ascenseur, propreté, sécurité des accès, espaces extérieurs,
+          nuisances de voisinage…). Votre gestionnaire est alerté immédiatement. Pour un souci à
+          l'intérieur de votre logement, passez plutôt par une demande d'intervention.
         </p>
       </div>
 
