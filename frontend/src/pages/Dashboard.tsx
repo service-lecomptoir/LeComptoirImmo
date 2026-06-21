@@ -34,6 +34,23 @@ function moisCourant() {
   return new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 }
 
+// Répartition des contrats actifs par type, ex. « 3 nus · 5 meublés ».
+const LEASE_TYPE_SHORT: Record<string, string> = {
+  vide: 'nu', meuble: 'meublé', mobilite: 'mobilité', commercial: 'commercial',
+}
+function repartitionContrats(byType: Record<string, number>): string {
+  const order = ['vide', 'meuble', 'mobilite', 'commercial']
+  const parts: string[] = []
+  for (const k of order) {
+    const n = byType?.[k]
+    if (n) parts.push(`${n} ${LEASE_TYPE_SHORT[k]}${n > 1 ? 's' : ''}`)
+  }
+  for (const k of Object.keys(byType || {})) {
+    if (!order.includes(k) && byType[k]) parts.push(`${byType[k]} ${k}`)
+  }
+  return parts.length ? parts.join(' · ') : 'Aucun'
+}
+
 interface Stats {
   occupancy: { total_units: number; occupied_units: number; vacant_units: number; occupancy_rate: number }
   financial: { total_rent_expected: number; total_rent_received: number; total_outstanding: number; collection_rate: number; total_deposits: number }
@@ -45,6 +62,7 @@ interface Stats {
   total_properties: number
   total_leases_active: number
   total_leases_future: number
+  active_leases_by_type: Record<string, number>
   upcoming_entretiens?: Array<{ id: string; title: string; type: string; status: string; scheduled_date: string; property_label?: string | null; overdue: boolean }>
 }
 
@@ -198,11 +216,12 @@ export default function Dashboard() {
         <KPICard title={stats.total_properties > 1 ? 'Biens immobiliers' : 'Bien immobilier'} value={fmt(stats.total_properties)}
           sub={`${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`} icon={Building2} color="blue" />
         <KPICard title={stats.total_leases_active > 1 ? 'Contrats actifs' : 'Contrat actif'} value={fmt(stats.total_leases_active)}
-          sub={`${stats.total_tenants} locataire${stats.total_tenants > 1 ? 's' : ''}`} icon={FileText} color="green" />
+          sub={repartitionContrats(stats.active_leases_by_type)} icon={FileText} color="green" />
         <KPICard title={`Occupation du parc pour ${moisCourant()}`} value={`${stats.occupancy.occupancy_rate}%`}
           sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`
+            + ` · ${stats.occupancy.vacant_units} vacant${stats.occupancy.vacant_units > 1 ? 's' : ''}`
             + (stats.total_leases_future > 0
-              ? ` · ${stats.total_leases_future} contrat${stats.total_leases_future > 1 ? 's' : ''} à venir`
+              ? ` dont ${stats.total_leases_future} à venir`
               : '')}
           icon={Home} color="purple" />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}

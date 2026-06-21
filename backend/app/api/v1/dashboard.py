@@ -406,6 +406,16 @@ async def get_dashboard_stats(
     )
     total_leases_future = future_leases_res.scalar_one() or 0
 
+    # Répartition des contrats actifs (mois courant) par type (nu/meublé/…).
+    type_rows = await db.execute(
+        _lease_scope(
+            select(Lease.lease_type, func.count(Lease.id))
+            .where(_lease_active_in_month(today))
+            .group_by(Lease.lease_type)
+        )
+    )
+    active_leases_by_type = {row[0]: row[1] for row in type_rows.all()}
+
     # ── Entretiens importants à venir (planifiés / en cours, dus sous 30 j ou en retard) ─
     from sqlalchemy.orm import selectinload as _selectinload
 
@@ -464,6 +474,7 @@ async def get_dashboard_stats(
         total_properties=total_props,
         total_leases_active=total_leases_active,
         total_leases_future=total_leases_future,
+        active_leases_by_type=active_leases_by_type,
     )
 
 

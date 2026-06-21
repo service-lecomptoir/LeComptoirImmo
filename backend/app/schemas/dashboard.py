@@ -75,6 +75,7 @@ class DashboardStats(BaseModel):
     total_properties: int
     total_leases_active: int
     total_leases_future: int = 0  # baux signés démarrant le mois prochain ou après
+    active_leases_by_type: dict[str, int] = {}  # répartition par type (vide/meuble/…)
     upcoming_entretiens: list[UpcomingEntretien] = []
 
 
