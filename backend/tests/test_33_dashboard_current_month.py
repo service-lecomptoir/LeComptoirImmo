@@ -70,3 +70,6 @@ class TestDashboardCurrentMonth:
         assert data["financial"]["total_rent_expected"] == 900.0
         # Une seule unité occupée ce mois-ci (le bien du bail futur est vacant).
         assert data["occupancy"]["occupied_units"] == 1
+        # Contrats : 1 actif (mois courant), 1 à venir (mois prochain).
+        assert data["total_leases_active"] == 1
+        assert data["total_leases_future"] == 1

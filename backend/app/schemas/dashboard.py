@@ -74,6 +74,7 @@ class DashboardStats(BaseModel):
     total_tenants: int
     total_properties: int
     total_leases_active: int
+    total_leases_future: int = 0  # baux signés démarrant le mois prochain ou après
     upcoming_entretiens: list[UpcomingEntretien] = []
 
 

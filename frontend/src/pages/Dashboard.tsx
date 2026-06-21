@@ -38,6 +38,7 @@ interface Stats {
   total_tenants: number
   total_properties: number
   total_leases_active: number
+  total_leases_future: number
   upcoming_entretiens?: Array<{ id: string; title: string; type: string; status: string; scheduled_date: string; property_label?: string | null; overdue: boolean }>
 }
 
@@ -190,8 +191,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard title={stats.total_properties > 1 ? 'Biens immobiliers' : 'Bien immobilier'} value={fmt(stats.total_properties)}
           sub={`${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`} icon={Building2} color="blue" />
-        <KPICard title={stats.total_tenants > 1 ? 'Locataires actifs' : 'Locataire actif'} value={fmt(stats.total_tenants)}
-          sub={`${stats.total_leases_active} contrat${stats.total_leases_active > 1 ? 's' : ''} actif${stats.total_leases_active > 1 ? 's' : ''}`} icon={Users} color="green" />
+        <KPICard title={stats.total_leases_active > 1 ? 'Contrats actifs' : 'Contrat actif'} value={fmt(stats.total_leases_active)}
+          sub={stats.total_leases_future > 0
+            ? `${stats.total_leases_future} à venir`
+            : 'Aucun à venir'} icon={Users} color="green" />
         <KPICard title="Taux d'occupation" value={`${stats.occupancy.occupancy_rate}%`}
           sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`}
           icon={Home} color="purple" />

@@ -387,10 +387,24 @@ async def get_dashboard_stats(
     else:
         total_props = (await db.execute(select(func.count(Property.id)))).scalar_one() or 0
 
+    # Contrats actifs = baux actifs SUR le mois courant (les baux à venir sont comptés
+    # à part, ci-dessous).
     active_leases_res = await db.execute(
-        _lease_scope(select(func.count(Lease.id)).where(Lease.is_active.is_(True)))
+        _lease_scope(select(func.count(Lease.id)).where(_lease_active_in_month(today)))
     )
     total_leases_active = active_leases_res.scalar_one() or 0
+
+    # Contrats à venir = baux signés (actifs) démarrant le mois prochain ou plus tard.
+    _next_month = today.replace(day=1) + relativedelta(months=1)
+    future_leases_res = await db.execute(
+        _lease_scope(
+            select(func.count(Lease.id)).where(
+                Lease.is_active.is_(True),
+                Lease.start_date >= _next_month,
+            )
+        )
+    )
+    total_leases_future = future_leases_res.scalar_one() or 0
 
     # ── Entretiens importants à venir (planifiés / en cours, dus sous 30 j ou en retard) ─
     from sqlalchemy.orm import selectinload as _selectinload
@@ -449,6 +463,7 @@ async def get_dashboard_stats(
         total_tenants=total_tenants,
         total_properties=total_props,
         total_leases_active=total_leases_active,
+        total_leases_future=total_leases_future,
     )
 
 
