@@ -67,6 +67,8 @@ class LeaseUpdate(BaseModel):
     lease_type: LeaseType | None = None
     # Si fourni, remplace la liste des co-titulaires secondaires
     secondary_tenant_ids: list[uuid.UUID] | None = None
+    # Date d'entrée modifiable (correction de saisie / bail à venir).
+    start_date: date | None = None
     end_date: date | None = None
     notice_date: date | None = None
     rent_amount: float | None = Field(None, gt=0)

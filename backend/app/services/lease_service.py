@@ -188,6 +188,12 @@ class LeaseService:
         for field, value in payload.items():
             setattr(lease, field, value)
 
+        # Cohérence des dates : l'entrée ne peut pas être après la sortie.
+        if lease.end_date and lease.start_date and lease.start_date > lease.end_date:
+            raise ConflictException(
+                "La date d'entrée ne peut pas être postérieure à la date de fin du bail."
+            )
+
         cur_rent = float(lease.rent_amount)
         cur_charges = float(lease.charges_amount)
         want_rent = float(new_rent) if new_rent is not None else cur_rent

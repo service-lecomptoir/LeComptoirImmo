@@ -2,8 +2,10 @@
 Tests API — Baux (Leases).
 """
 import uuid
-import pytest
 from datetime import date
+
+import pytest
+
 from tests.conftest import auth
 
 
@@ -97,9 +99,9 @@ class TestLeaseRead:
 
     async def test_locataire_only_sees_own_lease(self, client, locataire_token, locataire_user, gestionnaire_user, db):
         """Le locataire ne voit que son propre bail."""
+        from app.models.lease import Lease
         from app.models.property import Property
         from app.models.tenant import Tenant
-        from app.models.lease import Lease
 
         prop = Property(
             name="Prop Loc", address="1 Rue", zip_code="75000",
@@ -152,3 +154,57 @@ class TestLeaseTerminate:
         )
         assert resp.status_code == 200
         assert resp.json()["is_active"] is False
+
+
+@pytest.mark.asyncio
+class TestLeaseUpdateStartDate:
+    async def test_gestionnaire_modifie_date_entree(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        from datetime import timedelta
+
+        from app.models.lease import Lease
+        prop, tenant = await _setup_lease_chain(db, gestionnaire_user)
+        lease = Lease(
+            tenant_id=tenant.id, property_id=prop.id,
+            start_date=date.today(), rent_amount=750.00, charges_amount=80.00,
+            lease_type="vide", payment_day=5, is_active=True,
+        )
+        db.add(lease)
+        await db.flush()
+        await db.commit()
+
+        nouvelle_date = date.today() + timedelta(days=20)
+        resp = await client.put(
+            f"/api/v1/leases/{lease.id}",
+            headers=auth(gestionnaire_token),
+            json={"start_date": str(nouvelle_date)},
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["start_date"] == str(nouvelle_date)
+
+    async def test_date_entree_apres_fin_refusee(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        from datetime import timedelta
+
+        from app.models.lease import Lease
+        prop, tenant = await _setup_lease_chain(db, gestionnaire_user)
+        lease = Lease(
+            tenant_id=tenant.id, property_id=prop.id,
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=30),
+            rent_amount=750.00, charges_amount=80.00,
+            lease_type="vide", payment_day=5, is_active=True,
+        )
+        db.add(lease)
+        await db.flush()
+        await db.commit()
+
+        # Entrée après la fin => refus (cohérence des dates).
+        resp = await client.put(
+            f"/api/v1/leases/{lease.id}",
+            headers=auth(gestionnaire_token),
+            json={"start_date": str(date.today() + timedelta(days=60))},
+        )
+        assert resp.status_code == 409, resp.text
