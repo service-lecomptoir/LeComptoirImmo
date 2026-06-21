@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Home, CreditCard, FileText, ArrowRight, Download, Wallet, CheckCircle,
-  Receipt, MessagesSquare, Megaphone, Bell, Building2, Mail, Phone, MapPin,
+  Receipt, MessagesSquare, ConciergeBell, Bell, Building2, Mail, Phone, MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { getDayMoment, formatLongDate } from '@/lib/dayMoment'
@@ -77,7 +77,7 @@ export default function LocataireDashboard() {
     { icon: Wallet, label: 'Ma comptabilité', to: '/locataire/paiements', color: 'bg-green-50 text-green-600' },
     { icon: FileText, label: 'Mes documents', to: '/locataire/documents', color: 'bg-purple-50 text-purple-600' },
     { icon: MessagesSquare, label: 'Mes démarches', to: '/locataire/demarches', color: 'bg-amber-50 text-amber-600' },
-    { icon: Megaphone, label: 'Signaler', to: '/locataire/signaler', color: 'bg-red-50 text-red-600' },
+    { icon: ConciergeBell, label: 'Allô gardien !', to: '/locataire/signaler', color: 'bg-amber-50 text-amber-600' },
     { icon: Bell, label: 'Avis d\'échéance', to: '/locataire/avis-echeances', color: 'bg-sky-50 text-sky-600' },
   ]
 
@@ -322,7 +322,7 @@ export default function LocataireDashboard() {
               onClick={() => navigate('/locataire/signaler')}
               className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
             >
-              <span className="text-sm text-gray-700 flex items-center gap-2"><Megaphone size={14} className="text-red-600" /> Signalements</span>
+              <span className="text-sm text-gray-700 flex items-center gap-2"><ConciergeBell size={14} className="text-amber-600" /> Allô gardien !</span>
               <span className="flex items-center gap-2">
                 {openSignalements > 0
                   ? <StatusBadge label={`${openSignalements} en cours`} variant="red" />
