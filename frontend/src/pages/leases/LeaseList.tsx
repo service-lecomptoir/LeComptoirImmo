@@ -65,6 +65,14 @@ export default function LeaseList() {
 
   const fmtDate = (d: string) => format(new Date(d), 'd MMM yyyy', { locale: fr })
   const fmtEuro = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €'
+  // Contrat « à venir » : actif mais démarrant le mois prochain ou plus tard
+  // (même règle que le tableau de bord, qui ne compte que le mois courant).
+  const isFuture = (lease: LeaseListItem) => {
+    if (!lease.is_active || !lease.start_date) return false
+    const now = new Date()
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    return new Date(lease.start_date) >= nextMonth
+  }
 
   const handleExport = () => {
     exportCsv('contrats',
@@ -182,11 +190,14 @@ export default function LeaseList() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <StatusBadge
-                        label={lease.is_active ? 'Actif' : 'Résilié'}
-                        variant={lease.is_active ? 'green' : 'gray'}
-                        dot
-                      />
+                      <div className="inline-flex items-center gap-1.5">
+                        <StatusBadge
+                          label={lease.is_active ? 'Actif' : 'Résilié'}
+                          variant={lease.is_active ? 'green' : 'gray'}
+                          dot
+                        />
+                        {isFuture(lease) && <StatusBadge label="Futur" variant="blue" />}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -204,11 +215,14 @@ export default function LeaseList() {
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-gray-600">{LEASE_TYPE_LABELS[lease.lease_type]}</span>
-                <StatusBadge
-                  label={lease.is_active ? 'Actif' : 'Résilié'}
-                  variant={lease.is_active ? 'green' : 'gray'}
-                  dot
-                />
+                <div className="inline-flex items-center gap-1.5">
+                  {isFuture(lease) && <StatusBadge label="Futur" variant="blue" />}
+                  <StatusBadge
+                    label={lease.is_active ? 'Actif' : 'Résilié'}
+                    variant={lease.is_active ? 'green' : 'gray'}
+                    dot
+                  />
+                </div>
               </div>
 
               <div className="flex items-start gap-3">

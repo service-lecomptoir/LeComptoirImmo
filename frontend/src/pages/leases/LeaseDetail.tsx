@@ -435,6 +435,11 @@ export default function LeaseDetail() {
               variant={lease.is_active ? 'green' : 'gray'}
               dot
             />
+            {lease.is_active && lease.start_date &&
+              new Date(lease.start_date) >=
+                new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1) && (
+                <StatusBadge label="Futur" variant="blue" />
+              )}
           </div>
           <p className="text-sm text-gray-500">
             {lease.parent_property?.name}

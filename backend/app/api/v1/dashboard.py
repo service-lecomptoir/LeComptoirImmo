@@ -5,10 +5,10 @@ from datetime import date, timedelta
 
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_manager, get_current_user, require_role
+from app.api.deps import get_current_manager, get_current_user
 from app.core.permissions import Role
 from app.database import get_db
 from app.models.lease import Lease
@@ -27,6 +27,21 @@ from app.schemas.dashboard import (
 )
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+
+
+def _lease_active_in_month(today: date):
+    """Condition SQL : bail réellement actif SUR le mois courant.
+
+    Exclut les baux qui démarrent plus tard (mois prochain ou au-delà) et ceux
+    déjà terminés, pour que des contrats futurs ne faussent pas les statistiques
+    du mois (loyers attendus, occupation, revenus par bien…)."""
+    month_start = today.replace(day=1)
+    next_month = month_start + relativedelta(months=1)
+    return and_(
+        Lease.is_active.is_(True),
+        Lease.start_date < next_month,
+        or_(Lease.end_date.is_(None), Lease.end_date >= month_start),
+    )
 
 # Règles de revenu d'apurement (mois reportés + échéances) centralisées.
 from app.services.apurement_revenue import (
@@ -122,7 +137,9 @@ async def get_dashboard_stats(
 
     occupied_units_res = await db.execute(
         _lease_scope(
-            select(func.count(func.distinct(Lease.property_id))).where(Lease.is_active.is_(True))
+            select(func.count(func.distinct(Lease.property_id))).where(
+                _lease_active_in_month(today)
+            )
         )
     )
     occupied_units = occupied_units_res.scalar_one() or 0
@@ -133,7 +150,7 @@ async def get_dashboard_stats(
     rent_expected_res = await db.execute(
         _lease_scope(
             select(func.sum(Lease.rent_amount + Lease.charges_amount)).where(
-                Lease.is_active.is_(True)
+                _lease_active_in_month(today)
             )
         )
     )
@@ -167,7 +184,7 @@ async def get_dashboard_stats(
     )
 
     deposits_res = await db.execute(
-        _lease_scope(select(func.sum(Lease.deposit_amount)).where(Lease.is_active.is_(True)))
+        _lease_scope(select(func.sum(Lease.deposit_amount)).where(_lease_active_in_month(today)))
     )
     total_deposits = float(deposits_res.scalar_one() or 0)
 
@@ -243,7 +260,7 @@ async def get_dashboard_stats(
                     func.count(Lease.id),
                     func.sum(Lease.rent_amount + Lease.charges_amount),
                 )
-                .where(Lease.property_id.in_(prop_ids), Lease.is_active.is_(True))
+                .where(Lease.property_id.in_(prop_ids), _lease_active_in_month(today))
                 .group_by(Lease.property_id)
             )
         ).all()
@@ -465,17 +482,18 @@ async def get_proprietaire_stats(
             "active_leases": 0,
         }
 
-    # Revenus attendus = somme loyers+charges baux actifs
+    today = date.today()
+
+    # Revenus attendus = somme loyers+charges des baux actifs SUR le mois courant
     expected_res = await db.execute(
         select(func.sum(Lease.rent_amount + Lease.charges_amount)).where(
             Lease.property_id.in_(prop_ids),
-            Lease.is_active.is_(True),
+            _lease_active_in_month(today),
         )
     )
     monthly_expected = float(expected_res.scalar_one() or 0)
 
     # Revenus encaissés ce mois (par période, cohérent avec le dashboard gestionnaire)
-    today = date.today()
 
     received_res = await db.execute(
         select(func.sum(Payment.amount_paid))
