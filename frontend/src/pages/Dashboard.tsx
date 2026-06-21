@@ -36,6 +36,13 @@ function moisCourant() {
   return new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 }
 
+// Mois prochain en clair, ex. « juillet 2026 ».
+function moisSuivant() {
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth() + 1, 1)
+    .toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+}
+
 // Répartition des contrats actifs par type, ex. « 3 nus · 5 meublés ».
 const LEASE_TYPE_SHORT: Record<string, string> = {
   vide: 'nu', meuble: 'meublé', mobilite: 'mobilité', commercial: 'commercial',
@@ -65,6 +72,8 @@ interface Stats {
   total_leases_active: number
   total_leases_future: number
   active_leases_by_type: Record<string, number>
+  occupancy_next_rate: number
+  occupancy_next_occupied: number
   upcoming_entretiens?: Array<{ id: string; title: string; type: string; status: string; scheduled_date: string; property_label?: string | null; overdue: boolean }>
 }
 
@@ -222,6 +231,9 @@ export default function Dashboard() {
         <KPICard title={`Occupation du parc pour ${moisCourant()}`} value={`${stats.occupancy.occupancy_rate}%`}
           sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`}
           icon={Home} color="purple" />
+        <KPICard title={`Occupation à venir (${moisSuivant()})`} value={`${stats.occupancy_next_rate}%`}
+          sub={`${stats.occupancy_next_occupied}/${stats.occupancy.total_units} loué${stats.occupancy_next_occupied > 1 ? 's' : ''}`}
+          icon={Home} color="blue" />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
           sub={stats.alerts.overdue_payments > 0
             ? `${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''} en retard`

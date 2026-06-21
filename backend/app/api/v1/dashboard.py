@@ -419,6 +419,21 @@ async def get_dashboard_stats(
     )
     active_leases_by_type = {row[0]: row[1] for row in type_rows.all()}
 
+    # ── Occupation à venir (mois suivant) ──────────────────────────────────────
+    # Unités qui auront un bail actif le mois prochain (inclut les baux qui démarrent
+    # le mois prochain et exclut ceux qui se terminent d'ici là).
+    occupied_next_res = await db.execute(
+        _lease_scope(
+            select(func.count(func.distinct(Lease.property_id))).where(
+                _lease_active_in_month(today + relativedelta(months=1))
+            )
+        )
+    )
+    occupancy_next_occupied = occupied_next_res.scalar_one() or 0
+    occupancy_next_rate = round(
+        (occupancy_next_occupied / total_units * 100) if total_units else 0, 1
+    )
+
     # ── Entretiens importants à venir (planifiés / en cours, dus sous 30 j ou en retard) ─
     from sqlalchemy.orm import selectinload as _selectinload
 
@@ -478,6 +493,8 @@ async def get_dashboard_stats(
         total_leases_active=total_leases_active,
         total_leases_future=total_leases_future,
         active_leases_by_type=active_leases_by_type,
+        occupancy_next_rate=occupancy_next_rate,
+        occupancy_next_occupied=occupancy_next_occupied,
     )
 
 

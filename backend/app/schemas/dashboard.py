@@ -76,6 +76,8 @@ class DashboardStats(BaseModel):
     total_leases_active: int
     total_leases_future: int = 0  # baux signés démarrant le mois prochain ou après
     active_leases_by_type: dict[str, int] = {}  # répartition par type (vide/meuble/…)
+    occupancy_next_rate: float = 0  # taux d'occupation projeté le mois prochain
+    occupancy_next_occupied: int = 0  # unités occupées le mois prochain
     upcoming_entretiens: list[UpcomingEntretien] = []
 
 
