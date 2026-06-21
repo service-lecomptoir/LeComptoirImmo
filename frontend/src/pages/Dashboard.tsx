@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import {
   Building2, AlertTriangle, Home,
-  CreditCard, CheckCircle, ArrowUpRight, ArrowDownRight,
+  CheckCircle, ArrowUpRight, ArrowDownRight,
   Activity, Euro, RefreshCw, Wrench, KeyRound, FileText
 } from 'lucide-react'
 import { getDayMoment, formatLongDate } from '@/lib/dayMoment'
@@ -240,7 +240,7 @@ export default function Dashboard() {
           icon={FileText} color="blue" />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <KPICard title={`Loyers attendus pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
           icon={Euro} color="blue" />
         <KPICard title={`Loyers encaissés pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
@@ -250,8 +250,6 @@ export default function Dashboard() {
             ? `${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''} en retard`
             : 'À jour'} icon={AlertTriangle}
           color={stats.financial.total_outstanding > 0 ? 'red' : 'green'} />
-        <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
-          sub="Cautions détenues" icon={CreditCard} color="purple" />
       </div>
 
       {/* Graphiques */}
