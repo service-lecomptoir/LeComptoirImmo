@@ -17,7 +17,7 @@ import {
   Home, Receipt, BookUser, PenSquare, BarChart3,
   Calculator, MessageSquare, MessagesSquare, Send, Wrench, Wallet, FileCheck,
   ShoppingBag, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
-  UserCheck, DoorOpen, AlertTriangle, BookText,
+  UserCheck, DoorOpen, ConciergeBell, BookText,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -49,7 +49,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/automatisation', icon: Send, label: 'Communication et automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Atelier de documents' },
   { to: '/incidents', icon: MessagesSquare, label: 'Démarche' },
-  { to: '/signalements', icon: AlertTriangle, label: 'Espace gardien' },
+  { to: '/signalements', icon: ConciergeBell, label: 'Espace gardien' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
@@ -119,7 +119,7 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/automatisation', icon: Send, label: 'Communication et automatisation' },
   { to: '/templates', icon: PenSquare, label: 'Atelier de documents' },
   { to: '/incidents', icon: MessagesSquare, label: 'Démarche' },
-  { to: '/signalements', icon: AlertTriangle, label: 'Espace gardien' },
+  { to: '/signalements', icon: ConciergeBell, label: 'Espace gardien' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
@@ -139,7 +139,7 @@ export const navLocataire: NavItem[] = [
   { to: '/locataire/payer', icon: Wallet, label: 'Payer mon loyer' },
   { to: '/locataire/paiements', icon: CreditCard, label: 'Ma comptabilité' },
   { to: '/locataire/demarches', icon: MessagesSquare, label: 'Mes démarches' },
-  { to: '/locataire/signaler', icon: AlertTriangle, label: 'Allô gardien !' },
+  { to: '/locataire/signaler', icon: ConciergeBell, label: 'Allô gardien !' },
   { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
   { to: '/locataire/offres', icon: ShoppingBag, label: 'Offres & Services' },
 ]
