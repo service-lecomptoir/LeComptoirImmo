@@ -81,6 +81,7 @@ export interface ListParams {
 export const signalementsApi = {
   // Locataire
   mine: () => apiClient.get<Signalement[]>('/signalements/mine'),
+  remove: (id: string) => apiClient.delete(`/signalements/${id}`),
   create: (data: SignalementCreatePayload) => apiClient.post<{ id: string; status: string }>('/signalements', data),
   uploadPhoto: (id: string, file: File) => {
     const fd = new FormData()

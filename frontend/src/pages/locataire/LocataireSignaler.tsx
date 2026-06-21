@@ -54,6 +54,8 @@ export default function LocataireSignaler() {
   const [description, setDescription] = useState('')
   const [photo, setPhoto] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
@@ -63,6 +65,19 @@ export default function LocataireSignaler() {
     finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
+
+  const del = async (id: string) => {
+    setDeletingId(id)
+    try {
+      await signalementsApi.remove(id)
+      setItems(prev => prev.filter(x => x.id !== id))
+      toast.success('Signalement supprimé.')
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, "Le signalement n'a pas pu être supprimé"))
+    } finally {
+      setDeletingId(null); setConfirmId(null)
+    }
+  }
 
   const reset = () => {
     setCategory('bruit'); setUrgency('moyen'); setOccurredAt(nowLocal())
@@ -207,10 +222,38 @@ export default function LocataireSignaler() {
                   </a>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-2">
-                {s.occurred_at ? `Survenu le ${format(new Date(s.occurred_at), 'd MMM yyyy à HH:mm', { locale: fr })}` : ''}
-                {' · '}signalé le {format(new Date(s.created_at), 'd MMM yyyy', { locale: fr })}
-              </p>
+              <div className="flex items-center justify-between gap-2 mt-2">
+                <p className="text-xs text-gray-400">
+                  {s.occurred_at ? `Survenu le ${format(new Date(s.occurred_at), 'd MMM yyyy à HH:mm', { locale: fr })}` : ''}
+                  {' · '}signalé le {format(new Date(s.created_at), 'd MMM yyyy', { locale: fr })}
+                </p>
+                {confirmId === s.id ? (
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-gray-500">Supprimer ?</span>
+                    <button
+                      onClick={() => del(s.id)}
+                      disabled={deletingId === s.id}
+                      className="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                    >
+                      {deletingId === s.id ? 'Suppression…' : 'Oui'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmId(null)}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Annuler
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setConfirmId(s.id)}
+                    title="Supprimer ce signalement"
+                    className="shrink-0 inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-600 transition-colors"
+                  >
+                    <Trash2 size={14} /> Supprimer
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

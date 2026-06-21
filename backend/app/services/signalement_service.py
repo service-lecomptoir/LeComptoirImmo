@@ -299,6 +299,25 @@ class SignalementService:
         ]
 
     @staticmethod
+    async def delete(db: AsyncSession, s: Signalement) -> str | None:
+        """Supprime un signalement. Détache d'abord les alertes du moteur bruit qui
+        le référençaient (elles restent dans l'historique, sans lien). Renvoie le
+        chemin de la photo éventuelle (à supprimer du disque après commit)."""
+        from sqlalchemy import update as sa_update
+
+        from app.models.signalement_alert import SignalementAlert
+
+        await db.execute(
+            sa_update(SignalementAlert)
+            .where(SignalementAlert.signalement_id == s.id)
+            .values(signalement_id=None)
+        )
+        photo = s.photo_path
+        await db.delete(s)
+        await db.flush()
+        return photo
+
+    @staticmethod
     async def assert_manager_scope(db: AsyncSession, user, s: Signalement) -> None:
         scope = await SignalementService._scope_property_ids(db, user)
         if scope is None:

@@ -76,6 +76,32 @@ async def attach_photo(
     return {"photo_url": ("/" + path.replace("\\", "/").lstrip("/"))}
 
 
+@router.delete("/{sig_id}", status_code=204, summary="Supprimer un signalement")
+async def delete_signalement(
+    sig_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Supprime un signalement. Autorisé au créateur (locataire) ou à un
+    gestionnaire de son périmètre."""
+    s = await SignalementService.get(db, sig_id)
+    role = Role(current_user.role)
+    if role in _MANAGER_ROLES:
+        await SignalementService.assert_manager_scope(db, current_user, s)
+    elif str(s.created_by) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="Accès refusé à ce signalement.")
+    photo = await SignalementService.delete(db, s)
+    await db.commit()
+    if photo:
+        from app.utils.file_handler import delete_file
+
+        try:
+            delete_file(photo)
+        except Exception:  # noqa: BLE001
+            pass
+    return Response(status_code=204)
+
+
 # ── Gestionnaire ─────────────────────────────────────────────────────────────
 
 
