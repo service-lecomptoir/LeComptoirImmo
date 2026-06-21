@@ -23,6 +23,7 @@ interface PropertyPerf {
   ytd_received: number
   collection_rate: number
   months_elapsed: number
+  active_months: number
   monthly_breakdown: MonthBreakdown[]
 }
 
@@ -127,7 +128,7 @@ export default function ProprietaireBiens() {
             </p>
             <p className="text-2xl font-bold text-gray-800">{fmtEuro(perfData.total_theoretical)}</p>
             <p className="text-xs text-gray-400 mt-1">
-              Sur {perfData.months_elapsed} mois écoulé{perfData.months_elapsed > 1 ? 's' : ''}
+              Loyers dus depuis janvier {year} (prorata des contrats)
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
@@ -212,7 +213,7 @@ export default function ProprietaireBiens() {
                         <p className="text-xs text-gray-400 mb-0.5">Théorique {year}</p>
                         <p className="text-xl font-bold text-gray-700">{fmtEuro(perf.ytd_theoretical)}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {fmtEuro(perf.monthly_expected)} / mois
+                          {fmtEuro(perf.monthly_expected)} / mois · {perf.active_months} mois sous contrat
                         </p>
                       </div>
                       <div>

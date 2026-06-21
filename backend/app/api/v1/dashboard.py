@@ -770,15 +770,32 @@ async def get_proprietaire_performance(
     for prop in properties:
         prop_id = prop.id
 
-        # Loyer mensuel théorique = somme des baux actifs
+        # Loyer mensuel théorique = somme des baux actifs ; date de début la plus
+        # ancienne pour ne compter que les mois réellement sous contrat (prorata).
         leases_res = await db.execute(
-            select(func.coalesce(func.sum(Lease.rent_amount + Lease.charges_amount), 0.0)).where(
+            select(
+                func.coalesce(func.sum(Lease.rent_amount + Lease.charges_amount), 0.0),
+                func.min(Lease.start_date),
+            ).where(
                 Lease.property_id == prop_id,
                 Lease.is_active.is_(True),
             )
         )
-        monthly_expected = float(leases_res.scalar_one() or 0)
-        ytd_theoretical = monthly_expected * months_elapsed
+        row = leases_res.one()
+        monthly_expected = float(row[0] or 0)
+        min_start = row[1]
+
+        # Mois sous contrat dans l'année : on n'inclut pas les mois antérieurs au
+        # début du bail, ni les baux à venir. Un bail de 6 mois+ => mois écoulés ;
+        # un bail récent => seulement ses mois d'existence.
+        if min_start is None or (min_start.year > year):
+            start_month = months_elapsed + 1  # aucun bail actif sur l'année => 0
+        elif min_start.year < year:
+            start_month = 1
+        else:
+            start_month = min_start.month
+        active_months = max(0, months_elapsed - start_month + 1)
+        ytd_theoretical = monthly_expected * active_months
 
         # Encaissé YTD (period_year == year) : payé/partiel + mois reportés (part
         # déjà payée) + échéances d'apurement encaissées dans l'année.
@@ -810,7 +827,8 @@ async def get_proprietaire_performance(
             monthly_breakdown.append(
                 {
                     "month": month,
-                    "expected": round(monthly_expected, 2),
+                    # Pas de loyer dû avant le début du bail.
+                    "expected": round(monthly_expected if month >= start_month else 0.0, 2),
                     "received": round(float(m_res.scalar_one() or 0), 2),
                 }
             )
@@ -828,6 +846,7 @@ async def get_proprietaire_performance(
                 "ytd_received": round(ytd_received, 2),
                 "collection_rate": collection_rate,
                 "months_elapsed": months_elapsed,
+                "active_months": active_months,  # mois réellement sous contrat
                 "monthly_breakdown": monthly_breakdown,
             }
         )
