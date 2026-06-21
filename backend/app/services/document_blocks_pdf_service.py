@@ -106,7 +106,6 @@ async def render_blocks_document(
     logo_path = None
     sender_name, sender_addr = "", ""
     owner_company, owner_national_id = "", ""
-    user_signature = ""
     if gestionnaire_user_id:
         user = (
             await db.execute(select(User).where(User.id == gestionnaire_user_id))
@@ -117,7 +116,6 @@ async def render_blocks_document(
             sender_addr = getattr(user, "address", "") or ""
             owner_company = getattr(user, "owner_company", "") or ""
             owner_national_id = getattr(user, "owner_national_id", "") or ""
-            user_signature = getattr(user, "signature", "") or ""
 
     from app.services.document_render_service import build_emitter_address
 
@@ -129,9 +127,9 @@ async def render_blocks_document(
         variables["company_address"] = build_emitter_address(
             sender_addr, owner_company, owner_national_id
         )
-    # Signature du gestionnaire (apposée en pied par le bloc « signature »).
-    if not variables.get("signature_uri"):
-        variables["signature_uri"] = user_signature
+    # La signature du gestionnaire n'est PAS apposée sur les documents de l'atelier
+    # (avis, quittance, relance, régularisation, révision, taxe, rapport…). Elle est
+    # réservée au contrat de bail et aux documents CAF (chemins dédiés).
 
     html = render_avis_blocks_html(
         blocks, theme, variables, line_items=line_items, logo_path=logo_path

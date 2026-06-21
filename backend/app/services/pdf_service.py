@@ -340,7 +340,6 @@ async def render_relance_html(db: AsyncSession, payment: Any) -> str | None:
         else "",
         "amount_due": _eur(getattr(payment, "balance", 0) or 0),
         "apl_amount": _eur(payment.amount_apl) if getattr(payment, "amount_apl", None) else "",
-        "signature_uri": (getattr(user, "signature", None) or "") if user else "",
     }
     _logo = getattr(user, "logo_path", None) if user else None
     return render_avis_blocks_html(
@@ -378,7 +377,6 @@ async def build_relance_pdf(db: AsyncSession, payment: Any) -> bytes:
             if getattr(payment, "amount_apl", None)
             else "0.00",
             "today": _today_fr(),
-            "signature_uri": await user_signature_uri(db, gid),
         }
         html = render_template("lettre_relance.html.j2", ctx)
     return html_to_pdf(html)
@@ -562,7 +560,6 @@ async def render_plan_apurement_html(
         else "",
         "amount_due": _eur(total),
         "first_due_date": first_due_str,
-        "signature_uri": (getattr(user, "signature", None) or "") if user else "",
     }
     _logo = getattr(user, "logo_path", None) if user else None
     return render_avis_blocks_html(
@@ -725,9 +722,6 @@ class AvisEcheancePDFService:
             ),
         }
         _gid = getattr(_lease_rel, "created_by", None)
-        # Signature du gestionnaire : apposée que le rendu passe par les blocs ou le .j2.
-        _sig_uri = await user_signature_uri(db, _gid)
-        variables["signature_uri"] = _sig_uri
 
         # 1a) Éditeur par blocs (mise en page moderne) : si le template par défaut de
         # l'avis en possède, on rend via le moteur de blocs (prioritaire).
@@ -860,7 +854,6 @@ class AvisEcheancePDFService:
                 "tenant_names": tenant_names,
                 "tenant_names_list": names,
                 "layout": layout,
-                "signature_uri": _sig_uri,
                 "is_apurement": _is_apur,
                 "apur_seq": _apur_seq,
             },
