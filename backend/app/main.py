@@ -461,6 +461,9 @@ async def _apply_column_migrations() -> None:
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_day', '1') ON CONFLICT DO NOTHING",
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_hour', '7') ON CONFLICT DO NOTHING",
         "INSERT INTO app_settings (key, value) VALUES ('avis_generation_minute', '30') ON CONFLICT DO NOTHING",
+        # ── 017 : Acquisition du bien (date + valeur d'achat ou de construction) ──
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS acquisition_date DATE",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS acquisition_value NUMERIC(12, 2)",
         # ── 016 : Entité propriétaire (fiche Owner) + lien sur le bien ───────────
         # La table `owners` est créée par create_all. On ajoute la colonne de lien
         # puis on rapatrie les propriétaires existants (comptes + owner_name) en

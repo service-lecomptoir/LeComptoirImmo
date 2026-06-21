@@ -1,8 +1,9 @@
 import uuid
+from datetime import date
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -60,6 +61,12 @@ class Property(Base, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     year_built: Mapped[int | None] = mapped_column(nullable=True)
+
+    # ── Acquisition (achat ou construction) ─────────────────────────────────────
+    # Date d'acquisition = date d'achat ou de fin de construction.
+    # Valeur d'acquisition = prix d'achat ou coût de construction.
+    acquisition_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    acquisition_value: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
 
     # ── Caractéristiques du logement ──────────────────────────────────────────
     typology: Mapped[str | None] = mapped_column(String(8), nullable=True)  # T1 … T10

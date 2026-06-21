@@ -4,7 +4,7 @@ import { formatPhoneDisplay } from '@/utils/format'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Edit, Trash2, Megaphone,
-  MapPin, Home, Ruler, Bath, Layers, Flame, Zap, Check
+  MapPin, Home, Ruler, Bath, Layers, Flame, Zap, Check, CalendarDays, Euro
 } from 'lucide-react'
 import { propertiesApi } from '@/api/properties'
 import { PropertyForm } from './PropertyForm'
@@ -121,6 +121,10 @@ export default function PropertyDetail() {
             value={HEATING_LABELS[property.heating_type ?? ''] ?? ''} />
           <Stat icon={<Zap size={16} className="text-blue-600" />} label="DPE"
             value={property.energy_class || ''} />
+          <Stat icon={<CalendarDays size={16} className="text-blue-600" />} label="Date d'acquisition"
+            value={property.acquisition_date ? new Date(property.acquisition_date).toLocaleDateString('fr-FR') : ''} />
+          <Stat icon={<Euro size={16} className="text-blue-600" />} label="Valeur d'acquisition"
+            value={property.acquisition_value != null ? `${property.acquisition_value.toLocaleString('fr-FR')} €` : ''} />
         </div>
 
         {/* Équipements & extérieurs */}

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr
 
@@ -23,6 +23,8 @@ class PropertyCreate(BaseModel):
     description: str | None = None
     notes: str | None = None
     year_built: int | None = None
+    acquisition_date: date | None = None
+    acquisition_value: float | None = None
     # ── Caractéristiques du logement ──────────────────────────────────────────
     typology: str | None = None  # T1 … T10
     floor: int | None = None
@@ -60,6 +62,8 @@ class PropertyUpdate(BaseModel):
     description: str | None = None
     notes: str | None = None
     year_built: int | None = None
+    acquisition_date: date | None = None
+    acquisition_value: float | None = None
     typology: str | None = None
     floor: int | None = None
     area_sqm: float | None = None
@@ -98,6 +102,8 @@ class PropertyResponse(BaseModel):
     description: str | None
     notes: str | None
     year_built: int | None
+    acquisition_date: date | None = None
+    acquisition_value: float | None = None
     typology: str | None = None
     floor: int | None = None
     area_sqm: float | None = None

@@ -33,6 +33,9 @@ const schema = z.object({
   bathrooms: z.coerce.number().int().min(0).optional(),
   heating_type: z.string().optional(),
   energy_class: z.string().optional(),
+  // ── Acquisition (achat ou construction) ───────────────────────────────────
+  acquisition_date: z.string().optional(),
+  acquisition_value: z.coerce.number().min(0).optional(),
   // ── Équipements & extérieurs ──────────────────────────────────────────────
   furnished: z.boolean().default(false),
   kitchen_equipped: z.boolean().default(false),
@@ -148,6 +151,8 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       bathrooms: property.bathrooms ?? undefined,
       heating_type: property.heating_type ?? '',
       energy_class: property.energy_class ?? '',
+      acquisition_date: property.acquisition_date ?? '',
+      acquisition_value: property.acquisition_value ?? undefined,
       furnished: property.furnished ?? false,
       kitchen_equipped: property.kitchen_equipped ?? false,
       has_elevator: property.has_elevator ?? false,
@@ -224,6 +229,8 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
       bathrooms: data.bathrooms ?? null,
       heating_type: data.heating_type || null,
       energy_class: data.energy_class || null,
+      acquisition_date: data.acquisition_date || null,
+      acquisition_value: data.acquisition_value ?? null,
       furnished: data.furnished,
       kitchen_equipped: data.kitchen_equipped,
       has_elevator: data.has_elevator,
@@ -415,6 +422,16 @@ export function PropertyForm({ property, onClose, onSaved }: Props) {
                 <option value="">— Sélectionner —</option>
                 {ENERGY_CLASSES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
+            </div>
+            <div>
+              <label className={lbl}>Date d'acquisition</label>
+              <input type="date" {...register('acquisition_date')} className={inp} />
+              <p className="text-xs text-gray-400 mt-1">Achat ou fin de construction</p>
+            </div>
+            <div>
+              <label className={lbl}>Valeur d'acquisition (€)</label>
+              <input type="number" step="0.01" min="0" {...register('acquisition_value')} className={inp} placeholder="ex. 185000" />
+              <p className="text-xs text-gray-400 mt-1">Prix d'achat ou coût de construction</p>
             </div>
           </div>
         </div>

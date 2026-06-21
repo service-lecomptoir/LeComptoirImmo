@@ -72,6 +72,9 @@ export interface Property {
   description: string | null
   notes: string | null
   year_built: number | null
+  // ── Acquisition (achat ou construction) ────────────────────────────────────
+  acquisition_date: string | null
+  acquisition_value: number | null
   // ── Caractéristiques du bien ───────────────────────────────────────────────
   typology: string | null          // T1 … T10
   floor: number | null
