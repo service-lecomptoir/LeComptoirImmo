@@ -48,9 +48,9 @@ interface Stats {
   upcoming_entretiens?: Array<{ id: string; title: string; type: string; status: string; scheduled_date: string; property_label?: string | null; overdue: boolean }>
 }
 
-function KPICard({ title, value, sub, icon: Icon, color, trend, center }: {
+function KPICard({ title, value, sub, icon: Icon, color, trend }: {
   title: string; value: string; sub?: string
-  icon: React.ElementType; color: string; trend?: number; center?: boolean
+  icon: React.ElementType; color: string; trend?: number
 }) {
   const colors: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-600',
@@ -61,20 +61,20 @@ function KPICard({ title, value, sub, icon: Icon, color, trend, center }: {
   }
   return (
     <div className="bg-white rounded-xl border p-5 hover:shadow-md transition-shadow">
-      <div className={`flex items-start mb-3 ${center ? 'justify-center' : 'justify-between'}`}>
+      <div className="flex items-start justify-between mb-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
           <Icon size={20} />
         </div>
-        {trend !== undefined && !center && (
+        {trend !== undefined && (
           <div className={`flex items-center gap-0.5 text-xs font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>
             {trend >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
             {Math.abs(trend)}%
           </div>
         )}
       </div>
-      <p className={`text-2xl font-bold text-gray-900 ${center ? 'text-center' : ''}`}>{value}</p>
-      <p className={`text-sm font-medium text-gray-600 mt-0.5 ${center ? 'text-center' : ''}`}>{title}</p>
-      {sub && <p className={`text-xs text-gray-400 mt-1 ${center ? 'text-center' : ''}`}>{sub}</p>}
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-sm font-medium text-gray-600 mt-0.5">{title}</p>
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </div>
   )
 }
@@ -204,7 +204,7 @@ export default function Dashboard() {
             + (stats.total_leases_future > 0
               ? ` · ${stats.total_leases_future} contrat${stats.total_leases_future > 1 ? 's' : ''} à venir`
               : '')}
-          icon={Home} color="purple" center />
+          icon={Home} color="purple" />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
           sub={stats.alerts.overdue_payments > 0
             ? `${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''} en retard`
