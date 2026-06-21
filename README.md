@@ -1,4 +1,7 @@
 # LeComptoirImmo
+
+[![Déploiement](https://github.com/service-lecomptoir/LeComptoirImmo/actions/workflows/deploy.yml/badge.svg)](https://github.com/service-lecomptoir/LeComptoirImmo/actions/workflows/deploy.yml)
+
 Outil de gestion locative professionnelle
 
 ---
