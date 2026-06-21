@@ -233,14 +233,14 @@ export default function Dashboard() {
         <KPICard title={stats.total_leases_active > 1 ? 'Contrats actifs' : 'Contrat actif'} value={fmt(stats.total_leases_active)}
           sub={repartitionContrats(stats.active_leases_by_type)} icon={FileText} color="green" />
         <KPICard title="Occupation du parc" value={`${stats.occupancy.occupancy_rate}%`}
-          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`
-            + ` · ${stats.occupancy_next_rate}% en ${moisSuivant()}`}
+          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`}
           icon={Home} color="purple" />
-        <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
-          sub="Cautions détenues" icon={CreditCard} color="purple" />
+        <KPICard title="Nouveaux contrats" value={fmt(stats.total_leases_future)}
+          sub={`futur contrat${stats.total_leases_future > 1 ? 's' : ''} en ${moisSuivant()}`}
+          icon={FileText} color="blue" />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard title={`Loyers attendus pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
           icon={Euro} color="blue" />
         <KPICard title={`Loyers encaissés pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
@@ -250,6 +250,8 @@ export default function Dashboard() {
             ? `${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''} en retard`
             : 'À jour'} icon={AlertTriangle}
           color={stats.financial.total_outstanding > 0 ? 'red' : 'green'} />
+        <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
+          sub="Cautions détenues" icon={CreditCard} color="purple" />
       </div>
 
       {/* Graphiques */}
