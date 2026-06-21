@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Home, CreditCard, FileText, ArrowRight, Download, Wallet, CheckCircle,
+  Home, CreditCard, Archive, ArrowRight, Download, Wallet, CheckCircle,
   Receipt, MessagesSquare, ConciergeBell, Bell, Building2, Mail, Phone, MapPin,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -75,7 +75,7 @@ export default function LocataireDashboard() {
   const quickLinks = [
     { icon: CreditCard, label: 'Payer mon loyer', to: '/locataire/payer', color: 'bg-blue-50 text-blue-600' },
     { icon: Wallet, label: 'Ma comptabilité', to: '/locataire/paiements', color: 'bg-green-50 text-green-600' },
-    { icon: FileText, label: 'Mes documents', to: '/locataire/documents', color: 'bg-purple-50 text-purple-600' },
+    { icon: Archive, label: 'Mes documents', to: '/locataire/documents', color: 'bg-purple-50 text-purple-600' },
     { icon: MessagesSquare, label: 'Mes démarches', to: '/locataire/demarches', color: 'bg-amber-50 text-amber-600' },
     { icon: ConciergeBell, label: 'Allô gardien !', to: '/locataire/signaler', color: 'bg-amber-50 text-amber-600' },
     { icon: Bell, label: 'Avis d\'échéance', to: '/locataire/avis-echeances', color: 'bg-sky-50 text-sky-600' },
