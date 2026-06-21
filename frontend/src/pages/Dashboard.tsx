@@ -62,7 +62,7 @@ function repartitionContrats(byType: Record<string, number>): string {
 
 interface Stats {
   occupancy: { total_units: number; occupied_units: number; vacant_units: number; occupancy_rate: number }
-  financial: { total_rent_expected: number; total_rent_received: number; total_outstanding: number; collection_rate: number; total_deposits: number }
+  financial: { total_rent_expected: number; total_rent_received: number; total_outstanding: number; collection_rate: number; total_deposits: number; deposits_expected: number }
   monthly_revenues: Array<{ month: string; expected: number; received: number; outstanding: number }>
   top_properties: Array<{ property_id: string; property_name: string; units_count: number; occupied_count: number; monthly_revenue: number; outstanding: number }>
   by_owner?: Array<{ owner_name: string; properties_count: number; occupied_count: number; monthly_revenue: number; outstanding: number }>
@@ -162,9 +162,13 @@ export default function Dashboard() {
     Impayé: m.outstanding,
   }))
 
-  const occupancyData = [
-    { name: 'Occupé', value: stats.occupancy.occupied_units },
-    { name: 'Vacant', value: stats.occupancy.vacant_units },
+  // Dépôts de garantie : encaissé (baux en cours) vs attendu (total signé).
+  const depCollected = stats.financial.total_deposits
+  const depExpected = stats.financial.deposits_expected
+  const depPct = depExpected > 0 ? Math.round((depCollected / depExpected) * 100) : 0
+  const depositData = [
+    { name: 'Encaissé', value: depCollected },
+    { name: 'Reste à percevoir', value: Math.max(0, depExpected - depCollected) },
   ]
 
   const hasAlerts = stats.alerts.leases_expiring_30d > 0 ||
@@ -273,29 +277,29 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white rounded-xl border p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Occupation du parc</h2>
+          <h2 className="font-semibold text-gray-900 mb-4">Dépôts de garantie</h2>
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
-              <Pie data={occupancyData} cx="50%" cy="50%" innerRadius={45} outerRadius={70}
+              <Pie data={depositData} cx="50%" cy="50%" innerRadius={45} outerRadius={70}
                 dataKey="value" startAngle={90} endAngle={-270}>
                 <Cell fill="#3B82F6" />
                 <Cell fill="#E5E7EB" />
               </Pie>
-              <Tooltip />
+              <Tooltip formatter={(v: unknown) => fmtEur(v as number)} />
             </PieChart>
           </ResponsiveContainer>
           <div className="text-center -mt-2">
-            <p className="text-3xl font-bold text-gray-900">{stats.occupancy.occupancy_rate}%</p>
-            <p className="text-sm text-gray-500">Occupation</p>
+            <p className="text-3xl font-bold text-gray-900">{depPct}%</p>
+            <p className="text-sm text-gray-500">Encaissé</p>
           </div>
           <div className="flex justify-around mt-3 text-center">
             <div>
-              <p className="text-lg font-bold text-blue-600">{stats.occupancy.occupied_units}</p>
-              <p className="text-xs text-gray-400">{stats.occupancy.occupied_units > 1 ? 'Occupées' : 'Occupée'}</p>
+              <p className="text-lg font-bold text-blue-600">{fmtEur(depCollected)}</p>
+              <p className="text-xs text-gray-400">Encaissé</p>
             </div>
             <div>
-              <p className="text-lg font-bold text-gray-400">{stats.occupancy.vacant_units}</p>
-              <p className="text-xs text-gray-400">{stats.occupancy.vacant_units > 1 ? 'Vacantes' : 'Vacante'}</p>
+              <p className="text-lg font-bold text-gray-400">{fmtEur(depExpected)}</p>
+              <p className="text-xs text-gray-400">Attendu</p>
             </div>
           </div>
         </div>

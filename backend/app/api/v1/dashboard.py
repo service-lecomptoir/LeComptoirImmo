@@ -183,10 +183,17 @@ async def get_dashboard_stats(
         (total_rent_received / total_rent_expected * 100) if total_rent_expected else 0, 1
     )
 
+    # Dépôts de garantie (baux EN COURS uniquement, pas les baux à venir) :
+    #  - encaissé  = caution réellement saisie sur le bail (deposit_amount)
+    #  - attendu   = théorique légal = 1 mois de loyer hors charges (rent_amount)
     deposits_res = await db.execute(
         _lease_scope(select(func.sum(Lease.deposit_amount)).where(_lease_active_in_month(today)))
     )
     total_deposits = float(deposits_res.scalar_one() or 0)
+    deposits_expected_res = await db.execute(
+        _lease_scope(select(func.sum(Lease.rent_amount)).where(_lease_active_in_month(today)))
+    )
+    deposits_expected = float(deposits_expected_res.scalar_one() or 0)
 
     # ── Revenus mensuels (12 derniers mois) ───────────────────────────────────
     monthly_revenues = []
@@ -477,6 +484,7 @@ async def get_dashboard_stats(
             total_outstanding=round(total_outstanding, 2),
             collection_rate=collection_rate,
             total_deposits=round(total_deposits, 2),
+            deposits_expected=round(deposits_expected, 2),
         ),
         monthly_revenues=monthly_revenues,
         top_properties=top_properties,

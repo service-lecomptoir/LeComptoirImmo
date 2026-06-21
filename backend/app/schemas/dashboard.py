@@ -27,7 +27,8 @@ class FinancialStats(BaseModel):
     total_rent_received: float
     total_outstanding: float
     collection_rate: float  # %
-    total_deposits: float
+    total_deposits: float  # cautions encaissées (baux en cours)
+    deposits_expected: float = 0  # cautions attendues au total (baux actifs + à venir)
 
 
 class MonthlyRevenue(BaseModel):
