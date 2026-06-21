@@ -91,6 +91,7 @@ export interface Property {
   has_fiber: boolean
   has_air_conditioning: boolean
   is_occupied: boolean
+  occupied_now: boolean
   is_available: boolean
   unit_count: number
   occupied_count: number
@@ -110,6 +111,7 @@ export interface PropertyListItem {
   typology: string | null
   area_sqm: number | null
   is_occupied: boolean
+  occupied_now: boolean
   unit_count: number
   occupied_count: number
   created_at: string

@@ -70,3 +70,28 @@ class TestDashboardCurrentMonth:
         assert data["financial"]["total_rent_expected"] == 900.0
         # Une seule unité occupée ce mois-ci (le bien du bail futur est vacant).
         assert data["occupancy"]["occupied_units"] == 1
+
+    async def test_property_future_lease_not_occupied_now(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        today = date.today()
+        next_month = today.replace(day=1) + relativedelta(months=1)
+
+        await _make_lease(
+            db, gestionnaire_user, name="BienEnCours", email="bienencours@test.fr",
+            start_date=today, rent=700.0,
+        )
+        await _make_lease(
+            db, gestionnaire_user, name="BienFutur", email="bienfutur@test.fr",
+            start_date=next_month, rent=600.0,
+        )
+        await db.commit()
+
+        resp = await client.get("/api/v1/properties", headers=auth(gestionnaire_token))
+        assert resp.status_code == 200
+        by_name = {p["name"]: p for p in resp.json()["items"]}
+
+        # Bail en cours ce mois-ci : bien affiché « occupé ».
+        assert by_name["BienEnCours"]["occupied_now"] is True
+        # Bail démarrant le mois prochain : bien NON occupé ce mois-ci.
+        assert by_name["BienFutur"]["occupied_now"] is False

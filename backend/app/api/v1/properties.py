@@ -1,13 +1,16 @@
 import uuid
+from datetime import date
 
+from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_gestionnaire, get_current_manager, get_current_user
 from app.api.v1._isolation import agency_property_ids, assert_manager_scope
 from app.core.permissions import Role
 from app.database import get_db
+from app.models.lease import Lease
 from app.models.property import Property
 from app.models.user import User
 from app.schemas.property import PropertyCreate, PropertyListItem, PropertyResponse, PropertyUpdate
@@ -16,13 +19,37 @@ from app.services.property_service import PropertyService
 router = APIRouter(prefix="/properties", tags=["Biens immobiliers"])
 
 
+async def _occupied_now_ids(db, prop_ids) -> set:
+    """property_ids ayant un bail actif SUR le mois courant (même règle que le
+    tableau de bord) : exclut les baux qui démarrent plus tard et ceux terminés.
+    `is_occupied` (booléen stocké) reste la garde métier anti double-bail."""
+    if not prop_ids:
+        return set()
+    today = date.today()
+    month_start = today.replace(day=1)
+    next_month = month_start + relativedelta(months=1)
+    rows = await db.execute(
+        select(Lease.property_id)
+        .where(
+            Lease.property_id.in_(list(prop_ids)),
+            Lease.is_active.is_(True),
+            Lease.start_date < next_month,
+            or_(Lease.end_date.is_(None), Lease.end_date >= month_start),
+        )
+        .distinct()
+    )
+    return set(rows.scalars().all())
+
+
 async def _enrich_properties(db, properties):
-    """Un bien = un logement : unit_count=1, occupied_count selon is_occupied."""
+    """Un bien = un logement : unit_count=1, occupation selon le mois courant."""
+    occ = await _occupied_now_ids(db, [prop.id for prop in properties])
     items = []
     for prop in properties:
         item_dict = PropertyListItem.model_validate(prop).model_dump()
         item_dict["unit_count"] = 1
-        item_dict["occupied_count"] = 1 if prop.is_occupied else 0
+        item_dict["occupied_now"] = prop.id in occ
+        item_dict["occupied_count"] = 1 if prop.id in occ else 0
         items.append(item_dict)
     return items
 
@@ -156,7 +183,9 @@ async def get_property(
     await assert_manager_scope(db, current_user, prop.created_by, "ce bien")
     resp = PropertyResponse.model_validate(prop)
     resp.unit_count = 1
-    resp.occupied_count = 1 if prop.is_occupied else 0
+    occ = await _occupied_now_ids(db, [prop.id])
+    resp.occupied_now = prop.id in occ
+    resp.occupied_count = 1 if prop.id in occ else 0
     return resp
 
 

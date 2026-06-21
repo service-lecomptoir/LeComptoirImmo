@@ -68,8 +68,8 @@ export default function PropertyDetail() {
             <h1 className="text-2xl font-bold text-gray-900">{property.name}</h1>
             <StatusBadge label={PROPERTY_TYPE_LABELS[property.property_type] ?? property.property_type} variant="blue" />
             <StatusBadge
-              label={property.is_occupied ? 'Occupé' : 'Disponible'}
-              variant={property.is_occupied ? 'yellow' : 'green'}
+              label={property.occupied_now ? 'Occupé' : 'Disponible'}
+              variant={property.occupied_now ? 'yellow' : 'green'}
               dot
             />
           </div>
