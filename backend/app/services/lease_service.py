@@ -166,6 +166,7 @@ class LeaseService:
             charges_amount=float(lease.charges_amount),
             is_active=lease.is_active,
             apl_tiers_payant=lease.apl_tiers_payant,
+            apl_amount=float(lease.apl_amount) if lease.apl_amount is not None else None,
         )
 
     @staticmethod

@@ -96,6 +96,7 @@ export interface LeaseListItem {
   charges_amount: number
   is_active: boolean
   apl_tiers_payant: boolean
+  apl_amount?: number
 }
 
 export interface LeaseListResponse {

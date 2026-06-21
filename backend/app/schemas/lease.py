@@ -145,6 +145,7 @@ class LeaseListItem(BaseModel):
     charges_amount: float
     is_active: bool
     apl_tiers_payant: bool
+    apl_amount: float | None = None
 
 
 class LeaseListResponse(BaseModel):
