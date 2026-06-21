@@ -235,8 +235,8 @@ export default function Dashboard() {
         <KPICard title="Occupation du parc" value={`${stats.occupancy.occupancy_rate}%`}
           sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`}
           icon={Home} color="purple" />
-        <KPICard title="Nouveaux contrats" value={fmt(stats.total_leases_future)}
-          sub={`futur contrat${stats.total_leases_future > 1 ? 's' : ''} en ${moisSuivant()}`}
+        <KPICard title="Nouveaux baux signés" value={fmt(stats.total_leases_future)}
+          sub={`${stats.total_leases_future > 1 ? 'futurs baux actifs' : 'futur bail actif'} en ${moisSuivant()}`}
           icon={FileText} color="blue" />
       </div>
 
