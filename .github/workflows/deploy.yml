@@ -112,7 +112,7 @@ jobs:
             export IMAGE_TAG=${{ github.sha }}
             COMPOSE="docker compose -p docker -f docker/docker-compose.deploy.yml"
             # Pull avec retry : un hoquet ghcr transitoire ne doit pas sauter le up.
-            n=0; until $COMPOSE pull backend frontend; do n=$((n+1)); [ "$n" -ge 3 ] && { echo "pull KO apres 3 essais"; exit 1; }; echo "pull retry $n"; sleep 10; done
+            n=0; max=8; until { echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin >/dev/null 2>&1 && $COMPOSE pull backend frontend; }; do n=$((n+1)); [ "$n" -ge "$max" ] && { echo "pull KO apres $max essais (~4 min)"; exit 1; }; echo "ghcr 403 probable (propagation du tag), retry $n/$max"; sleep 30; done
             # Recreation forcee des services applicatifs (corrige le cas ou compose ne
             # detecte pas le changement) ; --no-deps : on ne redemarre jamais la base.
             $COMPOSE up -d --force-recreate --no-deps backend frontend
