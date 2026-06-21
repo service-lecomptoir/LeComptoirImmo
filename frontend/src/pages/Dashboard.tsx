@@ -4,9 +4,9 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts'
 import {
-  Building2, Users, TrendingUp, AlertTriangle, Home,
+  Building2, TrendingUp, AlertTriangle, Home,
   CreditCard, CheckCircle, ArrowUpRight, ArrowDownRight,
-  Activity, Euro, RefreshCw, Wrench, KeyRound
+  Activity, Euro, RefreshCw, Wrench, KeyRound, FileText
 } from 'lucide-react'
 import { getDayMoment, formatLongDate } from '@/lib/dayMoment'
 import { useNavigate } from 'react-router-dom'
@@ -48,9 +48,9 @@ interface Stats {
   upcoming_entretiens?: Array<{ id: string; title: string; type: string; status: string; scheduled_date: string; property_label?: string | null; overdue: boolean }>
 }
 
-function KPICard({ title, value, sub, icon: Icon, color, trend }: {
+function KPICard({ title, value, sub, icon: Icon, color, trend, center }: {
   title: string; value: string; sub?: string
-  icon: React.ElementType; color: string; trend?: number
+  icon: React.ElementType; color: string; trend?: number; center?: boolean
 }) {
   const colors: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-600',
@@ -61,20 +61,20 @@ function KPICard({ title, value, sub, icon: Icon, color, trend }: {
   }
   return (
     <div className="bg-white rounded-xl border p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
+      <div className={`flex items-start mb-3 ${center ? 'justify-center' : 'justify-between'}`}>
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
           <Icon size={20} />
         </div>
-        {trend !== undefined && (
+        {trend !== undefined && !center && (
           <div className={`flex items-center gap-0.5 text-xs font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-500'}`}>
             {trend >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
             {Math.abs(trend)}%
           </div>
         )}
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-sm font-medium text-gray-600 mt-0.5">{title}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      <p className={`text-2xl font-bold text-gray-900 ${center ? 'text-center' : ''}`}>{value}</p>
+      <p className={`text-sm font-medium text-gray-600 mt-0.5 ${center ? 'text-center' : ''}`}>{title}</p>
+      {sub && <p className={`text-xs text-gray-400 mt-1 ${center ? 'text-center' : ''}`}>{sub}</p>}
     </div>
   )
 }
@@ -198,21 +198,24 @@ export default function Dashboard() {
         <KPICard title={stats.total_properties > 1 ? 'Biens immobiliers' : 'Bien immobilier'} value={fmt(stats.total_properties)}
           sub={`${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`} icon={Building2} color="blue" />
         <KPICard title={stats.total_leases_active > 1 ? 'Contrats actifs' : 'Contrat actif'} value={fmt(stats.total_leases_active)}
-          sub={stats.total_leases_future > 0
-            ? `${stats.total_leases_future} à venir`
-            : 'Aucun à venir'} icon={Users} color="green" />
-        <KPICard title={`Occupation du parc ${moisCourant()}`} value={`${stats.occupancy.occupancy_rate}%`}
-          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`}
-          icon={Home} color="purple" />
+          sub={`${stats.total_tenants} locataire${stats.total_tenants > 1 ? 's' : ''}`} icon={FileText} color="green" />
+        <KPICard title={`Occupation du parc pour ${moisCourant()}`} value={`${stats.occupancy.occupancy_rate}%`}
+          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`
+            + (stats.total_leases_future > 0
+              ? ` · ${stats.total_leases_future} contrat${stats.total_leases_future > 1 ? 's' : ''} à venir`
+              : '')}
+          icon={Home} color="purple" center />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
-          sub={`${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''}`} icon={AlertTriangle}
+          sub={stats.alerts.overdue_payments > 0
+            ? `${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''} en retard`
+            : 'À jour'} icon={AlertTriangle}
           color={stats.financial.total_outstanding > 0 ? 'red' : 'green'} />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard title={`Loyers attendus ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
+        <KPICard title={`Loyers attendus pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
           icon={Euro} color="blue" />
-        <KPICard title={`Loyers encaissés ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
+        <KPICard title={`Loyers encaissés pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
           sub={`Recouvrement : ${stats.financial.collection_rate}%`} icon={CheckCircle} color="green" />
         <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
           sub="Cautions détenues" icon={CreditCard} color="purple" />
