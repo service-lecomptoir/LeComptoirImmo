@@ -403,6 +403,224 @@ async def reset_manager_password(
     await db.commit()
 
 
+@router.delete("/managers/{manager_id}", status_code=200)
+async def delete_manager(
+    manager_id: uuid.UUID,
+    _: None = Depends(require_internal_key),
+    db: AsyncSession = Depends(get_db),
+):
+    """Suppression DÉFINITIVE et complète d'un gestionnaire et de toutes ses données.
+
+    Suppressions explicites, ordonnées (feuilles → racine), dans une seule
+    transaction (atomique : toute contrainte imprévue annule l'ensemble, sans
+    suppression partielle). On ne dépend pas des ON DELETE de la base.
+
+    Périmètre : biens du gérant + toute leur chaîne (baux → paiements, inspections,
+    révisions, apurements, sorties, avis, régularisations, taxes, signalements,
+    candidatures, annonces, créneaux de visite), locataires et propriétaires créés
+    par lui (+ leurs comptes de connexion), contenus directs du gérant (templates,
+    domaines e-mail, règles, notifications, contacts, documents, messages), et le
+    compte gérant. Les fichiers uploadés associés sont supprimés du disque.
+    """
+    from app.utils.file_handler import delete_file
+
+    target = await db.get(User, manager_id)
+    if target is None or target.role not in _MANAGER_ROLES:
+        raise HTTPException(status_code=404, detail="Gestionnaire introuvable.")
+    g = manager_id
+
+    async def ids(sql: str, params: dict) -> list:
+        return [r[0] for r in (await db.execute(text(sql), params)).all() if r[0] is not None]
+
+    # ── Collecte du périmètre ──
+    prop_ids = await ids("SELECT id FROM properties WHERE created_by = :g", {"g": g})
+    lease_ids = (
+        await ids("SELECT id FROM leases WHERE property_id = ANY(:ids)", {"ids": prop_ids})
+        if prop_ids
+        else []
+    )
+    tenant_ids = await ids("SELECT id FROM tenants WHERE created_by = :g", {"g": g})
+    owner_ids = await ids("SELECT id FROM owners WHERE created_by = :g", {"g": g})
+
+    # Comptes de connexion liés (propriétaires + locataires créés par ce gérant).
+    linked: set = set()
+    for uid in await ids(
+        "SELECT user_id FROM owners WHERE created_by = :g AND user_id IS NOT NULL", {"g": g}
+    ):
+        linked.add(uid)
+    for uid in await ids(
+        "SELECT user_id FROM tenants WHERE created_by = :g AND user_id IS NOT NULL", {"g": g}
+    ):
+        linked.add(uid)
+    if prop_ids:
+        for uid in await ids(
+            "SELECT owner_user_id FROM properties WHERE id = ANY(:ids) AND owner_user_id IS NOT NULL",
+            {"ids": prop_ids},
+        ):
+            linked.add(uid)
+    linked.discard(g)
+    linked_ids = list(linked)
+
+    # Colonnes réellement présentes en base : la création de schéma par
+    # `create_all` ne pose pas les colonnes ajoutées après coup (dérive). On
+    # n'émet donc une suppression que pour les couples (table, colonne) existants.
+    colrows = await db.execute(
+        text(
+            "SELECT table_name, column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public'"
+        )
+    )
+    cols: set = {(t, c) for t, c in colrows.all()}
+
+    async def col_ids(sql: str, params: dict, table: str, col: str) -> list:
+        """SELECT défensif : ne s'exécute que si la colonne existe."""
+        if (table, col) not in cols:
+            return []
+        return await ids(sql, params)
+
+    # ── Fichiers à supprimer du disque (collecte AVANT suppression) ──
+    file_paths: list[str] = []
+    file_paths += await col_ids(
+        "SELECT file_path FROM documents WHERE uploaded_by = :g AND file_path IS NOT NULL",
+        {"g": g},
+        "documents",
+        "uploaded_by",
+    )
+    scope_entity_ids = [str(x) for x in (prop_ids + lease_ids + tenant_ids + owner_ids)]
+    if scope_entity_ids:
+        file_paths += await col_ids(
+            "SELECT file_path FROM documents "
+            "WHERE entity_id::text = ANY(:ids) AND file_path IS NOT NULL",
+            {"ids": scope_entity_ids},
+            "documents",
+            "entity_id",
+        )
+    if target.logo_path:
+        file_paths.append(target.logo_path)
+    if prop_ids:
+        file_paths += await col_ids(
+            "SELECT photo_path FROM signalements "
+            "WHERE property_id = ANY(:ids) AND photo_path IS NOT NULL",
+            {"ids": prop_ids},
+            "signalements",
+            "photo_path",
+        )
+    if tenant_ids:
+        file_paths += await col_ids(
+            "SELECT photo_path FROM tickets WHERE tenant_id = ANY(:ids) AND photo_path IS NOT NULL",
+            {"ids": tenant_ids},
+            "tickets",
+            "photo_path",
+        )
+
+    async def dele_any(table: str, col: str, id_list: list) -> None:
+        if id_list and (table, col) in cols:
+            await db.execute(text(f"DELETE FROM {table} WHERE {col} = ANY(:ids)"), {"ids": id_list})
+
+    async def dele_eq(table: str, col: str, val) -> None:
+        if (table, col) in cols:
+            await db.execute(text(f"DELETE FROM {table} WHERE {col} = :v"), {"v": val})
+
+    # ── A. Enfants des baux ──
+    for tbl, col in [
+        ("payments", "lease_id"),
+        ("inspections", "lease_id"),
+        ("lease_rent_revisions", "lease_id"),
+        ("apurement_plans", "lease_id"),
+        ("lease_exits", "lease_id"),
+        ("avis_echeances", "lease_id"),
+        ("charge_regularizations", "lease_id"),
+        ("taxe_declarations", "lease_id"),
+        ("automation_rules", "lease_id"),
+        ("lease_tenants", "lease_id"),
+    ]:
+        await dele_any(tbl, col, lease_ids)
+
+    # ── B. Enfants des biens ──
+    for tbl, col in [
+        ("candidatures", "property_id"),
+        ("property_visit_slots", "property_id"),
+        ("inspections", "property_id"),
+        ("listings", "property_id"),
+        ("signalements", "property_id"),
+        ("signalement_alerts", "property_id"),
+        ("entretiens", "property_id"),
+    ]:
+        await dele_any(tbl, col, prop_ids)
+
+    # ── C. Enfants des locataires ──
+    if tenant_ids and ("ticket_messages", "ticket_id") in cols and ("tickets", "tenant_id") in cols:
+        await db.execute(
+            text(
+                "DELETE FROM ticket_messages WHERE ticket_id IN "
+                "(SELECT id FROM tickets WHERE tenant_id = ANY(:ids))"
+            ),
+            {"ids": tenant_ids},
+        )
+    for tbl, col in [
+        ("tickets", "tenant_id"),
+        ("payments", "tenant_id"),
+        ("apurement_plans", "tenant_id"),
+        ("avis_echeances", "tenant_id"),
+        ("charge_regularizations", "tenant_id"),
+        ("taxe_declarations", "tenant_id"),
+        ("automation_rules", "tenant_id"),
+        ("signalements", "tenant_id"),
+    ]:
+        await dele_any(tbl, col, tenant_ids)
+
+    # ── D/E. Baux puis biens ──
+    await dele_any("leases", "id", lease_ids)
+    await dele_any("properties", "id", prop_ids)
+
+    # ── F. Locataires et propriétaires (fiches) ──
+    await dele_any("tenants", "id", tenant_ids)
+    await dele_any("owners", "id", owner_ids)
+
+    # ── G. Contenus directs du gérant ──
+    for tbl, col in [
+        ("caf_templates", "gestionnaire_id"),
+        ("user_email_domains", "user_id"),
+        ("message_templates", "gestionnaire_id"),
+        ("document_templates", "gestionnaire_id"),
+        ("notifications", "user_id"),
+        ("offers", "gestionnaire_id"),
+        ("telegram_links", "user_id"),
+        ("contacts", "created_by"),
+        ("documents", "uploaded_by"),
+        ("automation_rules", "created_by"),
+        ("ticket_messages", "author_id"),
+    ]:
+        await dele_eq(tbl, col, g)
+
+    # Messages propriétaire ↔ gestionnaire (du gérant et des propriétaires liés).
+    msg_users = list({g, *linked_ids})
+    if ("proprietaire_messages", "proprietaire_id") in cols:
+        await db.execute(
+            text(
+                "DELETE FROM proprietaire_messages "
+                "WHERE proprietaire_id = ANY(:ids) OR sender_id = ANY(:ids)"
+            ),
+            {"ids": msg_users},
+        )
+
+    # ── H. Comptes de connexion liés (propriétaires/locataires) ──
+    await dele_any("users", "id", linked_ids)
+
+    # ── I. Le gérant lui-même ──
+    await db.delete(target)
+    await db.commit()
+
+    # ── Nettoyage disque (hors transaction : best-effort) ──
+    for p in file_paths:
+        try:
+            delete_file(p)
+        except Exception:  # noqa: BLE001
+            pass
+
+    return {"status": "deleted"}
+
+
 @router.get("/stats", response_model=Stats)
 async def stats(_: None = Depends(require_internal_key), db: AsyncSession = Depends(get_db)):
     managers = (
@@ -436,7 +654,9 @@ class AuditLogOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get("/audit", response_model=list[AuditLogOut], dependencies=[Depends(require_internal_key)])
+@router.get(
+    "/audit", response_model=list[AuditLogOut], dependencies=[Depends(require_internal_key)]
+)
 async def list_audit_logs(
     action: Optional[str] = Query(None),
     user_email: Optional[str] = Query(None),
