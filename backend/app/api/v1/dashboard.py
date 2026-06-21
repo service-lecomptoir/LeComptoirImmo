@@ -770,32 +770,30 @@ async def get_proprietaire_performance(
     for prop in properties:
         prop_id = prop.id
 
-        # Loyer mensuel théorique = somme des baux actifs ; date de début la plus
-        # ancienne pour ne compter que les mois réellement sous contrat (prorata).
-        leases_res = await db.execute(
-            select(
-                func.coalesce(func.sum(Lease.rent_amount + Lease.charges_amount), 0.0),
-                func.min(Lease.start_date),
-            ).where(
-                Lease.property_id == prop_id,
-                Lease.is_active.is_(True),
+        # Historique COMPLET des baux du bien (actifs ET résiliés) : on mesure la
+        # performance du BIEN, indépendamment des changements de locataire en cours
+        # d'année.
+        leases_rows = (
+            await db.execute(
+                select(
+                    Lease.start_date,
+                    Lease.end_date,
+                    Lease.rent_amount,
+                    Lease.charges_amount,
+                ).where(Lease.property_id == prop_id)
             )
-        )
-        row = leases_res.one()
-        monthly_expected = float(row[0] or 0)
-        min_start = row[1]
+        ).all()
 
-        # Mois sous contrat dans l'année : on n'inclut pas les mois antérieurs au
-        # début du bail, ni les baux à venir. Un bail de 6 mois+ => mois écoulés ;
-        # un bail récent => seulement ses mois d'existence.
-        if min_start is None or (min_start.year > year):
-            start_month = months_elapsed + 1  # aucun bail actif sur l'année => 0
-        elif min_start.year < year:
-            start_month = 1
-        else:
-            start_month = min_start.month
-        active_months = max(0, months_elapsed - start_month + 1)
-        ytd_theoretical = monthly_expected * active_months
+        def _rent_due(m: int, _leases=leases_rows) -> float:
+            """Loyer + charges dus pour le mois `m` de l'année, tous baux confondus
+            (0 si le bien était vacant ce mois-là)."""
+            m_first = date(year, m, 1)
+            next_first = m_first + relativedelta(months=1)
+            total = 0.0
+            for s, e, rent, charges in _leases:
+                if s < next_first and (e is None or e >= m_first):
+                    total += float(rent or 0) + float(charges or 0)
+            return total
 
         # Encaissé YTD (period_year == year) : payé/partiel + mois reportés (part
         # déjà payée) + échéances d'apurement encaissées dans l'année.
@@ -811,9 +809,16 @@ async def get_proprietaire_performance(
         ytd_received = float(ytd_res.scalar_one() or 0)
         ytd_received += await _apurement_received(db, [prop_id], year=year)
 
-        # Détail mensuel
+        # Détail mensuel + cumuls : le théorique d'un mois = loyer dû par le(s) bail(s)
+        # qui couvraient ce mois ; un mois sans bail (vacance) ne compte pas.
         monthly_breakdown = []
+        ytd_theoretical = 0.0
+        active_months = 0
         for month in range(1, months_elapsed + 1):
+            expected = _rent_due(month)
+            if expected > 0:
+                active_months += 1
+            ytd_theoretical += expected
             m_res = await db.execute(
                 select(func.coalesce(func.sum(Payment.amount_paid), 0.0))
                 .join(Lease, Payment.lease_id == Lease.id)
@@ -827,11 +832,14 @@ async def get_proprietaire_performance(
             monthly_breakdown.append(
                 {
                     "month": month,
-                    # Pas de loyer dû avant le début du bail.
-                    "expected": round(monthly_expected if month >= start_month else 0.0, 2),
+                    "expected": round(expected, 2),
                     "received": round(float(m_res.scalar_one() or 0), 2),
                 }
             )
+
+        # Loyer mensuel « courant » affiché (mois en cours, ou décembre pour une
+        # année passée) — 0 si le bien est vacant ce mois-là.
+        monthly_expected = _rent_due(months_elapsed) if months_elapsed >= 1 else 0.0
 
         collection_rate = round(
             (ytd_received / ytd_theoretical * 100) if ytd_theoretical > 0 else 0, 1
