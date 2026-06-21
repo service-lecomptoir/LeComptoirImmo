@@ -220,11 +220,7 @@ export default function Dashboard() {
         <KPICard title={stats.total_leases_active > 1 ? 'Contrats actifs' : 'Contrat actif'} value={fmt(stats.total_leases_active)}
           sub={repartitionContrats(stats.active_leases_by_type)} icon={FileText} color="green" />
         <KPICard title={`Occupation du parc pour ${moisCourant()}`} value={`${stats.occupancy.occupancy_rate}%`}
-          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`
-            + ` · ${stats.occupancy.vacant_units} vacant${stats.occupancy.vacant_units > 1 ? 's' : ''}`
-            + (stats.total_leases_future > 0
-              ? ` dont ${stats.total_leases_future} à venir`
-              : '')}
+          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`}
           icon={Home} color="purple" />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
           sub={stats.alerts.overdue_payments > 0
