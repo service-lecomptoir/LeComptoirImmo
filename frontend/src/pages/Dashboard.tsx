@@ -228,26 +228,24 @@ export default function Dashboard() {
           sub={`${stats.occupancy.total_units} unité${stats.occupancy.total_units > 1 ? 's' : ''}`} icon={Building2} color="blue" />
         <KPICard title={stats.total_leases_active > 1 ? 'Contrats actifs' : 'Contrat actif'} value={fmt(stats.total_leases_active)}
           sub={repartitionContrats(stats.active_leases_by_type)} icon={FileText} color="green" />
-        <KPICard title={`Occupation du parc pour ${moisCourant()}`} value={`${stats.occupancy.occupancy_rate}%`}
-          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`}
+        <KPICard title="Occupation du parc" value={`${stats.occupancy.occupancy_rate}%`}
+          sub={`${stats.occupancy.occupied_units}/${stats.occupancy.total_units} loué${stats.occupancy.occupied_units > 1 ? 's' : ''}`
+            + ` · ${stats.occupancy_next_rate}% en ${moisSuivant()}`}
           icon={Home} color="purple" />
-        <KPICard title={`Occupation à venir (${moisSuivant()})`} value={`${stats.occupancy_next_rate}%`}
-          sub={`${stats.occupancy_next_occupied}/${stats.occupancy.total_units} loué${stats.occupancy_next_occupied > 1 ? 's' : ''}`}
-          icon={Home} color="blue" />
+        <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
+          sub="Cautions détenues" icon={CreditCard} color="purple" />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <KPICard title={`Loyers attendus pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
+          icon={Euro} color="blue" />
+        <KPICard title={`Loyers encaissés pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
+          sub={`Recouvrement : ${stats.financial.collection_rate}%`} icon={CheckCircle} color="green" />
         <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
           sub={stats.alerts.overdue_payments > 0
             ? `${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''} en retard`
             : 'À jour'} icon={AlertTriangle}
           color={stats.financial.total_outstanding > 0 ? 'red' : 'green'} />
-        <KPICard title={`Loyers attendus pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
-          icon={Euro} color="blue" />
-        <KPICard title={`Loyers encaissés pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
-          sub={`Recouvrement : ${stats.financial.collection_rate}%`} icon={CheckCircle} color="green" />
-        <KPICard title="Dépôts de garantie" value={fmtEur(stats.financial.total_deposits)}
-          sub="Cautions détenues" icon={CreditCard} color="purple" />
       </div>
 
       {/* Graphiques */}
