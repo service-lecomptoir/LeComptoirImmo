@@ -200,7 +200,10 @@ async def get_dashboard_stats(
             _lease_scope(
                 select(func.sum(Lease.rent_amount + Lease.charges_amount)).where(
                     Lease.is_active.is_(True),
-                    Lease.start_date <= month_end,
+                    # Bail actif SUR ce mois : commencé avant le mois suivant et pas
+                    # encore terminé (sinon les baux futurs gonflent l'attendu).
+                    Lease.start_date < month_end,
+                    or_(Lease.end_date.is_(None), Lease.end_date >= month_start),
                 )
             )
         )

@@ -14,10 +14,12 @@ import { apiClient } from '@/api/client'
 import { getErrorMessage } from '@/utils/errors'
 import { useAuthStore } from '@/store/authStore'
 
+// Mois en français : noms ≤ 4 lettres affichés en entier (mars, mai, juin, août),
+// les plus longs abrégés à 3 lettres.
 const MONTH_LABELS: Record<string, string> = {
-  '01': 'Jan', '02': 'Fév', '03': 'Mar', '04': 'Avr',
-  '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Aoû',
-  '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Déc',
+  '01': 'jan', '02': 'fév', '03': 'mars', '04': 'avr',
+  '05': 'mai', '06': 'juin', '07': 'jui', '08': 'août',
+  '09': 'sep', '10': 'oct', '11': 'nov', '12': 'déc',
 }
 
 function fmt(n: number) {
