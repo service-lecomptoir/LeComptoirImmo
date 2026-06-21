@@ -180,7 +180,7 @@ export default function PropertyList() {
         p.name,
         PROPERTY_TYPE_LABELS[p.property_type] ?? p.property_type,
         p.city, (p.full_address || '').replace(/\n/g, ', '), p.owner_name,
-        p.occupied_now ? 'Oui' : 'Non',
+        p.is_occupied ? 'Oui' : 'Non',
         p.unit_count,
       ]))
     toast.success(`${properties.length} bien(s) exporté(s)`)
@@ -200,9 +200,9 @@ export default function PropertyList() {
           variant={TYPE_VARIANT[prop.property_type] ?? 'gray'}
         />
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-          prop.occupied_now ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+          prop.is_occupied ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
         }`}>
-          {prop.occupied_now ? 'Occupé' : 'Disponible'}
+          {prop.is_occupied ? 'Occupé' : 'Disponible'}
         </span>
       </div>
 
@@ -282,9 +282,9 @@ export default function PropertyList() {
       </td>
       <td className="px-4 py-3 text-center">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-          prop.occupied_now ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+          prop.is_occupied ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
         }`}>
-          {prop.occupied_now ? 'Occupé' : 'Disponible'}
+          {prop.is_occupied ? 'Occupé' : 'Disponible'}
         </span>
       </td>
       <td className="px-4 py-3" onClick={e => e.stopPropagation()}>

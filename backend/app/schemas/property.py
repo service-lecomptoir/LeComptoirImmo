@@ -114,8 +114,7 @@ class PropertyResponse(BaseModel):
     has_cellar: bool = False
     has_fiber: bool = False
     has_air_conditioning: bool = False
-    is_occupied: bool = False  # a un bail actif (garde métier anti double-bail)
-    occupied_now: bool = False  # occupé SUR le mois courant (affichage)
+    is_occupied: bool = False
     is_available: bool = True
     unit_count: int = 0
     occupied_count: int = 0
@@ -137,8 +136,7 @@ class PropertyListItem(BaseModel):
     owner_name: str | None
     typology: str | None = None
     area_sqm: float | None = None
-    is_occupied: bool = False  # a un bail actif (garde métier anti double-bail)
-    occupied_now: bool = False  # occupé SUR le mois courant (affichage)
+    is_occupied: bool = False
     unit_count: int = 0
     occupied_count: int = 0
     created_at: datetime
