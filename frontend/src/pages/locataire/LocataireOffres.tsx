@@ -40,8 +40,8 @@ export default function LocataireOffres() {
       {loading ? (
         <div className="text-center py-16 text-gray-400">Chargement…</div>
       ) : offers.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border">
-          <ShoppingBag size={40} className="mx-auto text-gray-300 mb-3" />
+        <div className="text-center py-12 bg-white rounded-xl border">
+          <ShoppingBag size={36} className="mx-auto text-gray-300 mb-2" />
           <p className="text-gray-500 font-medium">Aucune offre disponible</p>
           <p className="text-sm text-gray-400 mt-1">Votre gestionnaire n'a pas encore publié d'offres.</p>
         </div>

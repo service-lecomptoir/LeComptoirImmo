@@ -14,7 +14,7 @@ import type { ElementType } from 'react'
 import {
   LayoutDashboard, Users, Building2, FileText,
   CreditCard, Settings, Calendar,
-  Home, Receipt, BookUser, PenSquare, BarChart3,
+  Home, Archive, BookUser, PenSquare, BarChart3,
   Calculator, MessageSquare, MessagesSquare, Send, Wrench, Wallet, FileCheck,
   ShoppingBag, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
   UserCheck, DoorOpen, ConciergeBell, BookText,
@@ -140,7 +140,7 @@ export const navLocataire: NavItem[] = [
   { to: '/locataire/paiements', icon: CreditCard, label: 'Ma comptabilité' },
   { to: '/locataire/demarches', icon: MessagesSquare, label: 'Mes démarches' },
   { to: '/locataire/signaler', icon: ConciergeBell, label: 'Allô gardien !' },
-  { to: '/locataire/documents', icon: Receipt, label: 'Mes documents' },
+  { to: '/locataire/documents', icon: Archive, label: 'Mes documents' },
   { to: '/locataire/offres', icon: ShoppingBag, label: 'Offres & Services' },
 ]
 

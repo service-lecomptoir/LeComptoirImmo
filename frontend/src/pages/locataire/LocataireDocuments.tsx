@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   FileText, Download, Upload, ChevronDown, ChevronRight,
-  FileCheck, Home, Shield, RefreshCw, TrendingUp, Trash2, X, Calendar, AlertTriangle,
+  FileCheck, Home, Shield, RefreshCw, TrendingUp, Trash2, X, Calendar, AlertTriangle, Archive,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -547,7 +547,12 @@ export default function LocataireDocuments() {
       />
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Mes documents</h1>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2.5">
+          <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-blue-50 text-blue-600">
+            <Archive size={20} />
+          </span>
+          Mes documents
+        </h1>
         <p className="text-gray-500 text-sm mt-1">
           Tous vos documents liés à votre location
         </p>
