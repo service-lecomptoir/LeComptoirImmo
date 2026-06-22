@@ -162,7 +162,7 @@ export function navForRole(role?: string): NavItem[] {
 export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   // Gestionnaire / admin
   '/comptabilite': "Grand livre de toutes les transactions (appels de loyer, règlements, apurement, régularisations de charges), avec le logement concerné (et le propriétaire pour le mandataire).",
-  '/comptabilite/mandant': "Compte rendu de gestion par propriétaire : loyers encaissés, honoraires retenus (taux configurable + TVA), reversements effectués et solde restant à reverser. Export CRG en PDF.",
+  '/comptabilite/mandant': "Compte rendu de gestion par propriétaire : loyers encaissés, honoraires retenus (taux configurable + TVA), reversements effectués et solde restant à reverser. Périodicité au choix (mensuel, trimestriel, semestriel, annuel) et export CRG en PDF.",
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
   '/diffusion': 'Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes et suivez leurs performances (vues).',

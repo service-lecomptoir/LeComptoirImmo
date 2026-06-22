@@ -55,8 +55,17 @@ class OwnerService:
         )
 
     @staticmethod
-    async def get_finances(db: AsyncSession, owner_id: uuid.UUID, year: int) -> dict:
-        """Agrège revenus, performance par bien et synthèse fiscale d'un propriétaire/année."""
+    async def get_finances(
+        db: AsyncSession,
+        owner_id: uuid.UUID,
+        year: int,
+        month_start: int = 1,
+        month_end: int = 12,
+    ) -> dict:
+        """Agrège revenus, performance par bien et synthèse fiscale d'un propriétaire.
+
+        La plage de mois [month_start, month_end] permet une vue infra-annuelle
+        (mensuel/trimestriel/semestriel) ; par défaut l'année entière (1..12)."""
         from sqlalchemy.orm import selectinload
 
         from app.models.lease import Lease
@@ -92,7 +101,12 @@ class OwnerService:
                             selectinload(Payment.tenant),
                             selectinload(Payment.lease).selectinload(Lease.parent_property),
                         )
-                        .where(Payment.lease_id.in_(lease_ids), Payment.period_year == year)
+                        .where(
+                            Payment.lease_id.in_(lease_ids),
+                            Payment.period_year == year,
+                            Payment.period_month >= month_start,
+                            Payment.period_month <= month_end,
+                        )
                         .order_by(Payment.period_month)
                     )
                 )
@@ -178,6 +192,8 @@ class OwnerService:
                     except Exception:
                         _pdate = None
                     if not _pdate or _pdate.year != year:
+                        continue
+                    if not (month_start <= _pdate.month <= month_end):
                         continue
                     _amt = float(_i.get("amount", 0))
                     total_percu += _amt

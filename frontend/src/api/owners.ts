@@ -39,9 +39,10 @@ export const ownersApi = {
     downloadBlob(r.data, filename)
   },
 
-  /** Compte mandant (CRG) : encaissé, honoraires, net, reversé, solde à reverser. */
-  mandant: (id: string, year: number) =>
-    apiClient.get<MandantAccount>(`/owners/${id}/mandant`, { params: { year } }),
+  /** Compte mandant (CRG) : encaissé, honoraires, net, reversé, solde à reverser.
+   *  period = mensuel|trimestriel|semestriel|annuel ; index = mois/trimestre/semestre. */
+  mandant: (id: string, year: number, period: CrgPeriod = 'annuel', index = 1) =>
+    apiClient.get<MandantAccount>(`/owners/${id}/mandant`, { params: { year, period, index } }),
 
   /** Liste des reversements (optionnellement filtrés par année). */
   reversements: (id: string, year?: number) =>
@@ -55,9 +56,9 @@ export const ownersApi = {
   deleteReversement: (id: string, reversementId: string) =>
     apiClient.delete(`/owners/${id}/reversements/${reversementId}`),
 
-  /** Télécharge le compte rendu de gestion (CRG) PDF. */
-  crgPdf: async (id: string, year: number, filename: string) => {
-    const r = await apiClient.get(`/owners/${id}/crg/pdf`, { params: { year }, responseType: 'blob' })
+  /** Télécharge le compte rendu de gestion (CRG) PDF pour la périodicité choisie. */
+  crgPdf: async (id: string, year: number, filename: string, period: CrgPeriod = 'annuel', index = 1) => {
+    const r = await apiClient.get(`/owners/${id}/crg/pdf`, { params: { year, period, index }, responseType: 'blob' })
     downloadBlob(r.data, filename)
   },
 }
@@ -123,10 +124,16 @@ export interface ReversementCreate {
   label?: string | null
   note?: string | null
 }
+export type CrgPeriod = 'mensuel' | 'trimestriel' | 'semestriel' | 'annuel'
 export interface MandantAccount {
   owner_id: string
   owner_name: string
   year: number
+  period: CrgPeriod
+  period_index: number
+  period_label: string
+  month_start: number
+  month_end: number
   honoraires: { rate: number; vat_rate: number; ht: number; vat: number; ttc: number }
   loyers_encaisses: number
   charges_encaissees: number

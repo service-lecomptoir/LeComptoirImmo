@@ -200,14 +200,17 @@ async def owner_fiscal_pdf(
 async def owner_mandant_account(
     owner_id: uuid.UUID,
     year: int = Query(..., ge=2000, le=2100),
+    period: str = Query("annuel", pattern="^(mensuel|trimestriel|semestriel|annuel)$"),
+    index: int = Query(1, ge=1, le=12),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_manager),
     _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
 ):
-    """Encaissé, honoraires (HT/TVA/TTC), net dû, reversé et solde à reverser."""
+    """Encaissé, honoraires (HT/TVA/TTC), net dû, reversé et solde à reverser,
+    pour la périodicité demandée (mensuel/trimestriel/semestriel/annuel)."""
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
-    return await MandantService.get_account(db, owner_id, year)
+    return await MandantService.get_account(db, owner_id, year, period, index)
 
 
 @router.get(
@@ -263,6 +266,8 @@ async def delete_owner_reversement(
 async def owner_crg_pdf(
     owner_id: uuid.UUID,
     year: int = Query(..., ge=2000, le=2100),
+    period: str = Query("annuel", pattern="^(mensuel|trimestriel|semestriel|annuel)$"),
+    index: int = Query(1, ge=1, le=12),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_manager),
     _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
@@ -271,17 +276,18 @@ async def owner_crg_pdf(
 
     from app.services.pdf_service import html_to_pdf, render_template
     from app.services.template_layout_service import get_layout
-    from app.utils.filename import doc_filename
+    from app.utils.filename import _slug as _slug_name
+    from app.utils.filename import simple_doc_filename
 
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
-    account = await MandantService.get_account(db, owner_id, year)
+    account = await MandantService.get_account(db, owner_id, year, period, index)
     html = render_template(
         "crg.html.j2",
         {
             "account": account,
             "layout": get_layout(),
-            "period_label": f"Année {year}",
+            "period_label": account["period_label"],
             "manager_name": current_user.full_name or "",
             "manager_address": getattr(current_user, "full_address", None) or "",
             "signature_uri": (getattr(current_user, "signature", None) or ""),
@@ -289,7 +295,14 @@ async def owner_crg_pdf(
         },
     )
     pdf = html_to_pdf(html)
-    filename = doc_filename("crg", tenant=account["owner_name"], year=year)
+    # Nom de fichier : CRG-<proprio>-<periode>-<aaaa>.pdf (ex. CRG-DUPONT-T1-2026).
+    period_tag = {
+        "mensuel": f"{account['month_start']:02d}",
+        "trimestriel": f"T{index}",
+        "semestriel": f"S{index}",
+        "annuel": "ANNUEL",
+    }.get(period, "ANNUEL")
+    filename = simple_doc_filename("crg", _slug_name(account["owner_name"]), period_tag, year)
     return Response(
         content=pdf,
         media_type="application/pdf",

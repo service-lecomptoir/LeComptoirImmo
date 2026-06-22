@@ -18,6 +18,43 @@ from app.models.owner_reversement import OwnerReversement
 from app.schemas.owner_reversement import ReversementCreate
 from app.services.owner_service import OwnerService
 
+# Périodicités du compte rendu de gestion.
+CRG_PERIODS = ("mensuel", "trimestriel", "semestriel", "annuel")
+_MONTHS_FR = [
+    "",
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Décembre",
+]
+
+
+def resolve_period(year: int, period: str, index: int) -> tuple[int, int, str]:
+    """(month_start, month_end, libellé) pour une périodicité CRG donnée.
+
+    `index` désigne le mois (1-12), le trimestre (1-4) ou le semestre (1-2) ;
+    ignoré pour l'annuel. Toute valeur hors bornes est repliée sur l'année."""
+    if period == "mensuel":
+        m = min(12, max(1, index))
+        return m, m, f"{_MONTHS_FR[m]} {year}"
+    if period == "trimestriel":
+        q = min(4, max(1, index))
+        s = (q - 1) * 3 + 1
+        return s, s + 2, f"T{q} {year}"
+    if period == "semestriel":
+        h = min(2, max(1, index))
+        s = (h - 1) * 6 + 1
+        return s, s + 5, f"{'1er' if h == 1 else '2e'} semestre {year}"
+    return 1, 12, f"Année {year}"
+
 
 class MandantService:
     @staticmethod
@@ -66,10 +103,18 @@ class MandantService:
         await db.flush()
 
     @staticmethod
-    async def get_account(db: AsyncSession, owner_id: uuid.UUID, year: int) -> dict:
-        """Compte mandant d'un propriétaire pour l'année : encaissé, honoraires
-        (HT/TVA/TTC), net dû, reversé et solde à reverser."""
-        finances = await OwnerService.get_finances(db, owner_id, year)
+    async def get_account(
+        db: AsyncSession,
+        owner_id: uuid.UUID,
+        year: int,
+        period: str = "annuel",
+        index: int = 1,
+    ) -> dict:
+        """Compte mandant d'un propriétaire pour une période (mensuel/trimestriel/
+        semestriel/annuel) : encaissé, honoraires (HT/TVA/TTC), net dû, reversé et
+        solde à reverser."""
+        month_start, month_end, period_label = resolve_period(year, period, index)
+        finances = await OwnerService.get_finances(db, owner_id, year, month_start, month_end)
         fiscal = finances["fiscal"]
 
         gross_rent = float(fiscal["gross_rent_revenue"])
@@ -83,7 +128,16 @@ class MandantService:
         # Net dû au propriétaire = encaissé - honoraires TTC retenus par le mandataire.
         net_du = round(total_encaisse - fees_ttc, 2)
 
-        reversements = await MandantService.list_reversements(db, owner_id, year)
+        all_reversements = await MandantService.list_reversements(db, owner_id, year)
+        # Vue infra-annuelle : on ne compte que les reversements rattachés à un mois
+        # de la plage. Vue annuelle : tous (y compris ceux sans mois précis).
+        is_annual = month_start == 1 and month_end == 12
+        reversements = [
+            r
+            for r in all_reversements
+            if is_annual
+            or (r.period_month is not None and month_start <= r.period_month <= month_end)
+        ]
         total_reverse = round(sum(float(r.amount) for r in reversements), 2)
         solde_a_reverser = round(net_du - total_reverse, 2)
 
@@ -91,6 +145,11 @@ class MandantService:
             "owner_id": finances["owner_id"],
             "owner_name": finances["owner_name"],
             "year": year,
+            "period": period,
+            "period_index": index,
+            "period_label": period_label,
+            "month_start": month_start,
+            "month_end": month_end,
             "honoraires": {
                 "rate": fiscal["management_fee_rate"],
                 "vat_rate": fiscal["management_fee_vat_rate"],

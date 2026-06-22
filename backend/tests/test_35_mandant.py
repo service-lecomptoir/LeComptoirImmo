@@ -12,7 +12,7 @@ from app.models.payment import Payment, PaymentStatus
 from app.models.property import Property
 from app.models.tenant import Tenant
 from app.schemas.owner_reversement import ReversementCreate
-from app.services.mandant_service import MandantService
+from app.services.mandant_service import MandantService, resolve_period
 from app.services.owner_service import OwnerService
 
 YEAR = 2026
@@ -163,6 +163,58 @@ async def test_reversement_reduces_balance(db, gestionnaire_user):
 async def test_reversement_amount_must_be_positive():
     with pytest.raises(ValueError):
         ReversementCreate(period_year=YEAR, amount=0, reversement_date=date(YEAR, 1, 1))
+
+
+# ── Périodicité (mensuel / trimestriel / semestriel / annuel) ────────────────
+def test_resolve_period_ranges_and_labels():
+    assert resolve_period(2026, "mensuel", 6) == (6, 6, "Juin 2026")
+    assert resolve_period(2026, "trimestriel", 2) == (4, 6, "T2 2026")
+    assert resolve_period(2026, "semestriel", 1) == (1, 6, "1er semestre 2026")
+    assert resolve_period(2026, "semestriel", 2) == (7, 12, "2e semestre 2026")
+    assert resolve_period(2026, "annuel", 1) == (1, 12, "Année 2026")
+    # Hors bornes => replié.
+    assert resolve_period(2026, "trimestriel", 9)[0:2] == (10, 12)
+
+
+@pytest.mark.asyncio
+async def test_account_period_filters_payment(db, gestionnaire_user):
+    # Le loyer payé est sur le mois 5.
+    owner = await _setup_owner(db, gestionnaire_user, suffix="per")
+
+    mai = await MandantService.get_account(db, owner.id, YEAR, "mensuel", 5)
+    assert mai["loyers_encaisses"] == 800.0
+    assert mai["period_label"] == "Mai 2026"
+
+    juin = await MandantService.get_account(db, owner.id, YEAR, "mensuel", 6)
+    assert juin["loyers_encaisses"] == 0.0  # rien encaissé en juin
+
+    t2 = await MandantService.get_account(db, owner.id, YEAR, "trimestriel", 2)  # avr-juin
+    assert t2["loyers_encaisses"] == 800.0
+    t1 = await MandantService.get_account(db, owner.id, YEAR, "trimestriel", 1)  # jan-mars
+    assert t1["loyers_encaisses"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_reversement_attribution_by_month(db, gestionnaire_user):
+    owner = await _setup_owner(db, gestionnaire_user, suffix="att")
+    await MandantService.create_reversement(
+        db,
+        owner.id,
+        ReversementCreate(
+            period_year=YEAR, period_month=5, amount=100, reversement_date=date(YEAR, 5, 10)
+        ),
+        created_by=gestionnaire_user.id,
+    )
+    # Le reversement de mai compte pour T2 (avr-juin) et l'annuel, pas pour T1.
+    assert (await MandantService.get_account(db, owner.id, YEAR, "trimestriel", 2))[
+        "total_reverse"
+    ] == 100.0
+    assert (await MandantService.get_account(db, owner.id, YEAR, "trimestriel", 1))[
+        "total_reverse"
+    ] == 0.0
+    assert (await MandantService.get_account(db, owner.id, YEAR, "annuel", 1))[
+        "total_reverse"
+    ] == 100.0
 
 
 # ── CRG : le template se rend avec le compte mandant ─────────────────────────

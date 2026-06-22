@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ChevronRight, ChevronDown, FileDown, RefreshCw, KeyRound, Wallet, Plus, Trash2 } from 'lucide-react'
-import { ownersApi, type MandantAccount } from '@/api/owners'
+import { ownersApi, type MandantAccount, type CrgPeriod } from '@/api/owners'
 import type { OwnerListItem } from '@/types/owner'
 import { docFilename } from '@/utils/filename'
 import { formatEuro as fmtEuro } from '@/utils/format'
@@ -10,18 +10,37 @@ import { toast } from '@/store/toast'
 const METHOD_LABELS: Record<string, string> = {
   virement: 'Virement', cheque: 'Chèque', especes: 'Espèces', autre: 'Autre',
 }
+const MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+const PERIODS: { value: CrgPeriod; label: string }[] = [
+  { value: 'mensuel', label: 'Mensuel' },
+  { value: 'trimestriel', label: 'Trimestriel' },
+  { value: 'semestriel', label: 'Semestriel' },
+  { value: 'annuel', label: 'Annuel' },
+]
+
+// Sous-périodes sélectionnables selon la périodicité (index transmis au backend).
+function subPeriodOptions(period: CrgPeriod): { value: number; label: string }[] {
+  if (period === 'mensuel') return MONTHS.map((m, i) => ({ value: i + 1, label: m }))
+  if (period === 'trimestriel') return [1, 2, 3, 4].map(q => ({ value: q, label: `T${q}` }))
+  if (period === 'semestriel') return [{ value: 1, label: '1er semestre' }, { value: 2, label: '2e semestre' }]
+  return []
+}
 
 /** Compta mandant : compte rendu de gestion par propriétaire (honoraires, net,
- *  reversements, solde à reverser) avec export CRG PDF. Rôle mandataire. */
+ *  reversements, solde à reverser) avec périodicité configurable et export CRG PDF. */
 export default function ComptaMandant() {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
+  const [period, setPeriod] = useState<CrgPeriod>('annuel')
+  const [index, setIndex] = useState(1)
   const [owners, setOwners] = useState<OwnerListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [data, setData] = useState<Record<string, MandantAccount>>({})
   const [fetchingId, setFetchingId] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  const cacheKey = (ownerId: string) => `${ownerId}:${year}:${period}:${index}`
 
   useEffect(() => {
     ownersApi.list({ limit: 200 })
@@ -30,14 +49,18 @@ export default function ComptaMandant() {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { setData({}); setExpandedId(null) }, [year])
+  // Tout changement de période/année invalide le cache et recharge la ligne ouverte.
+  useEffect(() => {
+    setData({})
+    if (expandedId) load(expandedId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, period, index])
 
   const load = async (ownerId: string) => {
-    const key = `${ownerId}:${year}`
     setFetchingId(ownerId)
     try {
-      const r = await ownersApi.mandant(ownerId, year)
-      setData(prev => ({ ...prev, [key]: r.data }))
+      const r = await ownersApi.mandant(ownerId, year, period, index)
+      setData(prev => ({ ...prev, [cacheKey(ownerId)]: r.data }))
     } catch (e) {
       toast.error(getErrorMessage(e, 'Erreur lors du chargement du compte mandant'))
     } finally { setFetchingId(null) }
@@ -46,19 +69,21 @@ export default function ComptaMandant() {
   const toggle = async (o: OwnerListItem) => {
     if (expandedId === o.id) { setExpandedId(null); return }
     setExpandedId(o.id)
-    if (!data[`${o.id}:${year}`]) await load(o.id)
+    if (!data[cacheKey(o.id)]) await load(o.id)
   }
 
-  const downloadCrg = async (o: OwnerListItem) => {
+  const downloadCrg = async (o: OwnerListItem, acc: MandantAccount) => {
     setDownloadingId(o.id)
     try {
-      await ownersApi.crgPdf(o.id, year, docFilename('crg', { tenant: o.full_name, year }))
+      const tag = acc.period_label.replace(/\s+/g, '_')
+      await ownersApi.crgPdf(o.id, year, docFilename('crg', { tenant: `${o.full_name}_${tag}` }), period, index)
     } catch (e) {
       toast.error(getErrorMessage(e, 'Erreur lors du téléchargement du CRG'))
     } finally { setDownloadingId(null) }
   }
 
   const years = [now.getFullYear() + 1, now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2]
+  const subOpts = subPeriodOptions(period)
 
   return (
     <div className="p-4 sm:p-6">
@@ -67,13 +92,22 @@ export default function ComptaMandant() {
           <h1 className="text-2xl font-bold text-gray-900">Compta mandant</h1>
           <p className="text-sm text-gray-500 mt-0.5">Honoraires, reversements et compte rendu de gestion, par propriétaire</p>
         </div>
-        <select
-          value={year}
-          onChange={e => setYear(Number(e.target.value))}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-fit"
-        >
-          {years.map(y => <option key={y} value={y}>Année {y}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          <select value={year} onChange={e => setYear(Number(e.target.value))}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {years.map(y => <option key={y} value={y}>Année {y}</option>)}
+          </select>
+          <select value={period} onChange={e => { setPeriod(e.target.value as CrgPeriod); setIndex(1) }}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {PERIODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+          {subOpts.length > 0 && (
+            <select value={index} onChange={e => setIndex(Number(e.target.value))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {subOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -86,7 +120,7 @@ export default function ComptaMandant() {
           </div>
         ) : (
           owners.map(o => {
-            const acc = data[`${o.id}:${year}`]
+            const acc = data[cacheKey(o.id)]
             const open = expandedId === o.id
             return (
               <div key={o.id} className="border-b border-gray-100 last:border-0">
@@ -110,9 +144,8 @@ export default function ComptaMandant() {
                       : <MandantDetail
                           owner={o}
                           acc={acc}
-                          year={year}
                           downloading={downloadingId === o.id}
-                          onDownload={() => downloadCrg(o)}
+                          onDownload={() => downloadCrg(o, acc)}
                           onReload={() => load(o.id)}
                         />}
                   </div>
@@ -127,11 +160,10 @@ export default function ComptaMandant() {
 }
 
 function MandantDetail({
-  owner, acc, year, downloading, onDownload, onReload,
+  owner, acc, downloading, onDownload, onReload,
 }: {
   owner: OwnerListItem
   acc: MandantAccount
-  year: number
   downloading: boolean
   onDownload: () => void
   onReload: () => void
@@ -140,6 +172,7 @@ function MandantDetail({
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('virement')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [month, setMonth] = useState<number>(acc.month_start)
   const [label, setLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -158,7 +191,8 @@ function MandantDetail({
     setSaving(true)
     try {
       await ownersApi.createReversement(owner.id, {
-        period_year: year, amount: n, method, reversement_date: date, label: label || null,
+        period_year: acc.year, period_month: month, amount: n, method,
+        reversement_date: date, label: label || null,
       })
       toast.success('Reversement enregistré')
       setAdding(false); setAmount(''); setLabel('')
@@ -182,6 +216,8 @@ function MandantDetail({
 
   return (
     <div className="max-w-2xl space-y-3">
+      <p className="text-xs font-medium text-blue-700">Période : {acc.period_label}</p>
+
       {/* Synthèse */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {stat('Total encaissé', fmtEuro(acc.total_encaisse))}
@@ -192,7 +228,7 @@ function MandantDetail({
 
       {/* Détail du compte */}
       <div className="rounded-lg border border-gray-200 overflow-hidden text-sm">
-        <div className="bg-gray-800 text-white px-3 py-1.5 text-xs font-semibold">COMPTE MANDANT {year}</div>
+        <div className="bg-gray-800 text-white px-3 py-1.5 text-xs font-semibold">COMPTE MANDANT · {acc.period_label}</div>
         <Row label="Loyers encaissés" value={fmtEuro(acc.loyers_encaisses)} />
         <Row label="Charges encaissées" value={fmtEuro(acc.charges_encaissees)} />
         <Row label="Total encaissé" value={fmtEuro(acc.total_encaisse)} strong />
@@ -206,18 +242,25 @@ function MandantDetail({
       {/* Reversements */}
       <div className="rounded-lg border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between bg-gray-50 px-3 py-1.5">
-          <span className="text-xs font-semibold text-gray-700 uppercase">Reversements {year}</span>
+          <span className="text-xs font-semibold text-gray-700 uppercase">Reversements</span>
           <button onClick={() => setAdding(v => !v)}
             className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700">
             <Plus size={13} /> Ajouter
           </button>
         </div>
         {adding && (
-          <div className="px-3 py-3 bg-blue-50/40 grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
-            <div className="sm:col-span-1">
+          <div className="px-3 py-3 bg-blue-50/40 grid grid-cols-1 sm:grid-cols-6 gap-2 items-end">
+            <div>
               <label className="block text-[11px] text-gray-600 mb-1">Montant (€)</label>
               <input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)}
                 className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-[11px] text-gray-600 mb-1">Mois</label>
+              <select value={month} onChange={e => setMonth(Number(e.target.value))}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-sm">
+                {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-[11px] text-gray-600 mb-1">Mode</label>
@@ -245,14 +288,14 @@ function MandantDetail({
           </div>
         )}
         {acc.reversements.length === 0 ? (
-          <p className="px-3 py-3 text-sm text-gray-400">Aucun reversement enregistré sur {year}.</p>
+          <p className="px-3 py-3 text-sm text-gray-400">Aucun reversement sur cette période.</p>
         ) : (
           <table className="w-full text-sm">
             <tbody>
               {acc.reversements.map(r => (
                 <tr key={r.id} className="border-t border-gray-100">
                   <td className="px-3 py-2 whitespace-nowrap">{new Date(r.reversement_date).toLocaleDateString('fr-FR')}</td>
-                  <td className="px-3 py-2">{r.label || `Reversement ${year}`}</td>
+                  <td className="px-3 py-2">{r.label || (r.period_month ? MONTHS[r.period_month - 1] : `Reversement ${r.period_year}`)}</td>
                   <td className="px-3 py-2 text-gray-500">{r.method ? (METHOD_LABELS[r.method] || r.method) : '-'}</td>
                   <td className="px-3 py-2 text-right font-medium whitespace-nowrap">{fmtEuro(r.amount)}</td>
                   <td className="px-3 py-2 text-right">
@@ -274,7 +317,7 @@ function MandantDetail({
         className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
       >
         {downloading ? <RefreshCw size={14} className="animate-spin" /> : <FileDown size={14} />}
-        Télécharger le compte rendu de gestion (PDF)
+        Télécharger le CRG (PDF) · {acc.period_label}
       </button>
     </div>
   )
