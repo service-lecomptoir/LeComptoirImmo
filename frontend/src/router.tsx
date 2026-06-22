@@ -84,6 +84,8 @@ const ScoringList = lazyPage(() => import('@/pages/scoring/ScoringList'))
 const FinancesParProprietaire = lazyPage(() => import('@/pages/finances/FinancesParProprietaire'))
 const ComptabiliteGestion = lazyPage(() => import('@/pages/finances/ComptabiliteGestion'))
 const ComptaMandant = lazyPage(() => import('@/pages/finances/ComptaMandant'))
+const CoproList = lazyPage(() => import('@/pages/coproprietes/CoproList'))
+const CoproDetail = lazyPage(() => import('@/pages/coproprietes/CoproDetail'))
 const Actualisation = lazyPage(() => import('@/pages/actualisation/Actualisation'))
 const DocumentsCaf = lazyPage(() => import('@/pages/documents-caf/DocumentsCaf'))
 const DiffusionPage = lazyPage(() => import('@/pages/publishing/DiffusionPage'))
@@ -256,6 +258,8 @@ export const router = createBrowserRouter([
       { path: 'admin', element: <AdminUsers /> },
       { path: 'comptabilite', element: <ComptabiliteGestion /> },
       { path: 'comptabilite/mandant', element: <ComptaMandant /> },
+      { path: 'coproprietes', element: <CoproList /> },
+      { path: 'coproprietes/:id', element: <CoproDetail /> },
       { path: 'finances/revenus', element: <FinancesParProprietaire view="revenus" /> },
       { path: 'finances/biens', element: <FinancesParProprietaire view="biens" /> },
       { path: 'finances/fiscal', element: <FinancesParProprietaire view="fiscal" /> },

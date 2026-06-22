@@ -62,6 +62,8 @@ export const navGestionnaire: NavItem[] = [
   { to: '/comptabilite/mandant', icon: HandCoins, label: 'Compta mandant' },
   { to: '/finances/biens', icon: BarChart3, label: 'Performance biens' },
   { to: '/finances/fiscal', icon: Calculator, label: 'Liasse fiscale' },
+  { label: 'Syndic', isSeparator: true },
+  { to: '/coproprietes', icon: Building2, label: 'Copropriétés' },
 ]
 
 // Le COMPTABLE voit le MÊME menu que le gestionnaire (lecture intégrale) ; ses
@@ -163,6 +165,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   // Gestionnaire / admin
   '/comptabilite': "Grand livre de toutes les transactions (appels de loyer, règlements, apurement, régularisations de charges), avec le logement concerné (et le propriétaire pour le mandataire).",
   '/comptabilite/mandant': "Compte rendu de gestion par propriétaire : loyers encaissés, honoraires retenus (taux configurable + TVA), reversements effectués et solde restant à reverser. Périodicité au choix (mensuel, trimestriel, semestriel, annuel) et export CRG en PDF.",
+  '/coproprietes': "Module Syndic : vos copropriétés (immeubles), leurs lots et les clés de répartition (tantièmes par charge). Rattachez chaque lot à un copropriétaire et contrôlez l'équilibre des tantièmes.",
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
   '/diffusion': 'Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes et suivez leurs performances (vues).',

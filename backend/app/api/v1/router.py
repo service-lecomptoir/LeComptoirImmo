@@ -10,6 +10,7 @@ from app.api.v1 import (
     caf,
     candidatures,
     contacts,
+    coproprietes,
     dashboard,
     documents,
     entretiens,
@@ -61,6 +62,7 @@ api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(tenants.router, dependencies=_feat("tenants"))
 api_router.include_router(owners.router)
+api_router.include_router(coproprietes.router)
 api_router.include_router(properties.router, dependencies=_feat("properties"))
 api_router.include_router(documents.router)
 api_router.include_router(leases.router, dependencies=_feat("leases"))

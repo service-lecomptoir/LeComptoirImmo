@@ -7,6 +7,12 @@ from app.models.caf_template import CafTemplate
 from app.models.candidature import Candidature
 from app.models.charge_regularization import ChargeRegularization
 from app.models.contact import Contact
+from app.models.copropriete import (
+    CoproLot,
+    CoproLotTantieme,
+    Copropriete,
+    CoproRepartitionKey,
+)
 from app.models.document import Document
 from app.models.document_template import DocumentTemplate
 from app.models.email_domain import EmailDomain
@@ -70,4 +76,8 @@ __all__ = [
     "TaxeDeclaration",
     "MessageTemplate",
     "PropertyVisitSlot",
+    "Copropriete",
+    "CoproRepartitionKey",
+    "CoproLot",
+    "CoproLotTantieme",
 ]

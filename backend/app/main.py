@@ -713,6 +713,68 @@ async def _apply_column_migrations() -> None:
         """,
         "CREATE INDEX IF NOT EXISTS ix_owner_reversements_owner_id ON owner_reversements (owner_id)",
         "CREATE INDEX IF NOT EXISTS ix_owner_reversements_year ON owner_reversements (period_year)",
+        # ── Module Syndic (copropriété) — phase 1 socle ─────────────────────────
+        """
+        CREATE TABLE IF NOT EXISTS coproprietes (
+            id UUID PRIMARY KEY,
+            ref_code VARCHAR(20),
+            name VARCHAR(200) NOT NULL,
+            immatriculation VARCHAR(30),
+            address VARCHAR(300),
+            zip_code VARCHAR(20),
+            city VARCHAR(120),
+            country VARCHAR(80),
+            construction_year INTEGER,
+            notes TEXT,
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_coproprietes_created_by ON coproprietes (created_by)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_coproprietes_ref_code ON coproprietes (ref_code)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_repartition_keys (
+            id UUID PRIMARY KEY,
+            copropriete_id UUID NOT NULL REFERENCES coproprietes(id) ON DELETE CASCADE,
+            name VARCHAR(100) NOT NULL,
+            total_tantiemes INTEGER NOT NULL DEFAULT 10000,
+            is_general BOOLEAN NOT NULL DEFAULT FALSE,
+            position INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_keys_copro ON copro_repartition_keys (copropriete_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_lots (
+            id UUID PRIMARY KEY,
+            copropriete_id UUID NOT NULL REFERENCES coproprietes(id) ON DELETE CASCADE,
+            numero VARCHAR(30) NOT NULL,
+            lot_type VARCHAR(30),
+            floor VARCHAR(20),
+            description VARCHAR(300),
+            owner_id UUID REFERENCES owners(id) ON DELETE SET NULL,
+            property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_lots_copro ON copro_lots (copropriete_id)",
+        "CREATE INDEX IF NOT EXISTS ix_copro_lots_owner ON copro_lots (owner_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_lot_tantiemes (
+            id UUID PRIMARY KEY,
+            lot_id UUID NOT NULL REFERENCES copro_lots(id) ON DELETE CASCADE,
+            key_id UUID NOT NULL REFERENCES copro_repartition_keys(id) ON DELETE CASCADE,
+            tantiemes NUMERIC(12,2) NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT uq_copro_lot_key UNIQUE (lot_id, key_id)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_tantiemes_lot ON copro_lot_tantiemes (lot_id)",
+        "CREATE INDEX IF NOT EXISTS ix_copro_tantiemes_key ON copro_lot_tantiemes (key_id)",
     ]
     try:
         async with engine.begin() as conn:
