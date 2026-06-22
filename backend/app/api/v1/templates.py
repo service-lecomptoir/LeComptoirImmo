@@ -210,7 +210,7 @@ async def preview_document_pdf(
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
-            headers={"Content-Disposition": 'inline; filename="apercu.pdf"'},
+            headers={"Content-Disposition": 'inline; filename="APERCU.pdf"'},
         )
 
     html = build_document_html(

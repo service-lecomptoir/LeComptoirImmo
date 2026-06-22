@@ -211,7 +211,7 @@ async def get_my_invoice_pdf(
         media_type="application/pdf",
         headers={
             "Content-Disposition": resp.headers.get(
-                "content-disposition", 'attachment; filename="facture.pdf"'
+                "content-disposition", 'attachment; filename="FACTURE.pdf"'
             )
         },
     )

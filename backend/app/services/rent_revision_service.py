@@ -128,9 +128,10 @@ class RentRevisionService:
             if kind == "rent" and source == "irl":
                 try:
                     from app.services.document_blocks_pdf_service import RevisionLoyerPDFService
+                    from app.utils.filename import simple_doc_filename
 
                     pdf_bytes = await RevisionLoyerPDFService.generate(db, lease)
-                    pdf_name = f"revision-loyer-{lease.id}.pdf"
+                    pdf_name = simple_doc_filename("revision-loyer", lease.id)
                 except Exception:  # noqa: BLE001
                     import logging
 

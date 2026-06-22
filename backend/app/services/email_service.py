@@ -104,11 +104,13 @@ async def send_email(
                 logger.warning("Logo inline non joint: %s", _exc)
 
         if attachment_bytes and attachment_filename:
+            from app.utils.filename import upper_filename
+
             msg.add_attachment(
                 attachment_bytes,
                 maintype=attachment_mime.split("/")[0],
                 subtype=attachment_mime.split("/")[1],
-                filename=attachment_filename,
+                filename=upper_filename(attachment_filename),  # nomenclature en MAJUSCULES
             )
 
         await aiosmtplib.send(

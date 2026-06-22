@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 
+from app.api.deps import enforce_comptable_readonly
 from app.api.v1 import (
     actualisation,
     apurement_plans,
@@ -39,7 +40,6 @@ from app.api.v1 import (
     users,
     webhook,
 )
-from app.api.deps import enforce_comptable_readonly
 from app.core.features import require_feature
 
 # Garde global : un COMPTABLE est en lecture seule (sauf encaissement / avis /

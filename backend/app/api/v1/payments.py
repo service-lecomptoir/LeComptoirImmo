@@ -242,14 +242,14 @@ async def locataire_regularization_pdf(
     if reg is None or reg.tenant_id != tenant.id:
         raise NotFoundException("Régularisation introuvable")
     from app.services.document_blocks_pdf_service import ChargeRegularizationPDFService
+    from app.utils.filename import simple_doc_filename
 
     pdf = await ChargeRegularizationPDFService.generate(db, reg)
+    fname = simple_doc_filename("regularisation-charges", reg_id)
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="regularisation-charges-{reg_id}.pdf"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
 
 
@@ -309,12 +309,14 @@ async def locataire_revision_pdf(
     if lease is None or lease.tenant_id != tenant.id:
         raise NotFoundException("Bail introuvable")
     from app.services.document_blocks_pdf_service import RevisionLoyerPDFService
+    from app.utils.filename import simple_doc_filename
 
     pdf = await RevisionLoyerPDFService.generate(db, lease)
+    fname = simple_doc_filename("revision-loyer", lease_id)
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="revision-loyer-{lease_id}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
 
 
@@ -371,14 +373,16 @@ async def locataire_taxe_pdf(
         raise NotFoundException("Déclaration introuvable")
     lease = await db.get(Lease, taxe.lease_id)
     from app.services.document_blocks_pdf_service import TaxesFoncieresPDFService
+    from app.utils.filename import simple_doc_filename
 
     pdf = await TaxesFoncieresPDFService.generate(
         db, lease, taxe.year, float(taxe.teom_amount or 0)
     )
+    fname = simple_doc_filename("taxe-ordures", taxe.year)
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="taxe-ordures-{taxe.year}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
     )
 
 

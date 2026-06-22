@@ -1078,6 +1078,8 @@ async def send_revision_email(
 
 async def send_teom_email(db, lease, *, year, amount, pdf_bytes=None) -> bool:
     """Notifie le locataire de la taxe d'ordures ménagères à payer (règle 'taxe_om')."""
+    from app.utils.filename import simple_doc_filename
+
     return await _send_event_to_tenant(
         db,
         lease,
@@ -1085,7 +1087,7 @@ async def send_teom_email(db, lease, *, year, amount, pdf_bytes=None) -> bool:
         ctx_extra={"year": str(year), "amount": f"{float(amount):.2f} €"},
         dedup_suffix=str(year),
         pdf_bytes=pdf_bytes,
-        pdf_name=(f"taxe_ordures_{year}.pdf" if pdf_bytes else None),
+        pdf_name=(simple_doc_filename("taxe-ordures", year) if pdf_bytes else None),
     )
 
 
@@ -1279,9 +1281,10 @@ async def _run_rapport_mensuel(db, rule, today: date) -> int:
     pdf_bytes = pdf_name = None
     try:
         from app.services.document_blocks_pdf_service import RapportGestionPDFService
+        from app.utils.filename import simple_doc_filename
 
         pdf_bytes = await RapportGestionPDFService.generate(db, manager_id, year, month)
-        pdf_name = f"rapport-gestion-{year}-{month:02d}.pdf"
+        pdf_name = simple_doc_filename("rapport-gestion", year, f"{month:02d}")
     except Exception as pexc:  # noqa: BLE001
         logger.warning("[automation] PDF rapport mensuel indisponible mgr=%s: %r", manager_id, pexc)
     # CC = adresses de la règle MAIS jamais le destinataire principal (le rapport

@@ -718,10 +718,14 @@ async def delete_charge_regularization(
 
 # ── Génération PDF (par blocs) ───────────────────────────────────────────────
 def _pdf_response(pdf: bytes, filename: str) -> Response:
+    from app.utils.filename import upper_filename
+
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{upper_filename(filename)}"'
+        },
     )
 
 
@@ -733,10 +737,11 @@ async def regularization_pdf(
 ):
     """PDF de la régularisation de charges (par blocs)."""
     from app.services.document_blocks_pdf_service import ChargeRegularizationPDFService
+    from app.utils.filename import simple_doc_filename
 
     reg, _lease = await _get_regul_and_lease(db, reg_id, current_user)
     pdf = await ChargeRegularizationPDFService.generate(db, reg)
-    return _pdf_response(pdf, f"regularisation_charges_{reg_id}.pdf")
+    return _pdf_response(pdf, simple_doc_filename("regularisation-charges", reg_id))
 
 
 @router.get("/loyers/{lease_id}/revision-pdf")
@@ -756,8 +761,10 @@ async def revision_pdf(
         raise HTTPException(
             status_code=400, detail="Indice IRL de référence non renseigné sur ce bail"
         )
+    from app.utils.filename import simple_doc_filename
+
     pdf = await RevisionLoyerPDFService.generate(db, lease)
-    return _pdf_response(pdf, f"revision_loyer_{lease_id}.pdf")
+    return _pdf_response(pdf, simple_doc_filename("revision-loyer", lease_id))
 
 
 class TaxesPdfIn(BaseModel):
@@ -820,4 +827,6 @@ async def taxes_pdf(
         import logging
 
         logging.getLogger(__name__).warning("[taxe_om] e-mail locataire non envoyé", exc_info=True)
-    return _pdf_response(pdf, f"taxes_foncieres_{data.year}.pdf")
+    from app.utils.filename import simple_doc_filename
+
+    return _pdf_response(pdf, simple_doc_filename("taxes-foncieres", data.year))

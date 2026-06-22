@@ -322,7 +322,7 @@ async def preview_template(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="apercu_{template}.pdf"'},
+        headers={"Content-Disposition": f'inline; filename="APERCU_{template.upper()}.pdf"'},
     )
 
 

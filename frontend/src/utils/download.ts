@@ -15,6 +15,14 @@ export function isDownloadSuppressing(): boolean {
   return Date.now() < _suppressUntil
 }
 
+/** Met la nomenclature du fichier en MAJUSCULES (extension conservée en minuscules). */
+export function upperFilename(name: string): string {
+  if (!name) return name
+  const dot = name.lastIndexOf('.')
+  if (dot <= 0) return name.toUpperCase()
+  return name.slice(0, dot).toUpperCase() + name.slice(dot).toLowerCase()
+}
+
 /** Déclenche le téléchargement d'un blob et gère proprement le cycle de vie de l'URL. */
 export function downloadBlob(data: BlobPart, filename: string, type = 'application/pdf'): void {
   _suppressUntil = Date.now() + 15000
@@ -22,7 +30,7 @@ export function downloadBlob(data: BlobPart, filename: string, type = 'applicati
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = filename
+  link.download = upperFilename(filename)  // nomenclature en MAJUSCULES
   link.rel = 'noopener'
   document.body.appendChild(link)
   link.click()

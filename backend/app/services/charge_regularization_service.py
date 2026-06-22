@@ -288,6 +288,7 @@ class ChargeRegularizationService:
                 from app.models.rent_revision import RentRevision
                 from app.services.automation_engine import send_revision_email
                 from app.services.document_blocks_pdf_service import ChargeRegularizationPDFService
+                from app.utils.filename import simple_doc_filename
 
                 pdf = await ChargeRegularizationPDFService.generate(db, reg)
                 rev = (
@@ -304,7 +305,7 @@ class ChargeRegularizationService:
                     new_amount=float(reg.new_monthly_provision),
                     effective_date=eff,
                     pdf_bytes=pdf,
-                    pdf_name=f"regularisation-charges-{reg.id}.pdf",
+                    pdf_name=simple_doc_filename("regularisation-charges", reg.id),
                 )
         except Exception:  # pragma: no cover - best effort
             pass

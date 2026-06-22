@@ -57,7 +57,10 @@ class DocumentService:
         rattaché à une entité (ex. le locataire). Utilisé pour que les courriers
         produits par le gestionnaire apparaissent dans « Mes documents »."""
         from app.utils.file_handler import save_bytes
+        from app.utils.filename import upper_filename
 
+        # Nomenclature en MAJUSCULES pour tout document déposé sur le compte locataire.
+        file_name = upper_filename(file_name)
         file_path, file_size = save_bytes(content, entity_type.value, str(entity_id), file_name)
         doc = Document(
             entity_type=entity_type,
