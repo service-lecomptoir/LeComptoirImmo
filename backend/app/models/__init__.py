@@ -19,6 +19,7 @@ from app.models.message import ProprietaireMessage
 from app.models.message_template import MessageTemplate
 from app.models.notification import Notification
 from app.models.owner import Owner
+from app.models.owner_reversement import OwnerReversement
 from app.models.payment import Payment
 from app.models.property import Property
 from app.models.publishing import Listing, PublishPlatform
@@ -36,6 +37,7 @@ __all__ = [
     "User",
     "Tenant",
     "Owner",
+    "OwnerReversement",
     "Property",
     "Document",
     "Lease",

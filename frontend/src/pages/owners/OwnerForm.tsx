@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Contact, Phone, Landmark, UserRound, Plus, X } from 'lucide-react'
+import { Contact, Phone, Landmark, UserRound, Plus, X, Percent } from 'lucide-react'
 import { Button, Input } from '@/components/ui'
 import { SectionTitle } from '@/components/common/SectionTitle'
 import { Modal } from '@/components/common/Modal'
@@ -34,6 +34,8 @@ const schema = z.object({
   iban: z.string().optional(),
   bic: z.string().optional(),
   bank_holder: z.string().optional(),
+  // Surcharge du taux d'honoraires de gestion pour ce mandat (vide = défaut mandataire).
+  mgmt_fee_rate: z.string().optional(),
   notes: z.string().optional(),
   user_id: z.string().uuid().optional().or(z.literal('')),
 }).superRefine((d, ctx) => {
@@ -133,6 +135,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       iban: owner.iban ?? '',
       bic: owner.bic ?? '',
       bank_holder: owner.bank_holder ?? '',
+      mgmt_fee_rate: owner.mgmt_fee_rate != null ? String(owner.mgmt_fee_rate) : '',
       notes: owner.notes ?? '',
       user_id: owner.user_id ?? '',
     } : { owner_type: 'person' },
@@ -209,6 +212,8 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       iban: data.iban ? data.iban.replace(/\s+/g, '').toUpperCase() : null,
       bic: data.bic ? data.bic.replace(/\s+/g, '').toUpperCase() : null,
       bank_holder: clean(data.bank_holder),
+      mgmt_fee_rate: (data.mgmt_fee_rate ?? '').trim() === ''
+        ? null : Number((data.mgmt_fee_rate as string).replace(',', '.')),
       notes: clean(data.notes),
       user_id: clean(data.user_id as string),
     }
@@ -412,6 +417,15 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
               <OwnerField label="IBAN" name="iban" placeholder="FR76 3000 4028 3798 7654 3210 943" register={register} errors={errors} />
             </div>
             <OwnerField label="BIC" name="bic" placeholder="BNPAFRPPXXX" register={register} errors={errors} />
+          </div>
+        </div>
+
+        {/* Mandat de gestion : surcharge du taux d'honoraires */}
+        <div>
+          <SectionTitle icon={Percent}>Mandat de gestion</SectionTitle>
+          <p className="-mt-2 text-xs text-gray-400 mb-3">Laissez vide pour appliquer votre taux d'honoraires par défaut.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <OwnerField label="Taux d'honoraires (%)" name="mgmt_fee_rate" type="number" placeholder="Ex. 8" register={register} errors={errors} />
           </div>
         </div>
 

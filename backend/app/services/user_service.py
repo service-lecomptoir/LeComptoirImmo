@@ -175,6 +175,11 @@ class UserService:
         # Tampon / cachet pro : même logique que la signature (vide/null = suppression).
         if "tampon" in data.model_fields_set:
             user.tampon = data.tampon or None
+        # Honoraires de gestion (mandataire) : taux par défaut + TVA.
+        if data.mgmt_fee_rate is not None:
+            user.mgmt_fee_rate = data.mgmt_fee_rate
+        if data.mgmt_fee_vat_rate is not None:
+            user.mgmt_fee_vat_rate = data.mgmt_fee_vat_rate
 
         await db.flush()
         await db.refresh(user)

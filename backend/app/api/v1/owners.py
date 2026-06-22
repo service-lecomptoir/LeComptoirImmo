@@ -16,7 +16,9 @@ from app.models.owner import Owner
 from app.models.user import User
 from app.schemas.document import DocumentResponse
 from app.schemas.owner import OwnerCreate, OwnerListItem, OwnerResponse, OwnerUpdate
+from app.schemas.owner_reversement import ReversementCreate, ReversementResponse
 from app.services.document_service import DocumentService
+from app.services.mandant_service import MandantService
 from app.services.owner_service import OwnerService
 
 router = APIRouter(prefix="/owners", tags=["Propriétaires"])
@@ -186,6 +188,108 @@ async def owner_fiscal_pdf(
     )
     pdf = html_to_pdf(html)
     filename = doc_filename("liasse_fiscale", tenant=data["owner_name"], year=year)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ── Compta mandant : compte rendu de gestion + reversements ────────────────────
+@router.get("/{owner_id}/mandant", summary="Compte mandant (CRG) d'un propriétaire")
+async def owner_mandant_account(
+    owner_id: uuid.UUID,
+    year: int = Query(..., ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+    _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
+):
+    """Encaissé, honoraires (HT/TVA/TTC), net dû, reversé et solde à reverser."""
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
+    return await MandantService.get_account(db, owner_id, year)
+
+
+@router.get(
+    "/{owner_id}/reversements",
+    response_model=list[ReversementResponse],
+    summary="Reversements d'un propriétaire",
+)
+async def list_owner_reversements(
+    owner_id: uuid.UUID,
+    year: int | None = Query(None, ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
+    return await MandantService.list_reversements(db, owner_id, year)
+
+
+@router.post(
+    "/{owner_id}/reversements",
+    response_model=ReversementResponse,
+    status_code=201,
+    summary="Enregistrer un reversement au propriétaire",
+)
+async def create_owner_reversement(
+    owner_id: uuid.UUID,
+    data: ReversementCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
+    return await MandantService.create_reversement(db, owner_id, data, created_by=current_user.id)
+
+
+@router.delete(
+    "/{owner_id}/reversements/{reversement_id}",
+    status_code=204,
+    summary="Supprimer un reversement",
+)
+async def delete_owner_reversement(
+    owner_id: uuid.UUID,
+    reversement_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
+    await MandantService.delete_reversement(db, owner_id, reversement_id)
+
+
+@router.get("/{owner_id}/crg/pdf", summary="Compte rendu de gestion (PDF)")
+async def owner_crg_pdf(
+    owner_id: uuid.UUID,
+    year: int = Query(..., ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+    _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
+):
+    from fastapi.responses import Response
+
+    from app.services.pdf_service import html_to_pdf, render_template
+    from app.services.template_layout_service import get_layout
+    from app.utils.filename import doc_filename
+
+    owner = await OwnerService.get_by_id(db, owner_id)
+    await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
+    account = await MandantService.get_account(db, owner_id, year)
+    html = render_template(
+        "crg.html.j2",
+        {
+            "account": account,
+            "layout": get_layout(),
+            "period_label": f"Année {year}",
+            "manager_name": current_user.full_name or "",
+            "manager_address": getattr(current_user, "full_address", None) or "",
+            "signature_uri": (getattr(current_user, "signature", None) or ""),
+            "tampon_uri": (getattr(current_user, "tampon", None) or ""),
+        },
+    )
+    pdf = html_to_pdf(html)
+    filename = doc_filename("crg", tenant=account["owner_name"], year=year)
     return Response(
         content=pdf,
         media_type="application/pdf",

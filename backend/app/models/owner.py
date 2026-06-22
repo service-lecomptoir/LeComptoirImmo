@@ -2,7 +2,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -55,6 +55,11 @@ class Owner(Base, TimestampMixin):
     iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
     bic: Mapped[str | None] = mapped_column(String(11), nullable=True)
     bank_holder: Mapped[str | None] = mapped_column(String(150), nullable=True)
+
+    # ── Mandat de gestion : surcharge du taux d'honoraires ──────────────────────
+    # Taux d'honoraires (% du loyer encaissé HT) propre à ce mandat. NULL = on
+    # applique le taux par défaut du mandataire (users.mgmt_fee_rate).
+    mgmt_fee_rate: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
 
     # ── Notes ─────────────────────────────────────────────────────────────────
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)

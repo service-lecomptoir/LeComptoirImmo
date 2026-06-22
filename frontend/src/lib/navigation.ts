@@ -17,7 +17,7 @@ import {
   Home, Archive, BookUser, PenSquare, BarChart3,
   Calculator, MessageSquare, MessagesSquare, Send, Wrench, Wallet, FileCheck,
   ShoppingBag, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
-  UserCheck, DoorOpen, ConciergeBell, BookText,
+  UserCheck, DoorOpen, ConciergeBell, BookText, HandCoins,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -59,6 +59,7 @@ export const navGestionnaire: NavItem[] = [
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/finances/revenus', icon: Wallet, label: 'Encaissements' },
   { to: '/comptabilite', icon: BookText, label: 'Comptabilité' },
+  { to: '/comptabilite/mandant', icon: HandCoins, label: 'Compta mandant' },
   { to: '/finances/biens', icon: BarChart3, label: 'Performance biens' },
   { to: '/finances/fiscal', icon: Calculator, label: 'Liasse fiscale' },
 ]
@@ -161,6 +162,7 @@ export function navForRole(role?: string): NavItem[] {
 export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   // Gestionnaire / admin
   '/comptabilite': "Grand livre de toutes les transactions (appels de loyer, règlements, apurement, régularisations de charges), avec le logement concerné (et le propriétaire pour le mandataire).",
+  '/comptabilite/mandant': "Compte rendu de gestion par propriétaire : loyers encaissés, honoraires retenus (taux configurable + TVA), reversements effectués et solde restant à reverser. Export CRG en PDF.",
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
   '/diffusion': 'Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes et suivez leurs performances (vues).',

@@ -38,6 +38,28 @@ export const ownersApi = {
     const r = await apiClient.get(`/owners/${id}/fiscal/pdf`, { params: { year }, responseType: 'blob' })
     downloadBlob(r.data, filename)
   },
+
+  /** Compte mandant (CRG) : encaissé, honoraires, net, reversé, solde à reverser. */
+  mandant: (id: string, year: number) =>
+    apiClient.get<MandantAccount>(`/owners/${id}/mandant`, { params: { year } }),
+
+  /** Liste des reversements (optionnellement filtrés par année). */
+  reversements: (id: string, year?: number) =>
+    apiClient.get<Reversement[]>(`/owners/${id}/reversements`, { params: year ? { year } : {} }),
+
+  /** Enregistre un reversement au propriétaire. */
+  createReversement: (id: string, data: ReversementCreate) =>
+    apiClient.post<Reversement>(`/owners/${id}/reversements`, data),
+
+  /** Supprime un reversement. */
+  deleteReversement: (id: string, reversementId: string) =>
+    apiClient.delete(`/owners/${id}/reversements/${reversementId}`),
+
+  /** Télécharge le compte rendu de gestion (CRG) PDF. */
+  crgPdf: async (id: string, year: number, filename: string) => {
+    const r = await apiClient.get(`/owners/${id}/crg/pdf`, { params: { year }, responseType: 'blob' })
+    downloadBlob(r.data, filename)
+  },
 }
 
 export interface OwnerFinancesLine {
@@ -78,4 +100,50 @@ export interface OwnerFinances {
   revenus: { total_du: number; total_percu: number; lignes: OwnerFinancesLine[] }
   biens: OwnerFinancesBien[]
   fiscal: OwnerFiscal
+}
+
+export interface Reversement {
+  id: string
+  owner_id: string
+  period_year: number
+  period_month?: number | null
+  amount: number
+  method?: string | null
+  reversement_date: string
+  label?: string | null
+  note?: string | null
+  created_at: string
+}
+export interface ReversementCreate {
+  period_year: number
+  period_month?: number | null
+  amount: number
+  method?: string | null
+  reversement_date: string
+  label?: string | null
+  note?: string | null
+}
+export interface MandantAccount {
+  owner_id: string
+  owner_name: string
+  year: number
+  honoraires: { rate: number; vat_rate: number; ht: number; vat: number; ttc: number }
+  loyers_encaisses: number
+  charges_encaissees: number
+  total_encaisse: number
+  net_proprietaire: number
+  total_reverse: number
+  solde_a_reverser: number
+  reversements: Array<{
+    id: string
+    period_year: number
+    period_month?: number | null
+    amount: number
+    method?: string | null
+    reversement_date: string
+    label?: string | null
+    note?: string | null
+  }>
+  revenus: { total_du: number; total_percu: number; lignes: OwnerFinancesLine[] }
+  biens: OwnerFinancesBien[]
 }

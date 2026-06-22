@@ -28,6 +28,9 @@ export interface User {
   signature_font?: string | null
   // Tampon / cachet professionnel (data-URL PNG) du mandataire.
   tampon?: string | null
+  // Honoraires de gestion (mandataire) : taux par défaut + TVA.
+  mgmt_fee_rate?: number | null
+  mgmt_fee_vat_rate?: number | null
   // Visibilité espace propriétaire : rubriques effectivement visibles (propriétaire),
   // et réglages bruts (gestionnaire).
   proprio_sections?: string[] | null

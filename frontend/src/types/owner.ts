@@ -17,6 +17,7 @@ export interface Owner {
   iban: string | null
   bic: string | null
   bank_holder: string | null
+  mgmt_fee_rate: number | null
   notes: string | null
   user_id: string | null
   created_at: string
@@ -51,6 +52,7 @@ export interface OwnerCreate {
   iban?: string
   bic?: string
   bank_holder?: string
+  mgmt_fee_rate?: number | null
   notes?: string
   user_id?: string
 }

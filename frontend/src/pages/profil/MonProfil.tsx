@@ -29,6 +29,11 @@ export default function MonProfil() {
   const [ownerLastName, setOwnerLastName] = useState(splitName(user?.owner_full_name).last)
   const [ownerCompany, setOwnerCompany] = useState(user?.owner_company ?? '')
   const [ownerNationalId, setOwnerNationalId] = useState(user?.owner_national_id ?? '')
+  // Honoraires de gestion (mandataire) : taux par défaut + TVA.
+  const [mgmtFeeRate, setMgmtFeeRate] = useState(
+    user?.mgmt_fee_rate != null ? String(user.mgmt_fee_rate) : '8')
+  const [mgmtFeeVatRate, setMgmtFeeVatRate] = useState(
+    user?.mgmt_fee_vat_rate != null ? String(user.mgmt_fee_vat_rate) : '0')
   // Type d'identité bailleur : 'personne' (Prénom/Nom) ou 'societe' (Société/SCI + SIRET).
   const [ownerKind, setOwnerKind] = useState<'personne' | 'societe'>(user?.owner_kind === 'societe' ? 'societe' : 'personne')
   const [email, setEmail] = useState(user?.email ?? '')
@@ -60,6 +65,8 @@ export default function MonProfil() {
   const isLocataire = user?.role === 'locataire'
   const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
   const isGP = user?.role === 'gestionnaire_proprio'
+  // Le mandataire (gère pour le compte de tiers) configure ses honoraires de gestion.
+  const isMandataire = user?.role === 'gestionnaire'
 
   // Logo du gestionnaire (en-tête des documents).
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -146,6 +153,10 @@ export default function MonProfil() {
             ? (joinName(ownerFirstName, ownerLastName) || null) : null,
           owner_company: ownerCompany.trim() || null,
           owner_national_id: ownerNationalId.trim() || null,
+        } : {}),
+        ...(isMandataire ? {
+          mgmt_fee_rate: mgmtFeeRate === '' ? 0 : Number(mgmtFeeRate.replace(',', '.')),
+          mgmt_fee_vat_rate: mgmtFeeVatRate === '' ? 0 : Number(mgmtFeeVatRate.replace(',', '.')),
         } : {}),
       })
       // Propriétaire / GP : coordonnées de règlement + RIB → fiche propriétaire.
@@ -266,6 +277,24 @@ export default function MonProfil() {
               </div>
             )}
             <p className="text-xs text-gray-400 mt-1">Utilisé comme bailleur sur le bail, l'attestation de loyer et le formulaire tiers payant.</p>
+          </div>
+        )}
+        {isMandataire && (
+          <div>
+            <label className={lbl}>Honoraires de gestion</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Taux d'honoraires (% du loyer encaissé)</label>
+                <Input type="number" step="0.01" min="0" value={mgmtFeeRate}
+                  onChange={e => setMgmtFeeRate(e.target.value)} placeholder="8" />
+              </div>
+              <div>
+                <label className={lbl}>TVA sur honoraires (%)</label>
+                <Input type="number" step="0.01" min="0" value={mgmtFeeVatRate}
+                  onChange={e => setMgmtFeeVatRate(e.target.value)} placeholder="0" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Taux par défaut appliqué au compte mandant et au CRG. Surchargeable par propriétaire. TVA à 0 si non assujetti.</p>
           </div>
         )}
         <div>

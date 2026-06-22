@@ -53,6 +53,9 @@ class UserUpdate(BaseModel):
     signature_font: str | None = None
     # Tampon / cachet professionnel (data-URL PNG).
     tampon: str | None = None
+    # Honoraires de gestion (mandataire) : taux par défaut + TVA applicable.
+    mgmt_fee_rate: float | None = None
+    mgmt_fee_vat_rate: float | None = None
 
 
 class ProfileUpdate(BaseModel):
@@ -129,6 +132,8 @@ class UserResponse(BaseModel):
     signature_text: str | None = None
     signature_font: str | None = None
     tampon: str | None = None
+    mgmt_fee_rate: float | None = None
+    mgmt_fee_vat_rate: float | None = None
     last_login_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

@@ -21,6 +21,8 @@ class OwnerCreate(BaseModel):
     iban: str | None = None
     bic: str | None = None
     bank_holder: str | None = None
+    # Surcharge du taux d'honoraires pour ce mandat (% ; null = défaut mandataire).
+    mgmt_fee_rate: float | None = None
     notes: str | None = None
     user_id: uuid.UUID | None = None  # Compte de connexion (optionnel)
 
@@ -60,6 +62,7 @@ class OwnerUpdate(BaseModel):
     iban: str | None = None
     bic: str | None = None
     bank_holder: str | None = None
+    mgmt_fee_rate: float | None = None
     notes: str | None = None
     user_id: uuid.UUID | None = None
 
@@ -82,6 +85,7 @@ class OwnerResponse(BaseModel):
     iban: str | None
     bic: str | None
     bank_holder: str | None
+    mgmt_fee_rate: float | None = None
     notes: str | None
     user_id: uuid.UUID | None = None
     created_at: datetime

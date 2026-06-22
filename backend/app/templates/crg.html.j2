@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+{% set sp = layout.spacing %}
+{% set a = account %}
+{% set h = a.honoraires %}
+{% set solde = a.solde_a_reverser %}
+<style>
+  @page { size: A4; margin: {{ sp.page_margin }}; }
+  body { font-family: Arial, sans-serif; font-size: {{ sp.font_size }}pt; color: #1f2937; line-height: {{ sp.line_height }}; background: #fff; }
+  h1 { font-size: {{ sp.font_size | int + 6 }}pt; color: #0d2f5c; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 2px 0; }
+  .sub { text-align: center; color: #6b7280; font-size: {{ sp.font_size | int - 1 }}pt; margin-bottom: 10px; }
+  .head { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+  .box { flex: 1; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; }
+  .box .lbl { font-size: {{ sp.font_size | int - 2 }}pt; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; }
+  .box .val { font-weight: bold; color: #111827; }
+  .sec-title { background: #1f2937; color: #fff; padding: 6px 10px; font-size: {{ sp.font_size | int - 1 }}pt; font-weight: bold; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 6px 10px; border-bottom: 1px solid #eef2f7; font-size: {{ sp.font_size }}pt; text-align: left; vertical-align: top; }
+  td.r, th.r { text-align: right; }
+  .line { font-size: {{ sp.font_size | int - 2 }}pt; color: #9ca3af; }
+  tr.tot td { font-weight: bold; background: #f3f4f6; }
+  th { background: #f9fafb; color: #374151; }
+  .result { margin-top: 14px; border: 2px solid {{ '#15803d' if solde <= 0 else '#b45309' }}; }
+  .result .rh { background: {{ '#15803d' if solde <= 0 else '#b45309' }}; color: #fff; padding: 6px 10px; font-weight: bold; font-size: {{ sp.font_size | int - 1 }}pt; }
+  .result .rb { padding: 10px; }
+  .result .amt { font-size: {{ sp.font_size | int + 6 }}pt; font-weight: bold; color: {{ '#15803d' if solde <= 0 else '#b45309' }}; text-align: right; }
+  .sign { margin-top: 22px; display: flex; align-items: flex-end; gap: 14px; }
+  .footer { margin-top: 22px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 7.5pt; color: #9ca3af; }
+</style></head><body>
+  <h1>Compte rendu de gestion</h1>
+  <p class="sub">Période : {{ period_label }}</p>
+
+  <div class="head">
+    <div class="box">
+      <div class="lbl">Mandataire</div>
+      <div class="val">{{ manager_name }}</div>
+      {% if manager_address %}<div class="line">{{ manager_address }}</div>{% endif %}
+    </div>
+    <div class="box">
+      <div class="lbl">Propriétaire (mandant)</div>
+      <div class="val">{{ a.owner_name }}</div>
+    </div>
+  </div>
+
+  <div class="sec-title">ENCAISSEMENTS POUR LE COMPTE DU PROPRIÉTAIRE</div>
+  <table>
+    <tr><td>Loyers encaissés</td><td class="r">{{ "%.2f"|format(a.loyers_encaisses) }} €</td></tr>
+    <tr><td>Charges encaissées</td><td class="r">{{ "%.2f"|format(a.charges_encaissees) }} €</td></tr>
+    <tr class="tot"><td>Total encaissé</td><td class="r">{{ "%.2f"|format(a.total_encaisse) }} €</td></tr>
+  </table>
+
+  <div class="sec-title">HONORAIRES DE GESTION</div>
+  <table>
+    <tr><td>Honoraires HT<div class="line">{{ "%.2f"|format(h.rate) }} % des loyers encaissés</div></td><td class="r">{{ "%.2f"|format(h.ht) }} €</td></tr>
+    {% if h.vat_rate and h.vat_rate > 0 %}<tr><td>TVA<div class="line">{{ "%.2f"|format(h.vat_rate) }} %</div></td><td class="r">{{ "%.2f"|format(h.vat) }} €</td></tr>{% endif %}
+    <tr class="tot"><td>Honoraires retenus (TTC)</td><td class="r">{{ "%.2f"|format(h.ttc) }} €</td></tr>
+  </table>
+
+  <div class="sec-title">REVERSEMENTS EFFECTUÉS</div>
+  <table>
+    <tr><th>Date</th><th>Libellé</th><th>Mode</th><th class="r">Montant</th></tr>
+    {% for r in a.reversements %}
+    <tr>
+      <td>{{ r.reversement_date.strftime('%d/%m/%Y') if r.reversement_date else '' }}</td>
+      <td>{{ r.label or ('Reversement ' ~ ('%02d/'|format(r.period_month) if r.period_month else '') ~ r.period_year) }}</td>
+      <td>{{ r.method or '-' }}</td>
+      <td class="r">{{ "%.2f"|format(r.amount) }} €</td>
+    </tr>
+    {% endfor %}
+    {% if not a.reversements %}<tr><td colspan="4" style="color:#9ca3af;">Aucun reversement enregistré sur la période.</td></tr>{% endif %}
+    <tr class="tot"><td colspan="3">Total reversé</td><td class="r">{{ "%.2f"|format(a.total_reverse) }} €</td></tr>
+  </table>
+
+  <div class="result">
+    <div class="rh">SOLDE DU COMPTE MANDANT</div>
+    <div class="rb">
+      <table style="border:0;">
+        <tr style="border:0;">
+          <td style="border:0;">
+            <strong>Net dû au propriétaire : {{ "%.2f"|format(a.net_proprietaire) }} €</strong>
+            <div class="line">Total encaissé − honoraires TTC − reversements déjà effectués</div>
+          </td>
+          <td style="border:0;" class="amt">
+            {{ "%.2f"|format(solde if solde >= 0 else -solde) }} €
+            <div class="line" style="text-align:right;">{{ 'Reste à reverser' if solde > 0 else ('Compte soldé' if solde == 0 else 'Trop reversé') }}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="sec-title">DÉTAIL PAR BIEN</div>
+  <table>
+    <tr><th>Bien</th><th>Adresse</th><th class="r">Encaissé {{ a.year }}</th><th class="r">Contrats</th></tr>
+    {% for b in a.biens %}
+    <tr>
+      <td>{{ b.property_name }}</td>
+      <td>{{ b.address }}</td>
+      <td class="r">{{ "%.2f"|format(b.annual_rent) }} €</td>
+      <td class="r">{{ b.active_leases }}</td>
+    </tr>
+    {% endfor %}
+    {% if not a.biens %}<tr><td colspan="4" style="color:#9ca3af;">Aucun bien rattaché.</td></tr>{% endif %}
+  </table>
+
+  {% if signature_uri or tampon_uri %}
+  <div class="sign">
+    {% if signature_uri %}<img src="{{ signature_uri }}" alt="Signature" width="150" height="75">{% endif %}
+    {% if tampon_uri %}<img src="{{ tampon_uri }}" alt="Cachet" width="100" height="100" style="opacity:.92;">{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="footer">
+    Compte rendu de gestion établi par {{ manager_name }} à l'attention de {{ a.owner_name }} pour la période {{ period_label }}.
+    Les montants reflètent les loyers réellement encaissés. Document de gestion, non opposable à l'administration fiscale.
+  </div>
+</body></html>

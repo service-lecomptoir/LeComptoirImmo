@@ -688,6 +688,31 @@ async def _apply_column_migrations() -> None:
         # period_month) → l'index couvrant ce pattern existe déjà (pas de doublon).
         # Liste des notifications d'un utilisateur, non lues d'abord, plus récentes en tête.
         "CREATE INDEX IF NOT EXISTS ix_notifications_user_read_created ON notifications (user_id, is_read, created_at DESC)",
+        # ── Compta mandant : honoraires de gestion configurables ────────────────
+        # Taux par défaut du mandataire (8% historique) + TVA applicable (0 = non
+        # assujetti). Surcharge du taux par mandat sur la fiche propriétaire.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS mgmt_fee_rate NUMERIC(5,2) NOT NULL DEFAULT 8",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS mgmt_fee_vat_rate NUMERIC(5,2) NOT NULL DEFAULT 0",
+        "ALTER TABLE owners ADD COLUMN IF NOT EXISTS mgmt_fee_rate NUMERIC(5,2)",
+        # ── Compta mandant : reversements au propriétaire ───────────────────────
+        """
+        CREATE TABLE IF NOT EXISTS owner_reversements (
+            id UUID PRIMARY KEY,
+            owner_id UUID NOT NULL REFERENCES owners(id) ON DELETE CASCADE,
+            period_year INTEGER NOT NULL,
+            period_month INTEGER,
+            amount NUMERIC(10,2) NOT NULL,
+            method VARCHAR(20),
+            reversement_date DATE NOT NULL,
+            label VARCHAR(200),
+            note TEXT,
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_owner_reversements_owner_id ON owner_reversements (owner_id)",
+        "CREATE INDEX IF NOT EXISTS ix_owner_reversements_year ON owner_reversements (period_year)",
     ]
     try:
         async with engine.begin() as conn:

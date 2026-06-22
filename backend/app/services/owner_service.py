@@ -11,6 +11,32 @@ from app.utils.address import normalize_address_fields
 
 
 class OwnerService:
+    # Taux d'honoraires de gestion par défaut (% du loyer encaissé HT) lorsqu'aucun
+    # taux n'est configuré (mandataire ni mandat). Valeur historiquement codée en dur.
+    DEFAULT_FEE_RATE = 8.0
+
+    @staticmethod
+    async def fee_config(db: AsyncSession, owner: Owner) -> tuple[float, float]:
+        """Renvoie (taux_honoraires %, taux_TVA %) effectifs pour ce mandat.
+
+        Priorité du taux : surcharge sur la fiche propriétaire (mandat) > défaut du
+        mandataire (compte créateur) > défaut applicatif (8%). La TVA est portée par
+        le mandataire (compte créateur ; 0 si non assujetti ou inconnu)."""
+        from app.models.user import User
+
+        rate = owner.mgmt_fee_rate
+        vat = 0.0
+        manager = None
+        if owner.created_by:
+            manager = await db.get(User, owner.created_by)
+        if rate is None and manager is not None and manager.mgmt_fee_rate is not None:
+            rate = manager.mgmt_fee_rate
+        if rate is None:
+            rate = OwnerService.DEFAULT_FEE_RATE
+        if manager is not None and manager.mgmt_fee_vat_rate is not None:
+            vat = float(manager.mgmt_fee_vat_rate)
+        return float(rate), float(vat)
+
     @staticmethod
     async def sync_properties(db: AsyncSession, owner: Owner) -> None:
         """Répercute l'identité/RIB/compte de la fiche sur les biens liés.
@@ -171,7 +197,13 @@ class OwnerService:
                         }
                     )
 
-        management_fees = round(gross_rent * 0.08, 2)
+        # Honoraires de gestion : taux effectif (mandat > mandataire > 8%) + TVA.
+        fee_rate, vat_rate = await OwnerService.fee_config(db, owner)
+        fees_ht = round(gross_rent * fee_rate / 100, 2)
+        fees_vat = round(fees_ht * vat_rate / 100, 2)
+        fees_ttc = round(fees_ht + fees_vat, 2)
+        # La part fiscalement déductible (2044) est le montant HT.
+        management_fees = fees_ht
         total_gross = gross_rent + charges_received
         total_deductible = management_fees
         net_revenue = total_gross - total_deductible
@@ -215,6 +247,12 @@ class OwnerService:
                 "management_fees": management_fees,
                 "total_deductible": round(total_deductible, 2),
                 "net_revenue": round(net_revenue, 2),
+                # Détail des honoraires de gestion (compta mandant / CRG).
+                "management_fee_rate": round(fee_rate, 2),
+                "management_fee_vat_rate": round(vat_rate, 2),
+                "management_fees_ht": fees_ht,
+                "management_fees_vat": fees_vat,
+                "management_fees_ttc": fees_ttc,
             },
         }
 

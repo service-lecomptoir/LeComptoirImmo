@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -80,6 +80,17 @@ class User(Base, TimestampMixin):
     # Tampon / cachet professionnel (data-URL PNG) du mandataire, apposé à côté de
     # la signature sur les documents officiels (bail, documents CAF).
     tampon: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # ── Honoraires de gestion (mandataire) ────────────────────────────────────
+    # Taux d'honoraires par défaut (% du loyer encaissé HT) appliqué aux comptes
+    # mandant / CRG. Surchargé au cas par cas sur la fiche propriétaire (owners).
+    # Défaut 8% (valeur historiquement codée en dur).
+    mgmt_fee_rate: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=8, server_default="8"
+    )
+    # TVA applicable sur les honoraires (% ; 0 = mandataire non assujetti).
+    mgmt_fee_vat_rate: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=0, server_default="0"
+    )
     # « Atelier de documents » : variables épinglées par l'utilisateur, par type de document.
     # Forme : { "<template_type>": ["{{var}}", …], … }. Null/absent = aucune épingle.
     template_pinned_vars: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
