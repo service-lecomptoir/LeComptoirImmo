@@ -540,6 +540,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_mode VARCHAR(16)",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_text TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS signature_font VARCHAR(64)",
+        # Tampon / cachet professionnel du mandataire (data-URL PNG).
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS tampon TEXT",
         # Mot de passe temporaire : forcer le changement à la 1re connexion.
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE",
         # ── Paiement en ligne par carte (config propre au gestionnaire) ─────────

@@ -173,8 +173,10 @@ def generate_lease_pdf(
         "irl_quarter": getattr(lease, "irl_quarter", None),
         "tenant_names": tenant_names,
         "today": _fr(_date.today()),
-        # Signature du bailleur / mandataire (apposée dans le bloc « Le bailleur »).
+        # Signature + tampon (cachet pro) du bailleur / mandataire, apposés dans le
+        # bloc « Le bailleur ».
         "signature_uri": (getattr(manager, "signature", None) or "") if manager else "",
+        "tampon_uri": (getattr(manager, "tampon", None) or "") if manager else "",
     }
     html = render_template("lease_bail.html.j2", ctx)
     return html_to_pdf(html)

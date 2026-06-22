@@ -77,6 +77,9 @@ class User(Base, TimestampMixin):
     signature_mode: Mapped[str | None] = mapped_column(String(16), nullable=True)
     signature_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     signature_font: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Tampon / cachet professionnel (data-URL PNG) du mandataire, apposé à côté de
+    # la signature sur les documents officiels (bail, documents CAF).
+    tampon: Mapped[str | None] = mapped_column(Text, nullable=True)
     # « Atelier de documents » : variables épinglées par l'utilisateur, par type de document.
     # Forme : { "<template_type>": ["{{var}}", …], … }. Null/absent = aucune épingle.
     template_pinned_vars: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

@@ -245,6 +245,7 @@ async def _build_pdf(
                 fld: values_data.get(key, "") for fld, key in (tpl.field_map or {}).items()
             }
             sig = caf_pdf_fill._data_uri_to_png(getattr(current_user, "signature", None))
+            tampon = caf_pdf_fill._data_uri_to_png(getattr(current_user, "tampon", None))
             pdf = caf_pdf_fill.fill(
                 template_bytes,
                 pdf_values,
@@ -253,6 +254,7 @@ async def _build_pdf(
                 sign_x_mm=tpl.sign_x_mm,
                 sign_y_mm=tpl.sign_y_mm,
                 sign_w_mm=tpl.sign_w_mm,
+                tampon_png=tampon,
             )
             return pdf, fname
     # Repli : modèle généré existant

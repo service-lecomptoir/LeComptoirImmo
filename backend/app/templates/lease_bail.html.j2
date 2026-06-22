@@ -216,7 +216,12 @@
       <td>
         <strong>Signature du bailleur</strong> (ou de son mandataire)<br>
         <span class="small">Précédée de la mention « Lu et approuvé »</span>
-        {% if signature_uri %}<div style="margin-top:6px;"><img src="{{ signature_uri }}" alt="Signature" width="160" height="80"></div>{% endif %}
+        {% if signature_uri or tampon_uri %}
+        <div style="margin-top:6px; display:flex; align-items:flex-end; gap:14px;">
+          {% if signature_uri %}<img src="{{ signature_uri }}" alt="Signature" width="160" height="80">{% endif %}
+          {% if tampon_uri %}<img src="{{ tampon_uri }}" alt="Cachet" width="110" height="110" style="opacity:.92;">{% endif %}
+        </div>
+        {% endif %}
       </td>
       <td>
         <strong>Signature du locataire</strong><br>

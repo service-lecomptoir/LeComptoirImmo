@@ -26,6 +26,8 @@ export interface User {
   signature_mode?: 'type' | 'draw' | 'upload' | null
   signature_text?: string | null
   signature_font?: string | null
+  // Tampon / cachet professionnel (data-URL PNG) du mandataire.
+  tampon?: string | null
   // Visibilité espace propriétaire : rubriques effectivement visibles (propriétaire),
   // et réglages bruts (gestionnaire).
   proprio_sections?: string[] | null

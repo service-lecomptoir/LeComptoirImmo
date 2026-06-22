@@ -51,6 +51,8 @@ class UserUpdate(BaseModel):
     signature_mode: str | None = None
     signature_text: str | None = None
     signature_font: str | None = None
+    # Tampon / cachet professionnel (data-URL PNG).
+    tampon: str | None = None
 
 
 class ProfileUpdate(BaseModel):
@@ -126,6 +128,7 @@ class UserResponse(BaseModel):
     signature_mode: str | None = None
     signature_text: str | None = None
     signature_font: str | None = None
+    tampon: str | None = None
     last_login_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

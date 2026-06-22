@@ -172,6 +172,9 @@ class UserService:
             user.signature_text = data.signature_text or None
         if "signature_font" in data.model_fields_set:
             user.signature_font = data.signature_font or None
+        # Tampon / cachet pro : même logique que la signature (vide/null = suppression).
+        if "tampon" in data.model_fields_set:
+            user.tampon = data.tampon or None
 
         await db.flush()
         await db.refresh(user)

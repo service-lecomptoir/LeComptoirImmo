@@ -78,9 +78,14 @@ def fill(
     sign_x_mm: float = 130,
     sign_y_mm: float = 20,
     sign_w_mm: float = 45,
+    tampon_png: bytes | None = None,
+    tampon_x_mm: float = 80,
+    tampon_y_mm: float = 18,
+    tampon_w_mm: float = 38,
 ) -> bytes:
     """Remplit les champs AcroForm avec `values` (champ→valeur texte) et appose la
-    signature sur la page `sign_page` (1-based). Renvoie les octets du PDF rempli."""
+    signature (et, le cas échéant, le tampon/cachet) sur la page `sign_page`
+    (1-based). Renvoie les octets du PDF rempli."""
     from pypdf import PdfReader, PdfWriter
 
     reader = PdfReader(io.BytesIO(template_bytes))
@@ -106,21 +111,27 @@ def fill(
         except Exception:  # noqa: BLE001
             pass
 
-    # Signature : superposer l'image sur la page choisie.
+    # Signature + tampon : superposer les images sur la page choisie.
+    overlays = []
     if signature_png:
+        overlays.append((signature_png, sign_x_mm, sign_y_mm, sign_w_mm, "signature"))
+    if tampon_png:
+        overlays.append((tampon_png, tampon_x_mm, tampon_y_mm, tampon_w_mm, "tampon"))
+    if overlays:
         idx = max(0, min(len(writer.pages) - 1, int(sign_page) - 1))
         target = writer.pages[idx]
         try:
             w = float(target.mediabox.width)
             h = float(target.mediabox.height)
-            ov = _signature_overlay(w, h, signature_png, sign_x_mm, sign_y_mm, sign_w_mm)
-            if ov:
-                from pypdf import PdfReader as _R
+            from pypdf import PdfReader as _R
 
-                ovp = _R(io.BytesIO(ov)).pages[0]
-                target.merge_page(ovp)
+            for png, x_mm, y_mm, w_mm, kind in overlays:
+                ov = _signature_overlay(w, h, png, x_mm, y_mm, w_mm)
+                if ov:
+                    ovp = _R(io.BytesIO(ov)).pages[0]
+                    target.merge_page(ovp)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("caf_pdf_fill signature merge: %r", exc)
+            logger.warning("caf_pdf_fill signature/tampon merge: %r", exc)
 
     out = io.BytesIO()
     writer.write(out)
