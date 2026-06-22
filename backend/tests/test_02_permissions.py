@@ -1,8 +1,10 @@
 """
 Tests unitaires purs — RBAC (sans base de données).
 """
+
 import pytest
-from app.core.permissions import Role, role_has_permission, ROLE_HIERARCHY
+
+from app.core.permissions import ROLE_HIERARCHY, Role, is_manager, role_has_permission
 
 
 class TestRoleHierarchy:
@@ -35,9 +37,15 @@ class TestRoleHierarchy:
         assert not role_has_permission(Role.PROPRIETAIRE, Role.ADMIN)
 
     def test_comptable_has_lecture(self):
+        # Le Comptable a le périmètre de LECTURE du gestionnaire (il voit tout) :
+        # la hiérarchie inclut volontairement GESTIONNAIRE pour les endpoints en
+        # lecture. Ses ÉCRITURES sont restreintes par le garde
+        # `enforce_comptable_readonly` (app/api/deps.py), pas par la hiérarchie.
         assert role_has_permission(Role.COMPTABLE, Role.LECTURE)
         assert role_has_permission(Role.COMPTABLE, Role.COMPTABLE)
-        assert not role_has_permission(Role.COMPTABLE, Role.GESTIONNAIRE)
+        assert role_has_permission(Role.COMPTABLE, Role.GESTIONNAIRE)  # lecture étendue
+        # Mais ce n'est PAS un gestionnaire complet (pas le panneau de gestion).
+        assert not is_manager(Role.COMPTABLE)
 
     def test_lecture_only_lecture(self):
         assert role_has_permission(Role.LECTURE, Role.LECTURE)
