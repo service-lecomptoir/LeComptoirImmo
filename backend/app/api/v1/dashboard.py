@@ -43,6 +43,7 @@ def _lease_active_in_month(today: date):
         or_(Lease.end_date.is_(None), Lease.end_date >= month_start),
     )
 
+
 # Règles de revenu d'apurement (mois reportés + échéances) centralisées.
 from app.services.apurement_revenue import (
     apurement_installments as _apurement_installments,

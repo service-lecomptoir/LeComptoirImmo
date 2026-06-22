@@ -59,9 +59,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     # Référence courte partagée entre l'écran utilisateur et le journal d'erreurs,
     # pour retrouver l'incident côté supervision (Portail360).
     incident_id = uuid.uuid4().hex[:8]
-    logger.exception(
-        "Erreur non gérée [%s] %s %s", incident_id, request.method, request.url.path
-    )
+    logger.exception("Erreur non gérée [%s] %s %s", incident_id, request.method, request.url.path)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
