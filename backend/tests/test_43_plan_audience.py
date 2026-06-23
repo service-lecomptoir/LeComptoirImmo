@@ -60,12 +60,40 @@ class TestFeaturesForRole:
         assert _features_for_role(lic, Role.GESTIONNAIRE.value) == ["dashboard", "payments"]
 
     def test_profile_none_falls_back_even_if_other_profile_set(self):
-        lic = {"features": ["a"], "features_mandataire": ["a", "b"]}
-        # GP : sa liste est None → repli sur features.
-        assert _features_for_role(lic, Role.GESTIONNAIRE_PROPRIO.value) == ["a"]
+        lic = {"features": ["dashboard"], "features_mandataire": ["dashboard", "syndic"]}
+        # GP : sa liste est None → repli sur features (filtré par audience proprio).
+        assert _features_for_role(lic, Role.GESTIONNAIRE_PROPRIO.value) == ["dashboard"]
 
     def test_non_manager_role_uses_features(self):
         assert _features_for_role(self.LIC, Role.PROPRIETAIRE.value) == ["dashboard", "tampon"]
+
+    # ── Audience autoritaire : cohérence garantie ────────────────────────────
+    def test_mandataire_only_feature_excluded_from_proprio_even_via_legacy(self):
+        # tampon présent dans la liste héritée → un GP ne doit JAMAIS l'obtenir.
+        lic = {"features": ["dashboard", "tampon", "syndic", "compta_mandant"]}
+        feats = _features_for_role(lic, Role.GESTIONNAIRE_PROPRIO.value)
+        assert "tampon" not in feats
+        assert "syndic" not in feats
+        assert "compta_mandant" not in feats
+        assert "dashboard" in feats
+
+    def test_unlimited_plan_proprio_excludes_mandataire_only(self):
+        # Plan « toutes les fonctionnalités » (aucune liste) → GP obtient tout SAUF
+        # les fonctions mandataire-only, et de façon exhaustive.
+        feats = _features_for_role({}, Role.GESTIONNAIRE_PROPRIO.value)
+        assert feats  # liste exhaustive, pas None
+        assert "tampon" not in feats and "syndic" not in feats and "compta_mandant" not in feats
+        assert "dashboard" in feats and "quittances" in feats
+
+    def test_unlimited_plan_mandataire_includes_mandataire_only(self):
+        feats = _features_for_role({}, Role.GESTIONNAIRE.value)
+        assert "tampon" in feats and "syndic" in feats and "compta_mandant" in feats
+
+    def test_unknown_keys_dropped(self):
+        # Une clé hors catalogue n'est jamais accordée (cohérence/exhaustivité).
+        lic = {"features_mandataire": ["dashboard", "inconnue_xyz"]}
+        feats = _features_for_role(lic, Role.GESTIONNAIRE.value)
+        assert "inconnue_xyz" not in feats and "dashboard" in feats
 
 
 # ── Endpoint /subscription : liste résolue selon le rôle connecté ─────────────

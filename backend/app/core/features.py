@@ -63,22 +63,46 @@ def rule_type_allowed(rule_type: str, feats) -> bool:
 _MANAGER_ROLES = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
 
 
-def _features_for_role(lic: dict, role: str | None) -> list | None:
-    """Choisit la liste de fonctionnalités du plan selon le profil du gestionnaire.
-
-    Un plan porte DEUX listes (gestionnaire propriétaire / gestionnaire mandataire),
-    car les deux profils n'ont pas le même périmètre fonctionnel (ex. compta mandant,
-    syndic et tampon sont réservés au mandataire). Repli sur la liste commune/héritée
-    `features` si la liste spécifique au profil n'est pas définie (None)."""
+def _profile_for_role(role: str | None) -> str | None:
+    """Profil d'audience du rôle : "proprietaire", "mandataire", ou None (non géré)."""
     if role == Role.GESTIONNAIRE_PROPRIO.value:
-        feats = lic.get("features_proprietaire")
-    elif role == Role.GESTIONNAIRE.value:
-        feats = lic.get("features_mandataire")
-    else:
-        feats = None
-    if feats is None:
-        feats = lic.get("features")  # repli commun / héritage avant la scission
-    return feats
+        return "proprietaire"
+    if role == Role.GESTIONNAIRE.value:
+        return "mandataire"
+    return None
+
+
+def _features_for_role(lic: dict, role: str | None) -> list | None:
+    """Liste EFFECTIVE de fonctionnalités du plan selon le profil du gestionnaire.
+
+    Un plan porte deux listes (propriétaire / mandataire) ; on choisit selon le rôle
+    (repli sur la liste commune/héritée `features`). L'`audience` du catalogue est
+    AUTORITAIRE : la liste effective est toujours intersectée avec les fonctionnalités
+    dont l'audience correspond au profil. Ainsi un gestionnaire propriétaire n'obtient
+    JAMAIS une fonctionnalité réservée au mandataire (compta mandant, syndic, tampon),
+    et inversement, quel que soit l'état du plan (repli legacy, plan « toutes »…).
+    Cohérence garantie entre l'entitlement et ce qui est affiché.
+
+    Rôle non gestionnaire (None) : pas de filtrage par profil (renvoie `features` tel
+    quel) ; ces rôles ne sont de toute façon pas soumis au gating."""
+    from app.core.feature_catalog import FEATURE_KEYS_ORDERED, allowed_keys_for_profile
+
+    profile = _profile_for_role(role)
+    if profile is None:
+        return lic.get("features")
+
+    # Liste accordée : spécifique au profil > commune/héritée > None (= toutes).
+    granted = lic.get(f"features_{profile}")
+    if granted is None:
+        granted = lic.get("features")
+
+    allowed = allowed_keys_for_profile(profile)
+    if granted is None:
+        # Plan « toutes les fonctionnalités » → toutes celles de l'audience du profil
+        # (un GP « illimité » n'a toujours pas les fonctions mandataire-only).
+        return [k for k in FEATURE_KEYS_ORDERED if k in allowed]
+    # Intersection avec l'audience : retire toute fonctionnalité hors-profil.
+    return [k for k in granted if k in allowed]
 
 
 async def get_plan_features(db: AsyncSession, user_id: UUID) -> list[str] | None:

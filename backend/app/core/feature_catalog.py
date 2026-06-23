@@ -194,6 +194,21 @@ FEATURE_CATALOG: list[dict] = [
 # Clés canoniques (set) dérivées du catalogue.
 FEATURE_KEYS = {f["key"] for f in FEATURE_CATALOG}
 
+# Clés dans l'ordre du catalogue (pour produire des listes ordonnées).
+FEATURE_KEYS_ORDERED = [f["key"] for f in FEATURE_CATALOG]
+
+# Audience par clé (défaut "all"). Source de vérité du périmètre par profil.
+AUDIENCE_BY_KEY = {f["key"]: f.get("audience", "all") for f in FEATURE_CATALOG}
+
+
+def allowed_keys_for_profile(profile: str) -> set[str]:
+    """Clés autorisées pour un profil gestionnaire ("proprietaire"/"mandataire").
+
+    Une clé est autorisée si son audience vaut "all" ou correspond au profil. Sert
+    à garantir qu'un gestionnaire propriétaire n'obtient jamais une fonctionnalité
+    réservée au mandataire (et inversement), quel que soit l'état du plan."""
+    return {k for k, a in AUDIENCE_BY_KEY.items() if a == "all" or a == profile}
+
 
 def public_catalog() -> list[dict]:
     """Catalogue sérialisable (avec ordre) pour l'API publique."""
