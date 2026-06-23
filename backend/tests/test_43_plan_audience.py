@@ -35,6 +35,7 @@ class TestCatalogAudience:
         cat = {item["key"]: item["audience"] for item in public_catalog()}
         assert cat["diffusion"] == "proprietaire"
         assert cat["candidatures"] == "proprietaire"
+        assert cat["finances"] == "proprietaire"
 
     def test_common_features_are_all(self):
         cat = {item["key"]: item["audience"] for item in public_catalog()}

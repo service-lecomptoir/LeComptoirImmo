@@ -155,6 +155,7 @@ FEATURE_CATALOG: list[dict] = [
         "key": "finances",
         "label": "Revenus et comptabilité",
         "category": CATEGORY_FINANCE,
+        "audience": "proprietaire",
         "description": "Suivez vos revenus locatifs et tenez un grand livre clair, par propriétaire et par période, prêt à présenter.",
     },
     {

@@ -41,7 +41,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
-  { to: '/scoring', icon: ShieldCheck, label: 'Scoring locataires' },
+  // Scoring locataires : réservé au gestionnaire propriétaire (cf. navGestionnairePropio).
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },

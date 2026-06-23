@@ -34,14 +34,14 @@ async def _tenant_scope_ids(db: AsyncSession, current_user: User):
 
 
 @router.get("/event-kinds", summary="Catalogue des types d'événements de relation")
-async def get_event_kinds(_: User = Depends(require_role(Role.GESTIONNAIRE))):
+async def get_event_kinds(_: User = Depends(require_role(Role.GESTIONNAIRE_PROPRIO))):
     return event_kinds()
 
 
 @router.get("", summary="Scoring de tous les locataires (trié par risque)")
 async def list_scoring(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE_PROPRIO)),
 ):
     ids = await _tenant_scope_ids(db, current_user)
     tq = select(Tenant)
@@ -132,7 +132,7 @@ async def list_scoring(
 async def get_scoring_detail(
     tenant_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE_PROPRIO)),
 ):
     tenant = await db.get(Tenant, tenant_id)
     if not tenant:
@@ -189,7 +189,7 @@ async def get_scoring_detail(
 async def scoring_ai_analysis(
     tenant_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE_PROPRIO)),
 ):
     tenant = await db.get(Tenant, tenant_id)
     if not tenant:
