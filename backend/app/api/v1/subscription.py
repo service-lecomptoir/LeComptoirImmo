@@ -71,7 +71,10 @@ async def get_subscription(
             is_blocked = data.get("is_blocked", False)
             property_limit = data.get("property_limit")
             access_until = data.get("access_until")
-            features = data.get("features")
+            # Liste résolue selon le profil (propriétaire / mandataire) du gestionnaire.
+            from app.core.features import _features_for_role
+
+            features = _features_for_role(data, current_user.role)
         elif resp.status_code == 404:
             # Pas de licence → considéré comme bloqué
             is_blocked = True

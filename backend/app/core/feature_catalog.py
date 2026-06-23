@@ -6,6 +6,12 @@ le Guide utilisateur (généré dynamiquement). Exposé via GET /api/v1/public/f
 
 Ajouter / renommer / décrire une fonctionnalité => modifier UNIQUEMENT ce fichier ;
 le menu (routing), le guide, les plans Alice et les tarifs se mettent à jour.
+
+Champ `audience` (optionnel, défaut "all") : à qui s'adresse la fonctionnalité.
+  - "all"          : commune aux deux profils gestionnaire (propriétaire ET mandataire) ;
+  - "mandataire"   : réservée au gestionnaire mandataire (gestion pour compte de tiers) ;
+  - "proprietaire" : réservée au gestionnaire propriétaire (gère son propre patrimoine).
+Alice s'en sert pour proposer DEUX listes de fonctionnalités par plan (une par profil).
 """
 
 # Catégories d'affichage (ordre = ordre des sections).
@@ -139,6 +145,7 @@ FEATURE_CATALOG: list[dict] = [
         "key": "tampon",
         "label": "Tampon / cachet professionnel",
         "category": CATEGORY_GESTION,
+        "audience": "mandataire",
         "description": "Ajoutez votre cachet professionnel à côté de votre signature sur le bail et les documents CAF, pour des documents officiels prêts à transmettre.",
     },
     # ── Finance et comptabilité ────────────────────────────────────────────────
@@ -164,6 +171,7 @@ FEATURE_CATALOG: list[dict] = [
         "key": "compta_mandant",
         "label": "Compta mandant et CRG",
         "category": CATEGORY_FINANCE,
+        "audience": "mandataire",
         "description": "Gérez la relation mandataire : honoraires de gestion configurables (taux et TVA), suivi des reversements aux propriétaires et compte rendu de gestion en PDF, à la périodicité de votre choix.",
     },
     # ── Syndic (copropriété) ───────────────────────────────────────────────────
@@ -171,6 +179,7 @@ FEATURE_CATALOG: list[dict] = [
         "key": "syndic",
         "label": "Syndic de copropriété",
         "category": CATEGORY_SYNDIC,
+        "audience": "mandataire",
         "description": "Administrez vos copropriétés : lots et clés de répartition (tantièmes), budget prévisionnel, appels de fonds ventilés et comptes des copropriétaires.",
     },
     # ── Assistance ─────────────────────────────────────────────────────────────
@@ -194,6 +203,7 @@ def public_catalog() -> list[dict]:
             "label": f["label"],
             "description": f["description"],
             "category": f["category"],
+            "audience": f.get("audience", "all"),
             "order": i,
         }
         for i, f in enumerate(FEATURE_CATALOG)

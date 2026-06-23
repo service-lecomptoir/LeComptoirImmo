@@ -14,6 +14,7 @@ import logging
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -62,16 +63,36 @@ def rule_type_allowed(rule_type: str, feats) -> bool:
 _MANAGER_ROLES = (Role.GESTIONNAIRE, Role.GESTIONNAIRE_PROPRIO)
 
 
-async def get_plan_features(db: AsyncSession, user_id: UUID) -> list[str] | None:
-    """Fonctionnalités du plan du gestionnaire (via l'API Alice).
+def _features_for_role(lic: dict, role: str | None) -> list | None:
+    """Choisit la liste de fonctionnalités du plan selon le profil du gestionnaire.
 
-    Retourne None s'il n'y a pas de plan/licence ou si `features` n'est pas défini
-    → interprété comme « toutes les fonctionnalités ». Fail-open si Alice est
-    indisponible (le client renvoie None). `db` conservé pour compat. de signature."""
+    Un plan porte DEUX listes (gestionnaire propriétaire / gestionnaire mandataire),
+    car les deux profils n'ont pas le même périmètre fonctionnel (ex. compta mandant,
+    syndic et tampon sont réservés au mandataire). Repli sur la liste commune/héritée
+    `features` si la liste spécifique au profil n'est pas définie (None)."""
+    if role == Role.GESTIONNAIRE_PROPRIO.value:
+        feats = lic.get("features_proprietaire")
+    elif role == Role.GESTIONNAIRE.value:
+        feats = lic.get("features_mandataire")
+    else:
+        feats = None
+    if feats is None:
+        feats = lic.get("features")  # repli commun / héritage avant la scission
+    return feats
+
+
+async def get_plan_features(db: AsyncSession, user_id: UUID) -> list[str] | None:
+    """Fonctionnalités du plan du gestionnaire (via l'API Alice), résolues par profil.
+
+    Retourne None s'il n'y a pas de plan/licence ou si la liste applicable n'est pas
+    définie → interprété comme « toutes les fonctionnalités ». Fail-open si Alice est
+    indisponible (le client renvoie None). Le profil (propriétaire / mandataire) est
+    lu depuis le rôle du compte `user_id` : un plan expose une liste par profil."""
     lic = await alice_client.get_license(user_id)
     if not lic:
         return None
-    feats = lic.get("features")
+    role = await db.scalar(select(User.role).where(User.id == user_id))
+    feats = _features_for_role(lic, role)
     return feats if isinstance(feats, list) else None
 
 
