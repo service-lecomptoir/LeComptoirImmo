@@ -16,6 +16,7 @@ from app.models.copropriete import (
 from app.models.copropriete_compta import (
     CoproBudget,
     CoproBudgetLine,
+    CoproExpense,
     CoproFundCall,
     CoproFundCallItem,
     CoproPayment,
@@ -89,6 +90,7 @@ __all__ = [
     "CoproLotTantieme",
     "CoproBudget",
     "CoproBudgetLine",
+    "CoproExpense",
     "CoproFundCall",
     "CoproFundCallItem",
     "CoproPayment",

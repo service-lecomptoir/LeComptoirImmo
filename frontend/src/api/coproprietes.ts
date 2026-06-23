@@ -129,6 +129,38 @@ export interface CoproAccount {
   total_paid: number
   balance: number
 }
+export interface CoproExpense {
+  id: string
+  year: number
+  key_id: string
+  key_name?: string | null
+  label: string
+  amount: number
+  expense_date?: string | null
+  supplier?: string | null
+}
+export interface ExpenseInput {
+  year: number
+  key_id: string
+  label: string
+  amount: number
+  expense_date?: string | null
+  supplier?: string | null
+}
+export interface RegularizationRow {
+  owner_id?: string | null
+  owner_name?: string | null
+  appele: number
+  reel: number
+  solde: number
+}
+export interface RegularizationResult {
+  year: number
+  budget_total: number
+  expenses_total: number
+  appele_total: number
+  rows: RegularizationRow[]
+}
 
 export const coproApi = {
   list: () => apiClient.get<CoproListItem[]>('/coproprietes'),
@@ -163,6 +195,18 @@ export const coproApi = {
 
   appelPdf: async (id: string, itemId: string, filename: string) => {
     const r = await apiClient.get(`/coproprietes/${id}/call-items/${itemId}/appel/pdf`, { responseType: 'blob' })
+    downloadBlob(r.data, filename)
+  },
+
+  // ── Régularisation ──
+  listExpenses: (id: string, year: number) => apiClient.get<CoproExpense[]>(`/coproprietes/${id}/expenses`, { params: { year } }),
+  createExpense: (id: string, data: ExpenseInput) => apiClient.post<CoproExpense>(`/coproprietes/${id}/expenses`, data),
+  updateExpense: (id: string, expenseId: string, data: Partial<ExpenseInput>) => apiClient.put<CoproExpense>(`/coproprietes/${id}/expenses/${expenseId}`, data),
+  deleteExpense: (id: string, expenseId: string) => apiClient.delete(`/coproprietes/${id}/expenses/${expenseId}`),
+
+  regularization: (id: string, year: number) => apiClient.get<RegularizationResult>(`/coproprietes/${id}/regularization`, { params: { year } }),
+  regulPdf: async (id: string, ownerId: string, year: number, filename: string) => {
+    const r = await apiClient.get(`/coproprietes/${id}/regularization/${ownerId}/pdf`, { params: { year }, responseType: 'blob' })
     downloadBlob(r.data, filename)
   },
 }

@@ -845,6 +845,24 @@ async def _apply_column_migrations() -> None:
         )
         """,
         "CREATE INDEX IF NOT EXISTS ix_copro_payments_item ON copro_payments (item_id)",
+        # ── Module Syndic — phase 2b : dépenses réelles (régularisation) ────────
+        """
+        CREATE TABLE IF NOT EXISTS copro_expenses (
+            id UUID PRIMARY KEY,
+            copropriete_id UUID NOT NULL REFERENCES coproprietes(id) ON DELETE CASCADE,
+            year INTEGER NOT NULL,
+            key_id UUID NOT NULL REFERENCES copro_repartition_keys(id) ON DELETE CASCADE,
+            label VARCHAR(200) NOT NULL,
+            amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+            expense_date DATE,
+            supplier VARCHAR(200),
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_expenses_copro ON copro_expenses (copropriete_id)",
+        "CREATE INDEX IF NOT EXISTS ix_copro_expenses_year ON copro_expenses (year)",
     ]
     try:
         async with engine.begin() as conn:

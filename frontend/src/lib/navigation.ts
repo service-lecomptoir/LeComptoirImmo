@@ -165,7 +165,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   // Gestionnaire / admin
   '/comptabilite': "Grand livre de toutes les transactions (appels de loyer, règlements, apurement, régularisations de charges), avec le logement concerné (et le propriétaire pour le mandataire).",
   '/comptabilite/mandant': "Compte rendu de gestion par propriétaire : loyers encaissés, honoraires retenus (taux configurable + TVA), reversements effectués et solde restant à reverser. Périodicité au choix (mensuel, trimestriel, semestriel, annuel) et export CRG en PDF.",
-  '/coproprietes': "Module Syndic : vos copropriétés (immeubles), leurs lots et les clés de répartition (tantièmes par charge). Rattachez chaque lot à un copropriétaire et contrôlez l'équilibre des tantièmes.",
+  '/coproprietes': "Module Syndic : administrez vos copropriétés (immeubles), leurs lots et les clés de répartition (tantièmes par charge). Établissez le budget prévisionnel, générez les appels de fonds ventilés par tantièmes (périodicité au choix), suivez les comptes des copropriétaires (appelé / payé / solde) et faites la régularisation annuelle (dépenses réelles vs provisions) avec décompte PDF par copropriétaire.",
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
   '/diffusion': 'Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes et suivez leurs performances (vues).',

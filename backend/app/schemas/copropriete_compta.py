@@ -115,3 +115,56 @@ class CoproAccountRow(BaseModel):
     total_due: float = 0
     total_paid: float = 0
     balance: float = 0
+
+
+# ── Dépenses réelles ─────────────────────────────────────────────────────────
+class ExpenseCreate(BaseModel):
+    year: int
+    key_id: uuid.UUID
+    label: str
+    amount: float = 0
+    expense_date: date | None = None
+    supplier: str | None = None
+
+    @field_validator("label")
+    @classmethod
+    def label_required(cls, v: str) -> str:
+        if not (v or "").strip():
+            raise ValueError("Le libellé de la dépense est requis.")
+        return v
+
+
+class ExpenseUpdate(BaseModel):
+    key_id: uuid.UUID | None = None
+    label: str | None = None
+    amount: float | None = None
+    expense_date: date | None = None
+    supplier: str | None = None
+
+
+class ExpenseResponse(BaseModel):
+    id: uuid.UUID
+    year: int
+    key_id: uuid.UUID
+    key_name: str | None = None
+    label: str
+    amount: float
+    expense_date: date | None = None
+    supplier: str | None = None
+
+
+# ── Régularisation annuelle (réel vs provisions appelées) ─────────────────────
+class RegularizationRow(BaseModel):
+    owner_id: uuid.UUID | None = None
+    owner_name: str | None = None
+    appele: float = 0  # provisions appelées sur l'année
+    reel: float = 0  # quote-part des dépenses réelles
+    solde: float = 0  # appelé - réel (>0 = à rembourser ; <0 = complément à appeler)
+
+
+class RegularizationResult(BaseModel):
+    year: int
+    budget_total: float = 0
+    expenses_total: float = 0
+    appele_total: float = 0
+    rows: list[RegularizationRow] = []

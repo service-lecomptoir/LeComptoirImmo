@@ -12,8 +12,9 @@ import { CoproForm } from './CoproForm'
 import { CoproLotForm } from './CoproLotForm'
 import { CoproBudgetTab } from './CoproBudgetTab'
 import { CoproAccountsTab } from './CoproAccountsTab'
+import { CoproRegulTab } from './CoproRegulTab'
 
-type Tab = 'lots' | 'budget' | 'comptes'
+type Tab = 'lots' | 'budget' | 'comptes' | 'regul'
 
 export default function CoproDetail() {
   const { id = '' } = useParams()
@@ -128,7 +129,7 @@ export default function CoproDetail() {
 
       {/* Onglets */}
       <div className="flex gap-1 border-b border-gray-200">
-        {([['lots', 'Lots & clés'], ['budget', 'Budget & appels'], ['comptes', 'Comptes']] as [Tab, string][]).map(([t, label]) => (
+        {([['lots', 'Lots & clés'], ['budget', 'Budget & appels'], ['comptes', 'Comptes'], ['regul', 'Régularisation']] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             {label}
@@ -138,6 +139,7 @@ export default function CoproDetail() {
 
       {tab === 'budget' && <CoproBudgetTab copro={copro} canWrite={canWrite} />}
       {tab === 'comptes' && <CoproAccountsTab coproId={copro.id} />}
+      {tab === 'regul' && <CoproRegulTab copro={copro} canWrite={canWrite} />}
 
       {tab === 'lots' && (<>
       {/* Clés de répartition */}

@@ -15,6 +15,7 @@ from app.models.copropriete import CoproLot, CoproLotTantieme, CoproRepartitionK
 from app.models.copropriete_compta import (
     CoproBudget,
     CoproBudgetLine,
+    CoproExpense,
     CoproFundCall,
     CoproFundCallItem,
     CoproPayment,
@@ -24,6 +25,8 @@ from app.schemas.copropriete_compta import (
     BudgetCreate,
     BudgetUpdate,
     CoproPaymentIn,
+    ExpenseCreate,
+    ExpenseUpdate,
 )
 
 NB_PERIODS = {"mensuel": 12, "trimestriel": 4, "semestriel": 2, "annuel": 1}
@@ -554,3 +557,304 @@ class CoproComptaService:
         ]
         out.sort(key=lambda r: (r["owner_name"] or "").lower())
         return out
+
+    # ── Dépenses réelles ──────────────────────────────────────────────────────
+    @staticmethod
+    async def _key_names(db: AsyncSession, copro_id: uuid.UUID) -> dict:
+        return dict(
+            (
+                await db.execute(
+                    select(CoproRepartitionKey.id, CoproRepartitionKey.name).where(
+                        CoproRepartitionKey.copropriete_id == copro_id
+                    )
+                )
+            ).all()
+        )
+
+    @staticmethod
+    async def list_expenses(db: AsyncSession, copro_id: uuid.UUID, year: int) -> list[dict]:
+        rows = (
+            (
+                await db.execute(
+                    select(CoproExpense)
+                    .where(CoproExpense.copropriete_id == copro_id, CoproExpense.year == year)
+                    .order_by(CoproExpense.expense_date, CoproExpense.label)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        names = await CoproComptaService._key_names(db, copro_id)
+        return [
+            {
+                "id": e.id,
+                "year": e.year,
+                "key_id": e.key_id,
+                "key_name": names.get(e.key_id),
+                "label": e.label,
+                "amount": float(e.amount or 0),
+                "expense_date": e.expense_date,
+                "supplier": e.supplier,
+            }
+            for e in rows
+        ]
+
+    @staticmethod
+    async def create_expense(
+        db: AsyncSession, copro_id: uuid.UUID, data: ExpenseCreate, created_by: uuid.UUID
+    ) -> dict:
+        exp = CoproExpense(
+            copropriete_id=copro_id,
+            year=data.year,
+            key_id=data.key_id,
+            label=data.label,
+            amount=data.amount,
+            expense_date=data.expense_date,
+            supplier=(data.supplier or None),
+            created_by=created_by,
+        )
+        db.add(exp)
+        await db.flush()
+        names = await CoproComptaService._key_names(db, copro_id)
+        return {
+            "id": exp.id,
+            "year": exp.year,
+            "key_id": exp.key_id,
+            "key_name": names.get(exp.key_id),
+            "label": exp.label,
+            "amount": float(exp.amount or 0),
+            "expense_date": exp.expense_date,
+            "supplier": exp.supplier,
+        }
+
+    @staticmethod
+    async def update_expense(
+        db: AsyncSession, copro_id: uuid.UUID, expense_id: uuid.UUID, data: ExpenseUpdate
+    ) -> dict:
+        exp = await db.get(CoproExpense, expense_id)
+        if not exp or exp.copropriete_id != copro_id:
+            raise NotFoundException("Dépense introuvable")
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(exp, field, value)
+        await db.flush()
+        names = await CoproComptaService._key_names(db, copro_id)
+        return {
+            "id": exp.id,
+            "year": exp.year,
+            "key_id": exp.key_id,
+            "key_name": names.get(exp.key_id),
+            "label": exp.label,
+            "amount": float(exp.amount or 0),
+            "expense_date": exp.expense_date,
+            "supplier": exp.supplier,
+        }
+
+    @staticmethod
+    async def delete_expense(db: AsyncSession, copro_id: uuid.UUID, expense_id: uuid.UUID) -> None:
+        exp = await db.get(CoproExpense, expense_id)
+        if not exp or exp.copropriete_id != copro_id:
+            raise NotFoundException("Dépense introuvable")
+        await db.delete(exp)
+        await db.flush()
+
+    # ── Régularisation annuelle ───────────────────────────────────────────────
+    @staticmethod
+    async def _appele_par_owner(db: AsyncSession, copro_id: uuid.UUID, year: int) -> dict:
+        """Provisions appelées par copropriétaire sur l'année (somme des quote-parts)."""
+        budget = (
+            (
+                await db.execute(
+                    select(CoproBudget).where(
+                        CoproBudget.copropriete_id == copro_id, CoproBudget.year == year
+                    )
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if not budget:
+            return {}
+        items = (
+            (
+                await db.execute(
+                    select(CoproFundCallItem)
+                    .join(CoproFundCall, CoproFundCallItem.call_id == CoproFundCall.id)
+                    .where(CoproFundCall.budget_id == budget.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        agg: dict = {}
+        for it in items:
+            agg[it.owner_id] = round(agg.get(it.owner_id, 0.0) + float(it.amount_due or 0), 2)
+        return agg
+
+    @staticmethod
+    async def _reel_par_owner(db: AsyncSession, copro_id: uuid.UUID, year: int) -> dict:
+        """Quote-part des dépenses réelles par copropriétaire (ventilée par tantièmes)."""
+        keys = {
+            k.id: float(k.total_tantiemes)
+            for k in (
+                await db.execute(
+                    select(CoproRepartitionKey).where(
+                        CoproRepartitionKey.copropriete_id == copro_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        }
+        expenses = (
+            (
+                await db.execute(
+                    select(CoproExpense).where(
+                        CoproExpense.copropriete_id == copro_id, CoproExpense.year == year
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        lots = (
+            (
+                await db.execute(
+                    select(CoproLot)
+                    .options(selectinload(CoproLot.tantiemes))
+                    .where(CoproLot.copropriete_id == copro_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        agg: dict = {}
+        for lot in lots:
+            tmap = {t.key_id: float(t.tantiemes or 0) for t in lot.tantiemes}
+            quote = 0.0
+            for e in expenses:
+                base = keys.get(e.key_id, 0.0)
+                if base > 0:
+                    quote += float(e.amount or 0) * tmap.get(e.key_id, 0.0) / base
+            if quote:
+                agg[lot.owner_id] = round(agg.get(lot.owner_id, 0.0) + quote, 2)
+        return agg
+
+    @staticmethod
+    async def regularization(db: AsyncSession, copro_id: uuid.UUID, year: int) -> dict:
+        appele = await CoproComptaService._appele_par_owner(db, copro_id, year)
+        reel = await CoproComptaService._reel_par_owner(db, copro_id, year)
+        budget = await CoproComptaService.get_budget(db, copro_id, year)
+        expenses = await CoproComptaService.list_expenses(db, copro_id, year)
+
+        owner_ids = {oid for oid in (set(appele) | set(reel)) if oid}
+        names: dict = {}
+        if owner_ids:
+            for o in (
+                (await db.execute(select(Owner).where(Owner.id.in_(owner_ids)))).scalars().all()
+            ):
+                names[o.id] = o.full_name
+        rows = []
+        for oid in set(appele) | set(reel):
+            a = round(appele.get(oid, 0.0), 2)
+            r = round(reel.get(oid, 0.0), 2)
+            rows.append(
+                {
+                    "owner_id": oid,
+                    "owner_name": names.get(oid) if oid else "Sans copropriétaire",
+                    "appele": a,
+                    "reel": r,
+                    "solde": round(a - r, 2),
+                }
+            )
+        rows.sort(key=lambda x: (x["owner_name"] or "").lower())
+        return {
+            "year": year,
+            "budget_total": float(budget["total"]) if budget else 0.0,
+            "expenses_total": round(sum(e["amount"] for e in expenses), 2),
+            "appele_total": round(sum(appele.values()), 2),
+            "rows": rows,
+        }
+
+    @staticmethod
+    async def regul_pdf_context(
+        db: AsyncSession, copro_id: uuid.UUID, owner_id: uuid.UUID, year: int
+    ) -> dict:
+        """Décompte de régularisation d'un copropriétaire : détail des dépenses
+        ventilées sur ses lots, provisions appelées et solde."""
+        from app.models.copropriete import Copropriete
+
+        copro = await db.get(Copropriete, copro_id)
+        owner = await db.get(Owner, owner_id)
+        keys = {
+            k.id: k
+            for k in (
+                await db.execute(
+                    select(CoproRepartitionKey).where(
+                        CoproRepartitionKey.copropriete_id == copro_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        }
+        expenses = (
+            (
+                await db.execute(
+                    select(CoproExpense).where(
+                        CoproExpense.copropriete_id == copro_id, CoproExpense.year == year
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        # Tantièmes cumulés du copropriétaire par clé (somme de ses lots).
+        lots = (
+            (
+                await db.execute(
+                    select(CoproLot)
+                    .options(selectinload(CoproLot.tantiemes))
+                    .where(CoproLot.copropriete_id == copro_id, CoproLot.owner_id == owner_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        own_tant: dict = {}
+        for lot in lots:
+            for t in lot.tantiemes:
+                own_tant[t.key_id] = own_tant.get(t.key_id, 0.0) + float(t.tantiemes or 0)
+
+        detail = []
+        reel_total = 0.0
+        for e in expenses:
+            key = keys.get(e.key_id)
+            base = float(key.total_tantiemes) if key else 0.0
+            tant = own_tant.get(e.key_id, 0.0)
+            quote = round(float(e.amount or 0) * tant / base, 2) if base > 0 else 0.0
+            if quote <= 0:
+                continue
+            reel_total += quote
+            detail.append(
+                {
+                    "label": e.label,
+                    "key_name": key.name if key else "",
+                    "expense_amount": float(e.amount or 0),
+                    "tantiemes": tant,
+                    "base": int(base),
+                    "amount": quote,
+                }
+            )
+        reel_total = round(reel_total, 2)
+        appele = (await CoproComptaService._appele_par_owner(db, copro_id, year)).get(owner_id, 0.0)
+        appele = round(appele, 2)
+        return {
+            "copro_name": copro.name if copro else "",
+            "copro_address": (copro.full_address if copro else "") or "",
+            "owner_name": owner.full_name if owner else "Copropriétaire",
+            "year": year,
+            "detail": detail,
+            "reel_total": reel_total,
+            "appele": appele,
+            "solde": round(appele - reel_total, 2),
+        }

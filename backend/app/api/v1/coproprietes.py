@@ -28,8 +28,12 @@ from app.schemas.copropriete_compta import (
     BudgetUpdate,
     CoproAccountRow,
     CoproPaymentIn,
+    ExpenseCreate,
+    ExpenseResponse,
+    ExpenseUpdate,
     FundCallGenerate,
     FundCallResponse,
+    RegularizationResult,
 )
 from app.services.copro_compta_service import CoproComptaService
 from app.services.copropriete_service import CoproprieteService
@@ -391,6 +395,119 @@ async def copro_appel_pdf(
     filename = simple_doc_filename(
         "appel-fonds", _slug_name(ctx["owner_name"]), _slug_name(ctx["period_label"])
     )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ── Régularisation : dépenses réelles + décompte ─────────────────────────────
+@router.get(
+    "/{copro_id}/expenses",
+    response_model=list[ExpenseResponse],
+    summary="Dépenses réelles d'une année",
+)
+async def list_expenses(
+    copro_id: uuid.UUID,
+    year: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.list_expenses(db, copro_id, year)
+
+
+@router.post(
+    "/{copro_id}/expenses",
+    response_model=ExpenseResponse,
+    status_code=201,
+    summary="Ajouter une dépense",
+)
+async def create_expense(
+    copro_id: uuid.UUID,
+    data: ExpenseCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.create_expense(db, copro_id, data, created_by=current_user.id)
+
+
+@router.put(
+    "/{copro_id}/expenses/{expense_id}",
+    response_model=ExpenseResponse,
+    summary="Modifier une dépense",
+)
+async def update_expense(
+    copro_id: uuid.UUID,
+    expense_id: uuid.UUID,
+    data: ExpenseUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.update_expense(db, copro_id, expense_id, data)
+
+
+@router.delete(
+    "/{copro_id}/expenses/{expense_id}", status_code=204, summary="Supprimer une dépense"
+)
+async def delete_expense(
+    copro_id: uuid.UUID,
+    expense_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    await CoproComptaService.delete_expense(db, copro_id, expense_id)
+
+
+@router.get(
+    "/{copro_id}/regularization",
+    response_model=RegularizationResult,
+    summary="Régularisation annuelle (réel vs appelé) par copropriétaire",
+)
+async def regularization(
+    copro_id: uuid.UUID,
+    year: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.regularization(db, copro_id, year)
+
+
+@router.get("/{copro_id}/regularization/{owner_id}/pdf", summary="Décompte de régularisation (PDF)")
+async def regularization_pdf(
+    copro_id: uuid.UUID,
+    owner_id: uuid.UUID,
+    year: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    from fastapi.responses import Response
+
+    from app.services.pdf_service import html_to_pdf, render_template
+    from app.services.template_layout_service import get_layout
+    from app.utils.filename import _slug as _slug_name
+    from app.utils.filename import simple_doc_filename
+
+    await _assert_copro(db, current_user, copro_id)
+    ctx = await CoproComptaService.regul_pdf_context(db, copro_id, owner_id, year)
+    html = render_template(
+        "copro_regul.html.j2",
+        {
+            "ctx": ctx,
+            "layout": get_layout(),
+            "manager_name": current_user.full_name or "",
+            "manager_address": getattr(current_user, "full_address", None) or "",
+            "signature_uri": (getattr(current_user, "signature", None) or ""),
+            "tampon_uri": (getattr(current_user, "tampon", None) or ""),
+        },
+    )
+    pdf = html_to_pdf(html)
+    filename = simple_doc_filename("regularisation", _slug_name(ctx["owner_name"]), year)
     return Response(
         content=pdf,
         media_type="application/pdf",

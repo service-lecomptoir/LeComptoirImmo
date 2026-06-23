@@ -136,6 +136,34 @@ class CoproFundCallItem(Base, TimestampMixin):
     )
 
 
+class CoproExpense(Base, TimestampMixin):
+    """Dépense réelle de la copropriété pour une année, rattachée à une clé de
+    répartition. Sert à la régularisation annuelle (réel vs provisions appelées)."""
+
+    __tablename__ = "copro_expenses"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    copropriete_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("coproprietes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    year: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    key_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("copro_repartition_keys.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    label: Mapped[str] = mapped_column(String(200), nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
+    expense_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    supplier: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
 class CoproPayment(Base, TimestampMixin):
     """Encaissement d'un copropriétaire sur une quote-part d'appel de fonds."""
 
