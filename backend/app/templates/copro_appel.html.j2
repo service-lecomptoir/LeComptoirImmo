@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+{% set sp = layout.spacing %}
+<style>
+  @page { size: A4; margin: {{ sp.page_margin }}; }
+  body { font-family: Arial, sans-serif; font-size: {{ sp.font_size }}pt; color: #1f2937; line-height: {{ sp.line_height }}; background: #fff; }
+  h1 { font-size: {{ sp.font_size | int + 6 }}pt; color: #0d2f5c; text-align: center; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 2px 0; }
+  .sub { text-align: center; color: #6b7280; font-size: {{ sp.font_size | int - 1 }}pt; margin-bottom: 10px; }
+  .head { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+  .box { flex: 1; border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; }
+  .box .lbl { font-size: {{ sp.font_size | int - 2 }}pt; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; }
+  .box .val { font-weight: bold; color: #111827; }
+  .sec-title { background: #1f2937; color: #fff; padding: 6px 10px; font-size: {{ sp.font_size | int - 1 }}pt; font-weight: bold; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 6px 10px; border-bottom: 1px solid #eef2f7; font-size: {{ sp.font_size }}pt; text-align: left; }
+  td.r, th.r { text-align: right; }
+  th { background: #f9fafb; color: #374151; }
+  tr.tot td { font-weight: bold; background: #f3f4f6; }
+  .total { margin-top: 14px; border: 2px solid #0d2f5c; }
+  .total .rh { background: #0d2f5c; color: #fff; padding: 6px 10px; font-weight: bold; }
+  .total .amt { font-size: {{ sp.font_size | int + 6 }}pt; font-weight: bold; color: #0d2f5c; text-align: right; padding: 10px; }
+  .sign { margin-top: 22px; display: flex; align-items: flex-end; gap: 14px; }
+  .footer { margin-top: 22px; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 7.5pt; color: #9ca3af; }
+</style></head><body>
+  <h1>Appel de fonds</h1>
+  <p class="sub">{{ ctx.period_label }}{% if ctx.due_date %} · à régler avant le {{ ctx.due_date.strftime('%d/%m/%Y') }}{% endif %}</p>
+
+  <div class="head">
+    <div class="box">
+      <div class="lbl">Syndic</div>
+      <div class="val">{{ manager_name }}</div>
+      {% if manager_address %}<div style="font-size:{{ sp.font_size | int - 2 }}pt;color:#6b7280;">{{ manager_address }}</div>{% endif %}
+    </div>
+    <div class="box">
+      <div class="lbl">Copropriété</div>
+      <div class="val">{{ ctx.copro_name }}</div>
+      {% if ctx.copro_address %}<div style="font-size:{{ sp.font_size | int - 2 }}pt;color:#6b7280;">{{ ctx.copro_address }}</div>{% endif %}
+    </div>
+  </div>
+
+  <p>À l'attention de <strong>{{ ctx.owner_name }}</strong>{% if ctx.lot_numero %} — {{ ctx.lot_numero }}{% endif %}.</p>
+
+  <div class="sec-title">DÉTAIL DE L'APPEL ({{ ctx.period_label }})</div>
+  <table>
+    <tr><th>Poste</th><th>Clé</th><th class="r">Tantièmes</th><th class="r">Montant</th></tr>
+    {% for d in ctx.detail %}
+    <tr>
+      <td>{{ d.label }}</td>
+      <td>{{ d.key_name }}</td>
+      <td class="r">{{ "%g"|format(d.tantiemes) }} / {{ d.base }}</td>
+      <td class="r">{{ "%.2f"|format(d.amount) }} €</td>
+    </tr>
+    {% endfor %}
+    {% if not ctx.detail %}<tr><td colspan="4" style="color:#9ca3af;">Aucun poste applicable à ce lot.</td></tr>{% endif %}
+  </table>
+
+  <div class="total">
+    <div class="rh">MONTANT À RÉGLER</div>
+    <div class="amt">{{ "%.2f"|format(ctx.total) }} €</div>
+  </div>
+
+  {% if signature_uri or tampon_uri %}
+  <div class="sign">
+    {% if signature_uri %}<img src="{{ signature_uri }}" alt="Signature" width="150" height="75">{% endif %}
+    {% if tampon_uri %}<img src="{{ tampon_uri }}" alt="Cachet" width="100" height="100" style="opacity:.92;">{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="footer">
+    Appel de fonds établi par {{ manager_name }} (syndic) pour la copropriété {{ ctx.copro_name }}.
+    Provision sur budget prévisionnel voté. Document de gestion.
+  </div>
+</body></html>

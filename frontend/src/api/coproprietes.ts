@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { downloadBlob } from '@/utils/download'
 
 export interface CoproListItem {
   id: string
@@ -77,6 +78,58 @@ export interface LotInput {
   tantiemes: { key_id: string; tantiemes: number }[]
 }
 
+export type Periodicity = 'mensuel' | 'trimestriel' | 'semestriel' | 'annuel'
+
+export interface BudgetLine {
+  id?: string
+  key_id: string
+  key_name?: string | null
+  label: string
+  amount: number
+}
+export interface Budget {
+  id: string
+  copropriete_id: string
+  year: number
+  periodicity: Periodicity
+  label?: string | null
+  total: number
+  nb_periods: number
+  lines: BudgetLine[]
+}
+export interface BudgetInput {
+  year: number
+  periodicity: Periodicity
+  label?: string | null
+  lines: { key_id: string; label: string; amount: number }[]
+}
+export interface CallItem {
+  id: string
+  lot_id?: string | null
+  lot_numero?: string | null
+  owner_id?: string | null
+  owner_name?: string | null
+  amount_due: number
+  amount_paid: number
+  status: string
+}
+export interface FundCall {
+  id: string
+  period_index: number
+  period_label: string
+  due_date?: string | null
+  total_due: number
+  total_paid: number
+  items: CallItem[]
+}
+export interface CoproAccount {
+  owner_id?: string | null
+  owner_name?: string | null
+  total_due: number
+  total_paid: number
+  balance: number
+}
+
 export const coproApi = {
   list: () => apiClient.get<CoproListItem[]>('/coproprietes'),
   get: (id: string) => apiClient.get<CoproDetail>(`/coproprietes/${id}`),
@@ -91,4 +144,25 @@ export const coproApi = {
   createLot: (id: string, data: LotInput) => apiClient.post<CoproLot>(`/coproprietes/${id}/lots`, data),
   updateLot: (id: string, lotId: string, data: Partial<LotInput>) => apiClient.put<CoproLot>(`/coproprietes/${id}/lots/${lotId}`, data),
   deleteLot: (id: string, lotId: string) => apiClient.delete(`/coproprietes/${id}/lots/${lotId}`),
+
+  // ── Comptabilité copro ──
+  getBudget: (id: string, year: number) => apiClient.get<Budget | null>(`/coproprietes/${id}/budget`, { params: { year } }),
+  createBudget: (id: string, data: BudgetInput) => apiClient.post<Budget>(`/coproprietes/${id}/budgets`, data),
+  updateBudget: (id: string, budgetId: string, data: Partial<BudgetInput>) => apiClient.put<Budget>(`/coproprietes/${id}/budgets/${budgetId}`, data),
+  deleteBudget: (id: string, budgetId: string) => apiClient.delete(`/coproprietes/${id}/budgets/${budgetId}`),
+
+  listCalls: (id: string, budgetId: string) => apiClient.get<FundCall[]>(`/coproprietes/${id}/budgets/${budgetId}/calls`),
+  generateCall: (id: string, budgetId: string, period_index: number, due_date?: string | null) =>
+    apiClient.post<FundCall>(`/coproprietes/${id}/budgets/${budgetId}/calls`, { period_index, due_date: due_date || null }),
+  deleteCall: (id: string, callId: string) => apiClient.delete(`/coproprietes/${id}/calls/${callId}`),
+
+  recordPayment: (id: string, itemId: string, data: { amount: number; payment_date: string; method?: string | null; note?: string | null }) =>
+    apiClient.post(`/coproprietes/${id}/call-items/${itemId}/payments`, data),
+
+  accounts: (id: string, year: number) => apiClient.get<CoproAccount[]>(`/coproprietes/${id}/accounts`, { params: { year } }),
+
+  appelPdf: async (id: string, itemId: string, filename: string) => {
+    const r = await apiClient.get(`/coproprietes/${id}/call-items/${itemId}/appel/pdf`, { responseType: 'blob' })
+    downloadBlob(r.data, filename)
+  },
 }

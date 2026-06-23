@@ -775,6 +775,76 @@ async def _apply_column_migrations() -> None:
         """,
         "CREATE INDEX IF NOT EXISTS ix_copro_tantiemes_lot ON copro_lot_tantiemes (lot_id)",
         "CREATE INDEX IF NOT EXISTS ix_copro_tantiemes_key ON copro_lot_tantiemes (key_id)",
+        # ── Module Syndic — phase 2a : comptabilité copro ───────────────────────
+        """
+        CREATE TABLE IF NOT EXISTS copro_budgets (
+            id UUID PRIMARY KEY,
+            copropriete_id UUID NOT NULL REFERENCES coproprietes(id) ON DELETE CASCADE,
+            year INTEGER NOT NULL,
+            periodicity VARCHAR(16) NOT NULL DEFAULT 'trimestriel',
+            label VARCHAR(200),
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT uq_copro_budget_year UNIQUE (copropriete_id, year)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_budgets_copro ON copro_budgets (copropriete_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_budget_lines (
+            id UUID PRIMARY KEY,
+            budget_id UUID NOT NULL REFERENCES copro_budgets(id) ON DELETE CASCADE,
+            key_id UUID NOT NULL REFERENCES copro_repartition_keys(id) ON DELETE CASCADE,
+            label VARCHAR(200) NOT NULL,
+            amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_budget_lines_budget ON copro_budget_lines (budget_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_fund_calls (
+            id UUID PRIMARY KEY,
+            budget_id UUID NOT NULL REFERENCES copro_budgets(id) ON DELETE CASCADE,
+            period_index INTEGER NOT NULL,
+            period_label VARCHAR(40) NOT NULL,
+            due_date DATE,
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT uq_copro_call_period UNIQUE (budget_id, period_index)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_fund_calls_budget ON copro_fund_calls (budget_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_fund_call_items (
+            id UUID PRIMARY KEY,
+            call_id UUID NOT NULL REFERENCES copro_fund_calls(id) ON DELETE CASCADE,
+            lot_id UUID REFERENCES copro_lots(id) ON DELETE SET NULL,
+            owner_id UUID REFERENCES owners(id) ON DELETE SET NULL,
+            amount_due NUMERIC(12,2) NOT NULL DEFAULT 0,
+            amount_paid NUMERIC(12,2) NOT NULL DEFAULT 0,
+            status VARCHAR(12) NOT NULL DEFAULT 'pending',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_call_items_call ON copro_fund_call_items (call_id)",
+        "CREATE INDEX IF NOT EXISTS ix_copro_call_items_owner ON copro_fund_call_items (owner_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_payments (
+            id UUID PRIMARY KEY,
+            item_id UUID NOT NULL REFERENCES copro_fund_call_items(id) ON DELETE CASCADE,
+            amount NUMERIC(12,2) NOT NULL,
+            payment_date DATE NOT NULL,
+            method VARCHAR(20),
+            note TEXT,
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_payments_item ON copro_payments (item_id)",
     ]
     try:
         async with engine.begin() as conn:

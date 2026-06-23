@@ -13,6 +13,13 @@ from app.models.copropriete import (
     Copropriete,
     CoproRepartitionKey,
 )
+from app.models.copropriete_compta import (
+    CoproBudget,
+    CoproBudgetLine,
+    CoproFundCall,
+    CoproFundCallItem,
+    CoproPayment,
+)
 from app.models.document import Document
 from app.models.document_template import DocumentTemplate
 from app.models.email_domain import EmailDomain
@@ -80,4 +87,9 @@ __all__ = [
     "CoproRepartitionKey",
     "CoproLot",
     "CoproLotTantieme",
+    "CoproBudget",
+    "CoproBudgetLine",
+    "CoproFundCall",
+    "CoproFundCallItem",
+    "CoproPayment",
 ]

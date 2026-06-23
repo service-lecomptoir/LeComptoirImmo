@@ -10,12 +10,17 @@ import { getErrorMessage } from '@/utils/errors'
 import { coproApi, type CoproDetail as Detail, type CoproLot } from '@/api/coproprietes'
 import { CoproForm } from './CoproForm'
 import { CoproLotForm } from './CoproLotForm'
+import { CoproBudgetTab } from './CoproBudgetTab'
+import { CoproAccountsTab } from './CoproAccountsTab'
+
+type Tab = 'lots' | 'budget' | 'comptes'
 
 export default function CoproDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const [copro, setCopro] = useState<Detail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<Tab>('lots')
   const [editCopro, setEditCopro] = useState(false)
   const [lotForm, setLotForm] = useState<{ lot?: CoproLot } | null>(null)
   const [deleteLotId, setDeleteLotId] = useState<string | null>(null)
@@ -121,6 +126,20 @@ export default function CoproDetail() {
         </div>
       )}
 
+      {/* Onglets */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {([['lots', 'Lots & clés'], ['budget', 'Budget & appels'], ['comptes', 'Comptes']] as [Tab, string][]).map(([t, label]) => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'budget' && <CoproBudgetTab copro={copro} canWrite={canWrite} />}
+      {tab === 'comptes' && <CoproAccountsTab coproId={copro.id} />}
+
+      {tab === 'lots' && (<>
       {/* Clés de répartition */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200">
@@ -251,6 +270,7 @@ export default function CoproDetail() {
           </table>
         </div>
       </div>
+      </>)}
 
       {/* Modals */}
       {editCopro && (

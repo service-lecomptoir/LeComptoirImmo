@@ -22,6 +22,16 @@ from app.schemas.copropriete import (
     RepartitionKeyResponse,
     RepartitionKeyUpdate,
 )
+from app.schemas.copropriete_compta import (
+    BudgetCreate,
+    BudgetResponse,
+    BudgetUpdate,
+    CoproAccountRow,
+    CoproPaymentIn,
+    FundCallGenerate,
+    FundCallResponse,
+)
+from app.services.copro_compta_service import CoproComptaService
 from app.services.copropriete_service import CoproprieteService
 
 router = APIRouter(prefix="/coproprietes", tags=["Syndic (copropriété)"])
@@ -218,3 +228,171 @@ async def delete_lot(
 ):
     await _assert_copro(db, current_user, copro_id)
     await CoproprieteService.delete_lot(db, copro_id, lot_id)
+
+
+# ── Comptabilité copro : budget ──────────────────────────────────────────────
+@router.get("/{copro_id}/budget", summary="Budget d'une année (null si absent)")
+async def get_budget(
+    copro_id: uuid.UUID,
+    year: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.get_budget(db, copro_id, year)
+
+
+@router.post(
+    "/{copro_id}/budgets", response_model=BudgetResponse, status_code=201, summary="Créer un budget"
+)
+async def create_budget(
+    copro_id: uuid.UUID,
+    data: BudgetCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.create_budget(db, copro_id, data, created_by=current_user.id)
+
+
+@router.put(
+    "/{copro_id}/budgets/{budget_id}", response_model=BudgetResponse, summary="Modifier un budget"
+)
+async def update_budget(
+    copro_id: uuid.UUID,
+    budget_id: uuid.UUID,
+    data: BudgetUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.update_budget(db, copro_id, budget_id, data)
+
+
+@router.delete("/{copro_id}/budgets/{budget_id}", status_code=204, summary="Supprimer un budget")
+async def delete_budget(
+    copro_id: uuid.UUID,
+    budget_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    await CoproComptaService.delete_budget(db, copro_id, budget_id)
+
+
+# ── Comptabilité copro : appels de fonds ─────────────────────────────────────
+@router.get(
+    "/{copro_id}/budgets/{budget_id}/calls",
+    response_model=list[FundCallResponse],
+    summary="Appels de fonds d'un budget",
+)
+async def list_calls(
+    copro_id: uuid.UUID,
+    budget_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.list_calls(db, copro_id, budget_id)
+
+
+@router.post(
+    "/{copro_id}/budgets/{budget_id}/calls",
+    response_model=FundCallResponse,
+    status_code=201,
+    summary="Générer un appel de fonds",
+)
+async def generate_call(
+    copro_id: uuid.UUID,
+    budget_id: uuid.UUID,
+    data: FundCallGenerate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.generate_call(
+        db, copro_id, budget_id, data.period_index, data.due_date, created_by=current_user.id
+    )
+
+
+@router.delete(
+    "/{copro_id}/calls/{call_id}", status_code=204, summary="Supprimer un appel de fonds"
+)
+async def delete_call(
+    copro_id: uuid.UUID,
+    call_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    await CoproComptaService.delete_call(db, copro_id, call_id)
+
+
+# ── Comptabilité copro : encaissements + comptes ─────────────────────────────
+@router.post("/{copro_id}/call-items/{item_id}/payments", summary="Encaisser une quote-part")
+async def record_copro_payment(
+    copro_id: uuid.UUID,
+    item_id: uuid.UUID,
+    data: CoproPaymentIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.record_payment(
+        db, copro_id, item_id, data, created_by=current_user.id
+    )
+
+
+@router.get(
+    "/{copro_id}/accounts",
+    response_model=list[CoproAccountRow],
+    summary="Comptes copropriétaires (appelé / payé / solde)",
+)
+async def copro_accounts(
+    copro_id: uuid.UUID,
+    year: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproComptaService.accounts(db, copro_id, year)
+
+
+@router.get(
+    "/{copro_id}/call-items/{item_id}/appel/pdf", summary="Appel de fonds (PDF) d'un copropriétaire"
+)
+async def copro_appel_pdf(
+    copro_id: uuid.UUID,
+    item_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    from fastapi.responses import Response
+
+    from app.services.pdf_service import html_to_pdf, render_template
+    from app.services.template_layout_service import get_layout
+    from app.utils.filename import _slug as _slug_name
+    from app.utils.filename import simple_doc_filename
+
+    await _assert_copro(db, current_user, copro_id)
+    ctx = await CoproComptaService.appel_pdf_context(db, copro_id, item_id)
+    html = render_template(
+        "copro_appel.html.j2",
+        {
+            "ctx": ctx,
+            "layout": get_layout(),
+            "manager_name": current_user.full_name or "",
+            "manager_address": getattr(current_user, "full_address", None) or "",
+            "signature_uri": (getattr(current_user, "signature", None) or ""),
+            "tampon_uri": (getattr(current_user, "tampon", None) or ""),
+        },
+    )
+    pdf = html_to_pdf(html)
+    filename = simple_doc_filename(
+        "appel-fonds", _slug_name(ctx["owner_name"]), _slug_name(ctx["period_label"])
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
