@@ -12,6 +12,7 @@ le menu (routing), le guide, les plans Alice et les tarifs se mettent à jour.
 CATEGORY_MISE_EN_LOCATION = "Mise en location"
 CATEGORY_GESTION = "Gestion locative"
 CATEGORY_FINANCE = "Finance et comptabilité"
+CATEGORY_SYNDIC = "Syndic (copropriété)"
 CATEGORY_IA = "Assistance"
 
 # Chaque entrée : key (stable), label, description, category, order.
@@ -134,6 +135,12 @@ FEATURE_CATALOG: list[dict] = [
         "category": CATEGORY_GESTION,
         "description": "Maîtrisez les comptes et les accès de votre espace : invitez vos collaborateurs et ouvrez un accès dédié à vos propriétaires et à vos locataires.",
     },
+    {
+        "key": "tampon",
+        "label": "Tampon / cachet professionnel",
+        "category": CATEGORY_GESTION,
+        "description": "Ajoutez votre cachet professionnel à côté de votre signature sur le bail et les documents CAF, pour des documents officiels prêts à transmettre.",
+    },
     # ── Finance et comptabilité ────────────────────────────────────────────────
     {
         "key": "finances",
@@ -152,6 +159,19 @@ FEATURE_CATALOG: list[dict] = [
         "label": "Liasse fiscale",
         "category": CATEGORY_FINANCE,
         "description": "Préparez sereinement votre déclaration de revenus fonciers : la liasse est constituée à partir de vos données, sans ressaisie.",
+    },
+    {
+        "key": "compta_mandant",
+        "label": "Compta mandant et CRG",
+        "category": CATEGORY_FINANCE,
+        "description": "Gérez la relation mandataire : honoraires de gestion configurables (taux et TVA), suivi des reversements aux propriétaires et compte rendu de gestion en PDF, à la périodicité de votre choix.",
+    },
+    # ── Syndic (copropriété) ───────────────────────────────────────────────────
+    {
+        "key": "syndic",
+        "label": "Syndic de copropriété",
+        "category": CATEGORY_SYNDIC,
+        "description": "Administrez vos copropriétés : lots et clés de répartition (tantièmes), budget prévisionnel, appels de fonds ventilés et comptes des copropriétaires.",
     },
     # ── Assistance ─────────────────────────────────────────────────────────────
     {

@@ -31,7 +31,10 @@ export const PATH_FEATURES: [string, string][] = [
   ['/sorties', 'sortie_locataire'],
   ['/admin', 'admin'],
   ['/finances/revenus', 'finances'],
+  // « /comptabilite/mandant » AVANT « /comptabilite » (le 1er préfixe qui matche gagne).
+  ['/comptabilite/mandant', 'compta_mandant'],
   ['/comptabilite', 'finances'],
+  ['/coproprietes', 'syndic'],
   ['/finances/biens', 'performance_biens'],
   ['/finances/fiscal', 'liasse_fiscale'],
   ['/proprietaire/revenus', 'finances'],
@@ -78,9 +81,12 @@ export const FEATURE_LABELS: Record<string, string> = {
   documents_caf: 'Espace CAF',
   sortie_locataire: 'Sortie du locataire',
   admin: 'Gestion des utilisateurs',
+  tampon: 'Tampon / cachet professionnel',
   finances: 'Revenus et comptabilité',
   performance_biens: 'Performance des biens',
   liasse_fiscale: 'Liasse fiscale',
+  compta_mandant: 'Compta mandant et CRG',
+  syndic: 'Syndic de copropriété',
   agents_ia: 'Agents IA',
 }
 
@@ -105,9 +111,12 @@ export const FEATURE_DESCRIPTIONS: Record<string, string> = {
   documents_caf: "Éditez l'attestation de loyer et le formulaire de tiers payant pré-remplis, et ne manquez plus la déclaration de loyer annuelle (de juillet à décembre).",
   sortie_locataire: "Accompagnez chaque départ de bout en bout : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture administrative du dossier.",
   admin: "Maîtrisez les comptes et les accès de votre espace : invitez vos collaborateurs et ouvrez un accès dédié à vos propriétaires et à vos locataires.",
+  tampon: "Ajoutez votre cachet professionnel à côté de votre signature sur le bail et les documents CAF, pour des documents officiels prêts à transmettre.",
   finances: "Suivez vos revenus locatifs et tenez un grand livre clair, par propriétaire et par période, prêt à présenter.",
   performance_biens: "Mesurez le rendement de chaque bien : loyer théorique face au loyer perçu et taux d'occupation, pour repérer ce qui mérite votre attention.",
   liasse_fiscale: "Préparez sereinement votre déclaration de revenus fonciers : la liasse est constituée à partir de vos données, sans ressaisie.",
+  compta_mandant: "Gérez la relation mandataire : honoraires de gestion configurables (taux et TVA), suivi des reversements aux propriétaires et compte rendu de gestion en PDF, à la périodicité de votre choix.",
+  syndic: "Administrez vos copropriétés : lots et clés de répartition (tantièmes), budget prévisionnel, appels de fonds ventilés et comptes des copropriétaires.",
   agents_ia: "Appuyez-vous sur une équipe d'agents IA (Comptable, Sécurité, Administratif) joignable sur Telegram pour vos rappels, vos questions et vos consignes.",
 }
 

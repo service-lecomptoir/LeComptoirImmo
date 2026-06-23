@@ -11,6 +11,8 @@ import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
 import { toast } from '@/store/toast'
 import { Input } from '@/components/ui'
+import { useFeaturesStore } from '@/store/featuresStore'
+import { isFeatureAllowed } from '@/lib/features'
 
 function splitName(s?: string | null): { first: string; last: string } {
   const parts = (s ?? '').trim().split(/\s+/).filter(Boolean)
@@ -65,8 +67,10 @@ export default function MonProfil() {
   const isLocataire = user?.role === 'locataire'
   const isManager = user?.role === 'gestionnaire' || user?.role === 'gestionnaire_proprio'
   const isGP = user?.role === 'gestionnaire_proprio'
-  // Le mandataire (gère pour le compte de tiers) configure ses honoraires de gestion.
-  const isMandataire = user?.role === 'gestionnaire'
+  // Le mandataire (gère pour le compte de tiers) configure ses honoraires de gestion,
+  // sous réserve que la fonctionnalité « Compta mandant » soit incluse dans son plan.
+  const features = useFeaturesStore(s => s.features)
+  const isMandataire = user?.role === 'gestionnaire' && isFeatureAllowed(features, 'compta_mandant')
 
   // Logo du gestionnaire (en-tête des documents).
   const logoInputRef = useRef<HTMLInputElement>(null)

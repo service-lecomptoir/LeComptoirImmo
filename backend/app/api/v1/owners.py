@@ -204,7 +204,7 @@ async def owner_mandant_account(
     index: int = Query(1, ge=1, le=12),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_manager),
-    _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
+    _feat: User = Depends(require_feature("compta_mandant")),
 ):
     """Encaissé, honoraires (HT/TVA/TTC), net dû, reversé et solde à reverser,
     pour la périodicité demandée (mensuel/trimestriel/semestriel/annuel)."""
@@ -223,6 +223,7 @@ async def list_owner_reversements(
     year: int | None = Query(None, ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_manager),
+    _feat: User = Depends(require_feature("compta_mandant")),
 ):
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
@@ -240,6 +241,7 @@ async def create_owner_reversement(
     data: ReversementCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
+    _feat: User = Depends(require_feature("compta_mandant")),
 ):
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
@@ -256,6 +258,7 @@ async def delete_owner_reversement(
     reversement_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
+    _feat: User = Depends(require_feature("compta_mandant")),
 ):
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "ce propriétaire")
@@ -270,7 +273,7 @@ async def owner_crg_pdf(
     index: int = Query(1, ge=1, le=12),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_manager),
-    _feat: User = Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
+    _feat: User = Depends(require_feature("compta_mandant")),
 ):
     from fastapi.responses import Response
 

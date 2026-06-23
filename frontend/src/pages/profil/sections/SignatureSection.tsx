@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { Save, PenLine, Stamp, Upload, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useFeaturesStore } from '@/store/featuresStore'
+import { isFeatureAllowed } from '@/lib/features'
 import { TypedSignature } from '@/components/common/TypedSignature'
 import { apiClient } from '@/api/client'
 import { getErrorMessage } from '@/utils/errors'
@@ -12,6 +14,8 @@ import { toast } from '@/store/toast'
  *  documents CAF. */
 export default function SignatureSection() {
   const { user, fetchMe } = useAuthStore()
+  const features = useFeaturesStore(s => s.features)
+  const tamponAllowed = isFeatureAllowed(features, 'tampon')
   // undefined = inchangée ; null = supprimée ; string = nouvelle signature.
   const [signature, setSignature] = useState<string | null | undefined>(undefined)
   const [sigMeta, setSigMeta] = useState<{ mode: string; text: string; font: string } | null>(null)
@@ -86,7 +90,8 @@ export default function SignatureSection() {
         documents générés (quittance, avis d'échéance, relance).
       </p>
 
-      {/* Tampon / cachet professionnel (mandataire) */}
+      {/* Tampon / cachet professionnel (mandataire) — feature configurable Alice */}
+      {tamponAllowed && (
       <div className="pt-4 border-t border-gray-100 space-y-3">
         <div className="flex items-center gap-2">
           <Stamp size={16} className="text-blue-600" />
@@ -119,6 +124,7 @@ export default function SignatureSection() {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickTampon} />
         </div>
       </div>
+      )}
 
       <div className="flex justify-end">
         <button onClick={save} disabled={saving}
