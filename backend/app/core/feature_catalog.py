@@ -30,12 +30,14 @@ FEATURE_CATALOG: list[dict] = [
         "key": "diffusion",
         "label": "Publication des annonces",
         "category": CATEGORY_MISE_EN_LOCATION,
+        "audience": "proprietaire",
         "description": "Rédigez des annonces attractives (photos, descriptif, critères), diffusez-les sur vos supports en un clic, en publication immédiate ou programmée, et suivez leur audience pour louer plus vite.",
     },
     {
         "key": "candidatures",
         "label": "Gestion des candidatures",
         "category": CATEGORY_MISE_EN_LOCATION,
+        "audience": "proprietaire",
         "description": "Recevez et centralisez les dossiers, réclamez les pièces par lien sécurisé, proposez des visites avec réservation en ligne, comparez les profils en toute objectivité et transformez le candidat retenu en locataire.",
     },
     # ── Gestion locative ───────────────────────────────────────────────────────

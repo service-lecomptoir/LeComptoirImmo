@@ -31,6 +31,11 @@ class TestCatalogAudience:
         assert cat["compta_mandant"] == "mandataire"
         assert cat["syndic"] == "mandataire"
 
+    def test_proprietaire_only_features_tagged(self):
+        cat = {item["key"]: item["audience"] for item in public_catalog()}
+        assert cat["diffusion"] == "proprietaire"
+        assert cat["candidatures"] == "proprietaire"
+
     def test_common_features_are_all(self):
         cat = {item["key"]: item["audience"] for item in public_catalog()}
         for key in ("dashboard", "properties", "tenants", "leases", "quittances"):
@@ -89,6 +94,24 @@ class TestFeaturesForRole:
     def test_unlimited_plan_mandataire_includes_mandataire_only(self):
         feats = _features_for_role({}, Role.GESTIONNAIRE.value)
         assert "tampon" in feats and "syndic" in feats and "compta_mandant" in feats
+
+    def test_proprietaire_only_feature_excluded_from_mandataire_even_via_legacy(self):
+        # diffusion/candidatures (proprietaire-only) présents dans la liste héritée
+        # → un mandataire ne doit JAMAIS les obtenir.
+        lic = {"features": ["dashboard", "diffusion", "candidatures", "syndic"]}
+        feats = _features_for_role(lic, Role.GESTIONNAIRE.value)
+        assert "diffusion" not in feats
+        assert "candidatures" not in feats
+        assert "syndic" in feats  # mandataire-only → conservé pour le mandataire
+        assert "dashboard" in feats
+
+    def test_unlimited_plan_mandataire_excludes_proprietaire_only(self):
+        feats = _features_for_role({}, Role.GESTIONNAIRE.value)
+        assert "diffusion" not in feats and "candidatures" not in feats
+
+    def test_unlimited_plan_proprio_includes_proprietaire_only(self):
+        feats = _features_for_role({}, Role.GESTIONNAIRE_PROPRIO.value)
+        assert "diffusion" in feats and "candidatures" in feats
 
     def test_unknown_keys_dropped(self):
         # Une clé hors catalogue n'est jamais accordée (cohérence/exhaustivité).
