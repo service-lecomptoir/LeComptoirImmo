@@ -418,6 +418,12 @@ async def assert_document_access(
             if le.property_id:
                 p = await db.get(Property, le.property_id)
                 owner_user_id = getattr(p, "owner_user_id", None) if p else None
+    elif et == EntityType.COPROPRIETE.value and eid is not None:
+        from app.models.copropriete import Copropriete
+
+        cp = await db.get(Copropriete, eid)
+        if cp is not None:
+            created_by = cp.created_by
 
     if role in _MANAGER_ROLES_ISO:
         if await _manager_in_agency(db, user, created_by):

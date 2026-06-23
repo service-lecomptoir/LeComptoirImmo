@@ -243,6 +243,14 @@ export interface Maintenance {
   supplier?: string | null
   cost?: number | null
 }
+export interface CoproDocument {
+  id: string
+  file_name: string
+  mime_type: string
+  file_size?: number | null
+  label?: string | null
+  created_at: string
+}
 
 export const coproApi = {
   list: () => apiClient.get<CoproListItem[]>('/coproprietes'),
@@ -324,4 +332,20 @@ export const coproApi = {
   addMaintenance: (id: string, data: { entry_date?: string | null; category?: string | null; description: string; supplier?: string | null; cost?: number | null }) =>
     apiClient.post<Maintenance>(`/coproprietes/${id}/maintenance`, data),
   deleteMaintenance: (id: string, mid: string) => apiClient.delete(`/coproprietes/${id}/maintenance/${mid}`),
+
+  // ── Coffre de documents ──
+  listDocuments: (id: string) => apiClient.get<CoproDocument[]>(`/coproprietes/${id}/documents`),
+  uploadDocument: (id: string, file: File, label?: string) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (label) form.append('label', label)
+    return apiClient.post<CoproDocument>(`/coproprietes/${id}/documents`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  downloadDocument: async (docId: string, filename: string) => {
+    const r = await apiClient.get(`/documents/${docId}/download`, { responseType: 'blob' })
+    downloadBlob(r.data, filename)
+  },
+  deleteDocument: (docId: string) => apiClient.delete(`/documents/${docId}`),
 }

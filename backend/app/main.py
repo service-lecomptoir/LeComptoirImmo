@@ -938,6 +938,17 @@ async def _apply_column_migrations() -> None:
         """,
         "CREATE INDEX IF NOT EXISTS ix_copro_maintenance_copro ON copro_maintenance (copropriete_id)",
     ]
+    # Ajout de valeurs aux enums natifs PG : « ALTER TYPE ... ADD VALUE » ne peut
+    # pas cohabiter avec le lot transactionnel ci-dessous → exécution AUTOCOMMIT
+    # isolée (et IF NOT EXISTS = idempotent). Coffre de documents copropriété.
+    try:
+        async with engine.connect() as conn:
+            await conn.execution_options(isolation_level="AUTOCOMMIT")
+            await conn.execute(
+                text("ALTER TYPE entity_type_enum ADD VALUE IF NOT EXISTS 'copropriete'")
+            )
+    except Exception as exc:
+        logger.warning(f"ALTER TYPE entity_type_enum ignoré (non bloquant) : {exc}")
     try:
         async with engine.begin() as conn:
             # (Sérialisation assurée par le verrou d'init global au démarrage.)

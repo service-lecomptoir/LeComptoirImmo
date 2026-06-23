@@ -1,12 +1,94 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Trash2, PiggyBank, Wrench } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Plus, Trash2, PiggyBank, Wrench, Upload, FileText, Download } from 'lucide-react'
 import { Button, Input } from '@/components/ui'
 import { toast } from '@/store/toast'
 import { getErrorMessage } from '@/utils/errors'
 import { formatEuro as fmtEuro } from '@/utils/format'
-import { coproApi, type WorksFundSummary, type Maintenance } from '@/api/coproprietes'
+import { coproApi, type WorksFundSummary, type Maintenance, type CoproDocument } from '@/api/coproprietes'
 
 const today = () => new Date().toISOString().slice(0, 10)
+
+function fmtSize(n?: number | null): string {
+  if (!n) return ''
+  if (n < 1024) return `${n} o`
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} Ko`
+  return `${(n / 1024 / 1024).toFixed(1)} Mo`
+}
+
+// ── Coffre de documents ───────────────────────────────────────────────────────
+export function CoproDocumentsTab({ coproId, canWrite }: { coproId: string; canWrite: boolean }) {
+  const [docs, setDocs] = useState<CoproDocument[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { setDocs((await coproApi.listDocuments(coproId)).data) }
+    catch (e) { toast.error(getErrorMessage(e, 'Erreur lors du chargement des documents')) }
+    finally { setLoading(false) }
+  }, [coproId])
+  useEffect(() => { load() }, [load])
+
+  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    if (f.size > 20 * 1024 * 1024) { toast.error('Fichier trop lourd (max 20 Mo).'); return }
+    setBusy(true)
+    try {
+      await coproApi.uploadDocument(coproId, f)
+      toast.success('Document ajouté'); load()
+    } catch (err) { toast.error(getErrorMessage(err, "Échec du téléversement")) }
+    finally { setBusy(false) }
+  }
+
+  const remove = async (id: string) => {
+    if (!window.confirm('Supprimer ce document ?')) return
+    try { await coproApi.deleteDocument(id); load() }
+    catch (e) { toast.error(getErrorMessage(e, 'Erreur lors de la suppression')) }
+  }
+
+  if (loading) return <p className="text-sm text-gray-400 py-4">Chargement…</p>
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between bg-gray-50 px-4 py-2.5 border-b border-gray-200">
+        <div className="flex items-center gap-2"><FileText size={16} className="text-blue-600" />
+          <h3 className="text-sm font-semibold text-gray-900">Coffre de documents</h3></div>
+        {canWrite && (
+          <>
+            <Button size="sm" onClick={() => fileRef.current?.click()} isLoading={busy} leftIcon={<Upload size={14} />}>Téléverser</Button>
+            <input ref={fileRef} type="file" className="hidden" onChange={onPick}
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx" />
+          </>
+        )}
+      </div>
+      <table className="w-full text-sm">
+        <thead><tr className="text-left text-xs text-gray-500 uppercase">
+          <th className="px-4 py-2">Document</th><th className="px-4 py-2">Ajouté le</th>
+          <th className="px-4 py-2 text-right">Taille</th><th className="px-4 py-2" />
+        </tr></thead>
+        <tbody>
+          {docs.map(d => (
+            <tr key={d.id} className="border-t border-gray-100">
+              <td className="px-4 py-2">{d.label || d.file_name}</td>
+              <td className="px-4 py-2 text-gray-500">{new Date(d.created_at).toLocaleDateString('fr-FR')}</td>
+              <td className="px-4 py-2 text-right text-gray-400">{fmtSize(d.file_size)}</td>
+              <td className="px-4 py-2 text-right">
+                <div className="inline-flex gap-1">
+                  <button onClick={() => coproApi.downloadDocument(d.id, d.file_name)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600" title="Télécharger"><Download size={14} /></button>
+                  {canWrite && <button onClick={() => remove(d.id)} className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600" title="Supprimer"><Trash2 size={14} /></button>}
+                </div>
+              </td>
+            </tr>
+          ))}
+          {docs.length === 0 && <tr><td colSpan={4} className="px-4 py-3 text-gray-400">Aucun document.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 // ── Fonds de travaux (ALUR) ───────────────────────────────────────────────────
 export function CoproWorksFundTab({ coproId, canWrite }: { coproId: string; canWrite: boolean }) {

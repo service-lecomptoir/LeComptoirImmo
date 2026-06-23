@@ -16,6 +16,7 @@ class EntityType(str, Enum):
     UNIT = "unit"
     PROPERTY = "property"
     INSPECTION = "inspection"
+    COPROPRIETE = "copropriete"
 
 
 class DocumentType(str, Enum):

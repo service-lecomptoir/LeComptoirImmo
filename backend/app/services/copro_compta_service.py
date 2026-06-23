@@ -286,6 +286,8 @@ class CoproComptaService:
         db.add(call)
         await db.flush()
 
+        # Quote-part (non arrondie) de chaque lot pour la période.
+        raw: list[tuple] = []  # (lot, montant brut)
         for lot in lots:
             tmap = {t.key_id: float(t.tantiemes or 0) for t in lot.tantiemes}
             annual = 0.0
@@ -294,7 +296,19 @@ class CoproComptaService:
                 base = float(key.total_tantiemes) if key else 0.0
                 if base > 0:
                     annual += float(line.amount or 0) * tmap.get(line.key_id, 0.0) / base
-            amount = round(annual / n, 2)
+            raw.append((lot, annual / n))
+
+        rounded = [(lot, round(m, 2)) for lot, m in raw]
+        # Compta immobilière : le total appelé doit égaler le montant budgété de la
+        # période (Σ des quote-parts brutes), sans dérive de centimes due aux
+        # arrondis. On affecte le résidu à la plus grosse quote-part.
+        expected_total = round(sum(m for _l, m in raw), 2)
+        residual = round(expected_total - sum(m for _l, m in rounded), 2)
+        if residual != 0 and rounded:
+            idx = max(range(len(rounded)), key=lambda i: rounded[i][1])
+            rounded[idx] = (rounded[idx][0], round(rounded[idx][1] + residual, 2))
+
+        for lot, amount in rounded:
             if amount <= 0:
                 continue
             db.add(

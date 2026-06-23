@@ -14,9 +14,9 @@ import { CoproBudgetTab } from './CoproBudgetTab'
 import { CoproAccountsTab } from './CoproAccountsTab'
 import { CoproRegulTab } from './CoproRegulTab'
 import { CoproAssembliesTab } from './CoproAssembliesTab'
-import { CoproWorksFundTab, CoproMaintenanceTab } from './CoproExtrasTabs'
+import { CoproWorksFundTab, CoproMaintenanceTab, CoproDocumentsTab } from './CoproExtrasTabs'
 
-type Tab = 'lots' | 'budget' | 'comptes' | 'regul' | 'ag' | 'fonds' | 'entretien'
+type Tab = 'lots' | 'budget' | 'comptes' | 'regul' | 'ag' | 'fonds' | 'entretien' | 'documents'
 
 export default function CoproDetail() {
   const { id = '' } = useParams()
@@ -131,7 +131,7 @@ export default function CoproDetail() {
 
       {/* Onglets */}
       <div className="flex gap-1 border-b border-gray-200">
-        {([['lots', 'Lots & clés'], ['budget', 'Budget & appels'], ['comptes', 'Comptes'], ['regul', 'Régularisation'], ['ag', 'Assemblées'], ['fonds', 'Fonds travaux'], ['entretien', 'Entretien']] as [Tab, string][]).map(([t, label]) => (
+        {([['lots', 'Lots & clés'], ['budget', 'Budget & appels'], ['comptes', 'Comptes'], ['regul', 'Régularisation'], ['ag', 'Assemblées'], ['fonds', 'Fonds travaux'], ['entretien', 'Entretien'], ['documents', 'Documents']] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${tab === t ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
             {label}
@@ -145,6 +145,7 @@ export default function CoproDetail() {
       {tab === 'ag' && <CoproAssembliesTab copro={copro} canWrite={canWrite} />}
       {tab === 'fonds' && <CoproWorksFundTab coproId={copro.id} canWrite={canWrite} />}
       {tab === 'entretien' && <CoproMaintenanceTab coproId={copro.id} canWrite={canWrite} />}
+      {tab === 'documents' && <CoproDocumentsTab coproId={copro.id} canWrite={canWrite} />}
 
       {tab === 'lots' && (<>
       {/* Clés de répartition */}

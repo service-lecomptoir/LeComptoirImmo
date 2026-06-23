@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,7 @@ from app.api.v1._isolation import agency_member_ids, assert_manager_scope
 from app.core.permissions import Role
 from app.database import get_db
 from app.models.copropriete import CoproLot, CoproLotTantieme
+from app.models.document import DocumentType, EntityType
 from app.models.user import User
 from app.schemas.copropriete import (
     CoproprieteCreate,
@@ -53,10 +54,12 @@ from app.schemas.copropriete_extras import (
     WorksFundEntryResponse,
     WorksFundSummary,
 )
+from app.schemas.document import DocumentResponse
 from app.services.copro_ag_service import CoproAGService
 from app.services.copro_compta_service import CoproComptaService
 from app.services.copro_extras_service import CoproExtrasService
 from app.services.copropriete_service import CoproprieteService
+from app.services.document_service import DocumentService
 
 router = APIRouter(prefix="/coproprietes", tags=["Syndic (copropriété)"])
 
@@ -730,6 +733,48 @@ async def assembly_pv_pdf(
     current_user: User = Depends(get_current_manager),
 ):
     return await _assembly_pdf(db, current_user, copro_id, assembly_id, "pv")
+
+
+# ── Coffre de documents (copropriété) ────────────────────────────────────────
+@router.get(
+    "/{copro_id}/documents",
+    response_model=list[DocumentResponse],
+    summary="Documents de la copropriété",
+)
+async def list_copro_documents(
+    copro_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await DocumentService.list_by_entity(db, EntityType.COPROPRIETE, copro_id)
+
+
+@router.post(
+    "/{copro_id}/documents",
+    response_model=DocumentResponse,
+    status_code=201,
+    summary="Téléverser un document dans le coffre de la copropriété",
+)
+async def upload_copro_document(
+    copro_id: uuid.UUID,
+    file: UploadFile = File(...),
+    label: str | None = Form(None),
+    notes: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await DocumentService.upload(
+        db,
+        file=file,
+        entity_type=EntityType.COPROPRIETE,
+        entity_id=copro_id,
+        document_type=DocumentType.AUTRE,
+        label=label,
+        notes=notes,
+        uploaded_by=current_user.id,
+    )
 
 
 # ── Fonds de travaux (ALUR) ──────────────────────────────────────────────────
