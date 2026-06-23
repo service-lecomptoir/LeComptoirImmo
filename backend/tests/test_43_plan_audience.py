@@ -27,13 +27,13 @@ class TestCatalogAudience:
 
     def test_mandataire_only_features_tagged(self):
         cat = {item["key"]: item["audience"] for item in public_catalog()}
-        assert cat["tampon"] == "mandataire"
         assert cat["compta_mandant"] == "mandataire"
         assert cat["syndic"] == "mandataire"
 
     def test_common_features_are_all(self):
         cat = {item["key"]: item["audience"] for item in public_catalog()}
-        for key in ("dashboard", "properties", "tenants", "leases", "quittances"):
+        # tampon est commun (utile aux deux profils), pas mandataire-only.
+        for key in ("dashboard", "properties", "tenants", "leases", "quittances", "tampon"):
             assert cat[key] == "all"
 
 
@@ -48,7 +48,7 @@ class TestFeaturesForRole:
     def test_proprio_gets_proprietaire_list(self):
         feats = _features_for_role(self.LIC, Role.GESTIONNAIRE_PROPRIO.value)
         assert feats == ["dashboard"]
-        assert "tampon" not in feats  # réservé au mandataire
+        assert "syndic" not in feats  # réservé au mandataire
 
     def test_mandataire_gets_mandataire_list(self):
         feats = _features_for_role(self.LIC, Role.GESTIONNAIRE.value)
@@ -69,20 +69,22 @@ class TestFeaturesForRole:
 
     # ── Audience autoritaire : cohérence garantie ────────────────────────────
     def test_mandataire_only_feature_excluded_from_proprio_even_via_legacy(self):
-        # tampon présent dans la liste héritée → un GP ne doit JAMAIS l'obtenir.
+        # syndic/compta_mandant présents dans la liste héritée → un GP ne doit
+        # JAMAIS les obtenir ; tampon (commun) est en revanche conservé.
         lic = {"features": ["dashboard", "tampon", "syndic", "compta_mandant"]}
         feats = _features_for_role(lic, Role.GESTIONNAIRE_PROPRIO.value)
-        assert "tampon" not in feats
         assert "syndic" not in feats
         assert "compta_mandant" not in feats
+        assert "tampon" in feats  # commun aux deux profils
         assert "dashboard" in feats
 
     def test_unlimited_plan_proprio_excludes_mandataire_only(self):
         # Plan « toutes les fonctionnalités » (aucune liste) → GP obtient tout SAUF
-        # les fonctions mandataire-only, et de façon exhaustive.
+        # les fonctions mandataire-only, et de façon exhaustive (tampon inclus).
         feats = _features_for_role({}, Role.GESTIONNAIRE_PROPRIO.value)
         assert feats  # liste exhaustive, pas None
-        assert "tampon" not in feats and "syndic" not in feats and "compta_mandant" not in feats
+        assert "syndic" not in feats and "compta_mandant" not in feats
+        assert "tampon" in feats  # commun → présent pour le GP
         assert "dashboard" in feats and "quittances" in feats
 
     def test_unlimited_plan_mandataire_includes_mandataire_only(self):
