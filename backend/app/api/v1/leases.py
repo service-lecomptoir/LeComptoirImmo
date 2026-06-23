@@ -5,7 +5,7 @@ from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_proprio_section, require_role
 from app.api.v1._isolation import agency_lease_ids, assert_lease_access, assert_manager_scope
 from app.core.permissions import Role
 from app.database import get_db
@@ -36,6 +36,7 @@ async def list_leases(
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _sec=Depends(require_proprio_section("locataires")),
 ):
     """
     Liste les baux.

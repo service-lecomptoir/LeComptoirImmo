@@ -8,7 +8,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_proprio_section
 from app.core.permissions import Role
 from app.database import get_db
 from app.models.message import ProprietaireMessage
@@ -40,6 +40,7 @@ async def list_messages(
     proprietaire_id: uuid.UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _sec=Depends(require_proprio_section("messages")),
 ):
     """
     - Propriétaire : liste ses propres messages avec le gestionnaire
@@ -140,6 +141,7 @@ async def send_message(
     data: MessageCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _sec=Depends(require_proprio_section("messages")),
 ):
     """Envoyer un message."""
     role = Role(current_user.role)

@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_gestionnaire, get_current_user, require_role
+from app.api.deps import (
+    get_current_gestionnaire,
+    get_current_user,
+    require_proprio_section,
+    require_role,
+)
 from app.api.deps import get_current_user as _get_current_user
 from app.api.v1._isolation import agency_lease_ids, assert_payment_access
 from app.core.features import require_feature
@@ -564,6 +569,7 @@ async def list_payments(
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _sec=Depends(require_proprio_section("revenus")),
 ):
     """
     Liste les paiements.

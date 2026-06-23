@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_proprio_section
 from app.core.features import require_any_feature
 from app.database import get_db
 from app.models.lease import Lease
@@ -23,6 +23,7 @@ async def get_proprietaire_performance(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
     _feat=Depends(require_any_feature("finances", "performance_biens", "liasse_fiscale")),
+    _sec=Depends(require_proprio_section("biens")),
 ):
     """Performance des biens du propriétaire : loyer théorique vs perçu, par mois."""
     from fastapi import HTTPException

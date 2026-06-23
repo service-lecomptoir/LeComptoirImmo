@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import get_current_user, require_proprio_section, require_role
 from app.api.v1._isolation import agency_tenant_ids, assert_ticket_access
 from app.core.permissions import Role
 from app.database import get_db
@@ -220,6 +220,7 @@ async def proprietaire_tickets(
     status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    _sec=Depends(require_proprio_section("incidents")),
 ):
     """Liste les tickets des locataires pour les biens appartenant au propriétaire connecté."""
     # Trouver les biens du propriétaire

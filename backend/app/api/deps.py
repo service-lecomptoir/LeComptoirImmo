@@ -100,6 +100,32 @@ async def get_manager_or_owner(
     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
 
 
+def require_proprio_section(section: str):
+    """Dépendance : 403 si un BAILLEUR (rôle propriétaire) accède à une rubrique
+    que son gestionnaire ne lui a pas ouverte. Sans effet pour les autres rôles
+    (gestionnaire/admin) : l'isolation par bien reste gérée dans chaque endpoint.
+
+    Le périmètre visible est calculé par `effective_sections_for` (surcharge du
+    compte ∩ défaut d'agence ∩ plan) : même source que le menu, donc cohérent."""
+
+    async def _dep(
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        if Role(current_user.role) == Role.PROPRIETAIRE:
+            from app.services.proprio_visibility_service import effective_sections_for
+
+            allowed = await effective_sections_for(db, current_user)
+            if section not in allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Cette rubrique n'est pas disponible dans votre espace.",
+                )
+        return current_user
+
+    return _dep
+
+
 async def get_current_comptable(
     current_user: User = Depends(get_current_user),
 ) -> User:

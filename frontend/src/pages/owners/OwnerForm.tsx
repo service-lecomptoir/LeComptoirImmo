@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { Contact, Phone, Landmark, UserRound, Plus, X, Percent } from 'lucide-react'
 import { Button, Input } from '@/components/ui'
 import { SectionTitle } from '@/components/common/SectionTitle'
+import { ProprioVisibilityEditor } from '@/components/common/ProprioVisibilityEditor'
 import { Modal } from '@/components/common/Modal'
 import { PhoneInput } from '@/components/common/PhoneInput'
 import { ownersApi } from '@/api/owners'
@@ -303,6 +304,16 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
             <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1">
               <UserRound size={11} /> Compte lié : ce propriétaire peut se connecter à son espace
             </p>
+          )}
+          {/* Le gestionnaire choisit, dès la création, les rubriques visibles par
+              ce bailleur (préréglage restreint par défaut, ajustable). */}
+          {selectedUserId && (
+            <div className="mt-3 pt-3 border-t border-blue-200">
+              <p className="text-xs font-semibold text-blue-700 mb-2">
+                Rubriques visibles par ce propriétaire
+              </p>
+              <ProprioVisibilityEditor ownerUserId={selectedUserId} />
+            </div>
           )}
         </div>
 

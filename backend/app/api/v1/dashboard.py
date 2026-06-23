@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_manager, get_current_user
+from app.api.deps import get_current_manager, get_current_user, require_proprio_section
 from app.core.permissions import Role
 from app.database import get_db
 from app.models.lease import Lease
@@ -511,6 +511,7 @@ async def get_dashboard_stats(
 async def get_proprietaire_stats(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _sec=Depends(require_proprio_section("dashboard")),
 ):
     """Statistiques mensuelles pour le tableau de bord propriétaire."""
     from app.core.permissions import Role as R
@@ -582,6 +583,7 @@ async def get_proprietaire_stats(
 async def get_proprietaire_apurement(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _sec=Depends(require_proprio_section("revenus")),
 ):
     """Échéances d'apurement encaissées sur les biens du propriétaire, sous forme
     de lignes de revenu (à fusionner avec « Mes revenus »)."""
@@ -621,6 +623,7 @@ async def get_fiscal_revenues(
     proprietaire_id: uuid.UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
+    _sec=Depends(require_proprio_section("fiscal")),
 ):
     """Calcul des revenus fonciers pour la liasse fiscale."""
     from app.core.permissions import Role as R

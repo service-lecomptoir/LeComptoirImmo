@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_role
+from app.api.deps import require_proprio_section, require_role
 from app.api.v1._isolation import agency_property_ids, assert_manager_scope
 from app.core.permissions import Role
 from app.database import get_db
@@ -146,6 +146,7 @@ async def list_entretiens(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(Role.LECTURE)),
+    _sec=Depends(require_proprio_section("entretiens")),
 ):
     if Role(current_user.role) == Role.GESTIONNAIRE_PROPRIO:
         from app.models.property import Property

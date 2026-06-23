@@ -243,6 +243,18 @@ async def create_user(
         created_by=current_user.id,
         must_change_password=True,
     )
+    # Bailleur : préréglage restreint des rubriques visibles (le gestionnaire
+    # ajuste ensuite via la fiche). On pose une surcharge explicite plutôt que
+    # « toutes » par défaut.
+    if Role(data.role) == Role.PROPRIETAIRE:
+        from app.core.proprio_sections import DEFAULT_NEW_PROPRIO_KEYS, sanitize
+
+        new_user.proprio_visibility = sanitize(DEFAULT_NEW_PROPRIO_KEYS)
+        # flush + refresh dans le contexte async : persiste la surcharge et
+        # recharge les colonnes avant la sérialisation (évite un lazy-load sync).
+        await db.flush()
+        await db.refresh(new_user)
+
     from app.services import audit_service
 
     await audit_service.log(

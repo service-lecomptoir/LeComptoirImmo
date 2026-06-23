@@ -19,6 +19,10 @@ PROPRIO_SECTIONS = [
 ALL_KEYS: list[str] = [k for k, _ in PROPRIO_SECTIONS]
 _FEATURE_BY_KEY = dict(PROPRIO_SECTIONS)
 
+# Préréglage appliqué à la CRÉATION d'un compte bailleur (le gestionnaire ajuste
+# ensuite) : un sous-ensemble restreint plutôt que tout ouvrir par défaut.
+DEFAULT_NEW_PROPRIO_KEYS: list[str] = ["dashboard", "biens", "revenus", "fiscal"]
+
 LABELS = {
     "dashboard": "Tableau de bord",
     "biens": "Mes biens",
