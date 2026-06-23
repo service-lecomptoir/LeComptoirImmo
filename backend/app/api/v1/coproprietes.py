@@ -22,6 +22,16 @@ from app.schemas.copropriete import (
     RepartitionKeyResponse,
     RepartitionKeyUpdate,
 )
+from app.schemas.copropriete_ag import (
+    AssemblyCreate,
+    AssemblyDetail,
+    AssemblyListItem,
+    AssemblyUpdate,
+    ResolutionCreate,
+    ResolutionUpdate,
+    VoteIn,
+    VoterRow,
+)
 from app.schemas.copropriete_compta import (
     BudgetCreate,
     BudgetResponse,
@@ -35,6 +45,7 @@ from app.schemas.copropriete_compta import (
     FundCallResponse,
     RegularizationResult,
 )
+from app.services.copro_ag_service import CoproAGService
 from app.services.copro_compta_service import CoproComptaService
 from app.services.copropriete_service import CoproprieteService
 
@@ -508,6 +519,235 @@ async def regularization_pdf(
     )
     pdf = html_to_pdf(html)
     filename = simple_doc_filename("regularisation", _slug_name(ctx["owner_name"]), year)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ── Assemblées générales ─────────────────────────────────────────────────────
+@router.get(
+    "/{copro_id}/voters",
+    response_model=list[VoterRow],
+    summary="Copropriétaires votants (tantièmes)",
+)
+async def list_voters(
+    copro_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.voters(db, copro_id)
+
+
+@router.get(
+    "/{copro_id}/assemblies", response_model=list[AssemblyListItem], summary="Liste des assemblées"
+)
+async def list_assemblies(
+    copro_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.list_assemblies(db, copro_id)
+
+
+@router.post(
+    "/{copro_id}/assemblies",
+    response_model=AssemblyDetail,
+    status_code=201,
+    summary="Créer une assemblée",
+)
+async def create_assembly(
+    copro_id: uuid.UUID,
+    data: AssemblyCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.create_assembly(db, copro_id, data, created_by=current_user.id)
+
+
+@router.get(
+    "/{copro_id}/assemblies/{assembly_id}",
+    response_model=AssemblyDetail,
+    summary="Détail d'une assemblée",
+)
+async def get_assembly(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.get_detail(db, copro_id, assembly_id)
+
+
+@router.put(
+    "/{copro_id}/assemblies/{assembly_id}",
+    response_model=AssemblyDetail,
+    summary="Modifier une assemblée",
+)
+async def update_assembly(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    data: AssemblyUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.update_assembly(db, copro_id, assembly_id, data)
+
+
+@router.delete(
+    "/{copro_id}/assemblies/{assembly_id}", status_code=204, summary="Supprimer une assemblée"
+)
+async def delete_assembly(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    await CoproAGService.delete_assembly(db, copro_id, assembly_id)
+
+
+@router.post(
+    "/{copro_id}/assemblies/{assembly_id}/resolutions",
+    response_model=AssemblyDetail,
+    status_code=201,
+    summary="Ajouter une résolution",
+)
+async def add_resolution(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    data: ResolutionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.add_resolution(db, copro_id, assembly_id, data)
+
+
+@router.put(
+    "/{copro_id}/assemblies/{assembly_id}/resolutions/{resolution_id}",
+    response_model=AssemblyDetail,
+    summary="Modifier une résolution",
+)
+async def update_resolution(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    resolution_id: uuid.UUID,
+    data: ResolutionUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.update_resolution(db, copro_id, assembly_id, resolution_id, data)
+
+
+@router.delete(
+    "/{copro_id}/assemblies/{assembly_id}/resolutions/{resolution_id}",
+    status_code=204,
+    summary="Supprimer une résolution",
+)
+async def delete_resolution(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    resolution_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    await CoproAGService.delete_resolution(db, copro_id, assembly_id, resolution_id)
+
+
+@router.post(
+    "/{copro_id}/assemblies/{assembly_id}/resolutions/{resolution_id}/vote",
+    response_model=AssemblyDetail,
+    summary="Enregistrer un vote",
+)
+async def set_vote(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    resolution_id: uuid.UUID,
+    data: VoteIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.set_vote(
+        db, copro_id, assembly_id, resolution_id, data.owner_id, data.choice
+    )
+
+
+@router.delete(
+    "/{copro_id}/assemblies/{assembly_id}/resolutions/{resolution_id}/vote/{owner_id}",
+    response_model=AssemblyDetail,
+    summary="Retirer un vote",
+)
+async def clear_vote(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    resolution_id: uuid.UUID,
+    owner_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproAGService.clear_vote(db, copro_id, assembly_id, resolution_id, owner_id)
+
+
+@router.get(
+    "/{copro_id}/assemblies/{assembly_id}/convocation/pdf", summary="Convocation d'assemblée (PDF)"
+)
+async def assembly_convocation_pdf(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    return await _assembly_pdf(db, current_user, copro_id, assembly_id, "convocation")
+
+
+@router.get(
+    "/{copro_id}/assemblies/{assembly_id}/pv/pdf", summary="Procès-verbal d'assemblée (PDF)"
+)
+async def assembly_pv_pdf(
+    copro_id: uuid.UUID,
+    assembly_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    return await _assembly_pdf(db, current_user, copro_id, assembly_id, "pv")
+
+
+async def _assembly_pdf(db, current_user, copro_id, assembly_id, doc: str):
+    from fastapi.responses import Response
+
+    from app.services.pdf_service import html_to_pdf, render_template
+    from app.services.template_layout_service import get_layout
+    from app.utils.filename import _slug as _slug_name
+    from app.utils.filename import simple_doc_filename
+
+    await _assert_copro(db, current_user, copro_id)
+    ctx = await CoproAGService.pdf_context(db, copro_id, assembly_id)
+    template = "copro_convocation.html.j2" if doc == "convocation" else "copro_pv.html.j2"
+    html = render_template(
+        template,
+        {
+            "ctx": ctx,
+            "layout": get_layout(),
+            "manager_name": current_user.full_name or "",
+            "manager_address": getattr(current_user, "full_address", None) or "",
+            "signature_uri": (getattr(current_user, "signature", None) or ""),
+            "tampon_uri": (getattr(current_user, "tampon", None) or ""),
+        },
+    )
+    pdf = html_to_pdf(html)
+    prefix = "convocation-ag" if doc == "convocation" else "pv-ag"
+    filename = simple_doc_filename(prefix, _slug_name(ctx["copro_name"]), _slug_name(ctx["title"]))
     return Response(
         content=pdf,
         media_type="application/pdf",

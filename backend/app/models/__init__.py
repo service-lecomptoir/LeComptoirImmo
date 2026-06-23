@@ -13,6 +13,11 @@ from app.models.copropriete import (
     Copropriete,
     CoproRepartitionKey,
 )
+from app.models.copropriete_ag import (
+    CoproAssembly,
+    CoproResolution,
+    CoproVote,
+)
 from app.models.copropriete_compta import (
     CoproBudget,
     CoproBudgetLine,
@@ -94,4 +99,7 @@ __all__ = [
     "CoproFundCall",
     "CoproFundCallItem",
     "CoproPayment",
+    "CoproAssembly",
+    "CoproResolution",
+    "CoproVote",
 ]

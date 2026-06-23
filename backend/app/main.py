@@ -863,6 +863,50 @@ async def _apply_column_migrations() -> None:
         """,
         "CREATE INDEX IF NOT EXISTS ix_copro_expenses_copro ON copro_expenses (copropriete_id)",
         "CREATE INDEX IF NOT EXISTS ix_copro_expenses_year ON copro_expenses (year)",
+        # ── Module Syndic — phase 3 : assemblées générales ──────────────────────
+        """
+        CREATE TABLE IF NOT EXISTS copro_assemblies (
+            id UUID PRIMARY KEY,
+            copropriete_id UUID NOT NULL REFERENCES coproprietes(id) ON DELETE CASCADE,
+            title VARCHAR(200) NOT NULL,
+            kind VARCHAR(20) NOT NULL DEFAULT 'ordinaire',
+            meeting_date DATE,
+            location VARCHAR(300),
+            status VARCHAR(16) NOT NULL DEFAULT 'draft',
+            notes TEXT,
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_assemblies_copro ON copro_assemblies (copropriete_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_resolutions (
+            id UUID PRIMARY KEY,
+            assembly_id UUID NOT NULL REFERENCES copro_assemblies(id) ON DELETE CASCADE,
+            position INTEGER NOT NULL DEFAULT 0,
+            title VARCHAR(300) NOT NULL,
+            description TEXT,
+            majority VARCHAR(12) NOT NULL DEFAULT 'art24',
+            outcome VARCHAR(12) NOT NULL DEFAULT 'pending',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_resolutions_assembly ON copro_resolutions (assembly_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_votes (
+            id UUID PRIMARY KEY,
+            resolution_id UUID NOT NULL REFERENCES copro_resolutions(id) ON DELETE CASCADE,
+            owner_id UUID NOT NULL REFERENCES owners(id) ON DELETE CASCADE,
+            choice VARCHAR(12) NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            CONSTRAINT uq_copro_vote_owner UNIQUE (resolution_id, owner_id)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_votes_resolution ON copro_votes (resolution_id)",
+        "CREATE INDEX IF NOT EXISTS ix_copro_votes_owner ON copro_votes (owner_id)",
     ]
     try:
         async with engine.begin() as conn:

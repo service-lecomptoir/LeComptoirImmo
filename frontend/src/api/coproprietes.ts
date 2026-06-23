@@ -162,6 +162,65 @@ export interface RegularizationResult {
   rows: RegularizationRow[]
 }
 
+// ── Assemblées générales ──
+export type Majority = 'art24' | 'art25' | 'art26' | 'unanimite'
+export type VoteChoice = 'pour' | 'contre' | 'abstention'
+export interface Voter { owner_id: string; owner_name?: string | null; tantiemes: number }
+export interface AssemblyListItem {
+  id: string
+  title: string
+  kind: string
+  meeting_date?: string | null
+  status: string
+  resolution_count: number
+  created_at: string
+}
+export interface VoteRow {
+  owner_id: string
+  owner_name?: string | null
+  choice: VoteChoice
+  tantiemes: number
+}
+export interface ResolutionResult {
+  id: string
+  position: number
+  title: string
+  description?: string | null
+  majority: Majority
+  outcome: string
+  base_tantiemes: number
+  pour: number
+  contre: number
+  abstention: number
+  votes: VoteRow[]
+}
+export interface AssemblyDetail {
+  id: string
+  copropriete_id: string
+  title: string
+  kind: string
+  meeting_date?: string | null
+  location?: string | null
+  status: string
+  notes?: string | null
+  resolutions: ResolutionResult[]
+  created_at: string
+  updated_at: string
+}
+export interface AssemblyInput {
+  title: string
+  kind?: string
+  meeting_date?: string | null
+  location?: string | null
+  notes?: string | null
+}
+export interface ResolutionInput {
+  title: string
+  description?: string | null
+  majority?: Majority
+  position?: number
+}
+
 export const coproApi = {
   list: () => apiClient.get<CoproListItem[]>('/coproprietes'),
   get: (id: string) => apiClient.get<CoproDetail>(`/coproprietes/${id}`),
@@ -207,6 +266,28 @@ export const coproApi = {
   regularization: (id: string, year: number) => apiClient.get<RegularizationResult>(`/coproprietes/${id}/regularization`, { params: { year } }),
   regulPdf: async (id: string, ownerId: string, year: number, filename: string) => {
     const r = await apiClient.get(`/coproprietes/${id}/regularization/${ownerId}/pdf`, { params: { year }, responseType: 'blob' })
+    downloadBlob(r.data, filename)
+  },
+
+  // ── Assemblées générales ──
+  voters: (id: string) => apiClient.get<Voter[]>(`/coproprietes/${id}/voters`),
+  listAssemblies: (id: string) => apiClient.get<AssemblyListItem[]>(`/coproprietes/${id}/assemblies`),
+  getAssembly: (id: string, aid: string) => apiClient.get<AssemblyDetail>(`/coproprietes/${id}/assemblies/${aid}`),
+  createAssembly: (id: string, data: AssemblyInput) => apiClient.post<AssemblyDetail>(`/coproprietes/${id}/assemblies`, data),
+  updateAssembly: (id: string, aid: string, data: Partial<AssemblyInput> & { status?: string }) => apiClient.put<AssemblyDetail>(`/coproprietes/${id}/assemblies/${aid}`, data),
+  deleteAssembly: (id: string, aid: string) => apiClient.delete(`/coproprietes/${id}/assemblies/${aid}`),
+  addResolution: (id: string, aid: string, data: ResolutionInput) => apiClient.post<AssemblyDetail>(`/coproprietes/${id}/assemblies/${aid}/resolutions`, data),
+  deleteResolution: (id: string, aid: string, rid: string) => apiClient.delete(`/coproprietes/${id}/assemblies/${aid}/resolutions/${rid}`),
+  setVote: (id: string, aid: string, rid: string, owner_id: string, choice: VoteChoice) =>
+    apiClient.post<AssemblyDetail>(`/coproprietes/${id}/assemblies/${aid}/resolutions/${rid}/vote`, { owner_id, choice }),
+  clearVote: (id: string, aid: string, rid: string, ownerId: string) =>
+    apiClient.delete<AssemblyDetail>(`/coproprietes/${id}/assemblies/${aid}/resolutions/${rid}/vote/${ownerId}`),
+  convocationPdf: async (id: string, aid: string, filename: string) => {
+    const r = await apiClient.get(`/coproprietes/${id}/assemblies/${aid}/convocation/pdf`, { responseType: 'blob' })
+    downloadBlob(r.data, filename)
+  },
+  pvPdf: async (id: string, aid: string, filename: string) => {
+    const r = await apiClient.get(`/coproprietes/${id}/assemblies/${aid}/pv/pdf`, { responseType: 'blob' })
     downloadBlob(r.data, filename)
   },
 }
