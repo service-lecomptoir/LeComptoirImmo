@@ -221,6 +221,29 @@ export interface ResolutionInput {
   position?: number
 }
 
+// ── Fonds travaux + entretien ──
+export interface WorksFundEntry {
+  id: string
+  entry_date: string
+  kind: 'contribution' | 'depense'
+  label: string
+  amount: number
+}
+export interface WorksFundSummary {
+  total_contributions: number
+  total_depenses: number
+  balance: number
+  entries: WorksFundEntry[]
+}
+export interface Maintenance {
+  id: string
+  entry_date?: string | null
+  category?: string | null
+  description: string
+  supplier?: string | null
+  cost?: number | null
+}
+
 export const coproApi = {
   list: () => apiClient.get<CoproListItem[]>('/coproprietes'),
   get: (id: string) => apiClient.get<CoproDetail>(`/coproprietes/${id}`),
@@ -290,4 +313,15 @@ export const coproApi = {
     const r = await apiClient.get(`/coproprietes/${id}/assemblies/${aid}/pv/pdf`, { responseType: 'blob' })
     downloadBlob(r.data, filename)
   },
+
+  // ── Fonds travaux + entretien ──
+  worksFund: (id: string) => apiClient.get<WorksFundSummary>(`/coproprietes/${id}/works-fund`),
+  addWorksEntry: (id: string, data: { entry_date: string; kind: 'contribution' | 'depense'; label: string; amount: number }) =>
+    apiClient.post<WorksFundEntry>(`/coproprietes/${id}/works-fund`, data),
+  deleteWorksEntry: (id: string, entryId: string) => apiClient.delete(`/coproprietes/${id}/works-fund/${entryId}`),
+
+  listMaintenance: (id: string) => apiClient.get<Maintenance[]>(`/coproprietes/${id}/maintenance`),
+  addMaintenance: (id: string, data: { entry_date?: string | null; category?: string | null; description: string; supplier?: string | null; cost?: number | null }) =>
+    apiClient.post<Maintenance>(`/coproprietes/${id}/maintenance`, data),
+  deleteMaintenance: (id: string, mid: string) => apiClient.delete(`/coproprietes/${id}/maintenance/${mid}`),
 }

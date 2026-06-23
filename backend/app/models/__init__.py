@@ -26,6 +26,7 @@ from app.models.copropriete_compta import (
     CoproFundCallItem,
     CoproPayment,
 )
+from app.models.copropriete_extras import CoproMaintenance, CoproWorksFundEntry
 from app.models.document import Document
 from app.models.document_template import DocumentTemplate
 from app.models.email_domain import EmailDomain
@@ -102,4 +103,6 @@ __all__ = [
     "CoproAssembly",
     "CoproResolution",
     "CoproVote",
+    "CoproWorksFundEntry",
+    "CoproMaintenance",
 ]

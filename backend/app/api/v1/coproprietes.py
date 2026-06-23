@@ -45,8 +45,17 @@ from app.schemas.copropriete_compta import (
     FundCallResponse,
     RegularizationResult,
 )
+from app.schemas.copropriete_extras import (
+    MaintenanceCreate,
+    MaintenanceResponse,
+    MaintenanceUpdate,
+    WorksFundEntryCreate,
+    WorksFundEntryResponse,
+    WorksFundSummary,
+)
 from app.services.copro_ag_service import CoproAGService
 from app.services.copro_compta_service import CoproComptaService
+from app.services.copro_extras_service import CoproExtrasService
 from app.services.copropriete_service import CoproprieteService
 
 router = APIRouter(prefix="/coproprietes", tags=["Syndic (copropriété)"])
@@ -721,6 +730,110 @@ async def assembly_pv_pdf(
     current_user: User = Depends(get_current_manager),
 ):
     return await _assembly_pdf(db, current_user, copro_id, assembly_id, "pv")
+
+
+# ── Fonds de travaux (ALUR) ──────────────────────────────────────────────────
+@router.get(
+    "/{copro_id}/works-fund", response_model=WorksFundSummary, summary="Fonds de travaux (solde)"
+)
+async def works_fund(
+    copro_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproExtrasService.works_fund(db, copro_id)
+
+
+@router.post(
+    "/{copro_id}/works-fund",
+    response_model=WorksFundEntryResponse,
+    status_code=201,
+    summary="Ajouter un mouvement de fonds de travaux",
+)
+async def add_works_entry(
+    copro_id: uuid.UUID,
+    data: WorksFundEntryCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproExtrasService.add_works_entry(db, copro_id, data, created_by=current_user.id)
+
+
+@router.delete(
+    "/{copro_id}/works-fund/{entry_id}", status_code=204, summary="Supprimer un mouvement"
+)
+async def delete_works_entry(
+    copro_id: uuid.UUID,
+    entry_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    await CoproExtrasService.delete_works_entry(db, copro_id, entry_id)
+
+
+# ── Carnet d'entretien ───────────────────────────────────────────────────────
+@router.get(
+    "/{copro_id}/maintenance",
+    response_model=list[MaintenanceResponse],
+    summary="Carnet d'entretien",
+)
+async def list_maintenance(
+    copro_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_manager),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproExtrasService.list_maintenance(db, copro_id)
+
+
+@router.post(
+    "/{copro_id}/maintenance",
+    response_model=MaintenanceResponse,
+    status_code=201,
+    summary="Ajouter une entrée d'entretien",
+)
+async def add_maintenance(
+    copro_id: uuid.UUID,
+    data: MaintenanceCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproExtrasService.add_maintenance(db, copro_id, data, created_by=current_user.id)
+
+
+@router.put(
+    "/{copro_id}/maintenance/{maint_id}",
+    response_model=MaintenanceResponse,
+    summary="Modifier une entrée d'entretien",
+)
+async def update_maintenance(
+    copro_id: uuid.UUID,
+    maint_id: uuid.UUID,
+    data: MaintenanceUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    return await CoproExtrasService.update_maintenance(db, copro_id, maint_id, data)
+
+
+@router.delete(
+    "/{copro_id}/maintenance/{maint_id}",
+    status_code=204,
+    summary="Supprimer une entrée d'entretien",
+)
+async def delete_maintenance(
+    copro_id: uuid.UUID,
+    maint_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    await _assert_copro(db, current_user, copro_id)
+    await CoproExtrasService.delete_maintenance(db, copro_id, maint_id)
 
 
 async def _assembly_pdf(db, current_user, copro_id, assembly_id, doc: str):

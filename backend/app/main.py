@@ -907,6 +907,36 @@ async def _apply_column_migrations() -> None:
         """,
         "CREATE INDEX IF NOT EXISTS ix_copro_votes_resolution ON copro_votes (resolution_id)",
         "CREATE INDEX IF NOT EXISTS ix_copro_votes_owner ON copro_votes (owner_id)",
+        # ── Module Syndic — phase 4 : fonds travaux (ALUR) + carnet d'entretien ──
+        """
+        CREATE TABLE IF NOT EXISTS copro_works_fund (
+            id UUID PRIMARY KEY,
+            copropriete_id UUID NOT NULL REFERENCES coproprietes(id) ON DELETE CASCADE,
+            entry_date DATE NOT NULL,
+            kind VARCHAR(16) NOT NULL,
+            label VARCHAR(200) NOT NULL,
+            amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_works_fund_copro ON copro_works_fund (copropriete_id)",
+        """
+        CREATE TABLE IF NOT EXISTS copro_maintenance (
+            id UUID PRIMARY KEY,
+            copropriete_id UUID NOT NULL REFERENCES coproprietes(id) ON DELETE CASCADE,
+            entry_date DATE,
+            category VARCHAR(80),
+            description TEXT NOT NULL,
+            supplier VARCHAR(200),
+            cost NUMERIC(12,2),
+            created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_copro_maintenance_copro ON copro_maintenance (copropriete_id)",
     ]
     try:
         async with engine.begin() as conn:
