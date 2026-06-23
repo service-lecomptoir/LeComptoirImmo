@@ -72,9 +72,8 @@ export const navGestionnaire: NavItem[] = [
 
 // Navigation Propriétaire
 export const navProprietaire: NavItem[] = [
-  { label: 'Mise en location', isSeparator: true },
-  { to: '/proprietaire/annonces', icon: Megaphone, label: 'Annonces de mes biens' },
-  { to: '/candidatures', icon: UserCheck, label: 'Candidatures' },
+  // La mise en location (annonces + candidatures) est interne au gestionnaire :
+  // le bailleur n'y a pas accès (ni menu ni endpoints).
   { label: 'Mon espace', isSeparator: true },
   { to: '/proprietaire', icon: LayoutDashboard, label: 'Mon tableau de bord' },
   { to: '/proprietaire/biens', icon: Building2, label: 'Mes biens' },

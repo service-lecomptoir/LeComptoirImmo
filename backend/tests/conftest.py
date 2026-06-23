@@ -10,13 +10,13 @@ Stratégie d'isolation :
 """
 import asyncio
 import uuid
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # ── Configuration test ────────────────────────────────────────────────────────
 TEST_DB_URL = (
@@ -62,8 +62,8 @@ async def db() -> AsyncGenerator[AsyncSession, None]:
 # ── Client HTTP FastAPI avec DB injectée ─────────────────────────────────────
 @pytest_asyncio.fixture
 async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    from app.main import app
     from app.database import get_db
+    from app.main import app
 
     async def override_get_db():
         yield db
@@ -126,8 +126,8 @@ def _clear_alice_license_cache():
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 async def _create_user(db: AsyncSession, email: str, password: str, role: str, name: str = None):
-    from app.models.user import User
     from app.core.security import hash_password
+    from app.models.user import User
 
     user = User(
         email=email,
@@ -211,3 +211,15 @@ async def gp_user2(db):
 @pytest_asyncio.fixture
 async def gp_token2(client, gp_user2):
     return await _get_token(client, gp_user2.email, "GpPass1!")
+
+
+@pytest_asyncio.fixture
+async def gestionnaire_user2(db):
+    return await _create_user(
+        db, f"gest2_{uuid.uuid4().hex[:8]}@test.fr", "GestPass1!", "gestionnaire"
+    )
+
+
+@pytest_asyncio.fixture
+async def gestionnaire_token2(client, gestionnaire_user2):
+    return await _get_token(client, gestionnaire_user2.email, "GestPass1!")

@@ -4,20 +4,25 @@ Flux : le gestionnaire sélectionne les pièces et envoie un lien ; le candidat
 dépose ses fichiers via le lien public (sans compte) ; le gestionnaire les
 télécharge et fait évoluer le dossier.
 """
-from datetime import datetime, timedelta, timezone
+
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from tests.conftest import auth
 from app.api.v1.candidatures import default_docs
 from app.models.candidature import Candidature
 from app.models.property import Property
+from tests.conftest import auth
 
 
 async def _make_property(db, owner_user, name="Bien test"):
     prop = Property(
-        name=name, address="1 rue de Test", zip_code="75001", city="Paris",
-        property_type="appartement", created_by=owner_user.id,
+        name=name,
+        address="1 rue de Test",
+        zip_code="75001",
+        city="Paris",
+        property_type="appartement",
+        created_by=owner_user.id,
     )
     db.add(prop)
     await db.flush()
@@ -25,11 +30,15 @@ async def _make_property(db, owner_user, name="Bien test"):
 
 
 @pytest.mark.asyncio
-async def test_request_documents_full_flow(client, db, gestionnaire_user, gestionnaire_token):
-    prop = await _make_property(db, gestionnaire_user)
+async def test_request_documents_full_flow(client, db, gp_user, gp_token):
+    prop = await _make_property(db, gp_user)
     cand = Candidature(
-        property_id=prop.id, full_name="Jean Candidat", email="cand@test.fr",
-        docs=default_docs(), source="manuel", created_by=gestionnaire_user.id,
+        property_id=prop.id,
+        full_name="Jean Candidat",
+        email="cand@test.fr",
+        docs=default_docs(),
+        source="manuel",
+        created_by=gp_user.id,
     )
     db.add(cand)
     await db.commit()
@@ -38,7 +47,7 @@ async def test_request_documents_full_flow(client, db, gestionnaire_user, gestio
     # 1) Le gestionnaire demande deux pièces.
     r = await client.post(
         f"/api/v1/candidatures/{cid}/request-documents",
-        headers=auth(gestionnaire_token),
+        headers=auth(gp_token),
         json={"doc_keys": ["identite", "avis_imposition"], "message": "Merci de votre dossier"},
     )
     assert r.status_code == 200, r.text
@@ -76,7 +85,7 @@ async def test_request_documents_full_flow(client, db, gestionnaire_user, gestio
     # 5) Le gestionnaire télécharge la pièce déposée.
     dl = await client.get(
         f"/api/v1/candidatures/{cid}/documents/identite/download",
-        headers=auth(gestionnaire_token),
+        headers=auth(gp_token),
     )
     assert dl.status_code == 200
 
@@ -86,49 +95,65 @@ async def test_request_documents_full_flow(client, db, gestionnaire_user, gestio
 
     # 7) Le gestionnaire met le dossier à l'étude.
     up = await client.patch(
-        f"/api/v1/candidatures/{cid}", headers=auth(gestionnaire_token),
+        f"/api/v1/candidatures/{cid}",
+        headers=auth(gp_token),
         json={"status": "en_etude"},
     )
     assert up.status_code == 200 and up.json()["status"] == "en_etude"
 
 
 @pytest.mark.asyncio
-async def test_request_documents_requires_email(client, db, gestionnaire_user, gestionnaire_token):
-    prop = await _make_property(db, gestionnaire_user, name="Bien sans email")
+async def test_request_documents_requires_email(client, db, gp_user, gp_token):
+    prop = await _make_property(db, gp_user, name="Bien sans email")
     cand = Candidature(
-        property_id=prop.id, full_name="Sans Email", docs=default_docs(),
-        source="manuel", created_by=gestionnaire_user.id,
+        property_id=prop.id,
+        full_name="Sans Email",
+        docs=default_docs(),
+        source="manuel",
+        created_by=gp_user.id,
     )
     db.add(cand)
     await db.commit()
     r = await client.post(
         f"/api/v1/candidatures/{cand.id}/request-documents",
-        headers=auth(gestionnaire_token), json={"doc_keys": ["identite"]},
+        headers=auth(gp_token),
+        json={"doc_keys": ["identite"]},
     )
     assert r.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_visit_invitation_and_booking(client, db, gestionnaire_user, gestionnaire_token):
-    prop = await _make_property(db, gestionnaire_user, name="Bien visite")
+async def test_visit_invitation_and_booking(client, db, gp_user, gp_token):
+    prop = await _make_property(db, gp_user, name="Bien visite")
     cand = Candidature(
-        property_id=prop.id, full_name="Paul Visite", email="paul@test.fr",
-        docs=default_docs(), source="manuel", created_by=gestionnaire_user.id,
+        property_id=prop.id,
+        full_name="Paul Visite",
+        email="paul@test.fr",
+        docs=default_docs(),
+        source="manuel",
+        created_by=gp_user.id,
     )
     db.add(cand)
     await db.commit()
     cid = str(cand.id)
-    h = auth(gestionnaire_token)
+    h = auth(gp_token)
 
     # Sans créneau : l'invitation est refusée.
     r0 = await client.post(f"/api/v1/candidatures/{cid}/invite-visit", headers=h, json={})
     assert r0.status_code == 400
 
     # Crée un créneau futur (capacité 2).
-    when = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
-    rs = await client.post("/api/v1/candidatures/visit-slots", headers=h, json={
-        "property_id": str(prop.id), "starts_at": when, "duration_min": 30, "capacity": 2,
-    })
+    when = (datetime.now(UTC) + timedelta(days=3)).isoformat()
+    rs = await client.post(
+        "/api/v1/candidatures/visit-slots",
+        headers=h,
+        json={
+            "property_id": str(prop.id),
+            "starts_at": when,
+            "duration_min": 30,
+            "capacity": 2,
+        },
+    )
     assert rs.status_code == 201, rs.text
     slot_id = rs.json()["id"]
 
@@ -166,30 +191,39 @@ async def test_visit_invitation_and_booking(client, db, gestionnaire_user, gesti
 
 
 @pytest.mark.asyncio
-async def test_remind_visit_requires_booking(client, db, gestionnaire_user, gestionnaire_token):
-    prop = await _make_property(db, gestionnaire_user, name="Bien sans visite")
+async def test_remind_visit_requires_booking(client, db, gp_user, gp_token):
+    prop = await _make_property(db, gp_user, name="Bien sans visite")
     cand = Candidature(
-        property_id=prop.id, full_name="Sans Visite", email="sv@test.fr",
-        docs=default_docs(), source="manuel", created_by=gestionnaire_user.id,
+        property_id=prop.id,
+        full_name="Sans Visite",
+        email="sv@test.fr",
+        docs=default_docs(),
+        source="manuel",
+        created_by=gp_user.id,
     )
     db.add(cand)
     await db.commit()
-    r = await client.post(f"/api/v1/candidatures/{cand.id}/remind-visit", headers=auth(gestionnaire_token))
+    r = await client.post(f"/api/v1/candidatures/{cand.id}/remind-visit", headers=auth(gp_token))
     assert r.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_public_upload_rejects_non_requested_doc(client, db, gestionnaire_user, gestionnaire_token):
-    prop = await _make_property(db, gestionnaire_user, name="Bien upload")
+async def test_public_upload_rejects_non_requested_doc(client, db, gp_user, gp_token):
+    prop = await _make_property(db, gp_user, name="Bien upload")
     cand = Candidature(
-        property_id=prop.id, full_name="Marie Candidat", email="marie@test.fr",
-        docs=default_docs(), source="manuel", created_by=gestionnaire_user.id,
+        property_id=prop.id,
+        full_name="Marie Candidat",
+        email="marie@test.fr",
+        docs=default_docs(),
+        source="manuel",
+        created_by=gp_user.id,
     )
     db.add(cand)
     await db.commit()
     r = await client.post(
         f"/api/v1/candidatures/{cand.id}/request-documents",
-        headers=auth(gestionnaire_token), json={"doc_keys": ["identite"]},
+        headers=auth(gp_token),
+        json={"doc_keys": ["identite"]},
     )
     token = r.json()["upload_token"]
     # Pièce non demandée → refus.

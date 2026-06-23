@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_manager_or_owner, require_role
+from app.api.deps import get_current_gestionnaire, require_role
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.core.permissions import Role
 from app.database import get_db
@@ -175,7 +175,7 @@ async def delete_platform(
 @router.get("/listings", summary="Mes annonces : statut et performances")
 async def list_listings(
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_manager_or_owner),
+    user: User = Depends(get_current_gestionnaire),
 ):
     """Statut + statistiques (vues) de chaque annonce du périmètre, indexés par bien.
     Le propriétaire (lecture seule) ne voit que les annonces de SES biens."""

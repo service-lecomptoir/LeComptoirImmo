@@ -213,15 +213,18 @@ async def test_syndic_full_http_workflow(client: AsyncClient, gestionnaire_token
 
 @pytest.mark.asyncio
 async def test_syndic_isolation_other_manager_403(
-    client: AsyncClient, gestionnaire_token, gp_token2
+    client: AsyncClient, gestionnaire_token, gestionnaire_token2
 ):
-    """Une copropriété n'est pas visible/accessible par un autre périmètre."""
+    """Une copropriété n'est pas visible/accessible par un autre périmètre.
+
+    On compare deux gestionnaires MANDATAIRES (le syndic est réservé au mandataire) :
+    c'est l'isolation d'agence — pas le gating de plan — qui doit refuser l'accès."""
     h = auth(gestionnaire_token)
     r = await client.post("/api/v1/coproprietes", json={"name": "Privée"}, headers=h)
     cid = r.json()["id"]
-    # Le GP d'une autre agence ne voit pas la copro et reçoit 403/404 sur le détail.
-    r = await client.get(f"/api/v1/coproprietes/{cid}", headers=auth(gp_token2))
+    # Le mandataire d'une autre agence ne voit pas la copro (403/404 sur le détail).
+    r = await client.get(f"/api/v1/coproprietes/{cid}", headers=auth(gestionnaire_token2))
     assert r.status_code in (403, 404), r.text
     # Sa liste ne contient pas la copropriété.
-    r = await client.get("/api/v1/coproprietes", headers=auth(gp_token2))
+    r = await client.get("/api/v1/coproprietes", headers=auth(gestionnaire_token2))
     assert all(c["id"] != cid for c in r.json())

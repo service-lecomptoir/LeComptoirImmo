@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_manager_or_owner, require_role
+from app.api.deps import get_current_gestionnaire, require_role
 from app.core.exceptions import BadRequestException, ForbiddenException, NotFoundException
 from app.core.permissions import Role
 from app.database import get_db
@@ -476,7 +476,7 @@ async def list_candidatures(
     property_id: uuid.UUID | None = Query(None),
     status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_manager_or_owner),
+    user: User = Depends(get_current_gestionnaire),
 ):
     ids = await _scope_property_ids(db, user)
     q = select(Candidature).order_by(Candidature.created_at.desc())
@@ -578,7 +578,7 @@ async def _slot_out(db: AsyncSession, slot: PropertyVisitSlot) -> dict:
 async def list_visit_slots(
     property_id: uuid.UUID = Query(...),
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_manager_or_owner),
+    user: User = Depends(get_current_gestionnaire),
 ):
     ids = await _scope_property_ids(db, user)
     if ids is not None and property_id not in ids:
@@ -640,7 +640,7 @@ async def delete_visit_slot(
 async def compare_candidatures(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_manager_or_owner),
+    user: User = Depends(get_current_gestionnaire),
 ):
     """Profils côte à côte (hors refusées), triés par score décroissant — le premier
     est le candidat recommandé."""
@@ -671,7 +671,7 @@ async def compare_candidatures(
 async def compare_ai_analysis(
     property_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_manager_or_owner),
+    user: User = Depends(get_current_gestionnaire),
 ):
     ids = await _scope_property_ids(db, user)
     if ids is not None and property_id not in ids:
@@ -744,7 +744,7 @@ async def compare_ai_analysis(
 async def get_candidature(
     candidature_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_manager_or_owner),
+    user: User = Depends(get_current_gestionnaire),
 ):
     c = await _accessible(db, user, candidature_id)
     return await _full_out(db, c)
@@ -892,7 +892,7 @@ async def download_candidature_doc(
     candidature_id: uuid.UUID,
     key: str,
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_manager_or_owner),
+    user: User = Depends(get_current_gestionnaire),
 ):
     c = await _accessible(db, user, candidature_id)
     doc = next((d for d in (c.docs or []) if d.get("key") == key), None)
