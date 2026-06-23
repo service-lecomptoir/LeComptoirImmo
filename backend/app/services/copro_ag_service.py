@@ -28,23 +28,51 @@ MAJORITY_LABELS = {
 }
 
 
-def _outcome(majority: str, pour: float, contre: float, abstention: float, base: float) -> str:
-    """Résultat d'une résolution selon la règle de majorité (loi 10/07/1965).
-    Calcul simplifié : base = total des tantièmes de la clé générale."""
+def evaluate_resolution(
+    majority: str,
+    pour: float,
+    contre: float,
+    abstention: float,
+    base: float,
+    members_total: int = 0,
+    members_pour: int = 0,
+) -> tuple[str, str | None]:
+    """Résultat d'une résolution selon la règle de majorité (loi du 10/07/1965).
+
+    base = total des tantièmes de la clé générale ; members_* = effectif des
+    copropriétaires (pour la double majorité de l'art. 26). Renvoie (résultat,
+    note) où note explicite un cas particulier (ex. passerelle art. 25-1)."""
     if pour == 0 and contre == 0 and abstention == 0:
-        return "pending"
+        return "pending", None
     if majority == "art24":
         # Majorité des voix exprimées (abstentions exclues).
-        return "adopted" if pour > contre else "rejected"
+        return ("adopted", None) if pour > contre else ("rejected", None)
     if majority == "art25":
         # Majorité absolue de tous les tantièmes.
-        return "adopted" if pour > base / 2 else "rejected"
+        if pour > base / 2:
+            return "adopted", None
+        # Passerelle art. 25-1 : si le projet a recueilli au moins le tiers des
+        # voix de TOUS les copropriétaires, second vote immédiat à la majorité de
+        # l'art. 24 (majorité des voix exprimées).
+        if base > 0 and pour >= base / 3:
+            if pour > contre:
+                return "adopted", "Adoptée au 2nd vote (passerelle art. 25-1)"
+            return "rejected", "Second vote art. 25-1 : non adoptée"
+        return "rejected", None
     if majority == "art26":
-        # Au moins deux tiers de tous les tantièmes.
-        return "adopted" if pour >= base * 2 / 3 else "rejected"
+        # Double majorité : 2/3 des tantièmes ET majorité en nombre des copropriétaires.
+        ok_tantiemes = base > 0 and pour >= base * 2 / 3
+        ok_members = members_total > 0 and members_pour > members_total / 2
+        if ok_tantiemes and ok_members:
+            return "adopted", None
+        if ok_tantiemes and not ok_members:
+            return "rejected", "2/3 des tantièmes atteints mais pas la majorité des copropriétaires"
+        return "rejected", None
     if majority == "unanimite":
-        return "adopted" if contre == 0 and abstention == 0 and pour > 0 else "rejected"
-    return "pending"
+        if contre == 0 and abstention == 0 and pour > 0:
+            return "adopted", None
+        return "rejected", None
+    return "pending", None
 
 
 class CoproAGService:
@@ -233,11 +261,13 @@ class CoproAGService:
         res_out = []
         for r in resolutions:
             pour = contre = abstention = 0.0
+            members_pour = 0
             vote_rows = []
             for v in r.votes:
                 w = weights.get(v.owner_id, 0.0)
                 if v.choice == "pour":
                     pour += w
+                    members_pour += 1
                 elif v.choice == "contre":
                     contre += w
                 else:
@@ -250,6 +280,9 @@ class CoproAGService:
                         "tantiemes": round(w, 2),
                     }
                 )
+            outcome, outcome_note = evaluate_resolution(
+                r.majority, pour, contre, abstention, base, len(weights), members_pour
+            )
             res_out.append(
                 {
                     "id": r.id,
@@ -257,7 +290,8 @@ class CoproAGService:
                     "title": r.title,
                     "description": r.description,
                     "majority": r.majority,
-                    "outcome": r.outcome,
+                    "outcome": outcome,
+                    "outcome_note": outcome_note,
                     "base_tantiemes": int(base),
                     "pour": round(pour, 2),
                     "contre": round(contre, 2),
@@ -395,15 +429,19 @@ class CoproAGService:
             .all()
         )
         pour = contre = abstention = 0.0
+        members_pour = 0
         for v in votes:
             w = weights.get(v.owner_id, 0.0)
             if v.choice == "pour":
                 pour += w
+                members_pour += 1
             elif v.choice == "contre":
                 contre += w
             else:
                 abstention += w
-        resolution.outcome = _outcome(resolution.majority, pour, contre, abstention, base)
+        resolution.outcome = evaluate_resolution(
+            resolution.majority, pour, contre, abstention, base, len(weights), members_pour
+        )[0]
         await db.flush()
 
     # ── PDF (convocation + PV) ────────────────────────────────────────────────

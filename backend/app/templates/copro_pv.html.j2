@@ -45,6 +45,7 @@
       {% if r.outcome == 'adopted' %}<span class="badge ad">Adoptée</span>
       {% elif r.outcome == 'rejected' %}<span class="badge re">Rejetée</span>
       {% else %}<span class="badge pe">Non soumise</span>{% endif %}
+      {% if r.outcome_note %}<span style="font-size:{{ sp.font_size | int - 2 }}pt;color:#6b7280;"> · {{ r.outcome_note }}</span>{% endif %}
     </div>
     <div class="rb">
       {% if r.description %}<p style="margin:0 0 4px 0;">{{ r.description }}</p>{% endif %}

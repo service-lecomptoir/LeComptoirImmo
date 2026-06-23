@@ -90,6 +90,7 @@ class ResolutionResult(BaseModel):
     description: str | None = None
     majority: str
     outcome: str
+    outcome_note: str | None = None
     base_tantiemes: int = 0
     pour: float = 0
     contre: float = 0

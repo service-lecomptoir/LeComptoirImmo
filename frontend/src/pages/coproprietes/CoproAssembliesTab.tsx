@@ -164,6 +164,7 @@ export function CoproAssembliesTab({ copro, canWrite }: { copro: CoproDetail; ca
                 <span className="ml-2 text-xs text-gray-500">{MAJ_LABEL[r.majority]}</span>
               </div>
               <div className="flex items-center gap-2">
+                {r.outcome_note && <span className="text-[11px] text-gray-500 italic">{r.outcome_note}</span>}
                 <span className={`text-xs rounded-full px-2 py-0.5 ${OUTCOME[r.outcome]?.cls}`}>{OUTCOME[r.outcome]?.label}</span>
                 {canWrite && <button onClick={() => delResolution(r.id)} className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600" title="Supprimer"><Trash2 size={14} /></button>}
               </div>

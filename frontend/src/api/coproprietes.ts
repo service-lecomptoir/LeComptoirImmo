@@ -188,6 +188,7 @@ export interface ResolutionResult {
   description?: string | null
   majority: Majority
   outcome: string
+  outcome_note?: string | null
   base_tantiemes: number
   pour: number
   contre: number
