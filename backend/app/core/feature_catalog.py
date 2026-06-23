@@ -145,8 +145,7 @@ FEATURE_CATALOG: list[dict] = [
         "key": "tampon",
         "label": "Tampon / cachet professionnel",
         "category": CATEGORY_GESTION,
-        # audience "all" : utile aux deux profils (propriétaire et mandataire) pour
-        # apposer un cachet sur le bail et les documents CAF.
+        "audience": "mandataire",
         "description": "Ajoutez votre cachet professionnel à côté de votre signature sur le bail et les documents CAF, pour des documents officiels prêts à transmettre.",
     },
     # ── Finance et comptabilité ────────────────────────────────────────────────
