@@ -3,7 +3,8 @@ import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { UserRound, Plus, X, Contact, Phone, Briefcase, FileText } from 'lucide-react'
-import { Button, Input } from '@/components/ui'
+import { Button, inputBaseClass } from '@/components/ui'
+import SiretInput from '@/components/common/SiretInput'
 import { Modal } from '@/components/common/Modal'
 import { SectionTitle } from '@/components/common/SectionTitle'
 import { PhoneInput } from '@/components/common/PhoneInput'
@@ -353,9 +354,12 @@ export function TenantForm({ tenant, prefill, onClose, onSaved }: Props) {
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   SIREN / SIRET<span className="text-red-500 ml-0.5">*</span>
                 </label>
-                <Input
-                  {...register('siret')}
+                <SiretInput
+                  value={watch('siret') || ''}
+                  onChange={v => setValue('siret', v, { shouldValidate: true })}
+                  onResolved={name => { if (!(watch('company_name') || '').trim()) setValue('company_name', name, { shouldValidate: true }) }}
                   placeholder="123 456 789 00012"
+                  className={inputBaseClass}
                 />
                 {errors.siret && <p className="mt-1 text-xs text-red-600">{errors.siret.message as string}</p>}
               </div>

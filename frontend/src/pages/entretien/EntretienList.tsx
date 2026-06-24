@@ -4,6 +4,7 @@ import { BRAND } from '@/lib/brand'
 import { Button } from '@/components/ui'
 import { Wrench, Plus, Pencil, Trash2, X } from 'lucide-react'
 import { entretiensApi, prestatairesApi, type Entretien, type Prestataire } from '@/api/entretiens'
+import SiretInput from '@/components/common/SiretInput'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -255,7 +256,8 @@ export default function EntretienList({ readOnly = false }: { readOnly?: boolean
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">SIRET</label>
-                  <input value={prestForm.siret} onChange={e => setPrestForm(p => ({ ...p, siret: e.target.value }))}
+                  <SiretInput value={prestForm.siret} onChange={v => setPrestForm(p => ({ ...p, siret: v }))}
+                    onResolved={name => setPrestForm(p => (p.name.trim() ? p : { ...p, name }))}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                 </div>
                 <div className="col-span-2 flex gap-3 justify-end">

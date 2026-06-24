@@ -11,6 +11,7 @@ import { PhoneInput } from '@/components/common/PhoneInput'
 import { ownersApi } from '@/api/owners'
 import { usersApi } from '@/api/users'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
+import SiretInput from '@/components/common/SiretInput'
 import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
 import type { Owner } from '@/types/owner'
 import type { User } from '@/types/auth'
@@ -341,7 +342,17 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
           {ownerType === 'company' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <OwnerField label="Raison sociale" name="company_name" placeholder="Raison sociale" required register={register} errors={errors} />
-              <OwnerField label="SIREN / SIRET" name="national_id" placeholder="123 456 789" required register={register} errors={errors} />
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">SIREN / SIRET<span className="text-red-500 ml-0.5">*</span></label>
+                <SiretInput
+                  value={watch('national_id') || ''}
+                  onChange={v => setValue('national_id', v, { shouldValidate: true })}
+                  onResolved={name => { if (!(watch('company_name') || '').trim()) setValue('company_name', name, { shouldValidate: true }) }}
+                  placeholder="123 456 789"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {errors.national_id && <p className="mt-1 text-xs text-red-600">{errors.national_id.message as string}</p>}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

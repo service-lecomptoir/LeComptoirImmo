@@ -10,7 +10,8 @@ import CommuneAutocomplete from '@/components/common/CommuneAutocomplete'
 import { apiClient } from '@/api/client'
 import { ownersApi } from '@/api/owners'
 import { toast } from '@/store/toast'
-import { Input } from '@/components/ui'
+import { Input, inputBaseClass } from '@/components/ui'
+import SiretInput from '@/components/common/SiretInput'
 import { useFeaturesStore } from '@/store/featuresStore'
 import { isFeatureAllowed } from '@/lib/features'
 
@@ -276,7 +277,9 @@ export default function MonProfil() {
                 </div>
                 <div>
                   <label className={lbl}>SIREN / SIRET</label>
-                  <Input value={ownerNationalId} onChange={e => setOwnerNationalId(e.target.value)} placeholder="123 456 789" />
+                  <SiretInput value={ownerNationalId} onChange={v => setOwnerNationalId(v)}
+                    onResolved={name => { if (!ownerCompany.trim()) setOwnerCompany(name) }}
+                    placeholder="123 456 789" className={inputBaseClass} />
                 </div>
               </div>
             )}

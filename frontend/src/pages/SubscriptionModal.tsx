@@ -4,6 +4,7 @@ import { getErrorMessage } from '@/utils/errors'
 import { X, Send, CheckCircle, Check } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { publicPlansApi, type PublicPlan } from '@/api/publicPlans'
+import SiretInput from '@/components/common/SiretInput'
 
 interface Props {
   open: boolean
@@ -176,8 +177,9 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input className={inp} placeholder="Raison sociale *" value={form.company}
                     onChange={e => set('company', e.target.value)} />
-                  <input className={inp} placeholder="SIRET *" value={form.siret}
-                    onChange={e => set('siret', e.target.value)} />
+                  <SiretInput className={inp} placeholder="SIRET *" value={form.siret}
+                    onChange={v => set('siret', v)}
+                    onResolved={name => { if (!form.company.trim()) set('company', name) }} />
                 </div>
               )}
               <input className={inp} placeholder={kind === 'personne' ? 'Email *' : 'Email professionnel *'} type="email" value={form.email}

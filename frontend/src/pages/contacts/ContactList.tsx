@@ -3,6 +3,7 @@ import { Button } from '@/components/ui'
 import { formatPhoneDisplay } from '@/utils/format'
 import { apiClient } from '@/api/client'
 import AddressAutocomplete from '@/components/common/AddressAutocomplete'
+import SiretInput from '@/components/common/SiretInput'
 import {
   Phone, Mail, MapPin, Star, Plus, Search,
   Trash2, Edit2, Building2, Wrench, Zap, Paintbrush,
@@ -191,8 +192,9 @@ function ContactModal({ contact, onClose, onSaved }: ContactModalProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
-              <input className="w-full border rounded-lg px-3 py-2 text-sm" value={form.siret}
-                onChange={e => setForm({ ...form, siret: e.target.value })} />
+              <SiretInput className="w-full border rounded-lg px-3 py-2 text-sm" value={form.siret}
+                onChange={v => setForm({ ...form, siret: v })}
+                onResolved={name => setForm(f => (f.company_name.trim() ? f : { ...f, company_name: name }))} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Site web</label>
