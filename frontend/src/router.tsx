@@ -43,6 +43,7 @@ const OwnerList = lazyPage(() => import('@/pages/owners/OwnerList'))
 const OwnerDetail = lazyPage(() => import('@/pages/owners/OwnerDetail'))
 const PropertyList = lazyPage(() => import('@/pages/properties/PropertyList'))
 const PropertyDetail = lazyPage(() => import('@/pages/properties/PropertyDetail'))
+const BoutiqueResidence = lazyPage(() => import('@/pages/boutique/BoutiqueResidence'))
 const LeaseList = lazyPage(() => import('@/pages/leases/LeaseList'))
 const LeaseDetail = lazyPage(() => import('@/pages/leases/LeaseDetail'))
 const PaymentList = lazyPage(() => import('@/pages/payments/PaymentList'))
@@ -75,8 +76,6 @@ const ProprietaireEntretien = lazyPage(() => import('@/pages/proprietaire/Propri
 const ProprietaireIncidents = lazyPage(() => import('@/pages/proprietaire/ProprietaireIncidents'))
 const ProprietaireMessages = lazyPage(() => import('@/pages/proprietaire/ProprietaireMessages'))
 const QuittanceList = lazyPage(() => import('@/pages/quittances/QuittanceList'))
-const OffersManager = lazyPage(() => import('@/pages/offers/OffersManager'))
-const LocataireOffres = lazyPage(() => import('@/pages/locataire/LocataireOffres'))
 const MonAbonnement = lazyPage(() => import('@/pages/subscription/MonAbonnement'))
 const MonProfil = lazyPage(() => import('@/pages/profil/MonProfil'))
 const GuideUtilisateur = lazyPage(() => import('@/pages/guide/GuideUtilisateur'))
@@ -239,6 +238,7 @@ export const router = createBrowserRouter([
       { path: 'properties', element: <PropertyList /> },
       { path: 'properties/:id', element: <PropertyDetail /> },
       { path: 'properties/:id/publish', element: <PropertyPublish /> },
+      { path: 'boutique-residence', element: <BoutiqueResidence /> },
       { path: 'diffusion', element: <DiffusionPage /> },
       { path: 'candidatures', element: <CandidaturesPage /> },
       { path: 'sorties', element: <SortiesPage /> },
@@ -286,8 +286,6 @@ export const router = createBrowserRouter([
       { path: 'proprietaire/entretiens', element: <ProprietaireEntretien /> },
       { path: 'proprietaire/incidents', element: <ProprietaireIncidents /> },
       { path: 'proprietaire/messages', element: <ProprietaireMessages /> },
-      { path: 'offres', element: <OffersManager /> },
-      { path: 'locataire/offres', element: <LocataireOffres /> },
       { path: 'abonnement', element: <MonAbonnement /> },
       {
         path: 'unauthorized',

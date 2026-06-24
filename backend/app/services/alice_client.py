@@ -71,13 +71,13 @@ def invalidate_license_cache(user_id: UUID | None = None) -> None:
         _LICENSE_CACHE.pop(str(user_id), None)
 
 
-async def list_plans() -> list[dict]:
-    """Plans actifs (pour la page Tarification publique). [] si indisponible."""
+async def list_plans(product: str = "immo") -> list[dict]:
+    """Plans actifs d'un produit (immo par défaut, ou « boutique »). [] si indisponible."""
     base, headers = _base_headers()
     try:
         async with httpx.AsyncClient(timeout=6.0) as hc:
             resp = await hc.get(
-                f"{base}/api/v1/internal/plans", headers=headers, params={"product": "immo"}
+                f"{base}/api/v1/internal/plans", headers=headers, params={"product": product}
             )
         if resp.status_code == 200:
             return resp.json()
@@ -127,6 +127,94 @@ async def provision_residence_boutique(
         return {"ok": False, "status": resp.status_code, "detail": detail}
     except Exception as exc:  # noqa: BLE001
         logger.warning("Alice provision_residence_boutique failed: %s", exc)
+        return {"ok": False, "status": 502, "detail": "Alice injoignable"}
+
+
+async def create_standalone_boutique(*, manager_email: str, nom: str | None = None) -> dict:
+    """Crée une boutique de résidence autonome via Alice → Market. {ok, status, data?, detail?}."""
+    base, headers = _base_headers()
+    payload = {"manager_email": manager_email, "nom": nom, "source": "immo"}
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as hc:
+            resp = await hc.post(
+                f"{base}/api/v1/internal/residence-boutique/create", headers=headers, json=payload
+            )
+        if resp.status_code in (200, 201):
+            return {"ok": True, "status": resp.status_code, "data": resp.json()}
+        detail = None
+        try:
+            detail = resp.json().get("detail")
+        except Exception:  # noqa: BLE001
+            detail = None
+        return {"ok": False, "status": resp.status_code, "detail": detail}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice create_standalone_boutique failed: %s", exc)
+        return {"ok": False, "status": 502, "detail": "Alice injoignable"}
+
+
+async def rename_boutique(*, manager_email: str, boutique_id: str, nom: str) -> bool:
+    base, headers = _base_headers()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as hc:
+            resp = await hc.patch(
+                f"{base}/api/v1/internal/residence-boutique/{boutique_id}",
+                headers=headers,
+                json={"manager_email": manager_email, "nom": nom},
+            )
+        return resp.status_code in (200, 201)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice rename_boutique failed: %s", exc)
+        return False
+
+
+async def delete_boutique(*, manager_email: str, boutique_id: str) -> bool:
+    base, headers = _base_headers()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as hc:
+            resp = await hc.delete(
+                f"{base}/api/v1/internal/residence-boutique/{boutique_id}",
+                headers=headers,
+                params={"email": manager_email},
+            )
+        return resp.status_code in (200, 204)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice delete_boutique failed: %s", exc)
+        return False
+
+
+async def activate_boutique(
+    *,
+    email: str,
+    full_name: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+    plan_id: str | None = None,
+) -> dict:
+    """Provisionne un compte gérant Le Comptoir Market depuis le compte Immo + plan
+    choisi. {ok, status, data?, detail?}."""
+    base, headers = _base_headers()
+    payload = {
+        "email": email,
+        "full_name": full_name or "",
+        "phone": phone,
+        "address": address,
+        "plan_id": plan_id,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as hc:
+            resp = await hc.post(
+                f"{base}/api/v1/internal/activate-boutique", headers=headers, json=payload
+            )
+        if resp.status_code in (200, 201):
+            return {"ok": True, "status": resp.status_code, "data": resp.json()}
+        detail = None
+        try:
+            detail = resp.json().get("detail")
+        except Exception:  # noqa: BLE001
+            detail = None
+        return {"ok": False, "status": resp.status_code, "detail": detail}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice activate_boutique failed: %s", exc)
         return {"ok": False, "status": 502, "detail": "Alice injoignable"}
 
 

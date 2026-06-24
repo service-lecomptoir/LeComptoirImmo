@@ -16,8 +16,8 @@ import {
   CreditCard, Settings, Calendar,
   Home, Archive, BookUser, PenSquare, BarChart3,
   Calculator, MessageSquare, MessagesSquare, Send, Wrench, Wallet, FileCheck,
-  ShoppingBag, KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
-  UserCheck, DoorOpen, ConciergeBell, BookText, HandCoins,
+  KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
+  UserCheck, DoorOpen, ConciergeBell, BookText, HandCoins, Store,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -52,7 +52,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/signalements', icon: ConciergeBell, label: 'Espace gardien' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
-  { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
+  { to: '/boutique-residence', icon: Store, label: 'Boutique de la résidence' },
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
@@ -124,7 +124,7 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/signalements', icon: ConciergeBell, label: 'Espace gardien' },
   { to: '/entretiens', icon: Wrench, label: 'Entretiens' },
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
-  { to: '/offres', icon: ShoppingBag, label: 'Offres & Services' },
+  { to: '/boutique-residence', icon: Store, label: 'Boutique de la résidence' },
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
@@ -143,7 +143,6 @@ export const navLocataire: NavItem[] = [
   { to: '/locataire/demarches', icon: MessagesSquare, label: 'Mes démarches' },
   { to: '/locataire/signaler', icon: ConciergeBell, label: 'Allô gardien !' },
   { to: '/locataire/documents', icon: Archive, label: 'Mes documents' },
-  { to: '/locataire/offres', icon: ShoppingBag, label: 'Offres & Services' },
 ]
 
 /** Menu du rôle (par défaut : gestionnaire mandataire / admin). */
@@ -166,6 +165,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   '/comptabilite/mandant': "Compte rendu de gestion par propriétaire : loyers encaissés, honoraires retenus (taux configurable + TVA), reversements effectués et solde restant à reverser. Périodicité au choix (mensuel, trimestriel, semestriel, annuel) et export CRG en PDF.",
   '/coproprietes': "Module Syndic : administrez vos copropriétés (immeubles), leurs lots et les clés de répartition (tantièmes par charge). Établissez le budget prévisionnel, générez les appels de fonds ventilés par tantièmes (périodicité au choix), suivez les comptes des copropriétaires (appelé / payé / solde) et faites la régularisation annuelle (dépenses réelles vs provisions) avec décompte PDF par copropriétaire. Tenez les assemblées générales (ordre du jour, votes pondérés par tantièmes, convocation et procès-verbal PDF), le fonds de travaux (loi ALUR) et le carnet d'entretien.",
   '/owners': 'Les fiches des bailleurs : identité, RIB unique et biens rattachés.',
+  '/boutique-residence': "Gérez les boutiques en ligne Le Comptoir Market de vos résidences : créez, renommez ou supprimez une boutique, et rattachez-y vos biens (une même boutique peut servir plusieurs appartements). Si vous n'avez pas encore de compte boutique, créez-le directement en choisissant une formule (vos informations sont reprises de votre compte).",
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
   '/diffusion': 'Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes et suivez leurs performances (vues).',
   '/candidatures': 'Dossiers candidats centralisés : vérification des pièces, analyse et comparaison des profils, sélection du locataire le plus adapté.',
@@ -190,7 +190,6 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   '/locataire/signaler': "Allô gardien ! Un souci dans la résidence ou l'immeuble (parties communes, ascenseur, sécurité des accès, propreté, espaces extérieurs, nuisances de voisinage…) ? Décrivez-le avec photo et niveau d'urgence : votre gestionnaire est alerté immédiatement.",
   '/signalements': "Votre poste de gardien : tous les signalements remontés par vos locataires (bruit, sécurité, propreté…), avec suivi par statut, logements à problème, historique et export.",
   '/locataire/documents': 'Votre bail, vos quittances et tous les documents liés à votre location.',
-  '/locataire/offres': 'Les services proposés (assurance, box internet, etc.).',
 }
 
 /** Description d'une rubrique : route explicite, sinon catalogue, sinon vide. */

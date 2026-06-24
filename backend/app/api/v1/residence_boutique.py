@@ -106,6 +106,231 @@ async def my_manager_boutiques(
     return {"market_enabled": bool(res.get("market_enabled")), "boutiques": boutiques}
 
 
+async def _manager_residences(db: AsyncSession, user: User) -> list[dict]:
+    """Biens + copropriétés du gestionnaire (pour rattacher à une boutique)."""
+    props = (
+        (await db.execute(select(Property).where(Property.created_by == user.id))).scalars().all()
+    )
+    copros = (
+        (await db.execute(select(Copropriete).where(Copropriete.created_by == user.id)))
+        .scalars()
+        .all()
+    )
+    out = [{"kind": "property", "id": str(p.id), "name": p.name} for p in props]
+    out += [{"kind": "copropriete", "id": str(c.id), "name": c.name} for c in copros]
+    return out
+
+
+@router.get("/boutiques/overview")
+async def boutiques_overview(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Données de la page « Boutique de la résidence » : compte Market actif ?,
+    boutiques + biens rattachés, biens disponibles, et plans si pas encore de compte."""
+    res = await alice_client.list_manager_boutiques(manager_email=current_user.email, source="immo")
+    market_enabled = bool(res.get("market_enabled"))
+
+    residences = await _manager_residences(db, current_user)
+    links = (
+        (
+            await db.execute(
+                select(ResidenceBoutiqueLink).where(
+                    ResidenceBoutiqueLink.manager_user_id == current_user.id
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    link_boutique = {
+        (link.residence_kind, str(link.residence_id)): link.boutique_id for link in links
+    }
+    for r in residences:
+        r["boutique_id"] = link_boutique.get((r["kind"], r["id"]))
+
+    boutiques = []
+    for b in res.get("boutiques", []):
+        bid = str(b.get("id"))
+        slug = b.get("slug")
+        boutiques.append(
+            {
+                "id": bid,
+                "nom": b.get("nom"),
+                "slug": slug,
+                "url": _boutique_url(slug),
+                "residences": [
+                    {"kind": r["kind"], "id": r["id"], "name": r["name"]}
+                    for r in residences
+                    if r["boutique_id"] == bid
+                ],
+            }
+        )
+
+    plans = [] if market_enabled else await alice_client.list_plans(product="boutique")
+    return {
+        "market_enabled": market_enabled,
+        "boutiques": boutiques,
+        "residences": residences,
+        "plans": plans,
+    }
+
+
+class BoutiqueNameIn(BaseModel):
+    nom: str | None = None
+
+
+@router.post("/boutiques")
+async def create_boutique(
+    payload: BoutiqueNameIn | None = None,
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Crée une nouvelle boutique de résidence (autonome) pour le gestionnaire."""
+    payload = payload or BoutiqueNameIn()
+    res = await alice_client.create_standalone_boutique(
+        manager_email=current_user.email, nom=(payload.nom or "").strip() or None
+    )
+    if not res["ok"]:
+        if res["status"] == 409 and res.get("detail") == "market_not_enabled":
+            raise HTTPException(status_code=409, detail="market_not_enabled")
+        raise HTTPException(status_code=502, detail=res.get("detail") or "Création impossible.")
+    return res["data"]
+
+
+@router.patch("/boutiques/{boutique_id}")
+async def rename_boutique(
+    boutique_id: str,
+    payload: BoutiqueNameIn,
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    nom = (payload.nom or "").strip()
+    if not nom:
+        raise HTTPException(status_code=422, detail="Nom requis.")
+    ok = await alice_client.rename_boutique(
+        manager_email=current_user.email, boutique_id=boutique_id, nom=nom
+    )
+    if not ok:
+        raise HTTPException(status_code=502, detail="Renommage impossible.")
+    return {"status": "ok"}
+
+
+@router.delete("/boutiques/{boutique_id}")
+async def delete_boutique(
+    boutique_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    ok = await alice_client.delete_boutique(
+        manager_email=current_user.email, boutique_id=boutique_id
+    )
+    if not ok:
+        raise HTTPException(status_code=502, detail="Suppression impossible.")
+    links = (
+        (
+            await db.execute(
+                select(ResidenceBoutiqueLink).where(
+                    ResidenceBoutiqueLink.manager_user_id == current_user.id,
+                    ResidenceBoutiqueLink.boutique_id == boutique_id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for link in links:
+        await db.delete(link)
+    await db.commit()
+    return {"status": "deleted"}
+
+
+class ResidenceRef(BaseModel):
+    kind: str
+    id: uuid.UUID
+
+
+class SetResidencesIn(BaseModel):
+    items: list[ResidenceRef] = []
+
+
+@router.put("/boutiques/{boutique_id}/residences")
+async def set_boutique_residences(
+    boutique_id: str,
+    payload: SetResidencesIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Synchronise les biens rattachés à une boutique (rattacher/détacher)."""
+    res = await alice_client.list_manager_boutiques(manager_email=current_user.email, source="immo")
+    match = next(
+        (b for b in res.get("boutiques", []) if str(b.get("id")) == str(boutique_id)), None
+    )
+    if match is None:
+        raise HTTPException(status_code=404, detail="Boutique introuvable pour votre compte.")
+    slug = match.get("slug")
+    url = _boutique_url(slug)
+    desired = {(it.kind, it.id) for it in payload.items if it.kind in _KINDS}
+
+    current_links = (
+        (
+            await db.execute(
+                select(ResidenceBoutiqueLink).where(
+                    ResidenceBoutiqueLink.manager_user_id == current_user.id,
+                    ResidenceBoutiqueLink.boutique_id == str(boutique_id),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for link in current_links:
+        if (link.residence_kind, link.residence_id) not in desired:
+            await db.delete(link)
+
+    for kind, rid in desired:
+        link = await _get_link(db, kind, rid)
+        if link is None:
+            db.add(
+                ResidenceBoutiqueLink(
+                    residence_kind=kind,
+                    residence_id=rid,
+                    manager_user_id=current_user.id,
+                    boutique_id=str(boutique_id),
+                    boutique_slug=slug,
+                    boutique_url=url,
+                )
+            )
+        else:
+            link.boutique_id = str(boutique_id)
+            link.boutique_slug = slug
+            link.boutique_url = url
+            link.manager_user_id = current_user.id
+    await db.commit()
+    return {"status": "ok"}
+
+
+class ActivateMarketIn(BaseModel):
+    plan_id: str | None = None
+
+
+@router.post("/activate-market")
+async def activate_market(
+    payload: ActivateMarketIn | None = None,
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Crée le compte gérant Le Comptoir Market depuis le compte Immo + plan choisi."""
+    payload = payload or ActivateMarketIn()
+    res = await alice_client.activate_boutique(
+        email=current_user.email,
+        full_name=current_user.full_name,
+        phone=current_user.phone,
+        address=current_user.full_address,
+        plan_id=payload.plan_id,
+    )
+    if not res["ok"]:
+        raise HTTPException(status_code=502, detail=res.get("detail") or "Activation impossible.")
+    return res["data"]
+
+
 class LinkBoutiqueIn(BaseModel):
     """Corps du déploiement : soit rattacher à une boutique existante (`boutique_id`),
     soit en créer une nouvelle (avec un `nom` optionnel)."""
