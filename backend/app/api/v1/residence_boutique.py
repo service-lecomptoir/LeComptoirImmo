@@ -196,3 +196,25 @@ async def my_residence_boutique_sso(
     await db.commit()
     cfg = get_settings()
     return {"url": f"{cfg.MARKET_PUBLIC_URL.rstrip('/')}/r/sso/{token}/?src=immo"}
+
+
+@router.get("/my-boutique/orders")
+async def my_residence_boutique_orders(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Commandes du locataire à la boutique de sa résidence (statut visible)."""
+    from app.models.tenant import Tenant
+
+    link = await _tenant_boutique_link(db, current_user)
+    if link is None:
+        return []
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    ).scalar_one_or_none()
+    email = (getattr(tenant, "email", None) or current_user.email or "").strip()
+    if not email:
+        return []
+    return await alice_client.get_residence_orders(
+        source="immo", residence_id=link.residence_id, kind=link.residence_kind, email=email
+    )

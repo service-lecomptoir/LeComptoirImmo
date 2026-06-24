@@ -130,6 +130,26 @@ async def provision_residence_boutique(
         return {"ok": False, "status": 502, "detail": "Alice injoignable"}
 
 
+async def get_residence_orders(
+    *, source: str, residence_id, kind: str, email: str
+) -> list[dict]:
+    """Commandes de l'occupant pour la boutique de sa résidence (via Alice → Market).
+    [] si indisponible (fail-soft, non bloquant pour l'espace locataire)."""
+    base, headers = _base_headers()
+    params = {"source": source, "residence_id": str(residence_id), "kind": kind, "email": email}
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as hc:
+            resp = await hc.get(
+                f"{base}/api/v1/internal/residence-orders", headers=headers, params=params
+            )
+        if resp.status_code == 200:
+            return resp.json()
+        logger.warning("Alice get_residence_orders → %s", resp.status_code)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice get_residence_orders failed: %s", exc)
+    return []
+
+
 async def create_lead(
     full_name: str,
     email: str,

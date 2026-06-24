@@ -32,11 +32,21 @@ export default function LocataireDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [boutiqueAvailable, setBoutiqueAvailable] = useState(false)
   const [boutiqueOpening, setBoutiqueOpening] = useState(false)
+  const [boutiqueOrders, setBoutiqueOrders] = useState<any[]>([])
 
   // Pont Le Comptoir Market : la résidence du locataire a-t-elle une boutique ?
+  // Si oui, on remonte aussi ses commandes (statut) pour les afficher.
   useEffect(() => {
     apiClient.get('/residences/my-boutique')
-      .then((r) => setBoutiqueAvailable(!!r.data?.available))
+      .then((r) => {
+        const ok = !!r.data?.available
+        setBoutiqueAvailable(ok)
+        if (ok) {
+          apiClient.get('/residences/my-boutique/orders')
+            .then((o) => setBoutiqueOrders(Array.isArray(o.data) ? o.data : []))
+            .catch(() => setBoutiqueOrders([]))
+        }
+      })
       .catch(() => setBoutiqueAvailable(false))
   }, [])
 
@@ -166,19 +176,37 @@ export default function LocataireDashboard() {
 
       {/* Boutique de la résidence (pont Le Comptoir Market) */}
       {boutiqueAvailable && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-              <Store size={20} className="text-blue-600" />
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                <Store size={20} className="text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">La boutique de votre résidence</p>
+                <p className="text-xs text-gray-500 mt-0.5">Commandez en ligne et retirez sur place.</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-800">La boutique de votre résidence</p>
-              <p className="text-xs text-gray-500 mt-0.5">Commandez en ligne et retirez sur place.</p>
-            </div>
+            <Button variant="primary" onClick={openBoutique} disabled={boutiqueOpening} leftIcon={<Store size={16} />}>
+              {boutiqueOpening ? 'Ouverture…' : 'Accéder à la boutique'}
+            </Button>
           </div>
-          <Button variant="primary" onClick={openBoutique} disabled={boutiqueOpening} leftIcon={<Store size={16} />}>
-            {boutiqueOpening ? 'Ouverture…' : 'Accéder à la boutique'}
-          </Button>
+          {boutiqueOrders.length > 0 && (
+            <div className="mt-4 border-t border-blue-200 pt-3">
+              <p className="text-xs font-semibold text-gray-600 mb-2">Mes commandes à la résidence</p>
+              <div className="space-y-1.5">
+                {boutiqueOrders.slice(0, 5).map((o) => (
+                  <div key={o.id} className="flex items-center justify-between text-sm bg-white/70 rounded-lg px-3 py-2">
+                    <span className="text-gray-600">
+                      {o.created_at ? format(new Date(o.created_at), 'd MMM yyyy', { locale: fr }) : ''}
+                      <span className="text-gray-400"> · {fmtEuro(Number(o.total) || 0)}</span>
+                    </span>
+                    <StatusBadge label={o.statut_label || o.statut} variant="blue" dot />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
