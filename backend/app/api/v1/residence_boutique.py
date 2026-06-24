@@ -7,6 +7,7 @@ est mémorisé localement (table residence_boutique_links).
 """
 
 import uuid
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -195,12 +196,16 @@ async def _tenant_boutique_link(db: AsyncSession, user: User):
     if tenant is None:
         return None
     lease = (
-        await db.execute(
-            select(Lease)
-            .where(Lease.tenant_id == tenant.id, Lease.is_active.is_(True))
-            .order_by(Lease.start_date.desc())
+        (
+            await db.execute(
+                select(Lease)
+                .where(Lease.tenant_id == tenant.id, Lease.is_active.is_(True))
+                .order_by(Lease.start_date.desc())
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     if lease is None or lease.property_id is None:
         return None
     return await _get_link(db, "property", lease.property_id)
@@ -223,7 +228,7 @@ async def my_residence_boutique_sso(
 ):
     """Émet un lien SSO à usage unique vers la boutique de la résidence du locataire."""
     import secrets
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from app.models.sso_token import BoutiqueSsoToken
     from app.models.tenant import Tenant
@@ -243,7 +248,7 @@ async def my_residence_boutique_sso(
             tenant_email=email,
             tenant_full_name=full_name,
             boutique_id=link.boutique_id,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+            expires_at=datetime.now(UTC) + timedelta(minutes=10),
         )
     )
     await db.commit()

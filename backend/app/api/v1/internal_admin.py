@@ -10,7 +10,7 @@ Protégé par l'en-tête `X-Internal-Key` == `ALICE_INTERNAL_KEY` (clé partagé
 
 import hmac
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -687,17 +687,16 @@ class _SsoResolveIn(BaseModel):
 async def resolve_boutique_sso(data: _SsoResolveIn, db: AsyncSession = Depends(get_db)):
     """Résout (à usage unique) un jeton SSO « boutique de résidence ». Renvoie
     l'identité du locataire + l'id de la boutique Market. Appelé par Market."""
-    from datetime import timezone
 
     from app.models.sso_token import BoutiqueSsoToken
 
     tok = (
         await db.execute(select(BoutiqueSsoToken).where(BoutiqueSsoToken.token == data.token))
     ).scalar_one_or_none()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     exp = tok.expires_at if tok else None
     if exp is not None and exp.tzinfo is None:
-        exp = exp.replace(tzinfo=timezone.utc)
+        exp = exp.replace(tzinfo=UTC)
     if tok is None or tok.used or (exp is not None and exp < now):
         raise HTTPException(status_code=404, detail="Jeton invalide ou expiré.")
     tok.used = True
