@@ -87,6 +87,47 @@ async def list_plans() -> list[dict]:
     return []
 
 
+async def provision_residence_boutique(
+    *,
+    manager_email: str,
+    immo_manager_id: UUID,
+    residence_id: UUID,
+    residence_kind: str,
+    residence_name: str | None,
+) -> dict:
+    """Demande à Alice de créer/lier la boutique Market d'une résidence.
+
+    Renvoie {ok, status, data?, detail?}. `status == 409` + `detail == 'market_not_enabled'`
+    signifie que le gestionnaire n'a pas (encore) de gérant Market : l'appelant
+    affiche alors la CTA d'activation. N'est PAS fail-soft silencieux : on remonte
+    le statut pour que le gestionnaire ait un retour clair."""
+    base, headers = _base_headers()
+    payload = {
+        "manager_email": manager_email,
+        "immo_manager_id": str(immo_manager_id),
+        "residence_id": str(residence_id),
+        "residence_kind": residence_kind,
+        "residence_name": residence_name,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as hc:
+            resp = await hc.post(
+                f"{base}/api/v1/internal/residence-boutique", headers=headers, json=payload
+            )
+        if resp.status_code in (200, 201):
+            return {"ok": True, "status": resp.status_code, "data": resp.json()}
+        detail = None
+        try:
+            detail = resp.json().get("detail")
+        except Exception:  # noqa: BLE001
+            detail = None
+        logger.warning("Alice provision_residence_boutique → %s (%s)", resp.status_code, detail)
+        return {"ok": False, "status": resp.status_code, "detail": detail}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice provision_residence_boutique failed: %s", exc)
+        return {"ok": False, "status": 502, "detail": "Alice injoignable"}
+
+
 async def create_lead(
     full_name: str,
     email: str,

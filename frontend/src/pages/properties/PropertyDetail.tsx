@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui'
 import { formatPhoneDisplay } from '@/utils/format'
 import { useParams, useNavigate } from 'react-router-dom'
+import ResidenceBoutiqueCard from '@/components/common/ResidenceBoutiqueCard'
 import {
   ArrowLeft, Edit, Trash2, Megaphone,
   MapPin, Home, Ruler, Bath, Layers, Flame, Zap, Check, CalendarDays, Euro
@@ -166,6 +167,13 @@ export default function PropertyDetail() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Boutique de la résidence (pont Le Comptoir Market) */}
+      {id && (
+        <div className="mb-5">
+          <ResidenceBoutiqueCard kind="property" id={id} />
         </div>
       )}
 

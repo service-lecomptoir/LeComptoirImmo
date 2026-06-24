@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     ALICE_URL: str = "http://localhost:8001"
     ALICE_INTERNAL_KEY: str = "lecomptoir-internal-dev-key-change-in-production"
 
+    # ── Pont Le Comptoir Market (boutique de résidence) ──────────────────────
+    # URL publique de Market pour construire le lien vers une boutique de résidence.
+    MARKET_PUBLIC_URL: str = "https://market.lecomptoir.services"
+
     # ── SMTP / e-mail (désactivé si SMTP_HOST est vide) ──────────────────────
     # Brevo (recommandé) : SMTP_HOST=smtp-relay.brevo.com, SMTP_PORT=587,
     # SMTP_USER=<login SMTP Brevo>, SMTP_PASSWORD=<clé SMTP Brevo>, SMTP_TLS=true.

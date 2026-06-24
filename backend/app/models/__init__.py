@@ -44,6 +44,7 @@ from app.models.payment import Payment
 from app.models.property import Property
 from app.models.publishing import Listing, PublishPlatform
 from app.models.rent_revision import RentRevision
+from app.models.residence_boutique import ResidenceBoutiqueLink
 from app.models.signalement import Signalement
 from app.models.signalement_alert import SignalementAlert
 from app.models.taxe_declaration import TaxeDeclaration
@@ -81,6 +82,7 @@ __all__ = [
     "TelegramLink",
     "PublishPlatform",
     "Listing",
+    "ResidenceBoutiqueLink",
     "Candidature",
     "LeaseExit",
     "ApurementPlan",

@@ -29,6 +29,7 @@ from app.api.v1 import (
     proprietaire_perf,
     public,
     publishing,
+    residence_boutique,
     rgpd,
     scoring,
     settings,
@@ -98,3 +99,4 @@ api_router.include_router(actualisation.router, dependencies=_feat("actualisatio
 # Paiement en ligne du loyer par carte (config GM + checkout locataire + webhooks).
 # Pas de _feat : la config est transverse au profil et les webhooks sont publics.
 api_router.include_router(online_payments.router)
+api_router.include_router(residence_boutique.router)
