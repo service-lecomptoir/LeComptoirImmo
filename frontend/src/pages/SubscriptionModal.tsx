@@ -59,7 +59,7 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
       return
     }
     const chosen = plans.find(p => p.id === planId)
-    const planLabel = chosen ? `${chosen.name} (${chosen.monthly_price.toFixed(0)} €/mois)` : null
+    const planLabel = chosen ? `${chosen.name} (${chosen.monthly_price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €/mois)` : null
     // Le SIRET (société) est joint au message pour être visible côté Demandes.
     const message = [
       isCompany && form.siret.trim() ? `SIRET : ${form.siret.trim()}` : null,
@@ -140,7 +140,7 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
                             {selected && <Check size={14} className="text-brand-navy shrink-0" />}
                             {p.name}
                           </span>
-                          <span className="text-sm font-bold text-brand-navy whitespace-nowrap">{p.monthly_price.toFixed(0)} €<span className="text-xs font-normal text-gray-500">/mois</span></span>
+                          <span className="text-sm font-bold text-brand-navy whitespace-nowrap">{p.monthly_price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €<span className="text-xs font-normal text-gray-500">/mois</span></span>
                         </div>
                         {p.description && <p className="mt-1 text-xs text-gray-500">{p.description}</p>}
                         <p className="mt-1 text-[11px] text-gray-400">
