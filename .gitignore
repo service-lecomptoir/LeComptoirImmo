@@ -60,3 +60,6 @@ credentials_*.xlsx
 # ── Claude Code (interne, transitoire) ───────────────────────────────────────
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+
+# Config locale de l'outillage (non versionnée)
+.claude/
