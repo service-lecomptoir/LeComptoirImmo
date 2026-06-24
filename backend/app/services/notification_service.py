@@ -201,11 +201,11 @@ class NotificationService:
                         priority=NotificationPriority.NORMAL
                         if days_left > 30
                         else NotificationPriority.HIGH,
-                        title=f"Bail expirant dans {days_left} jour(s)",
+                        title=f"Bail expirant dans {days_left} jour{'s' if days_left > 1 else ''}",
                         message=(
                             f"Le bail arrivera à échéance le "
                             f"{lease.end_date.strftime('%d/%m/%Y')} "
-                            f"({days_left} jours restants)."
+                            f"({days_left} jour{'s' if days_left > 1 else ''} restant{'s' if days_left > 1 else ''})."
                         ),
                         entity_type="lease",
                         entity_id=lease.id,

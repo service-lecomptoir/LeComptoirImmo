@@ -399,7 +399,7 @@ async def _job_vacancy_alerts() -> None:
                         Notification(
                             title="Annonce sans candidature",
                             message=(
-                                f"L'annonce « {pname} » est publiée depuis {days} jours sans aucune "
+                                f"L'annonce « {pname} » est publiée depuis {days} jour{'s' if days > 1 else ''} sans aucune "
                                 f"candidature. Pensez à élargir la diffusion ou à revoir le loyer."
                             ),
                             notification_type=NotificationType.SYSTEME,
@@ -413,7 +413,7 @@ async def _job_vacancy_alerts() -> None:
                     db,
                     lst.created_by,
                     "vacance",
-                    f"L'annonce <b>{pname}</b> est publiée depuis {days} jours sans aucune candidature.",
+                    f"L'annonce <b>{pname}</b> est publiée depuis {days} jour{'s' if days > 1 else ''} sans aucune candidature.",
                     cta="Élargissez la diffusion ou revoyez le loyer dans « Publication des annonces ».",
                 )
                 lst.vacancy_alerted_at = datetime.now(UTC)

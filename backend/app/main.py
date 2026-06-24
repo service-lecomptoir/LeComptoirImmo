@@ -208,7 +208,9 @@ async def lifespan(app: FastAPI):
             nt = await backfill_table(_db, _T, lambda r: "LO")
             await _db.commit()
         logger.info(
-            f"Identifiants ref_code (reprise) : {nu} comptes, {no} propriétaires, {nb} biens, {nt} locataires"
+            f"Identifiants ref_code (reprise) : {nu} compte{'s' if nu > 1 else ''}, "
+            f"{no} propriétaire{'s' if no > 1 else ''}, {nb} bien{'s' if nb > 1 else ''}, "
+            f"{nt} locataire{'s' if nt > 1 else ''}"
         )
     except Exception as _exc:
         logger.warning(f"Reprise ref_code ignorée : {_exc!r}")
