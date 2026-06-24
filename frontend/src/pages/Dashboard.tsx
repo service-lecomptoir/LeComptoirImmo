@@ -241,11 +241,11 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <KPICard title={`Loyers attendus pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
+        <KPICard title={`${stats.total_leases_active > 1 ? 'Loyers attendus' : 'Loyer attendu'} pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_expected)}
           icon={Euro} color="blue" />
-        <KPICard title={`Loyers encaissés pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
+        <KPICard title={`${stats.total_leases_active > 1 ? 'Loyers encaissés' : 'Loyer encaissé'} pour ${moisCourant()}`} value={fmtEur(stats.financial.total_rent_received)}
           sub={`Recouvrement : ${stats.financial.collection_rate}%`} icon={CheckCircle} color="green" />
-        <KPICard title="Impayés" value={fmtEur(stats.financial.total_outstanding)}
+        <KPICard title={stats.alerts.overdue_payments > 1 ? 'Impayés' : 'Impayé'} value={fmtEur(stats.financial.total_outstanding)}
           sub={stats.alerts.overdue_payments > 0
             ? `${stats.alerts.overdue_payments} paiement${stats.alerts.overdue_payments > 1 ? 's' : ''} en retard`
             : 'À jour'} icon={AlertTriangle}
