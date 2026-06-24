@@ -133,8 +133,6 @@ export default function AdminUsers() {
   // Rattachement d'une fiche (locataire / propriétaire) au nouveau compte
   const [fiches, setFiches] = useState<FicheOption[]>([])
   const [linkFicheId, setLinkFicheId] = useState<string>('')
-  // Réinitialisation du mot de passe (édition)
-  const [resetPwd, setResetPwd] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -243,7 +241,6 @@ export default function AdminUsers() {
     editForm.reset({
       first_name: first, last_name: last, email: u.email, is_active: u.is_active, role: u.role,
     })
-    setResetPwd('')
     setFormError(null)
   }
 
@@ -263,18 +260,10 @@ export default function AdminUsers() {
       if (values.role !== editTarget.role) {
         await apiClient.patch(`/users/${editTarget.id}/role`, { role: values.role })
       }
-      // Réinitialisation du mot de passe (optionnel)
-      if (resetPwd.trim()) {
-        if (resetPwd.trim().length < 8) {
-          setFormError('Le nouveau mot de passe doit contenir au moins 8 caractères.')
-          setSubmitting(false)
-          return
-        }
-        await apiClient.patch(`/users/${editTarget.id}/password`, { new_password: resetPwd.trim() })
-      }
+      // Le mot de passe ne se modifie pas ici : utiliser « Envoyer les identifiants »
+      // (mot de passe temporaire généré et envoyé par e-mail à l'utilisateur).
       await load()
       setEditTarget(null)
-      setResetPwd('')
     } catch (e: any) {
       setFormError(getErrorMessage(e, 'Erreur lors de la modification.'))
     } finally {
@@ -653,24 +642,8 @@ export default function AdminUsers() {
             </div>
           )}
 
-          {/* Réinitialiser le mot de passe */}
-          <div className="pt-3 border-t border-gray-100">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Réinitialiser le mot de passe
-            </label>
-            <input
-              type="text"
-              value={resetPwd}
-              onChange={e => setResetPwd(e.target.value)}
-              autoComplete="new-password"
-              placeholder="Laisser vide pour ne pas changer"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Définit un nouveau mot de passe pour cet utilisateur (min. 8 caractères). Communiquez-le-lui ;
-              il pourra le changer ensuite depuis son espace.
-            </p>
-          </div>
+          {/* Le mot de passe ne se modifie pas ici : utiliser « Envoyer les
+              identifiants » sur la ligne (mot de passe temporaire par e-mail). */}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
