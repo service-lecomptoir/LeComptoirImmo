@@ -92,8 +92,13 @@ export default function BoutiqueResidence() {
       setNewName('')
       toast.success('Boutique créée.')
       await load()
-    } catch {
-      toast.error('Création impossible.')
+    } catch (e) {
+      const err = e as { response?: { status?: number; data?: { detail?: string } } }
+      if (err.response?.status === 403 && err.response.data?.detail === 'plan_limit_reached') {
+        toast.error('Votre formule ne permet pas de créer davantage de boutiques.')
+      } else {
+        toast.error('Création impossible.')
+      }
     } finally {
       setWorking(false)
     }

@@ -193,6 +193,8 @@ async def create_boutique(
     if not res["ok"]:
         if res["status"] == 409 and res.get("detail") == "market_not_enabled":
             raise HTTPException(status_code=409, detail="market_not_enabled")
+        if res["status"] == 403 and res.get("detail") == "plan_limit_reached":
+            raise HTTPException(status_code=403, detail="plan_limit_reached")
         raise HTTPException(status_code=502, detail=res.get("detail") or "Création impossible.")
     return res["data"]
 
@@ -381,6 +383,8 @@ async def link_residence_boutique(
             if res["status"] == 409 and res.get("detail") == "market_not_enabled":
                 # Le gestionnaire n'a pas de gérant Market : l'app affiche la CTA.
                 raise HTTPException(status_code=409, detail="market_not_enabled")
+            if res["status"] == 403 and res.get("detail") == "plan_limit_reached":
+                raise HTTPException(status_code=403, detail="plan_limit_reached")
             raise HTTPException(
                 status_code=502,
                 detail=res.get("detail") or "Provisionnement de la boutique impossible.",

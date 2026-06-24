@@ -74,6 +74,8 @@ export default function ResidenceBoutiqueCard({ kind, id }: Props) {
       const err = e as { response?: { status?: number; data?: { detail?: string } } }
       if (err.response?.status === 409 && err.response.data?.detail === 'market_not_enabled') {
         setMarketAbsent(true)
+      } else if (err.response?.status === 403 && err.response.data?.detail === 'plan_limit_reached') {
+        setError('Votre formule ne permet pas de créer davantage de boutiques.')
       } else {
         setError("Le déploiement de la boutique a échoué. Réessayez plus tard.")
       }
