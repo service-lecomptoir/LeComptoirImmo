@@ -94,6 +94,7 @@ async def provision_residence_boutique(
     residence_id: UUID,
     residence_kind: str,
     residence_name: str | None,
+    residence_address: str | None = None,
 ) -> dict:
     """Demande à Alice de créer/lier la boutique Market d'une résidence.
 
@@ -108,6 +109,7 @@ async def provision_residence_boutique(
         "residence_id": str(residence_id),
         "residence_kind": residence_kind,
         "residence_name": residence_name,
+        "residence_address": residence_address,
     }
     try:
         async with httpx.AsyncClient(timeout=15.0) as hc:

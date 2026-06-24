@@ -27,12 +27,19 @@ router = APIRouter(prefix="/residences", tags=["residence-boutique"])
 _KINDS = ("property", "copropriete")
 
 
+def _residence_address(kind: str, obj) -> str:
+    if kind == "copropriete":
+        return obj.full_address or ""
+    loc = " ".join(p for p in [(obj.zip_code or "").strip(), (obj.city or "").strip()] if p)
+    return ", ".join(p for p in [(obj.address or "").strip(), loc] if p)
+
+
 async def _load_residence(db: AsyncSession, kind: str, rid: uuid.UUID):
-    """Charge la résidence (bien ou copropriété) et renvoie (objet, nom, created_by)."""
+    """Charge la résidence (bien ou copropriété) → (objet, nom, adresse, created_by)."""
     obj = await db.get(Property if kind == "property" else Copropriete, rid)
     if obj is None:
         raise HTTPException(status_code=404, detail="Résidence introuvable.")
-    return obj, obj.name, obj.created_by
+    return obj, obj.name, _residence_address(kind, obj), obj.created_by
 
 
 async def _get_link(db: AsyncSession, kind: str, rid: uuid.UUID):
@@ -66,7 +73,7 @@ async def get_residence_boutique(
 ):
     if kind not in _KINDS:
         raise HTTPException(status_code=422, detail="Type de résidence invalide.")
-    _, _, created_by = await _load_residence(db, kind, rid)
+    _, _, _, created_by = await _load_residence(db, kind, rid)
     await assert_manager_scope(db, current_user, created_by, "cette résidence")
     return _link_out(await _get_link(db, kind, rid))
 
@@ -80,7 +87,7 @@ async def link_residence_boutique(
 ):
     if kind not in _KINDS:
         raise HTTPException(status_code=422, detail="Type de résidence invalide.")
-    _, name, created_by = await _load_residence(db, kind, rid)
+    _, name, address, created_by = await _load_residence(db, kind, rid)
     await assert_manager_scope(db, current_user, created_by, "cette résidence")
 
     res = await alice_client.provision_residence_boutique(
@@ -89,6 +96,7 @@ async def link_residence_boutique(
         residence_id=rid,
         residence_kind=kind,
         residence_name=name,
+        residence_address=address,
     )
     if not res["ok"]:
         if res["status"] == 409 and res.get("detail") == "market_not_enabled":
