@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Home, CreditCard, Archive, ArrowRight, Download, Wallet, CheckCircle,
-  Receipt, MessagesSquare, ConciergeBell, Bell, Building2, Mail, Phone, MapPin,
+  Receipt, MessagesSquare, ConciergeBell, Bell, Building2, Mail, Phone, MapPin, Store,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { getDayMoment, formatLongDate } from '@/lib/dayMoment'
@@ -30,6 +30,27 @@ export default function LocataireDashboard() {
   const [openSignalements, setOpenSignalements] = useState(0)
   const [manager, setManager] = useState<ManagerContact | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [boutiqueAvailable, setBoutiqueAvailable] = useState(false)
+  const [boutiqueOpening, setBoutiqueOpening] = useState(false)
+
+  // Pont Le Comptoir Market : la résidence du locataire a-t-elle une boutique ?
+  useEffect(() => {
+    apiClient.get('/residences/my-boutique')
+      .then((r) => setBoutiqueAvailable(!!r.data?.available))
+      .catch(() => setBoutiqueAvailable(false))
+  }, [])
+
+  const openBoutique = async () => {
+    setBoutiqueOpening(true)
+    try {
+      const r = await apiClient.post('/residences/my-boutique/sso')
+      if (r.data?.url) window.location.href = r.data.url
+    } catch {
+      /* lien indisponible : on ne bloque pas */
+    } finally {
+      setBoutiqueOpening(false)
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -142,6 +163,24 @@ export default function LocataireDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Boutique de la résidence (pont Le Comptoir Market) */}
+      {boutiqueAvailable && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+              <Store size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">La boutique de votre résidence</p>
+              <p className="text-xs text-gray-500 mt-0.5">Commandez en ligne et retirez sur place.</p>
+            </div>
+          </div>
+          <Button variant="primary" onClick={openBoutique} disabled={boutiqueOpening} leftIcon={<Store size={16} />}>
+            {boutiqueOpening ? 'Ouverture…' : 'Accéder à la boutique'}
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         {/* Mon bail */}

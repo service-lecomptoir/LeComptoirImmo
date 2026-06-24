@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_gestionnaire, get_current_manager
+from app.api.deps import get_current_gestionnaire, get_current_manager, get_current_user
 from app.api.v1._isolation import assert_manager_scope
 from app.config import get_settings
 from app.database import get_db
@@ -121,3 +121,70 @@ async def link_residence_boutique(
         link.manager_user_id = current_user.id
     await db.commit()
     return _link_out(link)
+
+
+async def _tenant_boutique_link(db: AsyncSession, user: User):
+    """Lien boutique de la résidence du locataire courant (via bail actif), ou None."""
+    from app.models.lease import Lease
+    from app.models.tenant import Tenant
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == user.id))
+    ).scalar_one_or_none()
+    if tenant is None:
+        return None
+    lease = (
+        await db.execute(
+            select(Lease)
+            .where(Lease.tenant_id == tenant.id, Lease.is_active.is_(True))
+            .order_by(Lease.start_date.desc())
+        )
+    ).scalars().first()
+    if lease is None or lease.property_id is None:
+        return None
+    return await _get_link(db, "property", lease.property_id)
+
+
+@router.get("/my-boutique")
+async def my_residence_boutique(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Le locataire connecté a-t-il une boutique de résidence accessible ?"""
+    link = await _tenant_boutique_link(db, current_user)
+    return {"available": link is not None}
+
+
+@router.post("/my-boutique/sso")
+async def my_residence_boutique_sso(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Émet un lien SSO à usage unique vers la boutique de la résidence du locataire."""
+    import secrets
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.sso_token import BoutiqueSsoToken
+    from app.models.tenant import Tenant
+
+    link = await _tenant_boutique_link(db, current_user)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Aucune boutique pour votre résidence.")
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    ).scalar_one_or_none()
+    email = (getattr(tenant, "email", None) or current_user.email or "").strip()
+    full_name = getattr(tenant, "full_name", None) or None
+    token = secrets.token_urlsafe(24)
+    db.add(
+        BoutiqueSsoToken(
+            token=token,
+            tenant_email=email,
+            tenant_full_name=full_name,
+            boutique_id=link.boutique_id,
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+        )
+    )
+    await db.commit()
+    cfg = get_settings()
+    return {"url": f"{cfg.MARKET_PUBLIC_URL.rstrip('/')}/r/sso/{token}/?src=immo"}

@@ -46,6 +46,7 @@ from app.models.publishing import Listing, PublishPlatform
 from app.models.rent_revision import RentRevision
 from app.models.residence_boutique import ResidenceBoutiqueLink
 from app.models.signalement import Signalement
+from app.models.sso_token import BoutiqueSsoToken
 from app.models.signalement_alert import SignalementAlert
 from app.models.taxe_declaration import TaxeDeclaration
 from app.models.telegram_link import TelegramLink
@@ -83,6 +84,7 @@ __all__ = [
     "PublishPlatform",
     "Listing",
     "ResidenceBoutiqueLink",
+    "BoutiqueSsoToken",
     "Candidature",
     "LeaseExit",
     "ApurementPlan",

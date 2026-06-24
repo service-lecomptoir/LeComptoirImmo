@@ -677,3 +677,33 @@ async def list_audit_logs(
         q = q.where(AuditLog.entity_type == entity_type)
     q = q.order_by(desc(AuditLog.created_at)).offset(skip).limit(limit)
     return (await db.execute(q)).scalars().all()
+
+
+class _SsoResolveIn(BaseModel):
+    token: str
+
+
+@router.post("/sso/resolve", dependencies=[Depends(require_internal_key)])
+async def resolve_boutique_sso(data: _SsoResolveIn, db: AsyncSession = Depends(get_db)):
+    """Résout (à usage unique) un jeton SSO « boutique de résidence ». Renvoie
+    l'identité du locataire + l'id de la boutique Market. Appelé par Market."""
+    from datetime import timezone
+
+    from app.models.sso_token import BoutiqueSsoToken
+
+    tok = (
+        await db.execute(select(BoutiqueSsoToken).where(BoutiqueSsoToken.token == data.token))
+    ).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    exp = tok.expires_at if tok else None
+    if exp is not None and exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if tok is None or tok.used or (exp is not None and exp < now):
+        raise HTTPException(status_code=404, detail="Jeton invalide ou expiré.")
+    tok.used = True
+    await db.commit()
+    return {
+        "email": tok.tenant_email,
+        "full_name": tok.tenant_full_name,
+        "boutique_id": tok.boutique_id,
+    }
