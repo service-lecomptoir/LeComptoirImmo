@@ -130,13 +130,37 @@ async def provision_residence_boutique(
         return {"ok": False, "status": 502, "detail": "Alice injoignable"}
 
 
+async def list_manager_boutiques(*, manager_email: str, source: str = "immo") -> dict:
+    """Boutiques de résidence existantes du gérant Market (rapproché par e-mail), pour
+    le sélecteur « rattacher à une boutique existante ». {market_enabled, boutiques:
+    [{id, slug, nom}]}. Fail-soft : {market_enabled: False, boutiques: []} si indispo."""
+    base, headers = _base_headers()
+    params = {"email": manager_email, "source": source}
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as hc:
+            resp = await hc.get(
+                f"{base}/api/v1/internal/residence-boutiques", headers=headers, params=params
+            )
+        if resp.status_code == 200:
+            return resp.json()
+        logger.warning("Alice list_manager_boutiques → %s", resp.status_code)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice list_manager_boutiques failed: %s", exc)
+    return {"market_enabled": False, "boutiques": []}
+
+
 async def get_residence_orders(
-    *, source: str, residence_id, kind: str, email: str
+    *, source: str, residence_id, kind: str, email: str, boutique_id=None
 ) -> list[dict]:
     """Commandes de l'occupant pour la boutique de sa résidence (via Alice → Market).
+    Cible par `boutique_id` quand fourni (une boutique dessert plusieurs résidences).
     [] si indisponible (fail-soft, non bloquant pour l'espace locataire)."""
     base, headers = _base_headers()
-    params = {"source": source, "residence_id": str(residence_id), "kind": kind, "email": email}
+    params = {"email": email}
+    if boutique_id:
+        params["boutique_id"] = str(boutique_id)
+    else:
+        params.update({"source": source, "residence_id": str(residence_id), "kind": kind})
     try:
         async with httpx.AsyncClient(timeout=6.0) as hc:
             resp = await hc.get(

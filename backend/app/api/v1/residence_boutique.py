@@ -9,6 +9,7 @@ est mémorisé localement (table residence_boutique_links).
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,10 +79,45 @@ async def get_residence_boutique(
     return _link_out(await _get_link(db, kind, rid))
 
 
+def _boutique_url(slug: str | None) -> str | None:
+    if not slug:
+        return None
+    return f"{get_settings().MARKET_PUBLIC_URL.rstrip('/')}/boutique/{slug}/"
+
+
+@router.get("/my-manager-boutiques")
+async def my_manager_boutiques(
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Boutiques de résidence déjà créées par le gestionnaire (rapproché par e-mail
+    de son gérant Market) : permet de rattacher un bien à une boutique existante au
+    lieu d'en créer une par appartement. {market_enabled, boutiques: [{id, slug, nom, url}]}."""
+    res = await alice_client.list_manager_boutiques(manager_email=current_user.email, source="immo")
+    boutiques = [
+        {
+            "id": str(b.get("id")),
+            "slug": b.get("slug"),
+            "nom": b.get("nom"),
+            "url": _boutique_url(b.get("slug")),
+        }
+        for b in res.get("boutiques", [])
+    ]
+    return {"market_enabled": bool(res.get("market_enabled")), "boutiques": boutiques}
+
+
+class LinkBoutiqueIn(BaseModel):
+    """Corps du déploiement : soit rattacher à une boutique existante (`boutique_id`),
+    soit en créer une nouvelle (avec un `nom` optionnel)."""
+
+    boutique_id: str | None = None
+    nom: str | None = None
+
+
 @router.post("/{kind}/{rid}/boutique")
 async def link_residence_boutique(
     kind: str,
     rid: uuid.UUID,
+    payload: LinkBoutiqueIn | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
@@ -89,41 +125,58 @@ async def link_residence_boutique(
         raise HTTPException(status_code=422, detail="Type de résidence invalide.")
     _, name, address, created_by = await _load_residence(db, kind, rid)
     await assert_manager_scope(db, current_user, created_by, "cette résidence")
+    payload = payload or LinkBoutiqueIn()
 
-    res = await alice_client.provision_residence_boutique(
-        manager_email=current_user.email,
-        immo_manager_id=current_user.id,
-        residence_id=rid,
-        residence_kind=kind,
-        residence_name=name,
-        residence_address=address,
-    )
-    if not res["ok"]:
-        if res["status"] == 409 and res.get("detail") == "market_not_enabled":
-            # Le gestionnaire n'a pas de gérant Market : l'app affiche la CTA.
-            raise HTTPException(status_code=409, detail="market_not_enabled")
-        raise HTTPException(
-            status_code=502, detail=res.get("detail") or "Provisionnement de la boutique impossible."
+    if payload.boutique_id:
+        # Rattacher à une boutique existante du gestionnaire (vérif d'appartenance
+        # via la liste de son gérant Market, rapproché par e-mail).
+        res = await alice_client.list_manager_boutiques(
+            manager_email=current_user.email, source="immo"
         )
+        match = next(
+            (b for b in res.get("boutiques", []) if str(b.get("id")) == str(payload.boutique_id)),
+            None,
+        )
+        if match is None:
+            raise HTTPException(status_code=404, detail="Boutique introuvable pour votre compte.")
+        boutique_id = str(match.get("id"))
+        slug = match.get("slug")
+    else:
+        # Créer une nouvelle boutique de résidence.
+        res = await alice_client.provision_residence_boutique(
+            manager_email=current_user.email,
+            immo_manager_id=current_user.id,
+            residence_id=rid,
+            residence_kind=kind,
+            residence_name=(payload.nom or "").strip() or name,
+            residence_address=address,
+        )
+        if not res["ok"]:
+            if res["status"] == 409 and res.get("detail") == "market_not_enabled":
+                # Le gestionnaire n'a pas de gérant Market : l'app affiche la CTA.
+                raise HTTPException(status_code=409, detail="market_not_enabled")
+            raise HTTPException(
+                status_code=502,
+                detail=res.get("detail") or "Provisionnement de la boutique impossible.",
+            )
+        data = res["data"]
+        boutique_id = str(data["id"])
+        slug = data.get("slug")
 
-    data = res["data"]
-    cfg = get_settings()
-    slug = data.get("slug")
-    url = f"{cfg.MARKET_PUBLIC_URL.rstrip('/')}/boutique/{slug}/" if slug else None
-
+    url = _boutique_url(slug)
     link = await _get_link(db, kind, rid)
     if link is None:
         link = ResidenceBoutiqueLink(
             residence_kind=kind,
             residence_id=rid,
             manager_user_id=current_user.id,
-            boutique_id=str(data["id"]),
+            boutique_id=boutique_id,
             boutique_slug=slug,
             boutique_url=url,
         )
         db.add(link)
     else:
-        link.boutique_id = str(data["id"])
+        link.boutique_id = boutique_id
         link.boutique_slug = slug
         link.boutique_url = url
         link.manager_user_id = current_user.id
@@ -216,5 +269,9 @@ async def my_residence_boutique_orders(
     if not email:
         return []
     return await alice_client.get_residence_orders(
-        source="immo", residence_id=link.residence_id, kind=link.residence_kind, email=email
+        source="immo",
+        residence_id=link.residence_id,
+        kind=link.residence_kind,
+        email=email,
+        boutique_id=link.boutique_id,
     )
