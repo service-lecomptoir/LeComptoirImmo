@@ -180,7 +180,7 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
                     onChange={e => set('siret', e.target.value)} />
                 </div>
               )}
-              <input className={inp} placeholder="Email professionnel *" type="email" value={form.email}
+              <input className={inp} placeholder={kind === 'personne' ? 'Email *' : 'Email professionnel *'} type="email" value={form.email}
                 onChange={e => set('email', e.target.value)} />
               <input className={inp} placeholder="Téléphone *" value={form.phone}
                 onChange={e => set('phone', e.target.value)} />
