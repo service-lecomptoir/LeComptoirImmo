@@ -28,11 +28,13 @@ export function ProprioVisibilityEditor({ ownerUserId, onSaved }: {
     ;(async () => {
       setLoading(true)
       try {
-        const { data: cat } = await apiClient.get('/users/proprio-visibility/catalog')
+        const { data: cat } = await apiClient.get('/users/proprio-visibility/catalog', { skipErrorToast: true })
         if (cancelled) return
         setCatalog(cat.sections)
         const allAllowed = cat.sections.filter((s: CatalogSection) => s.plan_allowed).map((s: CatalogSection) => s.key)
-        const { data: v } = await apiClient.get(`/users/${ownerUserId}/proprio-visibility`)
+        // Lecture optionnelle (le compte propriétaire peut ne pas exister) : on gère
+        // l'erreur en silence, sans toast global.
+        const { data: v } = await apiClient.get(`/users/${ownerUserId}/proprio-visibility`, { skipErrorToast: true })
         if (cancelled) return
         setIsActive(v.is_active)
         if (v.override) { setSelected(new Set(v.override)); setUsingDefault(false) }

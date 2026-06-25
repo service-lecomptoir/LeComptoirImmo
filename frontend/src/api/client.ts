@@ -3,6 +3,13 @@ import { toast } from '../store/toast'
 import { getErrorMessage } from '../utils/errors'
 import { isDownloadSuppressing } from '../utils/download'
 
+// Permet à un appel optionnel (géré localement) de désactiver le toast d'erreur global.
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    skipErrorToast?: boolean
+  }
+}
+
 const API_URL = import.meta.env.VITE_API_URL || ''
 
 export const apiClient = axios.create({
@@ -135,8 +142,12 @@ apiClient.interceptors.response.use(
     }
 
     // ── Filet de sécurité : aucune erreur ne doit être silencieuse ─────────────
-    // Tout échec restant (mutation OU lecture) remonte un message à l'utilisateur.
-    toast.error(getErrorMessage(error))
+    // Tout échec restant (mutation OU lecture) remonte un message à l'utilisateur,
+    // SAUF si l'appel a demandé explicitement à gérer l'erreur lui-même (lecture
+    // optionnelle, ex. visibilité d'un propriétaire sans compte en ligne).
+    if (!original.skipErrorToast) {
+      toast.error(getErrorMessage(error))
+    }
 
     return Promise.reject(error)
   },
