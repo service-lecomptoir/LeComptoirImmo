@@ -346,6 +346,12 @@ async def _apply_column_migrations() -> None:
     migrations = [
         # Nom du gestionnaire d'origine transmis à Market via le SSO boutique
         "ALTER TABLE boutique_sso_tokens ADD COLUMN IF NOT EXISTS gestionnaire_nom VARCHAR(255)",
+        # Coordonnées locataire transmises à Market (préremplissage compte client)
+        "ALTER TABLE boutique_sso_tokens ADD COLUMN IF NOT EXISTS tenant_phone VARCHAR(30)",
+        "ALTER TABLE boutique_sso_tokens ADD COLUMN IF NOT EXISTS tenant_address VARCHAR(300)",
+        "ALTER TABLE boutique_sso_tokens ADD COLUMN IF NOT EXISTS tenant_zip VARCHAR(20)",
+        "ALTER TABLE boutique_sso_tokens ADD COLUMN IF NOT EXISTS tenant_city VARCHAR(120)",
+        "ALTER TABLE boutique_sso_tokens ADD COLUMN IF NOT EXISTS tenant_country VARCHAR(80)",
         # Quittances sur les paiements
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS anonymized_at TIMESTAMPTZ",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_generated_at TIMESTAMPTZ",

@@ -24,6 +24,12 @@ class BoutiqueSsoToken(Base, TimestampMixin):
     # Nom du compte gestionnaire d'origine (transmis à Market pour la colonne
     # « Gestionnaire » dans les fichiers clients du gérant).
     gestionnaire_nom: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Coordonnées du locataire transmises à Market (préremplissage du compte client).
+    tenant_phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    tenant_address: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    tenant_zip: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    tenant_city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tenant_country: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # PK de la boutique côté Market.
     boutique_id: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -706,4 +706,9 @@ async def resolve_boutique_sso(data: _SsoResolveIn, db: AsyncSession = Depends(g
         "full_name": tok.tenant_full_name,
         "boutique_id": tok.boutique_id,
         "gestionnaire_nom": getattr(tok, "gestionnaire_nom", None),
+        "phone": getattr(tok, "tenant_phone", None),
+        "address": getattr(tok, "tenant_address", None),
+        "zip_code": getattr(tok, "tenant_zip", None),
+        "city": getattr(tok, "tenant_city", None),
+        "country": getattr(tok, "tenant_country", None),
     }

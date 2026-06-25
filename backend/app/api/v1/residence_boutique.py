@@ -597,6 +597,7 @@ async def my_residence_boutique_sso(
     full_name = getattr(tenant, "full_name", None) or None
     mgr = await _tenant_gestionnaire(db, current_user)
     ges_nom = (getattr(mgr, "full_name", None) or "").strip() or None
+    # Coordonnées du locataire (compte User), transmises pour préremplir le compte client.
     token = secrets.token_urlsafe(24)
     db.add(
         BoutiqueSsoToken(
@@ -604,6 +605,11 @@ async def my_residence_boutique_sso(
             tenant_email=email,
             tenant_full_name=full_name,
             gestionnaire_nom=ges_nom,
+            tenant_phone=(getattr(current_user, "phone", None) or None),
+            tenant_address=(getattr(current_user, "address", None) or None),
+            tenant_zip=(getattr(current_user, "zip_code", None) or None),
+            tenant_city=(getattr(current_user, "city", None) or None),
+            tenant_country=(getattr(current_user, "country", None) or None),
             boutique_id=target,
             expires_at=datetime.now(UTC) + timedelta(minutes=10),
         )
