@@ -151,78 +151,28 @@ async def _manager_residences(db: AsyncSession, user: User) -> list[dict]:
 
 @router.get("/boutiques/overview")
 async def boutiques_overview(
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    """Données de la page « Boutique de la résidence » : compte Market actif ?,
-    boutiques + biens rattachés, biens disponibles, et plans si pas encore de compte."""
+    """Données de la page « Boutique associée » : roster des gérants rattachés + liste
+    (lecture seule) de toutes leurs boutiques. Les gérants créent leurs boutiques
+    eux-mêmes dans Le Comptoir Market."""
     res = await alice_client.list_manager_boutiques(manager_email=current_user.email, source="immo")
-    market_enabled = bool(res.get("market_enabled"))
-
-    residences = await _manager_residences(db, current_user)
-    links = (
-        (
-            await db.execute(
-                select(ResidenceBoutiqueLink).where(
-                    ResidenceBoutiqueLink.manager_user_id == current_user.id
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    # Auto-réparation : purge les liens pointant vers une boutique supprimée côté
-    # Market (compte gérant supprimé, etc.). Seulement si la réponse est fiable.
-    if res.get("ok"):
-        valid = {str(b.get("id")) for b in res.get("boutiques", [])}
-        stale = [link for link in links if str(link.boutique_id) not in valid]
-        if stale:
-            for link in stale:
-                await db.delete(link)
-            await db.commit()
-            links = [link for link in links if link not in stale]
-    link_boutique = {
-        (link.residence_kind, str(link.residence_id)): link.boutique_id for link in links
-    }
-    for r in residences:
-        r["boutique_id"] = link_boutique.get((r["kind"], r["id"]))
-
-    boutiques = []
-    for b in res.get("boutiques", []):
-        bid = str(b.get("id"))
-        slug = b.get("slug")
-        boutiques.append(
-            {
-                "id": bid,
-                "nom": b.get("nom"),
-                "slug": slug,
-                "url": _boutique_url(slug),
-                "residences": [
-                    {"kind": r["kind"], "id": r["id"], "name": r["name"]}
-                    for r in residences
-                    if r["boutique_id"] == bid
-                ],
-            }
-        )
-
-    plans = [] if market_enabled else await alice_client.list_plans(product="boutique")
-    # Plafond du plan boutique (nb total de boutiques) → verrouillage du bouton d'ajout.
-    limit = res.get("limit")
-    count = res.get("count")
-    can_create = not (isinstance(limit, int) and isinstance(count, int) and count >= limit)
-    # Gérant Market désigné (par défaut le gestionnaire lui-même).
-    gi = await alice_client.get_residence_gerant(manager_email=current_user.email)
+    boutiques = [
+        {
+            "id": str(b.get("id")),
+            "nom": b.get("nom"),
+            "slug": b.get("slug"),
+            "url": _boutique_url(b.get("slug")),
+            "gerant_email": b.get("gerant_email"),
+            "gerant_name": b.get("gerant_name"),
+        }
+        for b in res.get("boutiques", [])
+    ]
+    roster = await alice_client.list_residence_gerants(manager_email=current_user.email)
     return {
-        "market_enabled": market_enabled,
+        "market_enabled": bool(res.get("market_enabled")),
         "boutiques": boutiques,
-        "residences": residences,
-        "plans": plans,
-        "boutique_limit": limit,
-        "boutique_count": count,
-        "can_create_boutique": can_create,
-        "gerant_email": gi.get("gerant_email") if gi.get("ok") else current_user.email,
-        "gerant_is_self": gi.get("is_self", True),
-        "gerant_exists": gi.get("gerant_exists", market_enabled),
+        "gerants": roster.get("gerants", []),
     }
 
 
@@ -360,11 +310,22 @@ async def set_boutique_residences(
     return {"status": "ok"}
 
 
+class MarketLoginIn(BaseModel):
+    gerant_email: str | None = None
+
+
 @router.post("/market-login")
-async def market_login(current_user: User = Depends(get_current_gestionnaire)):
+async def market_login(
+    payload: MarketLoginIn | None = None,
+    current_user: User = Depends(get_current_gestionnaire),
+):
     """Lien SSO à usage unique pour ouvrir Le Comptoir Market (compte gérant) sans
-    identifiants. 409 market_not_enabled si pas de compte gérant."""
-    res = await alice_client.manager_login_link(manager_email=current_user.email)
+    identifiants. Cible le gérant `gerant_email` (rattaché) si fourni, sinon le
+    premier. 409 market_not_enabled si pas de compte gérant."""
+    payload = payload or MarketLoginIn()
+    res = await alice_client.manager_login_link(
+        manager_email=current_user.email, gerant_email=(payload.gerant_email or None)
+    )
     if not res["ok"]:
         if res["status"] == 409 and res.get("detail") == "market_not_enabled":
             raise HTTPException(status_code=409, detail="market_not_enabled")
@@ -399,22 +360,23 @@ async def activate_market(
     return res["data"]
 
 
-class SetGerantIn(BaseModel):
+class GerantEmailIn(BaseModel):
     gerant_email: str
 
 
-@router.put("/boutiques/gerant")
-async def set_residence_gerant(
-    payload: SetGerantIn,
+@router.post("/boutiques/gerants")
+async def add_residence_gerant(
+    payload: GerantEmailIn,
     current_user: User = Depends(get_current_gestionnaire),
 ):
-    """Désigne le compte gérant Le Comptoir Market qui gère TOUTES les boutiques de
-    résidence du gestionnaire (e-mail identique ou différent du sien). Si ce compte
-    n'existe pas encore, il est créé et ses identifiants lui sont envoyés."""
+    """Rattache un compte gérant Le Comptoir Market au gestionnaire (e-mail identique
+    ou différent du sien). Si ce compte n'existe pas encore, il est créé et ses
+    identifiants lui sont envoyés par e-mail. Le gestionnaire peut rattacher autant de
+    gérants qu'il veut ; chaque gérant gère ses propres boutiques."""
     email = (payload.gerant_email or "").strip()
     if not email or "@" not in email:
         raise HTTPException(status_code=422, detail="E-mail du gérant invalide.")
-    res = await alice_client.set_residence_gerant(
+    res = await alice_client.add_residence_gerant(
         gestionnaire_email=current_user.email,
         gerant_email=email,
         full_name=current_user.full_name,
@@ -423,9 +385,24 @@ async def set_residence_gerant(
     )
     if not res["ok"]:
         raise HTTPException(
-            status_code=502, detail=res.get("detail") or "Impossible de définir le compte gérant."
+            status_code=502, detail=res.get("detail") or "Impossible de rattacher ce gérant."
         )
     return res["data"]
+
+
+@router.delete("/boutiques/gerants")
+async def remove_residence_gerant(
+    gerant_email: str,
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Retire un gérant du roster du gestionnaire (ne supprime ni le compte gérant ni
+    ses boutiques : il peut servir d'autres gestionnaires)."""
+    ok = await alice_client.remove_residence_gerant(
+        gestionnaire_email=current_user.email, gerant_email=(gerant_email or "").strip()
+    )
+    if not ok:
+        raise HTTPException(status_code=502, detail="Retrait du gérant impossible.")
+    return {"status": "removed"}
 
 
 class LinkBoutiqueIn(BaseModel):

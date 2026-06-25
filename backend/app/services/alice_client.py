@@ -218,16 +218,20 @@ async def activate_boutique(
         return {"ok": False, "status": 502, "detail": "Alice injoignable"}
 
 
-async def manager_login_link(*, manager_email: str) -> dict:
-    """Jeton SSO gérant pour ouvrir Le Comptoir Market sans identifiants. {ok, status,
-    data?, detail?} ; data={token}."""
+async def manager_login_link(*, manager_email: str, gerant_email: str | None = None) -> dict:
+    """Jeton SSO gérant pour ouvrir Le Comptoir Market sans identifiants. Cible le
+    gérant `gerant_email` (rattaché au gestionnaire) si fourni. {ok, status, data?,
+    detail?} ; data={token}."""
     base, headers = _base_headers()
+    body = {"email": manager_email}
+    if gerant_email:
+        body["gerant_email"] = gerant_email
     try:
         async with httpx.AsyncClient(timeout=10.0) as hc:
             resp = await hc.post(
                 f"{base}/api/v1/internal/manager-login-link",
                 headers=headers,
-                json={"email": manager_email},
+                json=body,
             )
         if resp.status_code in (200, 201):
             return {"ok": True, "status": resp.status_code, "data": resp.json()}
@@ -242,26 +246,26 @@ async def manager_login_link(*, manager_email: str) -> dict:
         return {"ok": False, "status": 502, "detail": "Alice injoignable"}
 
 
-async def get_residence_gerant(*, manager_email: str) -> dict:
-    """Gérant Market désigné du gestionnaire pour ses boutiques de résidence.
-    {ok, gerant_email, is_self, gerant_exists}. Fail-soft : ok=False si indispo."""
+async def list_residence_gerants(*, manager_email: str) -> dict:
+    """Roster des gérants Market rattachés au gestionnaire. {ok, gerants:[{gerant_email,
+    exists, is_self, full_name}]}. Fail-soft : ok=False si indispo."""
     base, headers = _base_headers()
     try:
         async with httpx.AsyncClient(timeout=6.0) as hc:
             resp = await hc.get(
-                f"{base}/api/v1/internal/residence-gerant",
+                f"{base}/api/v1/internal/residence-gerants",
                 headers=headers,
                 params={"email": manager_email},
             )
         if resp.status_code == 200:
             return {**resp.json(), "ok": True}
-        logger.warning("Alice get_residence_gerant → %s", resp.status_code)
+        logger.warning("Alice list_residence_gerants → %s", resp.status_code)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Alice get_residence_gerant failed: %s", exc)
-    return {"ok": False}
+        logger.warning("Alice list_residence_gerants failed: %s", exc)
+    return {"ok": False, "gerants": []}
 
 
-async def set_residence_gerant(
+async def add_residence_gerant(
     *,
     gestionnaire_email: str,
     gerant_email: str,
@@ -269,7 +273,7 @@ async def set_residence_gerant(
     phone: str | None = None,
     address: str | None = None,
 ) -> dict:
-    """Désigne le gérant Market du gestionnaire (provisionne le compte + envoie les
+    """Rattache un gérant au gestionnaire (provisionne le compte + envoie les
     identifiants s'il n'existe pas). {ok, status, data?, detail?}."""
     base, headers = _base_headers()
     payload = {
@@ -281,8 +285,8 @@ async def set_residence_gerant(
     }
     try:
         async with httpx.AsyncClient(timeout=20.0) as hc:
-            resp = await hc.put(
-                f"{base}/api/v1/internal/residence-gerant", headers=headers, json=payload
+            resp = await hc.post(
+                f"{base}/api/v1/internal/residence-gerants", headers=headers, json=payload
             )
         if resp.status_code in (200, 201):
             return {"ok": True, "status": resp.status_code, "data": resp.json()}
@@ -293,8 +297,24 @@ async def set_residence_gerant(
             detail = None
         return {"ok": False, "status": resp.status_code, "detail": detail}
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Alice set_residence_gerant failed: %s", exc)
+        logger.warning("Alice add_residence_gerant failed: %s", exc)
         return {"ok": False, "status": 502, "detail": "Alice injoignable"}
+
+
+async def remove_residence_gerant(*, gestionnaire_email: str, gerant_email: str) -> bool:
+    """Retire un gérant du roster du gestionnaire (ne supprime pas le compte gérant)."""
+    base, headers = _base_headers()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as hc:
+            resp = await hc.delete(
+                f"{base}/api/v1/internal/residence-gerants",
+                headers=headers,
+                params={"gestionnaire_email": gestionnaire_email, "gerant_email": gerant_email},
+            )
+        return resp.status_code in (200, 204)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice remove_residence_gerant failed: %s", exc)
+        return False
 
 
 async def list_manager_boutiques(*, manager_email: str, source: str = "immo") -> dict:
