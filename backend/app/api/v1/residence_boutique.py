@@ -520,6 +520,32 @@ async def _tenant_gestionnaire_email(db: AsyncSession, user: User) -> str | None
     return (getattr(mgr, "email", None) or "").strip() or None if mgr else None
 
 
+async def _tenant_property(db: AsyncSession, user: User):
+    """Bien (résidence) du locataire courant via son bail actif, ou None."""
+    from app.models.lease import Lease
+    from app.models.tenant import Tenant
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == user.id))
+    ).scalar_one_or_none()
+    if tenant is None:
+        return None
+    lease = (
+        (
+            await db.execute(
+                select(Lease)
+                .where(Lease.tenant_id == tenant.id, Lease.is_active.is_(True))
+                .order_by(Lease.start_date.desc())
+            )
+        )
+        .scalars()
+        .first()
+    )
+    if lease is None or lease.property_id is None:
+        return None
+    return await db.get(Property, lease.property_id)
+
+
 async def _tenant_boutiques(db: AsyncSession, user: User) -> list[dict]:
     """Toutes les boutiques du gestionnaire du locataire (tous gérants confondus)."""
     email = await _tenant_gestionnaire_email(db, user)
@@ -597,7 +623,10 @@ async def my_residence_boutique_sso(
     full_name = getattr(tenant, "full_name", None) or None
     mgr = await _tenant_gestionnaire(db, current_user)
     ges_nom = (getattr(mgr, "full_name", None) or "").strip() or None
-    # Coordonnées du locataire (compte User), transmises pour préremplir le compte client.
+    # Coordonnées du locataire transmises pour préremplir le compte client :
+    # téléphone depuis la fiche locataire (Tenant), adresse depuis son bien (Property).
+    prop = await _tenant_property(db, current_user)
+    tph = getattr(tenant, "phone", None) or getattr(current_user, "phone", None) or None
     token = secrets.token_urlsafe(24)
     db.add(
         BoutiqueSsoToken(
@@ -605,11 +634,19 @@ async def my_residence_boutique_sso(
             tenant_email=email,
             tenant_full_name=full_name,
             gestionnaire_nom=ges_nom,
-            tenant_phone=(getattr(current_user, "phone", None) or None),
-            tenant_address=(getattr(current_user, "address", None) or None),
-            tenant_zip=(getattr(current_user, "zip_code", None) or None),
-            tenant_city=(getattr(current_user, "city", None) or None),
-            tenant_country=(getattr(current_user, "country", None) or None),
+            tenant_phone=tph,
+            tenant_address=(
+                getattr(prop, "address", None) or getattr(current_user, "address", None) or None
+            ),
+            tenant_zip=(
+                getattr(prop, "zip_code", None) or getattr(current_user, "zip_code", None) or None
+            ),
+            tenant_city=(
+                getattr(prop, "city", None) or getattr(current_user, "city", None) or None
+            ),
+            tenant_country=(
+                getattr(prop, "country", None) or getattr(current_user, "country", None) or None
+            ),
             boutique_id=target,
             expires_at=datetime.now(UTC) + timedelta(minutes=10),
         )
