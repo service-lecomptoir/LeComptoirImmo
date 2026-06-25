@@ -121,8 +121,9 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
   const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: owner ? {
-      // Société sans prénom de personne => personne morale ; sinon personne physique.
-      owner_type: (owner.company_name?.trim() && !owner.first_name?.trim()) ? 'company' : 'person',
+      // Présence d'un nom de compte (raison sociale) => société/résidence ; sinon personne.
+      // (Une société peut désormais aussi porter un prénom/nom de propriétaire.)
+      owner_type: owner.company_name?.trim() ? 'company' : 'person',
       civility: owner.civility ?? undefined,
       first_name: owner.first_name ?? '',
       last_name: owner.last_name,
@@ -197,12 +198,15 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
       return t === '' ? null : t
     }
     const isCompany = data.owner_type === 'company'
-    // On ne persiste que l'identité du type choisi. Société : `last_name` recopie la
-    // raison sociale (colonne NOT NULL en base, sans incidence d'affichage).
+    // Société/résidence : « Nom de compte » = company_name ; on conserve aussi le
+    // prénom/nom du propriétaire (personne) s'il est renseigné. `last_name` est NOT
+    // NULL en base → repli sur le nom de compte si aucun nom de personne saisi.
     const payload: any = {
       civility: isCompany ? null : (data.civility || null),
-      first_name: isCompany ? null : clean(data.first_name),
-      last_name: isCompany ? clean(data.company_name) : clean(data.last_name),
+      first_name: clean(data.first_name),
+      last_name: isCompany
+        ? (clean(data.last_name) ?? clean(data.company_name))
+        : clean(data.last_name),
       company_name: isCompany ? clean(data.company_name) : null,
       national_id: isCompany ? clean(data.national_id) : null,
       email: clean(data.email),
@@ -341,7 +345,7 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
 
           {ownerType === 'company' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <OwnerField label="Raison sociale" name="company_name" placeholder="Raison sociale" required register={register} errors={errors} />
+              <OwnerField label="Nom de compte" name="company_name" placeholder="Nom de la résidence / société" required register={register} errors={errors} />
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">SIREN / SIRET<span className="text-red-500 ml-0.5">*</span></label>
                 <SiretInput
@@ -353,6 +357,8 @@ export function OwnerForm({ owner, onClose, onSaved }: Props) {
                 />
                 {errors.national_id && <p className="mt-1 text-xs text-red-600">{errors.national_id.message as string}</p>}
               </div>
+              <OwnerField label="Prénom du propriétaire" name="first_name" placeholder="Prénom (facultatif)" register={register} errors={errors} />
+              <OwnerField label="Nom du propriétaire" name="last_name" placeholder="Nom (facultatif)" register={register} errors={errors} />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

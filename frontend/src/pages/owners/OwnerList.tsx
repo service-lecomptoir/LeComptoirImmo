@@ -77,7 +77,7 @@ export default function OwnerList() {
 
   const handleExport = () => {
     exportCsv('proprietaires',
-      ['Nom', 'Société', 'Email', 'Téléphone', 'Compte', 'Ajouté le'],
+      ['Nom', 'Nom de compte', 'Email', 'Téléphone', 'Compte', 'Ajouté le'],
       owners.map(o => [
         o.full_name, o.company_name, o.email, o.phone,
         o.user_id ? 'Oui' : 'Non',
@@ -199,7 +199,7 @@ export default function OwnerList() {
               className="group relative flex flex-col gap-3 bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-300"
             >
               <div className="flex items-start gap-3">
-                <GenderAvatar civility={owner.civility} isCompany={!!owner.company_name && !owner.first_name} size={40} seed={owner.full_name} />
+                <GenderAvatar civility={owner.civility} isCompany={!!owner.company_name} size={40} seed={owner.full_name} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-900 truncate">{owner.full_name}</p>
