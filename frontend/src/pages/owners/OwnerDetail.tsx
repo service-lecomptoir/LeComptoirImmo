@@ -106,7 +106,7 @@ export default function OwnerDetail() {
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Identité</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Civilité" value={owner.civility ? CIVILITY_LABELS[owner.civility] : null} />
-            <Field label="Nom de compte" value={owner.company_name} />
+            <Field label="Société / SCI" value={owner.company_name} />
             <Field label="Prénom" value={owner.first_name} />
             <Field label="Nom" value={owner.last_name} />
             <Field label="SIRET / N° pièce" value={owner.national_id} />
