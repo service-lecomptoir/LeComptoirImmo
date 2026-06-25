@@ -208,3 +208,74 @@ class TestLeaseUpdateStartDate:
             json={"start_date": str(date.today() + timedelta(days=60))},
         )
         assert resp.status_code == 409, resp.text
+
+
+@pytest.mark.asyncio
+class TestLeaseFutureRentCorrection:
+    """Bail futur (pas encore commencé) : modifier loyer/charges = correction directe
+    (pas de révision datée, pas d'historique). Bail commencé : révision datée."""
+
+    async def _count_revisions(self, db, lease_id):
+        from sqlalchemy import func, select
+
+        from app.models.rent_revision import RentRevision
+
+        return (
+            await db.execute(
+                select(func.count()).select_from(RentRevision).where(
+                    RentRevision.lease_id == lease_id
+                )
+            )
+        ).scalar_one()
+
+    async def test_bail_futur_modif_directe_sans_revision(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        from datetime import timedelta
+
+        from app.models.lease import Lease
+        prop, tenant = await _setup_lease_chain(db, gestionnaire_user)
+        lease = Lease(
+            tenant_id=tenant.id, property_id=prop.id,
+            start_date=date.today() + timedelta(days=30),  # futur
+            rent_amount=750.00, charges_amount=80.00,
+            lease_type="vide", payment_day=5, is_active=True,
+        )
+        db.add(lease)
+        await db.flush()
+        await db.commit()
+
+        resp = await client.put(
+            f"/api/v1/leases/{lease.id}",
+            headers=auth(gestionnaire_token),
+            json={"rent_amount": 800.00, "charges_amount": 90.00},
+        )
+        assert resp.status_code == 200, resp.text
+        # Montants appliqués directement, aucune révision créée.
+        assert resp.json()["rent_amount"] == 800.0
+        assert resp.json()["charges_amount"] == 90.0
+        assert await self._count_revisions(db, lease.id) == 0
+
+    async def test_bail_commence_cree_une_revision(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        from app.models.lease import Lease
+        prop, tenant = await _setup_lease_chain(db, gestionnaire_user)
+        lease = Lease(
+            tenant_id=tenant.id, property_id=prop.id,
+            start_date=date.today(),  # commencé
+            rent_amount=750.00, charges_amount=80.00,
+            lease_type="vide", payment_day=5, is_active=True,
+        )
+        db.add(lease)
+        await db.flush()
+        await db.commit()
+
+        resp = await client.put(
+            f"/api/v1/leases/{lease.id}",
+            headers=auth(gestionnaire_token),
+            json={"rent_amount": 800.00},
+        )
+        assert resp.status_code == 200, resp.text
+        # Une révision datée est créée (l'historique est conservé).
+        assert await self._count_revisions(db, lease.id) >= 1

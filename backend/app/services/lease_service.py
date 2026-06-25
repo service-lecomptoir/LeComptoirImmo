@@ -206,27 +206,46 @@ class LeaseService:
 
             from app.services.rent_revision_service import RentRevisionService, first_of_next_month
 
-            eff = rent_eff or first_of_next_month(date.today())
-            if round(want_rent, 2) != round(cur_rent, 2):
-                await RentRevisionService.schedule(
-                    db,
-                    lease,
-                    kind="rent",
-                    new_amount=want_rent,
-                    effective_date=eff,
-                    source="manuel",
-                    reason="Modification du contrat",
+            today = date.today()
+            start = lease.start_date
+            if start is not None and not hasattr(start, "year"):
+                start = date.fromisoformat(str(start))
+            # Bail FUTUR (pas encore commencé) : une modification de loyer/charges est
+            # une simple CORRECTION (le contrat n'a jamais débuté). On écrit directement
+            # les montants, sans révision datée, sans e-mail de revalorisation, sans
+            # historiser l'ancien montant. On purge toute révision résiduelle.
+            if start is not None and start > today:
+                lease.rent_amount = want_rent
+                lease.charges_amount = want_charges
+                from sqlalchemy import delete as _sa_delete
+
+                from app.models.rent_revision import RentRevision
+
+                await db.execute(
+                    _sa_delete(RentRevision).where(RentRevision.lease_id == lease.id)
                 )
-            if round(want_charges, 2) != round(cur_charges, 2):
-                await RentRevisionService.schedule(
-                    db,
-                    lease,
-                    kind="charges",
-                    new_amount=want_charges,
-                    effective_date=eff,
-                    source="manuel",
-                    reason="Modification du contrat",
-                )
+            else:
+                eff = rent_eff or first_of_next_month(today)
+                if round(want_rent, 2) != round(cur_rent, 2):
+                    await RentRevisionService.schedule(
+                        db,
+                        lease,
+                        kind="rent",
+                        new_amount=want_rent,
+                        effective_date=eff,
+                        source="manuel",
+                        reason="Modification du contrat",
+                    )
+                if round(want_charges, 2) != round(cur_charges, 2):
+                    await RentRevisionService.schedule(
+                        db,
+                        lease,
+                        kind="charges",
+                        new_amount=want_charges,
+                        effective_date=eff,
+                        source="manuel",
+                        reason="Modification du contrat",
+                    )
 
         # Remplacer les co-titulaires si la liste est fournie
         if secondary_ids is not None:

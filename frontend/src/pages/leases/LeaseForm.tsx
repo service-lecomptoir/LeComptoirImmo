@@ -176,6 +176,11 @@ export function LeaseForm({ lease, onClose, onSaved, prefill }: Props) {
     Number(rentVal) !== Number(lease.rent_amount) ||
     Number(chargesVal ?? 0) !== Number(lease.charges_amount)
   )
+  // Bail futur (pas encore commencé) : une modif loyer/charges est une simple
+  // correction (pas de date d'effet, pas d'historique, pas d'e-mail de revalorisation).
+  const startVal = watch('start_date')
+  const todayStr = new Date().toLocaleDateString('fr-CA')
+  const isFutureLease = !!startVal && String(startVal).slice(0, 10) > todayStr
 
   useEffect(() => {
     // En édition, les <select> sont rendus avant l'arrivée des options : on ré-applique
@@ -212,7 +217,7 @@ export function LeaseForm({ lease, onClose, onSaved, prefill }: Props) {
         secondary_tenant_ids: secondaryIds,
         // Édition : si le loyer/charges change, on transmet la date d'effet (révision
         // datée côté serveur ; le mois courant reste figé, l'ancien montant en historique).
-        rent_effective_date: isEdit && rentChanged ? rentEffectiveDate : undefined,
+        rent_effective_date: isEdit && rentChanged && !isFutureLease ? rentEffectiveDate : undefined,
       }
       if (isEdit) {
         await leasesApi.update(lease.id, payload)
@@ -401,7 +406,7 @@ export function LeaseForm({ lease, onClose, onSaved, prefill }: Props) {
               <input type="number" step="0.01" min="0" {...register('deposit_amount')} className={inp} placeholder="0.00" />
             </div>
           </div>
-          {isEdit && rentChanged && (
+          {isEdit && rentChanged && !isFutureLease && (
             <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50">
               <label className={lbl}>Date d'effet de la nouvelle valeur</label>
               <input
@@ -413,6 +418,14 @@ export function LeaseForm({ lease, onClose, onSaved, prefill }: Props) {
               <p className="text-xs text-gray-600 mt-1">
                 Le mois en cours n'est pas modifié. Le nouveau loyer/charges s'applique à partir de cette date
                 (par défaut le 1er du mois suivant) ; l'ancien montant est conservé dans l'historique du bail.
+              </p>
+            </div>
+          )}
+          {isEdit && rentChanged && isFutureLease && (
+            <div className="mt-3 p-3 rounded-lg border border-blue-200 bg-blue-50">
+              <p className="text-xs text-blue-800">
+                Le bail n'a pas encore commencé : la modification est une simple correction.
+                Elle s'applique directement, sans date d'effet, sans historique ni e-mail de revalorisation.
               </p>
             </div>
           )}
