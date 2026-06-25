@@ -97,6 +97,9 @@ class PropertyResponse(BaseModel):
     owner_id: uuid.UUID | None = None
     owner_user_id: uuid.UUID | None = None
     owner_name: str | None
+    # Prénom + nom de la personne propriétaire (distinct du « Nom de compte »
+    # owner_name = raison sociale/résidence). Renseigné au détail si disponible.
+    owner_person_name: str | None = None
     owner_email: str | None
     owner_phone: str | None
     description: str | None
