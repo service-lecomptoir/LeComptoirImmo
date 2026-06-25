@@ -30,35 +30,36 @@ export default function LocataireDashboard() {
   const [openSignalements, setOpenSignalements] = useState(0)
   const [manager, setManager] = useState<ManagerContact | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [boutiqueAvailable, setBoutiqueAvailable] = useState(false)
-  const [boutiqueOpening, setBoutiqueOpening] = useState(false)
+  const [boutiques, setBoutiques] = useState<{ id: string; nom: string; url?: string | null }[]>([])
+  const [boutiqueOpening, setBoutiqueOpening] = useState<string | null>(null)
   const [boutiqueOrders, setBoutiqueOrders] = useState<any[]>([])
+  const boutiqueAvailable = boutiques.length > 0
 
-  // Pont Le Comptoir Market : la résidence du locataire a-t-elle une boutique ?
-  // Si oui, on remonte aussi ses commandes (statut) pour les afficher.
+  // Pont Le Comptoir Market : toutes les boutiques du gestionnaire du locataire.
+  // Si au moins une, on remonte aussi ses commandes (statut) pour les afficher.
   useEffect(() => {
-    apiClient.get('/residences/my-boutique')
+    apiClient.get('/residences/my-boutiques')
       .then((r) => {
-        const ok = !!r.data?.available
-        setBoutiqueAvailable(ok)
-        if (ok) {
+        const list = Array.isArray(r.data?.boutiques) ? r.data.boutiques : []
+        setBoutiques(list)
+        if (list.length > 0) {
           apiClient.get('/residences/my-boutique/orders')
             .then((o) => setBoutiqueOrders(Array.isArray(o.data) ? o.data : []))
             .catch(() => setBoutiqueOrders([]))
         }
       })
-      .catch(() => setBoutiqueAvailable(false))
+      .catch(() => setBoutiques([]))
   }, [])
 
-  const openBoutique = async () => {
-    setBoutiqueOpening(true)
+  const openBoutique = async (boutiqueId: string) => {
+    setBoutiqueOpening(boutiqueId)
     try {
-      const r = await apiClient.post('/residences/my-boutique/sso')
+      const r = await apiClient.post('/residences/my-boutique/sso', { boutique_id: boutiqueId })
       if (r.data?.url) window.location.href = r.data.url
     } catch {
       /* lien indisponible : on ne bloque pas */
     } finally {
-      setBoutiqueOpening(false)
+      setBoutiqueOpening(null)
     }
   }
 
@@ -174,22 +175,34 @@ export default function LocataireDashboard() {
         </div>
       </div>
 
-      {/* Boutique de la résidence (pont Le Comptoir Market) */}
+      {/* Boutiques accessibles (pont Le Comptoir Market) */}
       {boutiqueAvailable && (
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-5 mb-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-                <Store size={20} className="text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800">La boutique de votre résidence</p>
-                <p className="text-xs text-gray-500 mt-0.5">Commandez en ligne et retirez sur place.</p>
-              </div>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-11 h-11 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+              <Store size={20} className="text-blue-600" />
             </div>
-            <Button variant="primary" onClick={openBoutique} disabled={boutiqueOpening} leftIcon={<Store size={16} />}>
-              {boutiqueOpening ? 'Ouverture…' : 'Accéder à la boutique'}
-            </Button>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">
+                {boutiques.length > 1 ? 'Les boutiques disponibles' : 'La boutique disponible'}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">Commandez en ligne et retirez sur place.</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {boutiques.map((b) => (
+              <div key={b.id} className="flex items-center justify-between gap-3 bg-white/70 rounded-lg px-3 py-2">
+                <span className="text-sm font-medium text-gray-800 truncate">{b.nom}</span>
+                <Button
+                  variant="primary"
+                  onClick={() => openBoutique(b.id)}
+                  disabled={boutiqueOpening !== null}
+                  leftIcon={<Store size={16} />}
+                >
+                  {boutiqueOpening === b.id ? 'Ouverture…' : 'Accéder'}
+                </Button>
+              </div>
+            ))}
           </div>
           {boutiqueOrders.length > 0 && (
             <div className="mt-4 border-t border-blue-200 pt-3">

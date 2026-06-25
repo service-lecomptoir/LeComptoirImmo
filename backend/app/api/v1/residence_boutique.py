@@ -486,8 +486,8 @@ async def link_residence_boutique(
     return _link_out(link)
 
 
-async def _tenant_boutique_link(db: AsyncSession, user: User):
-    """Lien boutique de la résidence du locataire courant (via bail actif), ou None."""
+async def _tenant_gestionnaire_email(db: AsyncSession, user: User) -> str | None:
+    """E-mail du gestionnaire du locataire courant (via bail actif → bien → créateur)."""
     from app.models.lease import Lease
     from app.models.tenant import Tenant
 
@@ -509,7 +509,47 @@ async def _tenant_boutique_link(db: AsyncSession, user: User):
     )
     if lease is None or lease.property_id is None:
         return None
-    return await _get_link(db, "property", lease.property_id)
+    prop = await db.get(Property, lease.property_id)
+    if prop is None or prop.created_by is None:
+        return None
+    mgr = await db.get(User, prop.created_by)
+    return (getattr(mgr, "email", None) or "").strip() or None
+
+
+async def _tenant_boutiques(db: AsyncSession, user: User) -> list[dict]:
+    """Toutes les boutiques du gestionnaire du locataire (tous gérants confondus)."""
+    email = await _tenant_gestionnaire_email(db, user)
+    if not email:
+        return []
+    res = await alice_client.list_manager_boutiques(manager_email=email, source="immo")
+    return [
+        {
+            "id": str(b.get("id")),
+            "nom": b.get("nom"),
+            "slug": b.get("slug"),
+            "url": _boutique_url(b.get("slug")),
+        }
+        for b in res.get("boutiques", [])
+    ]
+
+
+async def _tenant_email(db: AsyncSession, user: User) -> str:
+    from app.models.tenant import Tenant
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == user.id))
+    ).scalar_one_or_none()
+    return (getattr(tenant, "email", None) or user.email or "").strip()
+
+
+@router.get("/my-boutiques")
+async def my_residence_boutiques(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Liste de toutes les boutiques accessibles au locataire (celles de son
+    gestionnaire, tous gérants confondus)."""
+    return {"boutiques": await _tenant_boutiques(db, current_user)}
 
 
 @router.get("/my-boutique")
@@ -517,26 +557,35 @@ async def my_residence_boutique(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Le locataire connecté a-t-il une boutique de résidence accessible ?"""
-    link = await _link_or_heal(db, await _tenant_boutique_link(db, current_user))
-    return {"available": link is not None}
+    """Le locataire a-t-il au moins une boutique accessible ? (compat)."""
+    return {"available": len(await _tenant_boutiques(db, current_user)) > 0}
+
+
+class MyBoutiqueSsoIn(BaseModel):
+    boutique_id: str | None = None
 
 
 @router.post("/my-boutique/sso")
 async def my_residence_boutique_sso(
+    payload: MyBoutiqueSsoIn | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Émet un lien SSO à usage unique vers la boutique de la résidence du locataire."""
+    """Émet un lien SSO à usage unique vers une boutique accessible au locataire
+    (`boutique_id`, sinon la première)."""
     import secrets
     from datetime import datetime, timedelta
 
     from app.models.sso_token import BoutiqueSsoToken
     from app.models.tenant import Tenant
 
-    link = await _tenant_boutique_link(db, current_user)
-    if link is None:
-        raise HTTPException(status_code=404, detail="Aucune boutique pour votre résidence.")
+    payload = payload or MyBoutiqueSsoIn()
+    boutiques = await _tenant_boutiques(db, current_user)
+    if not boutiques:
+        raise HTTPException(status_code=404, detail="Aucune boutique accessible.")
+    target = (payload.boutique_id or boutiques[0]["id"]).strip()
+    if target not in {b["id"] for b in boutiques}:
+        raise HTTPException(status_code=404, detail="Boutique introuvable.")
     tenant = (
         await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
     ).scalar_one_or_none()
@@ -548,7 +597,7 @@ async def my_residence_boutique_sso(
             token=token,
             tenant_email=email,
             tenant_full_name=full_name,
-            boutique_id=link.boutique_id,
+            boutique_id=target,
             expires_at=datetime.now(UTC) + timedelta(minutes=10),
         )
     )
@@ -562,22 +611,18 @@ async def my_residence_boutique_orders(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Commandes du locataire à la boutique de sa résidence (statut visible)."""
-    from app.models.tenant import Tenant
-
-    link = await _tenant_boutique_link(db, current_user)
-    if link is None:
+    """Commandes du locataire, agrégées sur toutes les boutiques de son gestionnaire."""
+    boutiques = await _tenant_boutiques(db, current_user)
+    if not boutiques:
         return []
-    tenant = (
-        await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
-    ).scalar_one_or_none()
-    email = (getattr(tenant, "email", None) or current_user.email or "").strip()
+    email = await _tenant_email(db, current_user)
     if not email:
         return []
-    return await alice_client.get_residence_orders(
-        source="immo",
-        residence_id=link.residence_id,
-        kind=link.residence_kind,
-        email=email,
-        boutique_id=link.boutique_id,
-    )
+    out: list[dict] = []
+    for b in boutiques:
+        rows = await alice_client.get_residence_orders(
+            source="immo", residence_id="", kind="", email=email, boutique_id=b["id"]
+        )
+        for o in rows:
+            out.append({**o, "boutique_nom": b["nom"]})
+    return out
