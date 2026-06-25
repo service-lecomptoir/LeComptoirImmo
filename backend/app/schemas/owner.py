@@ -88,6 +88,10 @@ class OwnerResponse(BaseModel):
     mgmt_fee_rate: float | None = None
     notes: str | None
     user_id: uuid.UUID | None = None
+    # Vrai uniquement si le compte lié est un VRAI propriétaire (rôle proprietaire) :
+    # sert à n'afficher la visibilité de l'espace propriétaire que dans ce cas (pas
+    # pour une fiche reliée à un compte gestionnaire-propriétaire).
+    user_is_proprietaire: bool = False
     created_at: datetime
     updated_at: datetime
 

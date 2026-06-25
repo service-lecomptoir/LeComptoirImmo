@@ -20,6 +20,7 @@ export interface Owner {
   mgmt_fee_rate: number | null
   notes: string | null
   user_id: string | null
+  user_is_proprietaire?: boolean
   created_at: string
   updated_at: string
 }

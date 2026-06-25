@@ -121,7 +121,12 @@ async def get_owner(
 ):
     owner = await OwnerService.get_by_id(db, owner_id)
     await assert_manager_scope(db, current_user, owner.created_by, "cette fiche propriétaire")
-    return owner
+    resp = OwnerResponse.model_validate(owner)
+    # La visibilité « espace propriétaire » ne concerne qu'un compte de rôle propriétaire.
+    if owner.user_id:
+        linked = await db.get(User, owner.user_id)
+        resp.user_is_proprietaire = bool(linked and str(linked.role) == "proprietaire")
+    return resp
 
 
 @router.put("/{owner_id}", response_model=OwnerResponse, summary="Modifier un propriétaire")
