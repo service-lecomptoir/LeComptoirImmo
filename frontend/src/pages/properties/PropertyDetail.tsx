@@ -153,6 +153,12 @@ export default function PropertyDetail() {
                 <p className="text-sm font-medium text-gray-900">{property.owner_name}</p>
               </div>
             )}
+            {property.owner_national_id && (
+              <div>
+                <p className="text-xs text-gray-500">SIRET</p>
+                <p className="text-sm text-gray-900">{property.owner_national_id}</p>
+              </div>
+            )}
             {property.owner_email && (
               <div>
                 <p className="text-xs text-gray-500">Email</p>

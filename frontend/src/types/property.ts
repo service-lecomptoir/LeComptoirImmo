@@ -67,6 +67,7 @@ export interface Property {
   owner_id: string | null
   owner_user_id: string | null
   owner_name: string | null
+  owner_national_id?: string | null
   owner_email: string | null
   owner_phone: string | null
   description: string | null

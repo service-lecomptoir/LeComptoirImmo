@@ -157,6 +157,16 @@ async def get_property(
     resp = PropertyResponse.model_validate(prop)
     resp.unit_count = 1
     resp.occupied_count = 1 if prop.is_occupied else 0
+    # GP : le propriétaire est le compte lui-même → on affiche son identité réelle
+    # (« Mes Informations » : société → raison sociale + SIRET ; personne → prénom+nom),
+    # et jamais le nom de compte (résidence).
+    if prop.owner_user_id:
+        owner_user = await db.get(User, prop.owner_user_id)
+        if owner_user is not None and owner_user.role == Role.GESTIONNAIRE_PROPRIO.value:
+            if owner_user.bailleur_name:
+                resp.owner_name = owner_user.bailleur_name
+            if (owner_user.owner_kind or "") == "societe":
+                resp.owner_national_id = owner_user.owner_national_id
     return resp
 
 

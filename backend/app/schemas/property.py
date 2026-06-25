@@ -97,6 +97,8 @@ class PropertyResponse(BaseModel):
     owner_id: uuid.UUID | None = None
     owner_user_id: uuid.UUID | None = None
     owner_name: str | None
+    # SIRET du propriétaire (affiché quand le propriétaire est une société).
+    owner_national_id: str | None = None
     owner_email: str | None
     owner_phone: str | None
     description: str | None
