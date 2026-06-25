@@ -97,6 +97,8 @@ class PropertyResponse(BaseModel):
     owner_id: uuid.UUID | None = None
     owner_user_id: uuid.UUID | None = None
     owner_name: str | None
+    # Nom de compte (résidence/marque) affiché sur la carte d'un bien.
+    account_name: str | None = None
     # SIRET du propriétaire (affiché quand le propriétaire est une société).
     owner_national_id: str | None = None
     owner_email: str | None
@@ -142,6 +144,8 @@ class PropertyListItem(BaseModel):
     owner_id: uuid.UUID | None = None
     owner_user_id: uuid.UUID | None = None
     owner_name: str | None
+    # Nom de compte (résidence/marque) affiché sur la carte d'un bien.
+    account_name: str | None = None
     typology: str | None = None
     area_sqm: float | None = None
     is_occupied: bool = False

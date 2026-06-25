@@ -128,6 +128,13 @@ class Property(Base, TimestampMixin):
     )
 
     @property
+    def account_name(self) -> str | None:
+        """Nom de compte (résidence/marque) affiché sur la carte d'un bien. C'est la
+        valeur dénormalisée historique de `owner_name` (= nom de la résidence pour un
+        GP). Le vrai propriétaire reste `owner_name` (résolu au détail)."""
+        return self.owner_name
+
+    @property
     def full_address(self) -> str:
         """Adresse sur 2 lignes, SANS virgule : « rue » puis « CP Ville ».
         Le saut de ligne `\\n` est rendu via `white-space: pre-line` (UI) ou `<br/>` (PDF)."""

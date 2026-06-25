@@ -231,7 +231,7 @@ export default function PropertyList() {
       {/* Propriétaire (masqué pour le mandataire : déjà en en-tête de groupe) + actions */}
       <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
         <span className="text-xs text-gray-600 truncate">
-          {isMandataire ? '' : (prop.owner_name || '')}
+          {isMandataire ? '' : (prop.account_name || prop.owner_name || '')}
         </span>
         {canWrite && <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
           <button
@@ -278,7 +278,7 @@ export default function PropertyList() {
       </td>
       <td className="px-4 py-3 text-center"><span className="font-medium text-gray-900">{prop.name}</span></td>
       <td className="px-4 py-3 text-center">
-        {!isMandataire && prop.owner_name ? <span className="text-gray-700 text-xs">{prop.owner_name}</span> : null}
+        {!isMandataire && (prop.account_name || prop.owner_name) ? <span className="text-gray-700 text-xs">{prop.account_name || prop.owner_name}</span> : null}
       </td>
       <td className="px-4 py-3 text-center">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${

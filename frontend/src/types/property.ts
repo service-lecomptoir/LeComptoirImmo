@@ -67,6 +67,7 @@ export interface Property {
   owner_id: string | null
   owner_user_id: string | null
   owner_name: string | null
+  account_name?: string | null
   owner_national_id?: string | null
   owner_email: string | null
   owner_phone: string | null
@@ -111,6 +112,7 @@ export interface PropertyListItem {
   owner_id: string | null
   owner_user_id: string | null
   owner_name: string | null
+  account_name?: string | null
   typology: string | null
   area_sqm: number | null
   is_occupied: boolean
