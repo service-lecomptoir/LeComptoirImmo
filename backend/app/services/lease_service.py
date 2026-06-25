@@ -221,9 +221,7 @@ class LeaseService:
 
                 from app.models.rent_revision import RentRevision
 
-                await db.execute(
-                    _sa_delete(RentRevision).where(RentRevision.lease_id == lease.id)
-                )
+                await db.execute(_sa_delete(RentRevision).where(RentRevision.lease_id == lease.id))
             else:
                 eff = rent_eff or first_of_next_month(today)
                 if round(want_rent, 2) != round(cur_rent, 2):
