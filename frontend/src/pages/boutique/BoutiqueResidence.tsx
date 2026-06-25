@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Store, ExternalLink, Trash2, Pencil, Plus, Check, X } from 'lucide-react'
+import { Store, ExternalLink, Trash2, Pencil, Plus, Check, X, Lock, AlertTriangle } from 'lucide-react'
 import { apiClient } from '@/api/client'
 import { Button, Input, Spinner } from '@/components/ui'
 import { toast } from '@/store/toast'
@@ -31,6 +31,9 @@ interface Overview {
   boutiques: Boutique[]
   residences: ManagerResidence[]
   plans: Plan[]
+  boutique_limit?: number | null
+  boutique_count?: number | null
+  can_create_boutique?: boolean
 }
 
 function euros(v?: number | null): string {
@@ -233,6 +236,21 @@ export default function BoutiqueResidence() {
         </div>
       ) : (
         <>
+          {/* Bandeau : limite de l'offre atteinte */}
+          {data.can_create_boutique === false && (
+            <div className="flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+              <AlertTriangle size={18} className="text-orange-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-orange-800">Création de boutiques indisponible</p>
+                <p className="text-orange-700 mt-0.5">
+                  {`Votre formule est limitée à ${data.boutique_limit} boutique${(data.boutique_limit ?? 0) > 1 ? 's' : ''}`}
+                  {data.boutique_count != null ? ` (${data.boutique_count} utilisée${data.boutique_count > 1 ? 's' : ''})` : ''}
+                  {'. Passez à une formule supérieure pour en ajouter davantage.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Ajouter une boutique */}
           <div className="bg-white rounded-xl border p-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -243,10 +261,22 @@ export default function BoutiqueResidence() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Nom de la boutique"
+                disabled={data.can_create_boutique === false}
               />
-              <Button onClick={create} disabled={working}>
-                <Plus size={16} /> Ajouter
-              </Button>
+              {data.can_create_boutique === false ? (
+                <button
+                  type="button"
+                  disabled
+                  title="Limite de votre formule atteinte"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white opacity-90 cursor-not-allowed whitespace-nowrap"
+                >
+                  <Lock size={16} /> Ajouter
+                </button>
+              ) : (
+                <Button onClick={create} disabled={working}>
+                  <Plus size={16} /> Ajouter
+                </Button>
+              )}
             </div>
           </div>
 

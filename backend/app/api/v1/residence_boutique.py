@@ -206,11 +206,18 @@ async def boutiques_overview(
         )
 
     plans = [] if market_enabled else await alice_client.list_plans(product="boutique")
+    # Plafond du plan boutique (nb total de boutiques) → verrouillage du bouton d'ajout.
+    limit = res.get("limit")
+    count = res.get("count")
+    can_create = not (isinstance(limit, int) and isinstance(count, int) and count >= limit)
     return {
         "market_enabled": market_enabled,
         "boutiques": boutiques,
         "residences": residences,
         "plans": plans,
+        "boutique_limit": limit,
+        "boutique_count": count,
+        "can_create_boutique": can_create,
     }
 
 
