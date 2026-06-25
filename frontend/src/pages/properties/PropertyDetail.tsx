@@ -149,7 +149,7 @@ export default function PropertyDetail() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {property.owner_name && (
               <div>
-                <p className="text-xs text-gray-500">Nom de compte</p>
+                <p className="text-xs text-gray-500">Nom</p>
                 <p className="text-sm font-medium text-gray-900">{property.owner_name}</p>
               </div>
             )}
