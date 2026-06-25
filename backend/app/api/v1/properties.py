@@ -157,18 +157,6 @@ async def get_property(
     resp = PropertyResponse.model_validate(prop)
     resp.unit_count = 1
     resp.occupied_count = 1 if prop.is_occupied else 0
-    # Prénom + nom de la PERSONNE propriétaire (en plus du « Nom de compte »).
-    if prop.owner_id:
-        from app.models.owner import Owner
-
-        owner = await db.get(Owner, prop.owner_id)
-        if owner is not None and (owner.first_name or owner.last_name):
-            person = " ".join(
-                p for p in [(owner.first_name or "").strip(), (owner.last_name or "").strip()] if p
-            ).strip()
-            # Ne pas répéter le nom de compte (last_name retombe dessus si vide).
-            if person and person != (owner.company_name or "").strip():
-                resp.owner_person_name = person
     return resp
 
 
