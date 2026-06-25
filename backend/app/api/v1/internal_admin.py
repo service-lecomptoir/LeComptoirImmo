@@ -712,3 +712,61 @@ async def resolve_boutique_sso(data: _SsoResolveIn, db: AsyncSession = Depends(g
         "city": getattr(tok, "tenant_city", None),
         "country": getattr(tok, "tenant_country", None),
     }
+
+
+# ── Notification in-app d'un locataire (appelé par LeComptoirMarket) ───────────
+class TenantNotificationIn(BaseModel):
+    """Notification à créer dans l'espace d'un locataire, identifié par e-mail.
+
+    Utilisé par LeComptoirMarket (relances de boutique) pour prévenir, dans son
+    espace Immo, un locataire qui est aussi client d'une boutique de résidence.
+    """
+
+    tenant_email: EmailStr
+    title: str = Field(..., max_length=200)
+    message: str = Field(..., max_length=2000)
+    source: str | None = Field(None, max_length=100)
+
+
+@router.post("/notifications/tenant", status_code=201)
+async def create_tenant_notification(
+    data: TenantNotificationIn,
+    _: None = Depends(require_internal_key),
+    db: AsyncSession = Depends(get_db),
+):
+    """Crée une notification in-app pour le locataire dont l'e-mail est fourni.
+
+    Best-effort : si aucun locataire (ou aucun compte de connexion) ne correspond
+    à cet e-mail, renvoie `{created: false}` (200-like) plutôt qu'une erreur, afin
+    que l'appelant puisse boucler sur de nombreux clients sans casser.
+    """
+    from app.models.notification import (
+        Notification,
+        NotificationPriority,
+        NotificationType,
+    )
+    from app.models.tenant import Tenant
+
+    email = (data.tenant_email or "").strip().lower()
+    if not email:
+        return {"created": False, "reason": "email_vide"}
+
+    tenant = (
+        await db.execute(select(Tenant).where(func.lower(Tenant.email) == email))
+    ).scalar_one_or_none()
+    if tenant is None or tenant.user_id is None:
+        # Pas de locataire Immo avec compte de connexion pour cet e-mail.
+        return {"created": False, "reason": "locataire_introuvable"}
+
+    db.add(
+        Notification(
+            notification_type=NotificationType.SYSTEME,
+            priority=NotificationPriority.NORMAL,
+            title=data.title.strip() or "Information de votre commerce partenaire",
+            message=data.message.strip(),
+            entity_type="boutique_relance",
+            user_id=tenant.user_id,
+        )
+    )
+    await db.commit()
+    return {"created": True}
