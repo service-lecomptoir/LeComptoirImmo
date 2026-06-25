@@ -63,10 +63,10 @@ export default function MonAbonnement() {
     }
   }
 
-  const startCheckout = async () => {
+  const startCheckout = async (planId?: string) => {
     setBillingBusy(true)
     try {
-      const { data } = await subscriptionApi.checkout()
+      const { data } = await subscriptionApi.checkout(planId)
       window.location.href = data.url
     } catch (e: any) {
       toast.error(getErrorMessage(e, 'Impossible de démarrer le paiement'))
@@ -240,13 +240,26 @@ export default function MonAbonnement() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-gray-600">
-                Réglez votre abonnement en ligne par <b>carte bancaire</b> ou <b>prélèvement SEPA</b>.
-                Le paiement est ensuite automatique chaque mois (résiliable à tout moment).
+                Choisissez une formule payante et réglez en ligne par <b>carte bancaire</b> ou
+                <b> prélèvement SEPA</b>. Le paiement est ensuite automatique chaque mois (résiliable à tout moment).
               </p>
-              <button onClick={startCheckout} disabled={billingBusy}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60">
-                <CreditCard size={15} /> {billingBusy ? 'Redirection…' : "Payer / activer le prélèvement"}
-              </button>
+              {plans.filter(p => (p.monthly_price ?? 0) > 0).length > 0 ? (
+                <div className="space-y-2">
+                  {plans.filter(p => (p.monthly_price ?? 0) > 0).map(p => (
+                    <button key={p.id} onClick={() => startCheckout(p.id)} disabled={billingBusy}
+                      className="w-full flex items-center justify-between gap-2 px-4 py-2.5 border border-gray-300 rounded-lg text-sm hover:border-blue-500 hover:bg-blue-50 disabled:opacity-60">
+                      <span className="flex items-center gap-2 font-medium text-gray-900">
+                        <CreditCard size={15} className="text-blue-600" /> {p.name}
+                        {p.property_limit != null && <span className="text-gray-500 font-normal">· jusqu'à {p.property_limit} bien{p.property_limit > 1 ? 's' : ''}</span>}
+                      </span>
+                      <span className="font-semibold text-gray-900">{p.monthly_price} €/mois</span>
+                    </button>
+                  ))}
+                  <p className="text-xs text-gray-400">Vous serez redirigé vers le paiement sécurisé Stripe.</p>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">Aucune formule payante disponible pour le moment.</p>
+              )}
             </div>
           )}
         </div>

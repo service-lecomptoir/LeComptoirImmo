@@ -263,11 +263,20 @@ async def billing_status(current_user: User = Depends(get_current_user)):
         return {"stripe_enabled": False, "has_subscription": False}
 
 
+class CheckoutIn(BaseModel):
+    # Formule cible (souscription/upgrade self-service depuis une offre gratuite).
+    plan_id: str | None = None
+
+
 @router.post("/checkout", summary="Démarrer le paiement de l'abonnement (Stripe Checkout)")
-async def billing_checkout(current_user: User = Depends(get_current_user)):
-    """Crée une session Stripe Checkout et renvoie l'URL de paiement (carte/SEPA)."""
+async def billing_checkout(
+    data: CheckoutIn | None = None, current_user: User = Depends(get_current_user)
+):
+    """Crée une session Stripe Checkout et renvoie l'URL de paiement (carte/SEPA).
+    `plan_id` permet de souscrire à une formule payante (upgrade depuis Free)."""
     _require_manager(current_user)
-    return await _alice_billing("POST", "checkout", current_user.id)
+    payload = {"plan_id": data.plan_id} if data and data.plan_id else None
+    return await _alice_billing("POST", "checkout", current_user.id, json=payload)
 
 
 @router.post("/portal", summary="Ouvrir le portail de gestion de l'abonnement Stripe")

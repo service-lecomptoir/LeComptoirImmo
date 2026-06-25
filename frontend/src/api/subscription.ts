@@ -60,7 +60,8 @@ export const subscriptionApi = {
     apiClient.get(`/subscription/invoices/${id}/pdf`, { responseType: 'blob' }),
   // ── Stripe (carte / prélèvement SEPA) ──
   billing: () => apiClient.get<BillingStatus>('/subscription/billing'),
-  checkout: () => apiClient.post<{ url: string }>('/subscription/checkout'),
+  checkout: (planId?: string) =>
+    apiClient.post<{ url: string }>('/subscription/checkout', planId ? { plan_id: planId } : {}),
   portal: () => apiClient.post<{ url: string }>('/subscription/portal'),
   availablePlans: () => apiClient.get<AvailablePlan[]>('/subscription/plans'),
   changePlan: (planId: string) =>
