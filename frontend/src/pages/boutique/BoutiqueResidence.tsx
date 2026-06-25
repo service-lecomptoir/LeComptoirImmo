@@ -25,7 +25,7 @@ interface Overview {
 }
 
 /**
- * Page « Boutique associée » : le gestionnaire rattache autant de gérants Le Comptoir
+ * Page « Commerces partenaires » : le gestionnaire rattache autant de gérants Le Comptoir
  * Market qu'il veut (e-mail identique ou différent du sien). Chaque gérant gère ses
  * propres boutiques dans Market ; la page liste ici toutes leurs boutiques en lecture
  * seule. Les locataires du gestionnaire accèdent à toutes ces boutiques.
@@ -113,7 +113,7 @@ export default function BoutiqueResidence() {
           <Store size={20} className="text-blue-600" />
         </span>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">Boutique associée</h1>
+          <h1 className="text-xl font-bold text-gray-900">Commerces partenaires</h1>
           <p className="text-sm text-gray-500">
             Rattachez des gérants Le Comptoir Market. Chaque gérant gère ses propres boutiques ;
             vos locataires y ont accès.
