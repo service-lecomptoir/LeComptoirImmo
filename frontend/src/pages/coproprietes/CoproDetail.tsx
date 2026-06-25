@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import ResidenceBoutiqueCard from '@/components/common/ResidenceBoutiqueCard'
 import { ArrowLeft, Pencil, Plus, Trash2, Check, X, Building, MapPin } from 'lucide-react'
 import { Button, Input } from '@/components/ui'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -129,9 +128,6 @@ export default function CoproDetail() {
           {copro.construction_year && <span>Construction : <strong>{copro.construction_year}</strong></span>}
         </div>
       )}
-
-      {/* Boutique de la résidence (pont Le Comptoir Market) */}
-      <ResidenceBoutiqueCard kind="copropriete" id={copro.id} />
 
       {/* Onglets */}
       <div className="flex gap-1 border-b border-gray-200">
