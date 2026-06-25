@@ -66,6 +66,33 @@ def _link_out(link: ResidenceBoutiqueLink | None) -> dict:
     }
 
 
+async def _valid_boutique_ids(db: AsyncSession, manager_user_id) -> set[str] | None:
+    """Ids des boutiques de résidence existant ENCORE côté Market pour le gestionnaire
+    propriétaire du lien. None si Alice est injoignable (réponse non fiable)."""
+    mgr = await db.get(User, manager_user_id)
+    email = getattr(mgr, "email", None)
+    if not email:
+        return None
+    res = await alice_client.list_manager_boutiques(manager_email=email, source="immo")
+    if not res.get("ok"):
+        return None
+    return {str(b.get("id")) for b in res.get("boutiques", [])}
+
+
+async def _link_or_heal(db: AsyncSession, link):
+    """Renvoie `link` s'il pointe vers une boutique encore existante ; sinon purge le
+    lien périmé (compte gérant / boutique supprimé côté Market) et renvoie None. En
+    cas d'Alice injoignable, conserve le lien tel quel (pas de purge sur panne)."""
+    if link is None:
+        return None
+    valid = await _valid_boutique_ids(db, link.manager_user_id)
+    if valid is None or str(link.boutique_id) in valid:
+        return link
+    await db.delete(link)
+    await db.commit()
+    return None
+
+
 @router.get("/{kind}/{rid}/boutique")
 async def get_residence_boutique(
     kind: str,
@@ -77,7 +104,8 @@ async def get_residence_boutique(
         raise HTTPException(status_code=422, detail="Type de résidence invalide.")
     _, _, _, created_by = await _load_residence(db, kind, rid)
     await assert_manager_scope(db, current_user, created_by, "cette résidence")
-    return _link_out(await _get_link(db, kind, rid))
+    link = await _link_or_heal(db, await _get_link(db, kind, rid))
+    return _link_out(link)
 
 
 def _boutique_url(slug: str | None) -> str | None:
@@ -143,6 +171,16 @@ async def boutiques_overview(
         .scalars()
         .all()
     )
+    # Auto-réparation : purge les liens pointant vers une boutique supprimée côté
+    # Market (compte gérant supprimé, etc.). Seulement si la réponse est fiable.
+    if res.get("ok"):
+        valid = {str(b.get("id")) for b in res.get("boutiques", [])}
+        stale = [link for link in links if str(link.boutique_id) not in valid]
+        if stale:
+            for link in stale:
+                await db.delete(link)
+            await db.commit()
+            links = [link for link in links if link not in stale]
     link_boutique = {
         (link.residence_kind, str(link.residence_id)): link.boutique_id for link in links
     }
@@ -446,7 +484,7 @@ async def my_residence_boutique(
     current_user: User = Depends(get_current_user),
 ):
     """Le locataire connecté a-t-il une boutique de résidence accessible ?"""
-    link = await _tenant_boutique_link(db, current_user)
+    link = await _link_or_heal(db, await _tenant_boutique_link(db, current_user))
     return {"available": link is not None}
 
 

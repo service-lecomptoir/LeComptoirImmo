@@ -230,11 +230,13 @@ async def list_manager_boutiques(*, manager_email: str, source: str = "immo") ->
                 f"{base}/api/v1/internal/residence-boutiques", headers=headers, params=params
             )
         if resp.status_code == 200:
-            return resp.json()
+            # `ok` = réponse fiable (utile pour distinguer « boutique supprimée » d'une
+            # indisponibilité d'Alice avant de purger un lien local).
+            return {**resp.json(), "ok": True}
         logger.warning("Alice list_manager_boutiques → %s", resp.status_code)
     except Exception as exc:  # noqa: BLE001
         logger.warning("Alice list_manager_boutiques failed: %s", exc)
-    return {"market_enabled": False, "boutiques": []}
+    return {"market_enabled": False, "boutiques": [], "ok": False}
 
 
 async def get_residence_orders(
