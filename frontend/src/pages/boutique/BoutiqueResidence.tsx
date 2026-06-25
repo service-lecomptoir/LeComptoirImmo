@@ -34,6 +34,9 @@ interface Overview {
   boutique_limit?: number | null
   boutique_count?: number | null
   can_create_boutique?: boolean
+  gerant_email?: string
+  gerant_is_self?: boolean
+  gerant_exists?: boolean
 }
 
 function euros(v?: number | null): string {
@@ -55,12 +58,15 @@ export default function BoutiqueResidence() {
   const [editName, setEditName] = useState('')
   const [manageId, setManageId] = useState<string | null>(null)
   const [planId, setPlanId] = useState<string>('')
+  const [gerantEmail, setGerantEmail] = useState('')
+  const [editGerant, setEditGerant] = useState(false)
 
   const load = async () => {
     setLoading(true)
     try {
       const r = await apiClient.get('/residences/boutiques/overview')
       setData(r.data)
+      setGerantEmail(r.data.gerant_email || '')
       if (r.data.plans?.length && !planId) setPlanId(r.data.plans[0].id)
     } catch {
       toast.error('Chargement impossible.')
@@ -96,6 +102,32 @@ export default function BoutiqueResidence() {
       await load()
     } catch {
       toast.error("L'activation a échoué. Réessayez plus tard.")
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  const saveGerant = async () => {
+    const email = gerantEmail.trim()
+    if (!email || !email.includes('@')) {
+      toast.error('Saisissez un e-mail de gérant valide.')
+      return
+    }
+    setWorking(true)
+    try {
+      const res = await apiClient.put('/residences/boutiques/gerant', { gerant_email: email })
+      toast.success(
+        res.data?.created
+          ? res.data?.email_sent
+            ? 'Compte gérant créé : les identifiants ont été envoyés à cet e-mail.'
+            : 'Compte gérant créé.'
+          : 'Compte gérant enregistré.',
+      )
+      setEditGerant(false)
+      await load()
+    } catch (e) {
+      const err = e as { response?: { data?: { detail?: string } } }
+      toast.error(err.response?.data?.detail || 'Enregistrement du compte gérant impossible.')
     } finally {
       setWorking(false)
     }
@@ -236,6 +268,51 @@ export default function BoutiqueResidence() {
         </div>
       ) : (
         <>
+          {/* Compte gérant désigné (peut différer de votre e-mail) */}
+          <div className="bg-white rounded-xl border p-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-700">Compte gérant de mes boutiques</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Le compte Le Comptoir Market qui gère toutes vos boutiques de résidence (le vôtre
+                  ou un autre).
+                </p>
+                {!editGerant && (
+                  <p className="text-sm text-gray-900 mt-1.5 break-all">
+                    {data.gerant_email}
+                    {data.gerant_is_self && <span className="text-gray-400"> (vous-même)</span>}
+                  </p>
+                )}
+              </div>
+              {!editGerant && (
+                <Button variant="secondary" onClick={() => setEditGerant(true)} disabled={working}>
+                  <Pencil size={16} /> Changer
+                </Button>
+              )}
+            </div>
+            {editGerant && (
+              <div className="mt-3 flex gap-2 flex-wrap">
+                <Input
+                  type="email"
+                  value={gerantEmail}
+                  onChange={(e) => setGerantEmail(e.target.value)}
+                  placeholder="email-du-gerant@exemple.fr"
+                  className="flex-1 min-w-[220px]"
+                />
+                <Button onClick={saveGerant} disabled={working}>
+                  <Check size={16} /> Enregistrer
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => { setEditGerant(false); setGerantEmail(data.gerant_email || '') }}
+                  disabled={working}
+                >
+                  <X size={16} /> Annuler
+                </Button>
+              </div>
+            )}
+          </div>
+
           {/* Bandeau : limite de l'offre atteinte */}
           {data.can_create_boutique === false && (
             <div className="flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">

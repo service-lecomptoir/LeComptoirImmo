@@ -242,6 +242,61 @@ async def manager_login_link(*, manager_email: str) -> dict:
         return {"ok": False, "status": 502, "detail": "Alice injoignable"}
 
 
+async def get_residence_gerant(*, manager_email: str) -> dict:
+    """Gérant Market désigné du gestionnaire pour ses boutiques de résidence.
+    {ok, gerant_email, is_self, gerant_exists}. Fail-soft : ok=False si indispo."""
+    base, headers = _base_headers()
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as hc:
+            resp = await hc.get(
+                f"{base}/api/v1/internal/residence-gerant",
+                headers=headers,
+                params={"email": manager_email},
+            )
+        if resp.status_code == 200:
+            return {**resp.json(), "ok": True}
+        logger.warning("Alice get_residence_gerant → %s", resp.status_code)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice get_residence_gerant failed: %s", exc)
+    return {"ok": False}
+
+
+async def set_residence_gerant(
+    *,
+    gestionnaire_email: str,
+    gerant_email: str,
+    full_name: str | None = None,
+    phone: str | None = None,
+    address: str | None = None,
+) -> dict:
+    """Désigne le gérant Market du gestionnaire (provisionne le compte + envoie les
+    identifiants s'il n'existe pas). {ok, status, data?, detail?}."""
+    base, headers = _base_headers()
+    payload = {
+        "gestionnaire_email": gestionnaire_email,
+        "gerant_email": gerant_email,
+        "full_name": full_name or "",
+        "phone": phone,
+        "address": address,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as hc:
+            resp = await hc.put(
+                f"{base}/api/v1/internal/residence-gerant", headers=headers, json=payload
+            )
+        if resp.status_code in (200, 201):
+            return {"ok": True, "status": resp.status_code, "data": resp.json()}
+        detail = None
+        try:
+            detail = resp.json().get("detail")
+        except Exception:  # noqa: BLE001
+            detail = None
+        return {"ok": False, "status": resp.status_code, "detail": detail}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice set_residence_gerant failed: %s", exc)
+        return {"ok": False, "status": 502, "detail": "Alice injoignable"}
+
+
 async def list_manager_boutiques(*, manager_email: str, source: str = "immo") -> dict:
     """Boutiques de résidence existantes du gérant Market (rapproché par e-mail), pour
     le sélecteur « rattacher à une boutique existante ». {market_enabled, boutiques:

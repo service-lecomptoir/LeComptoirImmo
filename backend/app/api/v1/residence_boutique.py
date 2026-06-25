@@ -210,6 +210,8 @@ async def boutiques_overview(
     limit = res.get("limit")
     count = res.get("count")
     can_create = not (isinstance(limit, int) and isinstance(count, int) and count >= limit)
+    # Gérant Market désigné (par défaut le gestionnaire lui-même).
+    gi = await alice_client.get_residence_gerant(manager_email=current_user.email)
     return {
         "market_enabled": market_enabled,
         "boutiques": boutiques,
@@ -218,6 +220,9 @@ async def boutiques_overview(
         "boutique_limit": limit,
         "boutique_count": count,
         "can_create_boutique": can_create,
+        "gerant_email": gi.get("gerant_email") if gi.get("ok") else current_user.email,
+        "gerant_is_self": gi.get("is_self", True),
+        "gerant_exists": gi.get("gerant_exists", market_enabled),
     }
 
 
@@ -391,6 +396,35 @@ async def activate_market(
     )
     if not res["ok"]:
         raise HTTPException(status_code=502, detail=res.get("detail") or "Activation impossible.")
+    return res["data"]
+
+
+class SetGerantIn(BaseModel):
+    gerant_email: str
+
+
+@router.put("/boutiques/gerant")
+async def set_residence_gerant(
+    payload: SetGerantIn,
+    current_user: User = Depends(get_current_gestionnaire),
+):
+    """Désigne le compte gérant Le Comptoir Market qui gère TOUTES les boutiques de
+    résidence du gestionnaire (e-mail identique ou différent du sien). Si ce compte
+    n'existe pas encore, il est créé et ses identifiants lui sont envoyés."""
+    email = (payload.gerant_email or "").strip()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="E-mail du gérant invalide.")
+    res = await alice_client.set_residence_gerant(
+        gestionnaire_email=current_user.email,
+        gerant_email=email,
+        full_name=current_user.full_name,
+        phone=current_user.phone,
+        address=current_user.full_address,
+    )
+    if not res["ok"]:
+        raise HTTPException(
+            status_code=502, detail=res.get("detail") or "Impossible de définir le compte gérant."
+        )
     return res["data"]
 
 
