@@ -486,8 +486,8 @@ async def link_residence_boutique(
     return _link_out(link)
 
 
-async def _tenant_gestionnaire_email(db: AsyncSession, user: User) -> str | None:
-    """E-mail du gestionnaire du locataire courant (via bail actif → bien → créateur)."""
+async def _tenant_gestionnaire(db: AsyncSession, user: User) -> User | None:
+    """Gestionnaire du locataire courant (via bail actif → bien → créateur)."""
     from app.models.lease import Lease
     from app.models.tenant import Tenant
 
@@ -512,8 +512,12 @@ async def _tenant_gestionnaire_email(db: AsyncSession, user: User) -> str | None
     prop = await db.get(Property, lease.property_id)
     if prop is None or prop.created_by is None:
         return None
-    mgr = await db.get(User, prop.created_by)
-    return (getattr(mgr, "email", None) or "").strip() or None
+    return await db.get(User, prop.created_by)
+
+
+async def _tenant_gestionnaire_email(db: AsyncSession, user: User) -> str | None:
+    mgr = await _tenant_gestionnaire(db, user)
+    return (getattr(mgr, "email", None) or "").strip() or None if mgr else None
 
 
 async def _tenant_boutiques(db: AsyncSession, user: User) -> list[dict]:
@@ -591,12 +595,15 @@ async def my_residence_boutique_sso(
     ).scalar_one_or_none()
     email = (getattr(tenant, "email", None) or current_user.email or "").strip()
     full_name = getattr(tenant, "full_name", None) or None
+    mgr = await _tenant_gestionnaire(db, current_user)
+    ges_nom = (getattr(mgr, "full_name", None) or "").strip() or None
     token = secrets.token_urlsafe(24)
     db.add(
         BoutiqueSsoToken(
             token=token,
             tenant_email=email,
             tenant_full_name=full_name,
+            gestionnaire_nom=ges_nom,
             boutique_id=target,
             expires_at=datetime.now(UTC) + timedelta(minutes=10),
         )

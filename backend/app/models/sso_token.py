@@ -21,6 +21,9 @@ class BoutiqueSsoToken(Base, TimestampMixin):
     token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     tenant_email: Mapped[str] = mapped_column(String(255), nullable=False)
     tenant_full_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Nom du compte gestionnaire d'origine (transmis à Market pour la colonne
+    # « Gestionnaire » dans les fichiers clients du gérant).
+    gestionnaire_nom: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # PK de la boutique côté Market.
     boutique_id: Mapped[str] = mapped_column(String(64), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

@@ -705,4 +705,5 @@ async def resolve_boutique_sso(data: _SsoResolveIn, db: AsyncSession = Depends(g
         "email": tok.tenant_email,
         "full_name": tok.tenant_full_name,
         "boutique_id": tok.boutique_id,
+        "gestionnaire_nom": getattr(tok, "gestionnaire_nom", None),
     }
