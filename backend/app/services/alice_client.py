@@ -218,6 +218,30 @@ async def activate_boutique(
         return {"ok": False, "status": 502, "detail": "Alice injoignable"}
 
 
+async def manager_login_link(*, manager_email: str) -> dict:
+    """Jeton SSO gérant pour ouvrir Le Comptoir Market sans identifiants. {ok, status,
+    data?, detail?} ; data={token}."""
+    base, headers = _base_headers()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as hc:
+            resp = await hc.post(
+                f"{base}/api/v1/internal/manager-login-link",
+                headers=headers,
+                json={"email": manager_email},
+            )
+        if resp.status_code in (200, 201):
+            return {"ok": True, "status": resp.status_code, "data": resp.json()}
+        detail = None
+        try:
+            detail = resp.json().get("detail")
+        except Exception:  # noqa: BLE001
+            detail = None
+        return {"ok": False, "status": resp.status_code, "detail": detail}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice manager_login_link failed: %s", exc)
+        return {"ok": False, "status": 502, "detail": "Alice injoignable"}
+
+
 async def list_manager_boutiques(*, manager_email: str, source: str = "immo") -> dict:
     """Boutiques de résidence existantes du gérant Market (rapproché par e-mail), pour
     le sélecteur « rattacher à une boutique existante ». {market_enabled, boutiques:

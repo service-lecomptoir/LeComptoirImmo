@@ -348,6 +348,22 @@ async def set_boutique_residences(
     return {"status": "ok"}
 
 
+@router.post("/market-login")
+async def market_login(current_user: User = Depends(get_current_gestionnaire)):
+    """Lien SSO à usage unique pour ouvrir Le Comptoir Market (compte gérant) sans
+    identifiants. 409 market_not_enabled si pas de compte gérant."""
+    res = await alice_client.manager_login_link(manager_email=current_user.email)
+    if not res["ok"]:
+        if res["status"] == 409 and res.get("detail") == "market_not_enabled":
+            raise HTTPException(status_code=409, detail="market_not_enabled")
+        raise HTTPException(status_code=502, detail=res.get("detail") or "Ouverture impossible.")
+    token = (res.get("data") or {}).get("token")
+    if not token:
+        raise HTTPException(status_code=502, detail="Ouverture impossible.")
+    cfg = get_settings()
+    return {"url": f"{cfg.MARKET_PUBLIC_URL.rstrip('/')}/g/sso/{token}/"}
+
+
 class ActivateMarketIn(BaseModel):
     plan_id: str | None = None
 

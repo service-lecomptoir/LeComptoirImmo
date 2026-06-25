@@ -68,6 +68,19 @@ export default function BoutiqueResidence() {
 
   useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const openMarket = async () => {
+    setWorking(true)
+    try {
+      const r = await apiClient.post('/residences/market-login')
+      if (r.data?.url) window.open(r.data.url, '_blank', 'noopener')
+      else toast.error('Ouverture impossible.')
+    } catch {
+      toast.error("Ouverture de Le Comptoir Market impossible. Réessayez plus tard.")
+    } finally {
+      setWorking(false)
+    }
+  }
+
   const activate = async () => {
     setWorking(true)
     try {
@@ -160,12 +173,17 @@ export default function BoutiqueResidence() {
         <span className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
           <Store size={20} className="text-blue-600" />
         </span>
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">Boutique de la résidence</h1>
           <p className="text-sm text-gray-500">
             Proposez une boutique en ligne aux occupants de vos résidences (Le Comptoir Market).
           </p>
         </div>
+        {data.market_enabled && (
+          <Button variant="secondary" onClick={openMarket} disabled={working}>
+            <ExternalLink size={16} /> Ouvrir Le Comptoir Market
+          </Button>
+        )}
       </div>
 
       {!data.market_enabled ? (
