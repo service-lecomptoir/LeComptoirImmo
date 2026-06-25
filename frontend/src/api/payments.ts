@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 import { downloadBlob } from '@/utils/download'
-import type { Payment, PaymentListResponse, PaymentStatus, DashboardStats, MonthlyStats } from '@/types/payment'
+import type { Payment, PaymentAdjustment, PaymentAdjustmentType, PaymentListResponse, PaymentStatus, DashboardStats, MonthlyStats } from '@/types/payment'
 
 interface ListParams {
   search?: string
@@ -44,6 +44,18 @@ export const paymentsApi = {
 
   delete: (id: string) =>
     apiClient.delete(`/payments/${id}`),
+
+  // ── Ajustements ad hoc (suppléments / restitutions) ───────────────────────
+  listAdjustments: (id: string) =>
+    apiClient.get<PaymentAdjustment[]>(`/payments/${id}/adjustments`),
+
+  addAdjustment: (
+    id: string,
+    data: { type: PaymentAdjustmentType; libelle?: string; montant: number },
+  ) => apiClient.post<Payment>(`/payments/${id}/adjustments`, data),
+
+  deleteAdjustment: (id: string, adjustmentId: string) =>
+    apiClient.delete<Payment>(`/payments/${id}/adjustments/${adjustmentId}`),
 
   generate: (year: number, month: number) =>
     apiClient.post<{ generated: number; year: number; month: number }>(

@@ -41,6 +41,7 @@ from app.models.notification import Notification
 from app.models.owner import Owner
 from app.models.owner_reversement import OwnerReversement
 from app.models.payment import Payment
+from app.models.payment_adjustment import PaymentAdjustment
 from app.models.property import Property
 from app.models.publishing import Listing, PublishPlatform
 from app.models.rent_revision import RentRevision
@@ -65,6 +66,7 @@ __all__ = [
     "Lease",
     "Inspection",
     "Payment",
+    "PaymentAdjustment",
     "Notification",
     "AvisEcheance",
     "Contact",

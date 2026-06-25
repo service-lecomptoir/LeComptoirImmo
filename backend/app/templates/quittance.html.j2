@@ -108,10 +108,16 @@
   <table class="amt">
     <tr><td>Loyer hors charges</td><td class="r">{{ "%.2f" | format(payment.amount_rent | float) }} €</td></tr>
     <tr><td>Charges récupérables</td><td class="r">{{ "%.2f" | format(payment.amount_charges | float) }} €</td></tr>
+    {% for adj in adjustments %}
+    <tr><td>{{ adj.libelle }}</td><td class="r">{{ '+' if adj.type == 'supplement' else '-' }} {{ "%.2f" | format(adj.montant | float) }} €</td></tr>
+    {% endfor %}
     {% if payment.amount_apl %}
     <tr><td>Déduction aide personnelle au logement</td><td class="r">- {{ "%.2f" | format(payment.amount_apl | float) }} €</td></tr>
     {% endif %}
     <tr class="tot"><td>Total dû par le locataire</td><td class="r">{{ "%.2f" | format(payment.amount_due | float) }} €</td></tr>
+    {% if surplus_note %}
+    <tr><td colspan="2" style="font-style:italic; font-size:0.85em;">{{ surplus_note }}</td></tr>
+    {% endif %}
   </table>
 
   <div class="sec">Paiement reçu</div>

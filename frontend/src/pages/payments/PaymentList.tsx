@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { getErrorMessage } from '@/utils/errors'
-import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Trash2, RefreshCw, ChevronRight, ChevronDown, CalendarClock, Download } from 'lucide-react'
+import { CreditCard, Search, Filter, FileDown, Send, CheckCircle2, Trash2, RefreshCw, ChevronRight, ChevronDown, CalendarClock, Download, SlidersHorizontal } from 'lucide-react'
 import { paymentsApi, lettersApi } from '@/api/payments'
 import { apurementApi, type ApurementPlan } from '@/api/apurement'
 import { docFilename } from '@/utils/filename'
@@ -8,7 +8,7 @@ import { isMultiMonth } from '@/utils/period'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { Modal } from '@/components/common/Modal'
 import { PAYMENT_STATUS_LABELS, PAYMENT_STATUS_VARIANTS } from '@/types/payment'
-import type { PaymentListItem, PaymentStatus } from '@/types/payment'
+import type { Payment, PaymentAdjustment, PaymentAdjustmentType, PaymentListItem, PaymentStatus } from '@/types/payment'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useForm } from 'react-hook-form'
@@ -50,6 +50,16 @@ export default function PaymentList() {
   // Bloc « Plans d'apurement en cours » replié par défaut.
   const [plansOpen, setPlansOpen] = useState(false)
   const [validating, setValidating] = useState<string | null>(null)
+
+  // Ajustements ad hoc (supplément à payer / montant à restituer) d'une échéance
+  const [adjPayment, setAdjPayment] = useState<PaymentListItem | null>(null)
+  const [adjList, setAdjList] = useState<PaymentAdjustment[]>([])
+  const [adjDetail, setAdjDetail] = useState<Payment | null>(null)
+  const [adjLoading, setAdjLoading] = useState(false)
+  const [adjBusy, setAdjBusy] = useState(false)
+  const [adjType, setAdjType] = useState<PaymentAdjustmentType>('supplement')
+  const [adjLibelle, setAdjLibelle] = useState('')
+  const [adjMontant, setAdjMontant] = useState('')
   const loadPlans = useCallback(async () => {
     try { const { data } = await apurementApi.listActive(); setPlans(data) } catch { /* ignore */ }
   }, [])
@@ -185,6 +195,74 @@ export default function PaymentList() {
       alert(getErrorMessage(e, 'Erreur lors du refus'))
     } finally {
       setValidatingId(null)
+    }
+  }
+
+  // ── Ajustements ad hoc d'une échéance ───────────────────────────────────────
+  const openAdjust = async (p: PaymentListItem) => {
+    setAdjPayment(p)
+    setAdjType('supplement')
+    setAdjLibelle('')
+    setAdjMontant('')
+    setAdjLoading(true)
+    try {
+      const { data } = await paymentsApi.get(p.id)
+      setAdjDetail(data)
+      setAdjList(data.adjustments ?? [])
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Impossible de charger les lignes de cette échéance'))
+      setAdjList([])
+    } finally {
+      setAdjLoading(false)
+    }
+  }
+
+  const closeAdjust = () => {
+    setAdjPayment(null)
+    setAdjDetail(null)
+    setAdjList([])
+  }
+
+  const handleAddAdjust = async () => {
+    if (!adjPayment) return
+    const montant = Number(String(adjMontant).replace(',', '.'))
+    if (!Number.isFinite(montant) || montant <= 0) {
+      toast.error('Le montant doit être supérieur à 0.')
+      return
+    }
+    setAdjBusy(true)
+    try {
+      const { data } = await paymentsApi.addAdjustment(adjPayment.id, {
+        type: adjType,
+        libelle: adjLibelle.trim() || undefined,
+        montant,
+      })
+      setAdjDetail(data)
+      setAdjList(data.adjustments ?? [])
+      setAdjLibelle('')
+      setAdjMontant('')
+      fetchPayments(search, filterStatus, filterYear, filterMonth)
+      toast.success(adjType === 'supplement' ? 'Supplément ajouté' : 'Restitution ajoutée')
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, "Erreur lors de l'ajout de la ligne"))
+    } finally {
+      setAdjBusy(false)
+    }
+  }
+
+  const handleDeleteAdjust = async (adjustmentId: string) => {
+    if (!adjPayment) return
+    setAdjBusy(true)
+    try {
+      const { data } = await paymentsApi.deleteAdjustment(adjPayment.id, adjustmentId)
+      setAdjDetail(data)
+      setAdjList(data.adjustments ?? [])
+      fetchPayments(search, filterStatus, filterYear, filterMonth)
+      toast.success('Ligne supprimée')
+    } catch (e: any) {
+      toast.error(getErrorMessage(e, 'Erreur lors de la suppression de la ligne'))
+    } finally {
+      setAdjBusy(false)
     }
   }
 
@@ -528,6 +606,15 @@ export default function PaymentList() {
                           <CalendarClock size={14} />
                         </button>
                       )}
+                      {p.status !== 'cancelled' && (
+                        <button
+                          onClick={() => openAdjust(p)}
+                          className="p-1.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-700"
+                          title="Ajouter un supplément à payer ou un montant à restituer"
+                        >
+                          <SlidersHorizontal size={14} />
+                        </button>
+                      )}
                       <button
                         onClick={async () => {
                           if (!confirm(`Supprimer le paiement de ${p.tenant_full_name} : ${p.period_label} ?\nCette action est irréversible.`)) return
@@ -780,6 +867,132 @@ export default function PaymentList() {
               />
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* Modal ajustements (supplément à payer / montant à restituer) */}
+      {adjPayment && (
+        <Modal
+          isOpen
+          onClose={closeAdjust}
+          title="Supplément / restitution"
+          size="md"
+          footer={
+            <Button variant="secondary" size="md" onClick={closeAdjust}>
+              Fermer
+            </Button>
+          }
+        >
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+            <strong>{adjPayment.tenant_full_name}</strong> : {adjPayment.period_label}
+          </div>
+
+          {/* Lignes existantes */}
+          {adjLoading ? (
+            <p className="text-sm text-gray-400">Chargement…</p>
+          ) : adjList.length === 0 ? (
+            <p className="text-sm text-gray-400 mb-3">Aucune ligne d'ajustement pour ce mois.</p>
+          ) : (
+            <div className="space-y-1 mb-3">
+              {adjList.map(a => (
+                <div key={a.id} className="flex items-center justify-between gap-3 text-sm border-b border-gray-100 py-1.5">
+                  <span className="text-gray-700">
+                    <span className={a.type === 'supplement' ? 'text-blue-700' : 'text-green-700'}>
+                      {a.type === 'supplement' ? 'Supplément' : 'Restitution'}
+                    </span>
+                    {' · '}{a.libelle}
+                  </span>
+                  <span className="flex items-center gap-2 whitespace-nowrap">
+                    <span className="font-medium text-gray-900">
+                      {a.type === 'supplement' ? '+' : '−'}{fmtEuro(a.montant)}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteAdjust(a.id)}
+                      disabled={adjBusy}
+                      className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-red-600 disabled:opacity-50"
+                      title="Supprimer cette ligne"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Récapitulatif net + crédit/remboursement */}
+          {adjDetail && (
+            <div className="mb-4 pt-2 border-t border-gray-200 space-y-1 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Loyer + charges</span>
+                <span className="text-gray-900">{fmtEuro((adjDetail.amount_rent ?? 0) + (adjDetail.amount_charges ?? 0))}</span>
+              </div>
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-gray-700">Net à payer ce mois</span>
+                <span className="text-gray-900">{fmtEuro(adjDetail.amount_due)}</span>
+              </div>
+              {!!adjDetail.restitution_credit && adjDetail.restitution_credit > 0 && (
+                <div className="flex items-center justify-between text-green-700">
+                  <span>Reporté en crédit (prochaine échéance)</span>
+                  <span className="font-semibold">{fmtEuro(adjDetail.restitution_credit)}</span>
+                </div>
+              )}
+              {!!adjDetail.restitution_refund && adjDetail.restitution_refund > 0 && (
+                <div className="flex items-center justify-between text-green-700">
+                  <span>À restituer au locataire (remboursement)</span>
+                  <span className="font-semibold">{fmtEuro(adjDetail.restitution_refund)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Ajout d'une ligne */}
+          <div className="pt-3 border-t border-gray-200 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Ajouter une ligne</p>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+              <select
+                value={adjType}
+                onChange={e => setAdjType(e.target.value as PaymentAdjustmentType)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="supplement">Supplément à payer (en plus du loyer)</option>
+                <option value="restitution">Montant à restituer (caution ou autre)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Libellé</label>
+              <Input
+                value={adjLibelle}
+                onChange={e => setAdjLibelle(e.target.value)}
+                placeholder={adjType === 'supplement' ? 'Ex : Réparation, dégât' : 'Ex : Restitution du dépôt de garantie'}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Montant (€) *</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={adjMontant}
+                onChange={e => setAdjMontant(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="primary"
+              size="md"
+              onClick={handleAddAdjust}
+              disabled={adjBusy}
+            >
+              {adjBusy ? 'Ajout…' : 'Ajouter la ligne'}
+            </Button>
+            {adjType === 'restitution' && (
+              <p className="text-xs text-gray-500">
+                Si la restitution dépasse le loyer du mois, le surplus est reporté en crédit sur la prochaine
+                échéance. Si le locataire a donné son congé, il est marqué à rembourser.
+              </p>
+            )}
+          </div>
         </Modal>
       )}
     </div>

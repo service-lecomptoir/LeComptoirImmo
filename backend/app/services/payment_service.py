@@ -36,13 +36,20 @@ class PaymentService:
         """
         rows = (
             await db.execute(
-                select(Payment.amount_paid, Payment.amount_due, Payment.credit_applied).where(
-                    Payment.lease_id == lease_id, Payment.status != PaymentStatus.CANCELLED
-                )
+                select(
+                    Payment.amount_paid,
+                    Payment.amount_due,
+                    Payment.credit_applied,
+                    Payment.restitution_credit,
+                ).where(Payment.lease_id == lease_id, Payment.status != PaymentStatus.CANCELLED)
             )
         ).all()
-        overpaid = sum(max(0.0, float(paid) - float(due)) for paid, due, _ in rows)
-        applied = sum(float(credit or 0) for _, _, credit in rows)
+        overpaid = sum(max(0.0, float(paid) - float(due)) for paid, due, _, _ in rows)
+        applied = sum(float(credit or 0) for _, _, credit, _ in rows)
+
+        # Surplus de restitution reporté en crédit (au-delà du loyer/charges du mois) :
+        # une avance comme une autre, déduite des prochaines échéances.
+        overpaid += sum(float(rc or 0) for _, _, _, rc in rows)
 
         # Trop-perçus de régularisation de charges (remboursements) → crédit du bail,
         # déduit automatiquement des prochaines échéances (comme une avance).
@@ -311,6 +318,7 @@ class PaymentService:
                 .options(
                     selectinload(Payment.tenant),
                     selectinload(Payment.lease).selectinload(Lease.parent_property),
+                    selectinload(Payment.adjustments),
                 )
                 .where(Payment.id == payment_id)
             )
@@ -408,6 +416,8 @@ class PaymentService:
             amount_paid=float(p.amount_paid),
             balance=p.balance,
             credit_applied=float(p.credit_applied or 0),
+            restitution_credit=float(getattr(p, "restitution_credit", 0) or 0),
+            restitution_refund=float(getattr(p, "restitution_refund", 0) or 0),
             amount_on_plan=float(getattr(p, "amount_on_plan", 0) or 0),
             payment_method=p.payment_method,
             payment_date=p.payment_date,

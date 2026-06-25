@@ -33,6 +33,23 @@ class TenantInPayment(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PaymentAdjustmentIn(BaseModel):
+    """Ajout d'une ligne ad hoc sur une échéance."""
+
+    type: str = Field(..., pattern="^(supplement|restitution)$")
+    libelle: str | None = Field(None, max_length=200)
+    montant: float = Field(..., gt=0)
+
+
+class PaymentAdjustmentOut(BaseModel):
+    id: uuid.UUID
+    type: str
+    libelle: str
+    montant: float
+    created_at: datetime
+    model_config = {"from_attributes": True}
+
+
 class PaymentResponse(BaseModel):
     id: uuid.UUID
     lease_id: uuid.UUID
@@ -51,6 +68,8 @@ class PaymentResponse(BaseModel):
     amount_paid: float
     balance: float
     credit_applied: float = 0.0
+    restitution_credit: float = 0.0
+    restitution_refund: float = 0.0
     payment_date: date | None = None
     payment_method: str | None = None
     status: PaymentStatus
@@ -59,6 +78,7 @@ class PaymentResponse(BaseModel):
     quittance_generated_at: datetime | None = None
     quittance_sent_at: datetime | None = None
     tenant: TenantInPayment | None = None
+    adjustments: list[PaymentAdjustmentOut] = []
     created_at: datetime
     updated_at: datetime
 
@@ -83,6 +103,8 @@ class PaymentListItem(BaseModel):
     amount_paid: float
     balance: float
     credit_applied: float = 0.0
+    restitution_credit: float = 0.0
+    restitution_refund: float = 0.0
     amount_on_plan: float = 0.0
     payment_method: str | None = None
     payment_date: date | None = None

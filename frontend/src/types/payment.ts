@@ -24,6 +24,16 @@ export interface TenantInPayment {
   full_name: string
 }
 
+export type PaymentAdjustmentType = 'supplement' | 'restitution'
+
+export interface PaymentAdjustment {
+  id: string
+  type: PaymentAdjustmentType
+  libelle: string
+  montant: number
+  created_at: string
+}
+
 export interface Payment {
   id: string
   lease_id: string
@@ -41,12 +51,16 @@ export interface Payment {
   amount_due: number
   amount_paid: number
   balance: number
+  credit_applied?: number
+  restitution_credit?: number
+  restitution_refund?: number
   payment_date?: string
   payment_method?: string
   status: PaymentStatus
   settled_by_plan?: boolean
   notes?: string
   tenant?: TenantInPayment
+  adjustments?: PaymentAdjustment[]
   created_at: string
   updated_at: string
 }
@@ -67,7 +81,11 @@ export interface PaymentListItem {
   amount_paid: number
   balance: number
   credit_applied?: number
+  restitution_credit?: number
+  restitution_refund?: number
   amount_on_plan?: number
+  amount_rent?: number
+  amount_charges?: number
   payment_method?: string | null
   payment_date?: string | null
   status: PaymentStatus

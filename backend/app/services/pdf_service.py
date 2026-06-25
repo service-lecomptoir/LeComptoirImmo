@@ -798,6 +798,22 @@ class AvisEcheancePDFService:
                             "appele": "-" + _eur(avis_full.amount_apl),
                         }
                     )
+                # Lignes d'ajustement ad hoc (suppléments / restitutions) du mois.
+                from app.services.payment_adjustment_service import (
+                    PaymentAdjustmentService as _PAS,
+                )
+
+                _pay_adj, _adjs = await _PAS.for_lease_period(
+                    db,
+                    avis_full.lease_id,
+                    avis_full.period_year,
+                    avis_full.period_month,
+                )
+                if _adjs:
+                    line_items += _PAS.line_items(_adjs, _eur)
+                    _note = _PAS.surplus_note(_pay_adj, _eur) if _pay_adj else None
+                    if _note:
+                        line_items.append(_note)
             # Logo : UNIQUEMENT celui du profil gestionnaire (« Mes informations »).
             # On n'utilise PAS le logo_path résiduel du modèle (ancien upload par
             # template) → par défaut, pas de logo (emplacement vide réservé).
@@ -847,6 +863,19 @@ class AvisEcheancePDFService:
             return html_to_pdf(custom)
 
         # 2) …sinon, modèle .j2 historique (mise en page complète).
+        from app.services.document_render_service import eur as _eur_plain
+        from app.services.payment_adjustment_service import (
+            PaymentAdjustmentService as _PAS_avis,
+        )
+
+        _pay_avis, _adjs_avis = (None, [])
+        if not _is_apur:
+            _pay_avis, _adjs_avis = await _PAS_avis.for_lease_period(
+                db, avis_full.lease_id, avis_full.period_year, avis_full.period_month
+            )
+        _note_avis = (
+            _PAS_avis.surplus_note(_pay_avis, lambda v: f"{_eur_plain(v)} €") if _pay_avis else None
+        )
         html = render_template(
             "avis_echeance.html.j2",
             {
@@ -858,6 +887,8 @@ class AvisEcheancePDFService:
                 "layout": layout,
                 "is_apurement": _is_apur,
                 "apur_seq": _apur_seq,
+                "adjustments": _adjs_avis,
+                "surplus_note": _note_avis["label"] if _note_avis else None,
             },
         )
         if notice:

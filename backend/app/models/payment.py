@@ -21,6 +21,7 @@ from app.database import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.lease import Lease
+    from app.models.payment_adjustment import PaymentAdjustment
     from app.models.tenant import Tenant
 
 
@@ -129,6 +130,20 @@ class Payment(Base, TimestampMixin):
         server_default="0",
     )
 
+    # ── Ajustements ad hoc (suppléments / restitutions) ────────────────────────
+    # Surplus de restitution (au-delà du loyer/charges du mois) reporté en crédit
+    # du bail → déduit automatiquement de la prochaine échéance. Alimenté par le
+    # service d'ajustements ; consommé via `credit_applied` comme une avance.
+    restitution_credit: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, default=0, server_default="0"
+    )
+    # Surplus de restitution à REMBOURSER au locataire (cas d'un congé : pas de
+    # mois suivant sur lequel reporter le crédit). Montant informatif, affiché sur
+    # l'avis / la quittance.
+    restitution_refund: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, default=0, server_default="0"
+    )
+
     # ── Quittance ─────────────────────────────────────────────────────────────
     quittance_generated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -145,6 +160,13 @@ class Payment(Base, TimestampMixin):
     # ── Relations ─────────────────────────────────────────────────────────────
     lease: Mapped["Lease"] = relationship("Lease", lazy="select")
     tenant: Mapped["Tenant"] = relationship("Tenant", lazy="select")
+    adjustments: Mapped[list["PaymentAdjustment"]] = relationship(
+        "PaymentAdjustment",
+        back_populates="payment",
+        cascade="all, delete-orphan",
+        order_by="PaymentAdjustment.created_at",
+        lazy="select",
+    )
 
     @property
     def balance(self) -> float:

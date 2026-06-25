@@ -22,6 +22,8 @@ from app.schemas.payment import (
     DashboardStats,
     GenerateMonthlyIn,
     MonthlyStats,
+    PaymentAdjustmentIn,
+    PaymentAdjustmentOut,
     PaymentCreate,
     PaymentListResponse,
     PaymentRecordIn,
@@ -967,6 +969,75 @@ async def record_payment(
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
 
 
+# ── Ajustements ad hoc (suppléments / restitutions) ───────────────────────────
+@router.get("/{payment_id}/adjustments", response_model=list[PaymentAdjustmentOut])
+async def list_payment_adjustments(
+    payment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment)
+    from app.services.payment_adjustment_service import PaymentAdjustmentService
+
+    return await PaymentAdjustmentService.list_for_payment(db, payment_id)
+
+
+@router.post("/{payment_id}/adjustments", response_model=PaymentResponse, status_code=201)
+async def add_payment_adjustment(
+    payment_id: uuid.UUID,
+    data: PaymentAdjustmentIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    """Ajoute une ligne à payer en plus (supplément) ou à restituer (restitution)
+    sur l'échéance du mois. Le net est recalculé ; un surplus de restitution est
+    reporté en crédit (bail actif) ou marqué à rembourser (locataire en départ)."""
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment, write=True)
+    from app.services.payment_adjustment_service import PaymentAdjustmentService
+
+    adj = await PaymentAdjustmentService.add(
+        db,
+        payment,
+        type_=data.type,
+        libelle=data.libelle,
+        montant=data.montant,
+        created_by=current_user.id,
+    )
+    await audit_service.log(
+        db,
+        action=audit_service.PAYMENT_RECORD,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="payment",
+        entity_id=payment.id,
+        details={"adjustment": data.type, "montant": float(data.montant), "id": str(adj.id)},
+    )
+    await db.commit()
+    # Rafraîchir la collection (l'instance en cache d'identité avait été chargée
+    # avant l'ajout) puis renvoyer l'échéance complète.
+    db.expire(payment, ["adjustments"])
+    return await PaymentService.get_by_id(db, payment_id, load_relations=True)
+
+
+@router.delete("/{payment_id}/adjustments/{adjustment_id}", response_model=PaymentResponse)
+async def delete_payment_adjustment(
+    payment_id: uuid.UUID,
+    adjustment_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(Role.GESTIONNAIRE)),
+):
+    payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
+    await assert_payment_access(db, current_user, payment, write=True)
+    from app.services.payment_adjustment_service import PaymentAdjustmentService
+
+    await PaymentAdjustmentService.delete(db, payment, adjustment_id)
+    await db.commit()
+    db.expire(payment, ["adjustments"])
+    return await PaymentService.get_by_id(db, payment_id, load_relations=True)
+
+
 @router.post("/{payment_id}/validate-declaration", response_model=PaymentResponse)
 async def validate_declaration(
     payment_id: uuid.UUID,
@@ -1254,6 +1325,15 @@ async def build_quittance_pdf(db: AsyncSession, payment) -> tuple:
                         "regle": "-" + _eur_sym(payment.amount_apl),
                     }
                 )
+            # Lignes d'ajustement ad hoc (suppléments / restitutions) du mois.
+            from app.services.payment_adjustment_service import PaymentAdjustmentService
+
+            _adjs0 = await PaymentAdjustmentService.list_for_payment(db, payment.id)
+            if _adjs0:
+                _li0 += PaymentAdjustmentService.line_items(_adjs0, _eur_sym, with_regle=True)
+                _note0 = PaymentAdjustmentService.surplus_note(payment, _eur_sym)
+                if _note0:
+                    _li0.append(_note0)
             _pdf0 = await render_blocks_document(db, _gid0, "quittance", _qv, line_items=_li0)
             from app.utils.filename import doc_filename as _docfn0
 
@@ -1323,6 +1403,13 @@ async def build_quittance_pdf(db: AsyncSession, payment) -> tuple:
         pdf_bytes = html_to_pdf(custom)
     else:
         # 2) …sinon, modèle .j2 historique (mise en page complète).
+        from app.services.document_render_service import eur as _eur_plain
+        from app.services.payment_adjustment_service import (
+            PaymentAdjustmentService as _PAS_q,
+        )
+
+        _adjs_q = await _PAS_q.list_for_payment(db, payment.id)
+        _note_q = _PAS_q.surplus_note(payment, lambda v: f"{_eur_plain(v)} €")
         html = render_template(
             "quittance.html.j2",
             {
@@ -1332,6 +1419,8 @@ async def build_quittance_pdf(db: AsyncSession, payment) -> tuple:
                 "tenant_names_list": names,
                 "layout": layout,
                 "signature_uri": _sig_uri,
+                "adjustments": _adjs_q,
+                "surplus_note": _note_q["label"] if _note_q else None,
             },
         )
         if notice:
