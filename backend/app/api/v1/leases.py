@@ -117,12 +117,17 @@ async def create_lease(
 ):
     lease = await LeaseService.create(db, data, created_by=current_user.id)
     await db.flush()
-    # Auto-générer le paiement du mois de début de bail
+    # Génération du PREMIER loyer à la création — uniquement si le bail a DÉJÀ commencé
+    # (mois de début <= mois courant). Pour un bail à début FUTUR, on ne génère rien ici :
+    # le planificateur (1er du mois) ou la génération manuelle créera l'avis + le loyer
+    # le moment venu. On passe par l'avis d'échéance (et non par le paiement seul) afin
+    # que l'avis et le loyer restent cohérents — évite un loyer « fantôme » sans avis,
+    # éventuellement pré-crédité par la CAF, pour un mois à venir.
     from datetime import date
 
+    from app.core.exceptions import BadRequestException as _BadReq
     from app.core.exceptions import ConflictException as _Conflict
     from app.services import audit_service
-    from app.services.payment_service import PaymentService
 
     today = date.today()
     start = (
@@ -130,14 +135,15 @@ async def create_lease(
         if hasattr(lease.start_date, "year")
         else date.fromisoformat(str(lease.start_date))
     )
-    gen_year = start.year if (start.year, start.month) >= (today.year, today.month) else today.year
-    gen_month = (
-        start.month if (start.year, start.month) >= (today.year, today.month) else today.month
-    )
-    try:
-        await PaymentService.generate_for_lease(db, lease, gen_year, gen_month, current_user.id)
-    except _Conflict:
-        pass
+    if (start.year, start.month) <= (today.year, today.month):
+        from app.services.avis_echeance_service import AvisEcheanceService
+
+        try:
+            await AvisEcheanceService.generate_for_lease(
+                db, lease, today.year, today.month, generated_by=current_user.id
+            )
+        except (_Conflict, _BadReq):
+            pass
     await audit_service.log(
         db,
         action=audit_service.LEASE_CREATE,
