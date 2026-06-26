@@ -90,6 +90,14 @@ async def generate_monthly_payments(
     count = await PaymentService.generate_monthly(
         db, data.year, data.month, current_user.id, property_ids=prop_ids_filter
     )
+    await audit_service.log(
+        db,
+        action=audit_service.PAYMENT_GENERATE,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="payment",
+        details={"year": data.year, "month": data.month, "count": count, "trigger": "manuel"},
+    )
     await db.commit()
     return {"generated": count, "year": data.year, "month": data.month}
 
@@ -536,6 +544,19 @@ async def locataire_declare_payment(
     )
     db.add(notif)
     await db.flush()
+    await audit_service.log(
+        db,
+        action=audit_service.PAYMENT_DECLARE,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="payment",
+        entity_id=payment.id,
+        details={
+            "period": f"{payment.period_year}-{payment.period_month:02d}",
+            "method": method,
+            "amount": float(amount),
+        },
+    )
     await db.commit()
 
     # Push « Agent Comptable » : prévient spontanément le gestionnaire sur Telegram
@@ -915,6 +936,19 @@ async def create_payment(
     payment = await PaymentService.generate_for_lease(
         db, lease, data.period_year, data.period_month, current_user.id
     )
+    await audit_service.log(
+        db,
+        action=audit_service.PAYMENT_CREATE,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="payment",
+        entity_id=payment.id,
+        details={
+            "lease_id": str(data.lease_id),
+            "period": f"{data.period_year}-{data.period_month:02d}",
+            "amount_due": float(payment.amount_due),
+        },
+    )
     await db.commit()
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
 
@@ -942,6 +976,25 @@ async def delete_payment(
     """Supprime définitivement un paiement."""
     payment = await PaymentService.get_by_id(db, payment_id, load_relations=True)
     await assert_payment_access(db, current_user, payment, write=True)
+    # Trace AVANT suppression : qui supprime quoi/quand, et l'état du loyer (utile
+    # quand un règlement avait déjà été encaissé).
+    await audit_service.log(
+        db,
+        action=audit_service.PAYMENT_DELETE,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="payment",
+        entity_id=payment.id,
+        details={
+            "lease_id": str(payment.lease_id),
+            "tenant": payment.tenant.full_name if payment.tenant else None,
+            "period": f"{payment.period_year}-{payment.period_month:02d}",
+            "amount_due": float(payment.amount_due),
+            "amount_paid": float(payment.amount_paid),
+            "balance": float(payment.balance),
+            "status": getattr(payment.status, "value", str(payment.status)),
+        },
+    )
     await PaymentService.delete_payment(db, payment_id)
     await db.commit()
 
@@ -1153,6 +1206,15 @@ async def refuse_declaration(
         )
 
     await db.flush()
+    await audit_service.log(
+        db,
+        action=audit_service.PAYMENT_REFUSE,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="payment",
+        entity_id=payment.id,
+        details={"period": f"{payment.period_year}-{payment.period_month:02d}"},
+    )
     await db.commit()
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
 
@@ -1166,6 +1228,15 @@ async def cancel_payment(
     _existing = await PaymentService.get_by_id(db, payment_id, load_relations=True)
     await assert_payment_access(db, current_user, _existing, write=True)
     payment = await PaymentService.cancel_payment(db, payment_id)
+    await audit_service.log(
+        db,
+        action=audit_service.PAYMENT_CANCEL,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="payment",
+        entity_id=payment.id,
+        details={"period": f"{payment.period_year}-{payment.period_month:02d}"},
+    )
     await db.commit()
     return await PaymentService.get_by_id(db, payment.id, load_relations=True)
 

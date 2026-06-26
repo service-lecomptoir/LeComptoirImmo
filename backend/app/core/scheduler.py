@@ -59,6 +59,21 @@ async def _job_generate_monthly_payments() -> None:
     async with AsyncSessionLocal() as db:
         try:
             count = await PaymentService.generate_monthly(db, today.year, today.month)
+            if count:
+                from app.services import audit_service
+
+                await audit_service.log(
+                    db,
+                    action=audit_service.PAYMENT_GENERATE,
+                    user_email="système (planificateur)",
+                    entity_type="payment",
+                    details={
+                        "year": today.year,
+                        "month": today.month,
+                        "count": count,
+                        "trigger": "planificateur",
+                    },
+                )
             await db.commit()
             logger.info(f"[Scheduler] {count} loyer(s) généré(s) pour {today.month}/{today.year}")
         except Exception as exc:

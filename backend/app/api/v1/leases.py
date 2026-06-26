@@ -142,6 +142,18 @@ async def create_lease(
             await AvisEcheanceService.generate_for_lease(
                 db, lease, today.year, today.month, generated_by=current_user.id
             )
+            await audit_service.log(
+                db,
+                action=audit_service.PAYMENT_GENERATE,
+                user_id=current_user.id,
+                user_email=current_user.email,
+                entity_type="lease",
+                entity_id=lease.id,
+                details={
+                    "period": f"{today.year}-{today.month:02d}",
+                    "trigger": "création du bail",
+                },
+            )
         except (_Conflict, _BadReq):
             pass
     await audit_service.log(

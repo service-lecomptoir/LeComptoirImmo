@@ -617,7 +617,16 @@ export default function PaymentList() {
                       )}
                       <button
                         onClick={async () => {
-                          if (!confirm(`Supprimer le paiement de ${p.tenant_full_name} : ${p.period_label} ?\nCette action est irréversible.`)) return
+                          const paid = Number(p.amount_paid) || 0
+                          // Garde-fou : un loyer déjà (partiellement) encaissé exige une
+                          // confirmation renforcée. La suppression reste possible (le loyer
+                          // pourra être régénéré ensuite via « Générer »).
+                          const msg = paid > 0
+                            ? `Ce loyer de ${p.tenant_full_name} (${p.period_label}) a déjà ${fmtEuro(paid)} encaissé(s).\n`
+                              + `Le supprimer effacera ce règlement enregistré.\n`
+                              + `Vous pourrez le régénérer ensuite (bouton « Générer »).\n\nConfirmer la suppression ?`
+                            : `Supprimer le loyer de ${p.tenant_full_name} : ${p.period_label} ?\nCette action est irréversible.`
+                          if (!confirm(msg)) return
                           try {
                             await paymentsApi.delete(p.id)
                             fetchPayments(search, filterStatus, filterYear, filterMonth)
