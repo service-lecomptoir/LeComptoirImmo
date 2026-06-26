@@ -25,8 +25,8 @@ interface Overview {
 }
 
 /**
- * Page « Commerces partenaires » : le gestionnaire rattache autant de gérants Le Comptoir
- * Market qu'il veut (e-mail identique ou différent du sien). Chaque gérant gère ses
+ * Page « Commerces partenaires » : le gestionnaire rattache autant de partenaires Le Comptoir
+ * Market qu'il veut (e-mail identique ou différent du sien). Chaque partenaire gère ses
  * propres boutiques dans Market ; la page liste ici toutes leurs boutiques en lecture
  * seule. Les locataires du gestionnaire accèdent à toutes ces boutiques.
  */
@@ -53,7 +53,7 @@ export default function BoutiqueResidence() {
   const addGerant = async () => {
     const email = newGerant.trim()
     if (!email || !email.includes('@')) {
-      toast.error('Saisissez un e-mail de gérant valide.')
+      toast.error('Saisissez un e-mail de partenaire valide.')
       return
     }
     setWorking(true)
@@ -62,26 +62,26 @@ export default function BoutiqueResidence() {
       toast.success(
         res.data?.created
           ? res.data?.email_sent
-            ? 'Gérant créé : les identifiants ont été envoyés à cet e-mail.'
-            : 'Gérant créé et rattaché.'
-          : 'Gérant rattaché.',
+            ? 'Partenaire créé : les identifiants ont été envoyés à cet e-mail.'
+            : 'Partenaire créé et rattaché.'
+          : 'Partenaire rattaché.',
       )
       setNewGerant('')
       await load()
     } catch (e) {
       const err = e as { response?: { data?: { detail?: string } } }
-      toast.error(err.response?.data?.detail || 'Rattachement du gérant impossible.')
+      toast.error(err.response?.data?.detail || 'Rattachement du partenaire impossible.')
     } finally {
       setWorking(false)
     }
   }
 
   const removeGerant = async (email: string) => {
-    if (!window.confirm(`Retirer le gérant « ${email} » ? (son compte et ses boutiques ne sont pas supprimés)`)) return
+    if (!window.confirm(`Retirer le partenaire « ${email} » ? (son compte et ses boutiques ne sont pas supprimés)`)) return
     setWorking(true)
     try {
       await apiClient.delete('/residences/boutiques/gerants', { params: { gerant_email: email } })
-      toast.success('Gérant retiré.')
+      toast.success('Partenaire retiré.')
       await load()
     } catch {
       toast.error('Retrait impossible.')
@@ -115,21 +115,21 @@ export default function BoutiqueResidence() {
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">Commerces partenaires</h1>
           <p className="text-sm text-gray-500">
-            Rattachez des gérants Le Comptoir Market. Chaque gérant gère ses propres boutiques ;
+            Rattachez des partenaires Le Comptoir Market. Chaque partenaire gère ses propres boutiques ;
             vos locataires y ont accès.
           </p>
         </div>
       </div>
 
-      {/* Mes gérants (roster) */}
+      {/* Mes partenaires (roster) */}
       <div className="bg-white rounded-xl border p-4 space-y-3">
-        <h2 className="font-semibold text-gray-900">Mes gérants</h2>
+        <h2 className="font-semibold text-gray-900">Mes partenaires</h2>
         <div className="flex gap-2 flex-wrap">
           <Input
             type="email"
             value={newGerant}
             onChange={(e) => setNewGerant(e.target.value)}
-            placeholder="email-du-gerant@exemple.fr"
+            placeholder="email-du-partenaire@exemple.fr"
             className="flex-1 min-w-[220px]"
           />
           <Button onClick={addGerant} disabled={working}>
@@ -139,7 +139,7 @@ export default function BoutiqueResidence() {
 
         {data.gerants.length === 0 ? (
           <p className="text-sm text-gray-500">
-            Aucun gérant rattaché. Ajoutez-en un (le vôtre ou un autre) pour proposer une boutique.
+            Aucun partenaire rattaché. Ajoutez-en un (le vôtre ou un autre) pour proposer une boutique.
           </p>
         ) : (
           <ul className="divide-y">
@@ -164,7 +164,7 @@ export default function BoutiqueResidence() {
                   <button
                     onClick={() => removeGerant(g.gerant_email)}
                     className="text-red-500 hover:text-red-700"
-                    title="Retirer du roster"
+                    title="Retirer le partenaire"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -185,7 +185,7 @@ export default function BoutiqueResidence() {
         </div>
         {data.boutiques.length === 0 ? (
           <p className="text-sm text-gray-500">
-            Aucune boutique pour le moment. Ouvrez un gérant ci-dessus pour en créer dans Le Comptoir Market.
+            Aucune boutique pour le moment. Ajoutez un partenaire ci-dessus pour en créer dans Le Comptoir Market.
           </p>
         ) : (
           <ul className="divide-y">
@@ -195,7 +195,7 @@ export default function BoutiqueResidence() {
                   <span className="font-medium text-gray-900">{b.nom}</span>
                   {b.gerant_name || b.gerant_email ? (
                     <span className="block text-xs text-gray-500 break-all">
-                      Gérant : {b.gerant_name || b.gerant_email}
+                      Partenaire : {b.gerant_name || b.gerant_email}
                     </span>
                   ) : null}
                 </div>
