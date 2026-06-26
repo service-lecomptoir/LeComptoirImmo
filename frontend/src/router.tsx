@@ -93,7 +93,7 @@ const AnnoncePublic = lazyPage(() => import('@/pages/public/AnnoncePublic'))
 const CandidatureUpload = lazyPage(() => import('@/pages/public/CandidatureUpload'))
 const CandidatureVisit = lazyPage(() => import('@/pages/public/CandidatureVisit'))
 const CandidaturesPage = lazyPage(() => import('@/pages/candidatures/CandidaturesPage'))
-const SortiesPage = lazyPage(() => import('@/pages/sorties/SortiesPage'))
+const EtatsDesLieuxPage = lazyPage(() => import('@/pages/etatsdeslieux/EtatsDesLieuxPage'))
 const SignalementList = lazyPage(() => import('@/pages/signalements/SignalementList'))
 const LocataireSignaler = lazyPage(() => import('@/pages/locataire/LocataireSignaler'))
 
@@ -241,7 +241,9 @@ export const router = createBrowserRouter([
       { path: 'boutique-residence', element: <BoutiqueResidence /> },
       { path: 'diffusion', element: <DiffusionPage /> },
       { path: 'candidatures', element: <CandidaturesPage /> },
-      { path: 'sorties', element: <SortiesPage /> },
+      { path: 'etats-des-lieux', element: <EtatsDesLieuxPage /> },
+      // Compat : ancien lien « Sortie du locataire » → onglet Départ.
+      { path: 'sorties', element: <Navigate to="/etats-des-lieux?tab=depart" replace /> },
       { path: 'leases', element: <LeaseList /> },
       { path: 'leases/:id', element: <LeaseDetail /> },
       { path: 'scoring', element: <ScoringList /> },

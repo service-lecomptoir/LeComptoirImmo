@@ -5,6 +5,7 @@ import { useSearchParams, Link } from 'react-router-dom'
 import { DoorOpen, Plus, X, Trash2, CheckCircle2, ArrowLeftRight, Wallet } from 'lucide-react'
 import { leaseExitsApi, type LeaseExit, type Deduction } from '@/api/leaseExits'
 import { leasesApi } from '@/api/leases'
+import { InspectionForm } from '@/components/inspections/InspectionForm'
 import { toast } from '@/store/toast'
 
 const STATUS: Record<string, { label: string; cls: string; step: number }> = {
@@ -23,7 +24,7 @@ const eur = (n: number) => `${n.toLocaleString('fr-FR', { minimumFractionDigits:
 
 interface ActiveLease { id: string; tenant_full_name?: string; property_name?: string }
 
-export default function SortiesPage() {
+export default function SortiesPage({ embedded = false }: { embedded?: boolean }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const [exits, setExits] = useState<LeaseExit[]>([])
   const [selected, setSelected] = useState<LeaseExit | null>(null)
@@ -33,6 +34,19 @@ export default function SortiesPage() {
   const [activeLeases, setActiveLeases] = useState<ActiveLease[]>([])
   const [createLease, setCreateLease] = useState('')
   const [newDeduction, setNewDeduction] = useState({ label: '', amount: '' })
+  const [showSortieForm, setShowSortieForm] = useState(false)
+
+  // Recharge le dossier sélectionné (après création d'un état des lieux de sortie,
+  // pour que la liste des états des lieux du bail se mette à jour).
+  const reloadSelected = async () => {
+    if (!selected) return
+    try {
+      const r = await leaseExitsApi.byLease(selected.lease_id)
+      if (r.data) refresh(r.data)
+    } catch {
+      /* */
+    }
+  }
 
   const load = async () => {
     setLoading(true)
@@ -136,14 +150,21 @@ export default function SortiesPage() {
   const sorties = selected?.lease_inspections.filter(i => i.inspection_type === 'sortie') ?? []
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className={embedded ? '' : 'p-4 sm:p-6'}>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><DoorOpen size={22} /> Sortie du locataire</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Préavis, état des lieux de sortie, comparaison avec l'entrée, décompte du dépôt de garantie et clôture du dossier.
+        {!embedded ? (
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><DoorOpen size={22} /> Sortie du locataire</h1>
+            <p className="text-gray-500 text-sm mt-1">
+              Préavis, état des lieux de sortie, comparaison avec l'entrée, décompte du dépôt de garantie et clôture du dossier.
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            Processus de <strong>départ</strong> : préavis, état des lieux de sortie, comparaison avec l'entrée,
+            décompte du dépôt de garantie et clôture du dossier.
           </p>
-        </div>
+        )}
         <Button variant="primary" onClick={() => setShowCreate(true)}
           className="rounded-xl font-semibold self-start" leftIcon={<Plus size={16} />}>
           Nouvelle sortie
@@ -243,9 +264,32 @@ export default function SortiesPage() {
 
               {/* États des lieux + comparaison */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <ArrowLeftRight size={15} /> États des lieux (entrée ↔ sortie)
-                </h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <ArrowLeftRight size={15} /> États des lieux (entrée ↔ sortie)
+                  </h3>
+                  {!closed && !showSortieForm && (
+                    <button
+                      onClick={() => setShowSortieForm(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100"
+                    >
+                      <Plus size={13} /> État des lieux de sortie
+                    </button>
+                  )}
+                </div>
+                {showSortieForm && (
+                  <InspectionForm
+                    leaseId={selected.lease_id}
+                    propertyId={selected.property_id}
+                    lockedType="sortie"
+                    onSaved={() => {
+                      setShowSortieForm(false)
+                      reloadSelected()
+                      toast.success('État des lieux de sortie enregistré.')
+                    }}
+                    onCancel={() => setShowSortieForm(false)}
+                  />
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {([['entry', 'Entrée', entries, selected.entry_inspection] as const,
                      ['exit', 'Sortie', sorties, selected.exit_inspection] as const]).map(([kind, label, opts, current]) => (
@@ -274,7 +318,7 @@ export default function SortiesPage() {
                       ) : (
                         <p className="text-xs text-gray-400">
                           Aucun état des lieux {label.toLowerCase()} relié.
-                          {kind === 'exit' && !closed && <> Créez-le depuis la fiche du bail, puis sélectionnez-le ici.</>}
+                          {kind === 'exit' && !closed && <> Créez-le via « État des lieux de sortie » ci-dessus, puis sélectionnez-le ici.</>}
                         </p>
                       )}
                     </div>

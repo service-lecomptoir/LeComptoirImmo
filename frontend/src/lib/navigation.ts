@@ -17,7 +17,7 @@ import {
   Home, Archive, BookUser, PenSquare, BarChart3,
   Calculator, MessageSquare, MessagesSquare, Send, Wrench, Wallet, FileCheck,
   KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
-  UserCheck, DoorOpen, ConciergeBell, BookText, HandCoins, Store,
+  UserCheck, ClipboardCheck, ConciergeBell, BookText, HandCoins, Store,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -54,7 +54,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/boutique-residence', icon: Store, label: 'Commerces partenaires' },
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
-  { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
+  { to: '/etats-des-lieux', icon: ClipboardCheck, label: 'État des lieux' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/finances/revenus', icon: Wallet, label: 'Encaissements' },
@@ -126,7 +126,7 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/contacts', icon: BookUser, label: "Carnet d'adresses" },
   { to: '/boutique-residence', icon: Store, label: 'Commerces partenaires' },
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
-  { to: '/sorties', icon: DoorOpen, label: 'Sortie du locataire' },
+  { to: '/etats-des-lieux', icon: ClipboardCheck, label: 'État des lieux' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Encaissements' },
@@ -169,7 +169,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   '/scoring': 'Qualité de payeur de chaque locataire (note A–E) à partir des revenus, de l\'historique de paiement et de la relation, avec stratégie recommandée.',
   '/diffusion': 'Créez et personnalisez vos annonces (photos, description, critères), diffusez-les sur vos plateformes et suivez leurs performances (vues).',
   '/candidatures': 'Dossiers candidats centralisés : vérification des pièces, analyse et comparaison des profils, sélection du locataire le plus adapté.',
-  '/sorties': "Sortie du locataire : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture du dossier.",
+  '/etats-des-lieux': "États des lieux du logement, en deux temps. Onglet Arrivée : l'état des lieux d'entrée du locataire (par bail). Onglet Départ : le processus de sortie complet (préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture du dossier).",
   '/abonnement': 'Vos factures (PDF), votre formule et la gestion de votre abonnement.',
   // Espace propriétaire
   '/proprietaire/annonces': "Le statut de mise en location de vos biens (publiée, programmée, brouillon) et leurs performances (vues), en lecture seule.",
