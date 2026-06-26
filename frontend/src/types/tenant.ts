@@ -19,6 +19,7 @@ export interface Tenant {
   monthly_income: number | null
   income_source: string | null
   notes: string | null
+  partage_partenaires: boolean
   user_id: string | null
   created_at: string
   updated_at: string
@@ -54,6 +55,7 @@ export interface TenantCreate {
   monthly_income?: number
   income_source?: string
   notes?: string
+  partage_partenaires?: boolean
   user_id?: string
 }
 

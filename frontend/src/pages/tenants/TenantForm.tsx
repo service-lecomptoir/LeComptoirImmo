@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useForm, UseFormRegister, FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { UserRound, Plus, X, Contact, Phone, Briefcase, FileText } from 'lucide-react'
+import { UserRound, Plus, X, Contact, Phone, Briefcase, FileText, Store } from 'lucide-react'
 import { Button, inputBaseClass } from '@/components/ui'
 import SiretInput from '@/components/common/SiretInput'
 import { Modal } from '@/components/common/Modal'
@@ -37,6 +37,7 @@ const schema = z.object({
   monthly_income: z.coerce.number().positive().optional().or(z.literal('')),
   income_source: z.string().optional(),
   notes: z.string().optional(),
+  partage_partenaires: z.boolean().optional(),
   user_id: z.string().uuid().optional().or(z.literal('')),
 }).superRefine((d, ctx) => {
   if (d.tenant_type === 'company') {
@@ -150,9 +151,11 @@ export function TenantForm({ tenant, prefill, onClose, onSaved }: Props) {
       employer: tenant.employer ?? '',
       employer_phone: tenant.employer_phone ?? '',
       notes: tenant.notes ?? '',
+      partage_partenaires: tenant.partage_partenaires ?? true,
       user_id: tenant.user_id ?? '',
     } : {
       tenant_type: 'person', language: 'fr',
+      partage_partenaires: true,
       first_name: prefill?.first_name ?? '',
       last_name: prefill?.last_name ?? '',
       email: prefill?.email ?? '',
@@ -235,6 +238,7 @@ export function TenantForm({ tenant, prefill, onClose, onSaved }: Props) {
       monthly_income: data.monthly_income ? Number(data.monthly_income) : null,
       income_source: clean(data.income_source),
       notes: clean(data.notes),
+      partage_partenaires: data.partage_partenaires ?? true,
       user_id: clean(data.user_id as string),
     }
     try {
@@ -451,6 +455,19 @@ export function TenantForm({ tenant, prefill, onClose, onSaved }: Props) {
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
+        </div>
+
+        {/* Commerces partenaires */}
+        <div>
+          <SectionTitle icon={Store}>Commerces partenaires</SectionTitle>
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input type="checkbox" {...register('partage_partenaires')} className="mt-0.5" />
+            <span>
+              Inclure ce locataire dans les commerces partenaires (accès aux boutiques et
+              présence dans leur liste de clients). Décochez pour l'en exclure : il en sera
+              retiré et ne recevra plus leurs relances.
+            </span>
+          </label>
         </div>
       </form>
     </Modal>

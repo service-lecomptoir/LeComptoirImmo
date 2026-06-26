@@ -86,6 +86,7 @@ class TenantService:
     @staticmethod
     async def update(db: AsyncSession, tenant_id: uuid.UUID, data: TenantUpdate) -> Tenant:
         tenant = await TenantService.get_by_id(db, tenant_id)
+        old_partage = bool(getattr(tenant, "partage_partenaires", True))
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(tenant, field, value)
@@ -98,6 +99,17 @@ class TenantService:
         # expirée après le flush) dans le contexte async, pour éviter un lazy-load
         # pendant la sérialisation sync de la réponse (→ ResponseValidationError 500).
         await db.refresh(tenant)
+        # Exclusion « commerces partenaires » : retrait rétroactif des rattachements
+        # Market (best-effort, ne bloque jamais la mise à jour).
+        if "partage_partenaires" in update_data and old_partage and not tenant.partage_partenaires:
+            try:
+                from app.services import alice_client
+
+                email = (tenant.email or "").strip()
+                if email:
+                    await alice_client.detach_residence_client(email=email)
+            except Exception:  # noqa: BLE001
+                pass
         return tenant
 
     @staticmethod

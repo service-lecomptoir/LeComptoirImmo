@@ -34,6 +34,8 @@ export default function LocataireDashboard() {
   const [boutiqueOpening, setBoutiqueOpening] = useState<string | null>(null)
   const [boutiqueOrders, setBoutiqueOrders] = useState<any[]>([])
   const boutiqueAvailable = boutiques.length > 0
+  const [partageOn, setPartageOn] = useState<boolean | null>(null)
+  const [partageBusy, setPartageBusy] = useState(false)
 
   // Pont Le Comptoir Market : toutes les boutiques du gestionnaire du locataire.
   // Si au moins une, on remonte aussi ses commandes (statut) pour les afficher.
@@ -49,7 +51,31 @@ export default function LocataireDashboard() {
         }
       })
       .catch(() => setBoutiques([]))
+    apiClient.get('/residences/my-partner-sharing')
+      .then((r) => setPartageOn(Boolean(r.data?.partage_partenaires)))
+      .catch(() => setPartageOn(null))
   }, [])
+
+  const setPartage = async (value: boolean) => {
+    setPartageBusy(true)
+    try {
+      const r = await apiClient.patch('/residences/my-partner-sharing', { value })
+      const on = Boolean(r.data?.partage_partenaires)
+      setPartageOn(on)
+      // Réintégration : recharger les boutiques ; exclusion : vider la liste.
+      if (on) {
+        const b = await apiClient.get('/residences/my-boutiques')
+        setBoutiques(Array.isArray(b.data?.boutiques) ? b.data.boutiques : [])
+      } else {
+        setBoutiques([])
+        setBoutiqueOrders([])
+      }
+    } catch {
+      /* on ne bloque pas */
+    } finally {
+      setPartageBusy(false)
+    }
+  }
 
   const openBoutique = async (boutiqueId: string) => {
     setBoutiqueOpening(boutiqueId)
@@ -220,6 +246,29 @@ export default function LocataireDashboard() {
               </div>
             </div>
           )}
+          <div className="mt-4 border-t border-blue-200 pt-3 text-right">
+            <button
+              onClick={() => setPartage(false)}
+              disabled={partageBusy}
+              className="text-xs text-gray-500 hover:text-red-600 underline disabled:opacity-50"
+            >
+              Ne plus figurer chez les commerces partenaires
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Locataire exclu : proposition de réintégration */}
+      {!boutiqueAvailable && partageOn === false && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 mb-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm text-gray-600">
+              Vous ne figurez pas chez les commerces partenaires de votre gestionnaire.
+            </p>
+            <Button variant="secondary" onClick={() => setPartage(true)} disabled={partageBusy}>
+              Réintégrer les commerces partenaires
+            </Button>
+          </div>
         </div>
       )}
 

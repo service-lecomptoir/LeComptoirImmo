@@ -24,6 +24,7 @@ class TenantCreate(BaseModel):
     monthly_income: float | None = None
     income_source: str | None = None
     notes: str | None = None
+    partage_partenaires: bool = True
     user_id: uuid.UUID | None = None  # Lien vers le compte utilisateur locataire
 
     @model_validator(mode="after")
@@ -63,6 +64,7 @@ class TenantUpdate(BaseModel):
     monthly_income: float | None = None
     income_source: str | None = None
     notes: str | None = None
+    partage_partenaires: bool | None = None
     user_id: uuid.UUID | None = None  # Lien vers le compte utilisateur locataire
 
 
@@ -87,6 +89,7 @@ class TenantResponse(BaseModel):
     monthly_income: float | None
     income_source: str | None
     notes: str | None
+    partage_partenaires: bool = True
     user_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime

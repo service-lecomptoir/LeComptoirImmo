@@ -3,7 +3,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -66,6 +66,15 @@ class Tenant(Base, TimestampMixin):
 
     # ── Notes ─────────────────────────────────────────────────────────────────
     notes: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+
+    # ── Commerces partenaires ─────────────────────────────────────────────────
+    # Autorise (défaut) le locataire à figurer dans la liste des clients des
+    # commerces partenaires (boutiques Le Comptoir Market du gestionnaire) et à y
+    # accéder via SSO. Décochable (par le gestionnaire ou le locataire) pour l'en
+    # exclure : plus de provisionnement, et retrait des rattachements existants.
+    partage_partenaires: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
 
     # ── Compte locataire ──────────────────────────────────────────────────────
     # Lien vers le compte utilisateur du locataire (rôle "locataire")

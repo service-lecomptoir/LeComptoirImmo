@@ -123,7 +123,7 @@ export default function BoutiqueResidence() {
 
       {/* Mes partenaires (roster) */}
       <div className="bg-white rounded-xl border p-4 space-y-3">
-        <h2 className="font-semibold text-gray-900">Mes partenaires</h2>
+        <h2 className="font-semibold text-gray-900">Partenaire</h2>
         <div className="flex gap-2 flex-wrap">
           <Input
             type="email"

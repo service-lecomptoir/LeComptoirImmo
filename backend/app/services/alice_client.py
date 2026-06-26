@@ -317,6 +317,24 @@ async def remove_residence_gerant(*, gestionnaire_email: str, gerant_email: str)
         return False
 
 
+async def detach_residence_client(*, email: str, gestionnaire_nom: str = "") -> bool:
+    """Retire un locataire de la liste des clients des commerces partenaires
+    (suppression des rattachements Market issus du SSO résidence). Best-effort :
+    True si Alice a confirmé, False sinon (n'interrompt jamais l'opération)."""
+    base, headers = _base_headers()
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as hc:
+            resp = await hc.post(
+                f"{base}/api/v1/internal/residence-clients/detach",
+                headers=headers,
+                json={"email": email, "gestionnaire_nom": gestionnaire_nom or ""},
+            )
+        return resp.status_code == 200
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Alice detach_residence_client failed: %s", exc)
+        return False
+
+
 async def list_manager_boutiques(*, manager_email: str, source: str = "immo") -> dict:
     """Boutiques de résidence existantes du gérant Market (rapproché par e-mail), pour
     le sélecteur « rattacher à une boutique existante ». {market_enabled, boutiques:

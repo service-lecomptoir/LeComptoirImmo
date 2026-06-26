@@ -547,7 +547,17 @@ async def _tenant_property(db: AsyncSession, user: User):
 
 
 async def _tenant_boutiques(db: AsyncSession, user: User) -> list[dict]:
-    """Toutes les boutiques du gestionnaire du locataire (tous gérants confondus)."""
+    """Toutes les boutiques du gestionnaire du locataire (tous gérants confondus).
+
+    Vide si le locataire s'est exclu (ou a été exclu) du partage « commerces
+    partenaires » : il n'a alors plus accès aux boutiques ni au SSO."""
+    from app.models.tenant import Tenant
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == user.id))
+    ).scalar_one_or_none()
+    if tenant is not None and not tenant.partage_partenaires:
+        return []
     email = await _tenant_gestionnaire_email(db, user)
     if not email:
         return []
@@ -654,6 +664,53 @@ async def my_residence_boutique_sso(
     await db.commit()
     cfg = get_settings()
     return {"url": f"{cfg.MARKET_PUBLIC_URL.rstrip('/')}/r/sso/{token}/?src=immo"}
+
+
+class PartnerSharingIn(BaseModel):
+    value: bool
+
+
+@router.get("/my-partner-sharing")
+async def get_my_partner_sharing(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """État du partage « commerces partenaires » du locataire courant."""
+    from app.models.tenant import Tenant
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    ).scalar_one_or_none()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Locataire introuvable.")
+    return {"partage_partenaires": bool(tenant.partage_partenaires)}
+
+
+@router.patch("/my-partner-sharing")
+async def set_my_partner_sharing(
+    payload: PartnerSharingIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Le locataire choisit de figurer (ou non) chez les commerces partenaires.
+    Désactiver retire aussi ses rattachements existants côté Market (best-effort)."""
+    from app.models.tenant import Tenant
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.user_id == current_user.id))
+    ).scalar_one_or_none()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Locataire introuvable.")
+    was = bool(tenant.partage_partenaires)
+    tenant.partage_partenaires = bool(payload.value)
+    await db.commit()
+    if was and not tenant.partage_partenaires:
+        mgr = await _tenant_gestionnaire(db, current_user)
+        ges_nom = (getattr(mgr, "full_name", None) or "").strip()
+        email = (getattr(tenant, "email", None) or current_user.email or "").strip()
+        if email:
+            await alice_client.detach_residence_client(email=email, gestionnaire_nom=ges_nom)
+    return {"partage_partenaires": tenant.partage_partenaires}
 
 
 @router.get("/my-boutique/orders")

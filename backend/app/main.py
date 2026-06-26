@@ -354,6 +354,8 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE boutique_sso_tokens ADD COLUMN IF NOT EXISTS tenant_country VARCHAR(80)",
         # Quittances sur les paiements
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS anonymized_at TIMESTAMPTZ",
+        # Opt-out « commerces partenaires » (défaut : autorisé)
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS partage_partenaires BOOLEAN NOT NULL DEFAULT true",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_generated_at TIMESTAMPTZ",
         "ALTER TABLE payments ADD COLUMN IF NOT EXISTS quittance_sent_at TIMESTAMPTZ",
         # Déclaration de paiement par le locataire (à valider par le gestionnaire)
