@@ -7,6 +7,7 @@ import {
   FileCheck, TrendingUp, Zap, PenSquare, Calculator, Infinity as InfinityIcon,
   Menu, X, Info, Megaphone, UserCheck, BarChart3, FileText, Send, MessagesSquare,
   Wrench, BookUser, ShoppingBag, Landmark, DoorOpen, Settings, Wallet, Bot, ListChecks,
+  Clock, LayoutGrid, ShieldCheck, Boxes, Quote, Plus as PlusIcon, Minus, MapPin,
 } from 'lucide-react'
 import SubscriptionModal from '@/pages/SubscriptionModal'
 import { publicPlansApi, type PublicPlan } from '@/api/publicPlans'
@@ -31,6 +32,101 @@ const NAV = [
   { href: '#comment-ca-marche', label: 'Comment ça marche' },
   { href: '#fonctionnalites', label: 'Fonctionnalités' },
   { href: '#tarification', label: 'Tarification' },
+  { href: '#faq', label: 'FAQ' },
+]
+
+// « Pourquoi Le Comptoir Immo » : atouts mis en avant.
+const WHY = [
+  {
+    icon: Clock,
+    title: 'Vous gagnez du temps',
+    text: "Avis d'échéances, quittances, relances et révisions de loyer se génèrent et s'envoient automatiquement.",
+  },
+  {
+    icon: LayoutGrid,
+    title: 'Fini les tableurs',
+    text: 'Biens, propriétaires, locataires, baux, documents et comptabilité réunis au même endroit.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Conforme et sécurisé',
+    text: 'Données hébergées en France, conformité RGPD et sauvegardes quotidiennes de vos informations.',
+  },
+  {
+    icon: Boxes,
+    title: 'Une seule plateforme',
+    text: 'Gestion locative, comptabilité, syndic de copropriété et espace dédié à vos locataires.',
+  },
+]
+
+// Témoignages illustratifs (exemples, pas de clients réels).
+const TESTIMONIALS = [
+  {
+    initials: 'CD',
+    name: 'Camille D.',
+    role: 'Gérante d’agence, Lyon',
+    quote: "Les quittances et les relances partent toutes seules. Je récupère plusieurs heures chaque mois.",
+  },
+  {
+    initials: 'TR',
+    name: 'Thomas R.',
+    role: 'Propriétaire bailleur, Bordeaux',
+    quote: "Je suis mes loyers et mes documents en temps réel, sans avoir à appeler qui que ce soit.",
+  },
+  {
+    initials: 'NB',
+    name: 'Nadia B.',
+    role: 'Administratrice de biens, Lille',
+    quote: "La comptabilité mandant et les comptes rendus de gestion me font gagner un temps précieux.",
+  },
+]
+
+// FAQ : questions adaptées à Le Comptoir Immo.
+const FAQ_ITEMS = [
+  {
+    q: 'Faut-il installer un logiciel ?',
+    a: "Non. Le Comptoir Immo est 100 % en ligne : il suffit d’un navigateur, sans installation ni mise à jour à gérer.",
+  },
+  {
+    q: 'Est-ce accessible sur mobile et tablette ?',
+    a: "Oui. L’application s’adapte aux mobiles et tablettes, et vos locataires disposent de leur propre espace pour consulter quittances, paiements et signalements.",
+  },
+  {
+    q: 'Où sont hébergées mes données ?',
+    a: "Vos données sont hébergées en France, sur une infrastructure dédiée.",
+  },
+  {
+    q: 'Êtes-vous conforme au RGPD ?',
+    a: "Oui. Nous respectons le RGPD, les accès sont protégés et les informations sensibles sont chiffrées.",
+  },
+  {
+    q: 'Mes données sont-elles sauvegardées ?',
+    a: "Oui. Vos données font l’objet de sauvegardes quotidiennes, avec des tests de restauration réguliers.",
+  },
+  {
+    q: 'Puis-je gérer plusieurs biens et plusieurs propriétaires ?',
+    a: "Oui. La plateforme est pensée pour un portefeuille : patrimoine personnel, SCI, copropriétés et gestion pour le compte de tiers (mandataire).",
+  },
+  {
+    q: 'Mes locataires ont-ils un accès ?',
+    a: "Oui. Chaque locataire dispose d’un espace pour suivre ses loyers, télécharger ses quittances, payer en ligne et signaler un incident.",
+  },
+  {
+    q: 'Puis-je inviter mon comptable ou un collaborateur ?',
+    a: "Oui. Vous pouvez créer des comptes utilisateurs avec des accès adaptés, par exemple un rôle Comptable en lecture et encaissement.",
+  },
+  {
+    q: 'Puis-je exporter mes données ?',
+    a: "Oui. Vos documents et la plupart de vos listes sont téléchargeables en PDF à tout moment.",
+  },
+  {
+    q: 'Y a-t-il un engagement ?',
+    a: "Non, nos formules sont sans engagement et résiliables à tout moment.",
+  },
+  {
+    q: 'Comment démarrer ?',
+    a: "Demandez une démo : notre équipe vous recontacte rapidement et la mise en place se fait en quelques minutes.",
+  },
 ]
 
 const STEPS = [
@@ -426,6 +522,121 @@ function Pricing({ onDemo }: { onDemo: (planId?: string) => void }) {
   )
 }
 
+function WhyUs() {
+  return (
+    <section id="pourquoi" className="py-20 sm:py-24 bg-gray-50 scroll-mt-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: NAVY }}>Pourquoi Le Comptoir Immo</h2>
+          <p className="mt-3 text-gray-500">Un outil pensé pour les gestionnaires comme pour les propriétaires.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {WHY.map(w => {
+            const Icon = w.icon
+            return (
+              <div key={w.title} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: `${NAVY}14`, color: NAVY }}>
+                  <Icon size={20} />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-1.5">{w.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{w.text}</p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Testimonials() {
+  return (
+    <section id="temoignages" className="py-20 sm:py-24 scroll-mt-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: NAVY }}>Ils gèrent plus sereinement</h2>
+          <p className="mt-3 text-gray-500">Exemples illustratifs de ce que permet la plateforme au quotidien.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {TESTIMONIALS.map(t => (
+            <figure key={t.initials} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
+              <Quote size={22} className="mb-3" style={{ color: ORANGE }} />
+              <blockquote className="text-sm text-gray-600 leading-relaxed flex-1">« {t.quote} »</blockquote>
+              <figcaption className="mt-5 flex items-center gap-3">
+                <span
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white shrink-0"
+                  style={{ background: NAVY }}
+                  aria-hidden="true"
+                >
+                  {t.initials}
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold text-gray-900">{t.name}</span>
+                  <span className="block text-xs text-gray-400">{t.role}</span>
+                </span>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+        <p className="mt-8 text-center text-xs text-gray-400">
+          Témoignages illustratifs, à titre d'exemple.
+        </p>
+      </div>
+    </section>
+  )
+}
+
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border border-gray-100 rounded-xl bg-white overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
+        aria-expanded={open}
+      >
+        <span className="text-sm font-medium text-gray-900">{q}</span>
+        <span className="shrink-0 text-gray-400">
+          {open ? <Minus size={18} /> : <PlusIcon size={18} />}
+        </span>
+      </button>
+      {open && (
+        <p className="px-5 pb-4 -mt-1 text-sm text-gray-500 leading-relaxed">{a}</p>
+      )}
+    </div>
+  )
+}
+
+function Faq({ onDemo }: { onDemo: () => void }) {
+  return (
+    <section id="faq" className="py-20 sm:py-24 bg-gray-50 scroll-mt-16">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-14">
+          <h2 className="text-2xl sm:text-3xl font-bold" style={{ color: NAVY }}>Questions fréquentes</h2>
+          <p className="mt-3 text-gray-500">Tout ce qu'il faut savoir avant de démarrer.</p>
+        </div>
+        <div className="space-y-3">
+          {FAQ_ITEMS.map(it => <FaqItem key={it.q} q={it.q} a={it.a} />)}
+        </div>
+        <div className="mt-10 text-center">
+          <p className="text-sm text-gray-500 inline-flex items-center gap-1.5">
+            <MapPin size={15} style={{ color: ORANGE }} /> Une autre question ?
+          </p>
+          <div className="mt-3">
+            <button
+              onClick={onDemo}
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ background: NAVY }}
+            >
+              Demander une démo
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function Footer() {
   return (
     <footer className="border-t border-gray-100 py-10">
@@ -464,8 +675,11 @@ export default function Landing() {
       <main>
         <Hero onDemo={onDemo} />
         <HowItWorks />
+        <WhyUs />
         <Features />
+        <Testimonials />
         <Pricing onDemo={onDemo} />
+        <Faq onDemo={() => onDemo()} />
       </main>
       <Footer />
       <SubscriptionModal open={demoOpen} onClose={() => setDemoOpen(false)} initialPlanId={demoPlanId} />
