@@ -170,7 +170,14 @@ class LeaseService:
         )
 
     @staticmethod
-    async def update(db: AsyncSession, lease_id: uuid.UUID, data: LeaseUpdate) -> Lease:
+    async def update(
+        db: AsyncSession,
+        lease_id: uuid.UUID,
+        data: LeaseUpdate,
+        *,
+        actor_id: uuid.UUID | None = None,
+        actor_email: str | None = None,
+    ) -> Lease:
         # Charger avec co_tenants pour pouvoir réassigner la collection (async-safe)
         result = await db.execute(
             select(Lease).options(selectinload(Lease.co_tenants)).where(Lease.id == lease_id)
@@ -212,16 +219,40 @@ class LeaseService:
                 start = date.fromisoformat(str(start))
             # Bail FUTUR (pas encore commencé) : une modification de loyer/charges est
             # une simple CORRECTION (le contrat n'a jamais débuté). On écrit directement
-            # les montants, sans révision datée, sans e-mail de revalorisation, sans
-            # historiser l'ancien montant. On purge toute révision résiduelle.
+            # les montants. On ne supprime QUE les réévaluations devenues incohérentes
+            # (effet <= début du bail, ou montant déjà égal à la nouvelle base) ; les
+            # réévaluations réellement futures sont CONSERVÉES (plus d'effacement en
+            # masse). Chaque suppression est tracée dans l'audit.
             if start is not None and start > today:
                 lease.rent_amount = want_rent
                 lease.charges_amount = want_charges
-                from sqlalchemy import delete as _sa_delete
 
-                from app.models.rent_revision import RentRevision
+                from app.services import audit_service
 
-                await db.execute(_sa_delete(RentRevision).where(RentRevision.lease_id == lease.id))
+                existing = await RentRevisionService.list_for_lease(db, lease.id)
+                for r in existing:
+                    base_for_kind = want_rent if r.kind == "rent" else want_charges
+                    incoherent = r.effective_date <= start or round(float(r.amount), 2) == round(
+                        base_for_kind, 2
+                    )
+                    if not incoherent:
+                        continue  # réévaluation future légitime : on la garde
+                    await audit_service.log(
+                        db,
+                        audit_service.REVISION_PURGE,
+                        user_id=actor_id,
+                        user_email=actor_email,
+                        entity_type="rent_revision",
+                        entity_id=r.id,
+                        details={
+                            "lease_id": str(lease.id),
+                            "kind": r.kind,
+                            "amount": float(r.amount),
+                            "effective_date": r.effective_date.isoformat(),
+                            "reason": "correction d'un bail non débuté",
+                        },
+                    )
+                    await db.delete(r)
             else:
                 eff = rent_eff or first_of_next_month(today)
                 if round(want_rent, 2) != round(cur_rent, 2):
@@ -233,6 +264,8 @@ class LeaseService:
                         effective_date=eff,
                         source="manuel",
                         reason="Modification du contrat",
+                        created_by=actor_id,
+                        actor_email=actor_email,
                     )
                 if round(want_charges, 2) != round(cur_charges, 2):
                     await RentRevisionService.schedule(
@@ -243,6 +276,8 @@ class LeaseService:
                         effective_date=eff,
                         source="manuel",
                         reason="Modification du contrat",
+                        created_by=actor_id,
+                        actor_email=actor_email,
                     )
 
         # Remplacer les co-titulaires si la liste est fournie

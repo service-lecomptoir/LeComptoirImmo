@@ -31,6 +31,11 @@ DOCUMENT_DELETE = "document.delete"
 # RGPD : droit d'accès (export) et droit à l'effacement (anonymisation)
 RGPD_EXPORT = "rgpd.export"
 RGPD_ERASE = "rgpd.erase"
+# Révisions de loyer / charges (réévaluations datées)
+REVISION_SCHEDULE = "revision.schedule"  # création d'une réévaluation programmée
+REVISION_REPLACE = "revision.replace"  # remplacement d'une réévaluation déjà programmée
+REVISION_DELETE = "revision.delete"  # suppression (manuelle, ou remplacée)
+REVISION_PURGE = "revision.purge"  # suppression automatique (correction d'un bail non débuté)
 
 
 async def log(

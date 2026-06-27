@@ -68,6 +68,7 @@ class RentRevisionService:
         source: str,
         reason: str | None = None,
         created_by: uuid.UUID | None = None,
+        actor_email: str | None = None,
         notify: bool = True,
     ) -> RentRevision:
         """Programme la révision d'UN champ. S'il existe déjà une révision de ce
@@ -82,6 +83,8 @@ class RentRevisionService:
         pending = next((r for r in same if (not r.applied) and r.effective_date > today), None)
         new_amount = round(float(new_amount), 2)
 
+        from app.services import audit_service
+
         if pending:
             # Remplace la révision programmée (prev_amount inchangé : valeur d'avant).
             pending.amount = new_amount
@@ -90,6 +93,22 @@ class RentRevisionService:
             pending.reason = reason
             pending.applied = effective_date <= today
             rev = pending
+            await audit_service.log(
+                db,
+                audit_service.REVISION_REPLACE,
+                user_id=created_by,
+                user_email=actor_email,
+                entity_type="rent_revision",
+                entity_id=rev.id,
+                details={
+                    "lease_id": str(lease.id),
+                    "kind": kind,
+                    "amount": new_amount,
+                    "effective_date": effective_date.isoformat(),
+                    "source": source,
+                    "reason": reason,
+                },
+            )
         else:
             base = lease.rent_amount if kind == "rent" else lease.charges_amount
             prev = RentRevisionService._effective_field(base, revisions, kind, today)
@@ -106,9 +125,41 @@ class RentRevisionService:
             )
             db.add(rev)
             await db.flush()
-            # On ne garde qu'UNE révision par champ : purge des anciennes.
+            await audit_service.log(
+                db,
+                audit_service.REVISION_SCHEDULE,
+                user_id=created_by,
+                user_email=actor_email,
+                entity_type="rent_revision",
+                entity_id=rev.id,
+                details={
+                    "lease_id": str(lease.id),
+                    "kind": kind,
+                    "prev_amount": round(prev, 2),
+                    "amount": new_amount,
+                    "effective_date": effective_date.isoformat(),
+                    "source": source,
+                    "reason": reason,
+                },
+            )
+            # On ne garde qu'UNE révision par champ : purge des anciennes (tracée).
             for r in same:
                 if r.id != rev.id:
+                    await audit_service.log(
+                        db,
+                        audit_service.REVISION_DELETE,
+                        user_id=created_by,
+                        user_email=actor_email,
+                        entity_type="rent_revision",
+                        entity_id=r.id,
+                        details={
+                            "lease_id": str(lease.id),
+                            "kind": r.kind,
+                            "amount": float(r.amount),
+                            "effective_date": r.effective_date.isoformat(),
+                            "reason": "remplacée (une seule réévaluation par champ)",
+                        },
+                    )
                     await db.delete(r)
 
         if effective_date <= today:

@@ -417,3 +417,147 @@ class TestLeaseCreationGeneration:
         # Bail commençant ce mois-ci : avis ET loyer générés ensemble.
         assert n_pay == 1
         assert n_avis == 1
+
+
+@pytest.mark.asyncio
+class TestRentRevisionAudit:
+    """Traçabilité (audit) des réévaluations de loyer + purge cohérente sur bail futur."""
+
+    async def _create_lease(self, client, token, db, gestionnaire_user, start: date):
+        prop, tenant = await _setup_lease_chain(db, gestionnaire_user)
+        resp = await client.post(
+            "/api/v1/leases",
+            headers=auth(token),
+            json={
+                "tenant_id": str(tenant.id),
+                "property_id": str(prop.id),
+                "start_date": str(start),
+                "rent_amount": 1000.00,
+                "charges_amount": 150.00,
+                "lease_type": "vide",
+                "payment_method": "virement",
+                "payment_day": 5,
+            },
+        )
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"]
+
+    async def test_rent_change_creates_revision_and_audit(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        from sqlalchemy import select
+
+        from app.models.audit_log import AuditLog
+
+        # Bail déjà commencé → la modification programme une réévaluation datée.
+        lease_id = await self._create_lease(
+            client, gestionnaire_token, db, gestionnaire_user, date(2026, 1, 1)
+        )
+        resp = await client.put(
+            f"/api/v1/leases/{lease_id}",
+            headers=auth(gestionnaire_token),
+            json={"rent_amount": 1050.00},
+        )
+        assert resp.status_code == 200, resp.text
+
+        revs = (
+            await client.get(
+                f"/api/v1/leases/{lease_id}/rent-revisions", headers=auth(gestionnaire_token)
+            )
+        ).json()
+        assert any(r["kind"] == "rent" and r["amount"] == 1050.0 for r in revs)
+
+        logged = (
+            (await db.execute(select(AuditLog).where(AuditLog.action == "revision.schedule")))
+            .scalars()
+            .all()
+        )
+        assert len(logged) >= 1
+        assert logged[0].user_email == gestionnaire_user.email
+
+    async def test_delete_revision_is_audited(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        from sqlalchemy import select
+
+        from app.models.audit_log import AuditLog
+
+        lease_id = await self._create_lease(
+            client, gestionnaire_token, db, gestionnaire_user, date(2026, 1, 1)
+        )
+        await client.put(
+            f"/api/v1/leases/{lease_id}",
+            headers=auth(gestionnaire_token),
+            json={"rent_amount": 1050.00},
+        )
+        revs = (
+            await client.get(
+                f"/api/v1/leases/{lease_id}/rent-revisions", headers=auth(gestionnaire_token)
+            )
+        ).json()
+        rev_id = revs[0]["id"]
+        d = await client.delete(
+            f"/api/v1/leases/{lease_id}/rent-revisions/{rev_id}", headers=auth(gestionnaire_token)
+        )
+        assert d.status_code == 204, d.text
+
+        logged = (
+            (
+                await db.execute(
+                    select(AuditLog).where(
+                        AuditLog.action == "revision.delete", AuditLog.entity_id == rev_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(logged) == 1
+
+    async def test_future_lease_correction_keeps_legitimate_revision(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        """Corriger un bail NON débuté ne doit PLUS effacer une réévaluation future légitime."""
+        from app.models.rent_revision import RentRevision
+        from app.schemas.lease import LeaseUpdate
+        from app.services.lease_service import LeaseService
+        from app.services.rent_revision_service import RentRevisionService
+
+        # Bail commençant dans le futur.
+        lease_id = await self._create_lease(
+            client, gestionnaire_token, db, gestionnaire_user, date(2027, 1, 1)
+        )
+        lease = await LeaseService.get_by_id(db, uuid.UUID(lease_id), load_relations=True)
+        # Réévaluation future LÉGITIME (postérieure au début, montant différent).
+        await RentRevisionService.schedule(
+            db,
+            lease,
+            kind="rent",
+            new_amount=1100.00,
+            effective_date=date(2027, 6, 1),
+            source="manuel",
+        )
+        await db.commit()
+
+        # Correction de la base (le bail n'a pas commencé) : 1000 -> 1000 inchangé n'aurait
+        # rien fait ; on change pour 1020 afin de déclencher la branche de correction.
+        await LeaseService.update(
+            db, uuid.UUID(lease_id), LeaseUpdate(rent_amount=1020.00), actor_email="x@test.fr"
+        )
+        await db.commit()
+
+        from sqlalchemy import select
+
+        remaining = (
+            (
+                await db.execute(
+                    select(RentRevision).where(RentRevision.lease_id == uuid.UUID(lease_id))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        # La réévaluation future légitime (1100 au 01/06/2027) est conservée.
+        assert any(
+            float(r.amount) == 1100.0 and r.effective_date == date(2027, 6, 1) for r in remaining
+        )

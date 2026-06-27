@@ -209,6 +209,15 @@ export function LeaseForm({ lease, onClose, onSaved, prefill }: Props) {
 
   const onSubmit = async (data: FormData) => {
     setSubmitError(null)
+    // Bail non débuté : la correction du loyer/charges peut supprimer des
+    // réévaluations programmées devenues incohérentes. On confirme avant.
+    if (isEdit && rentChanged && isFutureLease) {
+      if (!confirm(
+        "Ce bail n'a pas encore commencé : corriger le loyer/charges remplace les montants "
+        + 'de départ et supprime les réévaluations programmées devenues incohérentes '
+        + '(les réévaluations futures légitimes sont conservées). Continuer ?'
+      )) return
+    }
     try {
       const payload = {
         ...data,

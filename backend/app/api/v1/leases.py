@@ -233,6 +233,24 @@ async def delete_rent_revision(
             status_code=400,
             detail="Cette révision est déjà appliquée et ne peut plus être supprimée.",
         )
+    from app.services import audit_service
+
+    await audit_service.log(
+        db,
+        audit_service.REVISION_DELETE,
+        user_id=current_user.id,
+        user_email=current_user.email,
+        entity_type="rent_revision",
+        entity_id=rev.id,
+        details={
+            "lease_id": str(lease_id),
+            "kind": rev.kind,
+            "amount": float(rev.amount),
+            "effective_date": rev.effective_date.isoformat(),
+            "source": rev.source,
+            "reason": "suppression manuelle",
+        },
+    )
     await db.delete(rev)
     await db.commit()
     return None
@@ -247,7 +265,9 @@ async def update_lease(
 ):
     existing = await LeaseService.get_by_id(db, lease_id, load_relations=True)
     await assert_lease_access(db, current_user, existing, write=True)
-    lease = await LeaseService.update(db, lease_id, data)
+    lease = await LeaseService.update(
+        db, lease_id, data, actor_id=current_user.id, actor_email=current_user.email
+    )
     await db.commit()
     return await LeaseService.get_by_id(db, lease.id, load_relations=True)
 
