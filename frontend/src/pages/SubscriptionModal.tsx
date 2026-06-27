@@ -52,7 +52,8 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
   const changeManagerType = (mt: 'proprietaire' | 'mandataire') => {
     setManagerType(mt)
     setPlanId('')
-    if (mt === 'mandataire') setKind('entreprise')
+    // Mandataire = société uniquement ; propriétaire revient à « Particulier » par défaut.
+    setKind(mt === 'mandataire' ? 'entreprise' : 'personne')
   }
 
   const submit = async () => {
