@@ -297,7 +297,7 @@ export default function Login() {
           {/* Titre */}
           <div className="mb-6">
             <h2 className="text-2xl font-bold mb-1" style={{ color: BRAND.navy }}>
-              Connexion
+              Login
             </h2>
             <p className="text-sm text-gray-500">
               {activeType.subtitle}
@@ -494,11 +494,11 @@ export default function Login() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Connexion en cours…
+                  Login…
                 </>
               ) : (
                 <>
-                  Se connecter
+                  Login
                   <ChevronRight size={16} />
                 </>
               )}
@@ -510,7 +510,7 @@ export default function Login() {
             <svg className="w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <span className="text-xs text-gray-400">Connexion sécurisée · Espace {activeType.label}</span>
+            <span className="text-xs text-gray-400">Login sécurisé · Espace {activeType.label}</span>
           </div>
 
           {/* CTA souscription : discret, sans dénaturer la page */}
