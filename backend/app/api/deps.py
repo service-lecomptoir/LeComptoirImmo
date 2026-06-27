@@ -25,7 +25,15 @@ async def get_current_user(
             detail="Authentification requise",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return await AuthService.get_current_user(db, credentials.credentials)
+    user = await AuthService.get_current_user(db, credentials.credentials)
+    # Acteur courant pour l'audit exhaustif (db.*) des écritures de cette requête.
+    try:
+        from app.core.audit_context import update_actor
+
+        update_actor(user_id=user.id, user_email=user.email)
+    except Exception:  # noqa: BLE001
+        pass
+    return user
 
 
 def require_role(required_role: Role):

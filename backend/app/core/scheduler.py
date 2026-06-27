@@ -34,6 +34,32 @@ async def _job_update_late_payments() -> None:
             logger.error(f"[Scheduler] update_late_payments error: {exc}")
 
 
+async def _job_purge_audit_logs() -> None:
+    """Chaque jour à 3h : purge le journal d'audit au-delà de la rétention
+    configurée (AUDIT_RETENTION_DAYS ; 0 = jamais). Évite la saturation."""
+    from sqlalchemy import text
+
+    from app.config import get_settings
+    from app.database import AsyncSessionLocal
+
+    days = int(getattr(get_settings(), "AUDIT_RETENTION_DAYS", 90) or 0)
+    if days <= 0:
+        return
+    async with AsyncSessionLocal() as db:
+        try:
+            res = await db.execute(
+                text(
+                    "DELETE FROM audit_logs WHERE created_at < now() - make_interval(days => :d)"
+                ),
+                {"d": days},
+            )
+            await db.commit()
+            if res.rowcount:
+                logger.info("[Scheduler] Purge audit : %s ligne(s) > %s j", res.rowcount, days)
+        except Exception as exc:
+            logger.error(f"[Scheduler] purge_audit_logs error: {exc}")
+
+
 async def _job_generate_alerts() -> None:
     """Chaque jour à 9h : génère alertes loyers retard + baux expirant."""
     from app.database import AsyncSessionLocal
@@ -530,6 +556,13 @@ def start_scheduler(
         _job_vacancy_alerts,
         CronTrigger(hour=10, minute=15),
         id="vacancy_alerts",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+    scheduler.add_job(
+        _job_purge_audit_logs,
+        CronTrigger(hour=3, minute=0),
+        id="purge_audit_logs",
         replace_existing=True,
         misfire_grace_time=3600,
     )

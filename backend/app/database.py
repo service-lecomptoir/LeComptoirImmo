@@ -56,3 +56,11 @@ async def get_db() -> AsyncSession:
             raise
         finally:
             await session.close()
+
+
+# Audit exhaustif (db.create/update/delete) : l'import enregistre les écouteurs
+# SQLAlchemy sur la classe Session → actif partout (app ET tests), dès que la
+# couche base de données est chargée. (Import en fin de fichier : pas de cycle,
+# audit_listeners n'importe les modèles qu'à l'exécution.)
+from app.core import audit_listeners as _audit_listeners  # noqa: E402,F401
+

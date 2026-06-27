@@ -1011,6 +1011,23 @@ app.add_middleware(
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(SecurityHeadersMiddleware, production=settings.is_production)
 
+# ── Audit exhaustif (db.*) : acteur courant par requête + écouteurs SQLAlchemy ──
+from app.core.audit_context import reset_actor, set_actor  # noqa: E402
+from app.core.audit_listeners import install_audit_listeners  # noqa: E402
+
+install_audit_listeners()
+
+
+@app.middleware("http")
+async def _audit_actor_middleware(request, call_next):
+    """Pose l'IP de l'appelant comme acteur d'audit (l'utilisateur est complété
+    par la dépendance d'auth). Réinitialise en fin de requête."""
+    set_actor(ip=request.client.host if request.client else None)
+    try:
+        return await call_next(request)
+    finally:
+        reset_actor()
+
 # ── Limitation de débit (anti brute-force, actif en production) ─────────────────
 from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402

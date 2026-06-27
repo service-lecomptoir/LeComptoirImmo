@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    # Rétention du journal d'audit (purge quotidienne au-delà de N jours ; 0 = jamais)
+    AUDIT_RETENTION_DAYS: int = 90
 
     # ── Database ─────────────────────────────────────────────────────────────
     DATABASE_URL: str
