@@ -391,9 +391,13 @@ async def _apply_column_migrations() -> None:
         "ALTER TABLE leases ADD COLUMN IF NOT EXISTS last_revision_date DATE",
         # Lien régularisation de charges -> révision de loyer générée (annulation propre)
         "ALTER TABLE charge_regularizations ADD COLUMN IF NOT EXISTS rent_revision_id UUID",
-        # Révisions de loyer « par champ » (loyer OU charges). Purge des lignes
-        # combinées (schéma initial, données de test) puis bascule du schéma.
-        "DELETE FROM lease_rent_revisions",
+        # Révisions de loyer « par champ » (loyer OU charges). Purge UNIQUE des lignes
+        # de l'ancien schéma combiné : gardée par information_schema pour qu'elle ne
+        # s'exécute QUE tant que la colonne héritée `rent_amount` existe encore.
+        # Sans ce garde, le DELETE s'exécutait à CHAQUE démarrage et effaçait toutes
+        # les réévaluations programmées à chaque déploiement.
+        "DELETE FROM lease_rent_revisions WHERE EXISTS (SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = 'lease_rent_revisions' AND column_name = 'rent_amount')",
         "ALTER TABLE lease_rent_revisions DROP COLUMN IF EXISTS rent_amount",
         "ALTER TABLE lease_rent_revisions DROP COLUMN IF EXISTS charges_amount",
         "ALTER TABLE lease_rent_revisions DROP COLUMN IF EXISTS prev_rent_amount",
