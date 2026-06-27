@@ -23,6 +23,7 @@ from app.models.lease import Lease
 from app.models.payment import Payment
 from app.models.tenant import Tenant
 from app.models.ticket import Ticket
+from app.utils.timeutils import utcnow
 
 # Durées de rétention par défaut (RGPD — minimisation des données).
 RETENTION_TENANT_YEARS = 3  # après la fin du dernier bail
@@ -252,7 +253,7 @@ async def apply_retention(
         tenant_done += 1
 
     # candidatures.created_at est un timestamp NAÏF (sans fuseau) → cutoff naïf.
-    cutoff_cand = datetime.utcnow() - timedelta(days=30 * candidature_months)
+    cutoff_cand = utcnow() - timedelta(days=30 * candidature_months)
     cands = list(
         (
             await db.execute(

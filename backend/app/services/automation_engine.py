@@ -23,6 +23,8 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.utils.timeutils import utcnow
+
 logger = logging.getLogger(__name__)
 
 # Types « relance d'impayé » (déclenchés N jours après l'échéance).
@@ -599,7 +601,7 @@ async def _send_avis(db, rule, avis, today: date) -> bool:
             avis.status = AvisEcheanceStatus.ENVOYE
             if not avis.sent_at:
                 # Colonne avis.sent_at = TIMESTAMP sans fuseau → datetime naïf.
-                avis.sent_at = datetime.utcnow()
+                avis.sent_at = utcnow()
         await _log(
             db,
             rule=rule,

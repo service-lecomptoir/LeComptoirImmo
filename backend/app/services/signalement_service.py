@@ -16,6 +16,7 @@ from app.models.signalement import (
     SignalementStatus,
 )
 from app.models.tenant import Tenant
+from app.utils.timeutils import utcnow
 
 CATEGORY_LABELS = {
     "bruit": "Bruit / nuisance sonore",
@@ -36,7 +37,7 @@ def _naive_utc(dt: datetime | None) -> datetime:
     """Ramène une date à un datetime NAÏF en UTC (les colonnes sont TIMESTAMP WITHOUT
     TIME ZONE). Le front envoie un ISO avec fuseau → on retire l'offset proprement."""
     if dt is None:
-        return datetime.utcnow()
+        return utcnow()
     if dt.tzinfo is not None:
         return dt.astimezone(UTC).replace(tzinfo=None)
     return dt
@@ -333,7 +334,7 @@ class SignalementService:
                 s.status in (SignalementStatus.RESOLU.value, SignalementStatus.CLOS.value)
                 and not s.resolved_at
             ):
-                s.resolved_at = datetime.utcnow()
+                s.resolved_at = utcnow()
             if s.status not in (SignalementStatus.RESOLU.value, SignalementStatus.CLOS.value):
                 s.resolved_at = None
         if data.urgency is not None:

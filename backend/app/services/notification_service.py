@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundException
 from app.models.notification import Notification, NotificationPriority, NotificationType
 from app.schemas.notification import NotificationCreate
+from app.utils.timeutils import utcnow
 
 
 class NotificationService:
@@ -67,7 +68,7 @@ class NotificationService:
         if not notif or notif.user_id != user_id:
             raise NotFoundException("Notification introuvable")
         notif.is_read = True
-        notif.read_at = datetime.utcnow()
+        notif.read_at = utcnow()
         await db.flush()
         await db.refresh(notif)
         return notif
@@ -81,7 +82,7 @@ class NotificationService:
             )
         )
         notifs = result.scalars().all()
-        now = datetime.utcnow()
+        now = utcnow()
         for n in notifs:
             n.is_read = True
             n.read_at = now

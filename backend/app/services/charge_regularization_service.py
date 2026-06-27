@@ -8,7 +8,7 @@ charges réelles saisies par le gestionnaire, puis :
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.charge_regularization import ChargeRegularization
 from app.models.lease import Lease
 from app.models.payment import Payment, PaymentStatus
+from app.utils.timeutils import utcnow
 
 _MONTHS_FR = [
     "janvier",
@@ -126,7 +127,7 @@ class ChargeRegularizationService:
             old_monthly_provision=old_monthly,
             new_monthly_provision=new_monthly,
             status="applied",
-            applied_at=datetime.utcnow(),
+            applied_at=utcnow(),
             notes=notes,
             created_by=created_by,
         )

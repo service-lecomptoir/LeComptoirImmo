@@ -13,6 +13,7 @@ from app.core.permissions import Role
 from app.database import get_db
 from app.models.property import Property
 from app.models.user import User
+from app.utils.timeutils import utcnow
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/subscription", tags=["Abonnement"])
@@ -91,7 +92,7 @@ async def get_subscription(
             from datetime import datetime as _dt
 
             end = _dt.fromisoformat(access_until)
-            days_remaining = max(0, (end.date() - _dt.utcnow().date()).days)
+            days_remaining = max(0, (end.date() - utcnow().date()).days)
         except Exception:
             days_remaining = None
 

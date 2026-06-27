@@ -5,7 +5,7 @@ Service AvisEcheance : Génération des avis d'échéances (manuelle et automati
 import calendar
 import logging
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from app.models.avis_echeance import AvisEcheance, AvisEcheanceStatus
 from app.models.lease import Lease
 from app.models.payment import Payment, PaymentStatus
 from app.models.tenant import Tenant
+from app.utils.timeutils import utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,7 @@ class AvisEcheanceService:
             amount_total=total,
             # L'avis est immédiatement visible dans l'espace locataire → « Envoyé ».
             status=AvisEcheanceStatus.ENVOYE,
-            sent_at=datetime.utcnow(),
+            sent_at=utcnow(),
             generated_by=generated_by,
         )
         db.add(avis)
@@ -261,7 +262,7 @@ class AvisEcheanceService:
             if a.status != target:
                 a.status = target
                 if target == AvisEcheanceStatus.ENVOYE and a.sent_at is None:
-                    a.sent_at = datetime.utcnow()
+                    a.sent_at = utcnow()
                 n += 1
         if n:
             await db.flush()
@@ -295,7 +296,7 @@ class AvisEcheanceService:
             if a.status != target:
                 a.status = target
                 if a.sent_at is None:
-                    a.sent_at = datetime.utcnow()
+                    a.sent_at = utcnow()
                 n += 1
         if n:
             await db.flush()
@@ -479,7 +480,7 @@ class AvisEcheanceService:
                     amount_apl=None,
                     amount_total=amount,
                     status=AvisEcheanceStatus.ACQUITTE if paid else AvisEcheanceStatus.ENVOYE,
-                    sent_at=datetime.utcnow(),
+                    sent_at=utcnow(),
                     generated_by=generated_by,
                     kind="apurement",
                     plan_id=pl.id,
@@ -548,11 +549,10 @@ class AvisEcheanceService:
 
     @staticmethod
     async def mark_sent(db: AsyncSession, avis_id: uuid.UUID) -> AvisEcheance:
-        from datetime import datetime
 
         avis = await AvisEcheanceService.get_by_id(db, avis_id)
         avis.status = AvisEcheanceStatus.ENVOYE
-        avis.sent_at = datetime.utcnow()
+        avis.sent_at = utcnow()
         await db.flush()
         return avis
 

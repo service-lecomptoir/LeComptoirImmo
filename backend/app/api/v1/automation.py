@@ -21,6 +21,7 @@ from app.schemas.automation import (
     CommunicationLogResponse,
     GroupCommunicationRequest,
 )
+from app.utils.timeutils import utcnow
 
 router = APIRouter(prefix="/automation", tags=["Automatisation"])
 
@@ -176,7 +177,6 @@ async def run_rule_now(
     Les types événementiels (quittance, révisions, taxe) ne se déclenchent qu'à
     l'action correspondante : pas d'exécution planifiable."""
     from datetime import date as _date
-    from datetime import datetime
 
     rule = await db.get(AutomationRule, rule_id)
     if not rule:
@@ -382,7 +382,7 @@ async def send_group_communication(
             subject=data.subject,
             body=data.body,
             status="sent" if email_sent else "simulated",
-            sent_at=datetime.utcnow(),
+            sent_at=utcnow(),
         )
         db.add(log)
         sent_count += 1

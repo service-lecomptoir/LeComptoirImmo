@@ -22,6 +22,7 @@ from app.schemas.lease import (
 )
 from app.services.lease_service import LeaseService
 from app.services.pdf_service import generate_lease_pdf
+from app.utils.timeutils import utcnow
 
 router = APIRouter(prefix="/leases", tags=["Leases"])
 
@@ -348,7 +349,6 @@ async def delete_lease(
 
 # ── Suivi de la relation locataire (alimente le scoring) ─────────────────────
 from datetime import date as _date
-from datetime import datetime as _dt
 
 from pydantic import BaseModel as _BaseModel
 
@@ -412,7 +412,7 @@ async def add_relationship_event(
         "kind": data.kind,
         "note": (data.note or "").strip() or None,
         "author_name": getattr(current_user, "full_name", None),
-        "created_at": _dt.utcnow().isoformat(),
+        "created_at": utcnow().isoformat(),
     }
     # Réassignation (et non mutation en place) pour que SQLAlchemy détecte le changement JSONB.
     lease.relationship_events = list(lease.relationship_events or []) + [ev]

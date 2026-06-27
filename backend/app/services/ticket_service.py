@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +8,7 @@ from app.core.exceptions import BadRequestException, NotFoundException
 from app.models.tenant import Tenant
 from app.models.ticket import Ticket, TicketMessage, TicketStatus
 from app.schemas.ticket import TicketCreate, TicketMessageCreate, TicketUpdate
+from app.utils.timeutils import utcnow
 
 
 class TicketService:
@@ -152,9 +152,7 @@ class TicketService:
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(ticket, field, value)
         if data.status in (TicketStatus.CLOSED, TicketStatus.RESOLVED) and not ticket.closed_at:
-            ticket.closed_at = (
-                datetime.utcnow()
-            )  # naive datetime : colonne TIMESTAMP WITHOUT TIME ZONE
+            ticket.closed_at = utcnow()  # naive datetime : colonne TIMESTAMP WITHOUT TIME ZONE
         await db.flush()
         return ticket
 
@@ -246,7 +244,7 @@ class TicketService:
             )
         ticket.status = TicketStatus.CLOSED
         if not ticket.closed_at:
-            ticket.closed_at = datetime.utcnow()
+            ticket.closed_at = utcnow()
         await TicketService._system_comment(
             db, ticket_id, author_id, "Le demandeur a validé la clôture de la démarche."
         )

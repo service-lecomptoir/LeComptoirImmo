@@ -25,6 +25,7 @@ from app.models.property import Property
 from app.models.signalement import Signalement
 from app.models.signalement_alert import AlertType, SignalementAlert
 from app.models.tenant import Tenant
+from app.utils.timeutils import utcnow
 
 # Réglages (valeurs par défaut raisonnables ; ajustables ultérieurement).
 NIGHT_START_HOUR = 22  # 22h
@@ -152,7 +153,7 @@ class SignalementAlertService:
     async def _maybe_escalate(db: AsyncSession, s: Signalement) -> None:
         if not s.property_id:
             return
-        since = datetime.utcnow() - timedelta(days=ESCALATION_WINDOW_DAYS)
+        since = utcnow() - timedelta(days=ESCALATION_WINDOW_DAYS)
         count = (
             await db.execute(
                 select(func.count(Signalement.id)).where(
@@ -200,7 +201,7 @@ class SignalementAlertService:
         """Job périodique : relance un rappel préventif courtois aux biens à historique
         de bruit, sans spammer (throttle PREVENTIVE_THROTTLE_DAYS). Retourne le nb de
         biens relancés."""
-        since = datetime.utcnow() - timedelta(days=PREVENTIVE_WINDOW_DAYS)
+        since = utcnow() - timedelta(days=PREVENTIVE_WINDOW_DAYS)
         rows = await db.execute(
             select(Signalement.property_id, func.count(Signalement.id))
             .where(
@@ -212,7 +213,7 @@ class SignalementAlertService:
             .having(func.count(Signalement.id) >= PREVENTIVE_MIN_NOISE)
         )
         targets = [(pid, n) for pid, n in rows.all()]
-        throttle_since = datetime.utcnow() - timedelta(days=PREVENTIVE_THROTTLE_DAYS)
+        throttle_since = utcnow() - timedelta(days=PREVENTIVE_THROTTLE_DAYS)
         done = 0
         for pid, _n in targets:
             recent = (
