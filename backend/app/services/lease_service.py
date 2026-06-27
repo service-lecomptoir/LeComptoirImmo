@@ -191,6 +191,7 @@ class LeaseService:
         # Loyer/charges : ne pas écraser directement. Toute évolution passe par une
         # révision datée (le mois courant reste figé, l'ancien montant est conservé).
         rent_eff = payload.pop("rent_effective_date", None)
+        confirm_replace = payload.pop("confirm_revision_replace", None)
         new_rent = payload.pop("rent_amount", None)
         new_charges = payload.pop("charges_amount", None)
         for field, value in payload.items():
@@ -255,6 +256,44 @@ class LeaseService:
                     await db.delete(r)
             else:
                 eff = rent_eff or first_of_next_month(today)
+                # Réévaluation déjà programmée pour ce champ : on PRÉVIENT au lieu
+                # d'écraser silencieusement. Sans confirmation explicite, on renvoie
+                # un 409 détaillé que le front affiche (« Remplacer / Annuler »).
+                if not confirm_replace:
+                    existing = await RentRevisionService.list_for_lease(db, lease.id)
+                    changed_kinds = set()
+                    if round(want_rent, 2) != round(cur_rent, 2):
+                        changed_kinds.add("rent")
+                    if round(want_charges, 2) != round(cur_charges, 2):
+                        changed_kinds.add("charges")
+                    conflicts = [
+                        r
+                        for r in existing
+                        if r.kind in changed_kinds and not r.applied and r.effective_date > today
+                    ]
+                    if conflicts:
+                        from fastapi import HTTPException
+
+                        kind_labels = {"rent": "Loyer HC", "charges": "Charges"}
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "revision_exists",
+                                "message": "Une réévaluation est déjà programmée pour ce champ.",
+                                "existing": [
+                                    {
+                                        "kind": r.kind,
+                                        "kind_label": kind_labels.get(r.kind, r.kind),
+                                        "prev_amount": float(r.prev_amount)
+                                        if r.prev_amount is not None
+                                        else None,
+                                        "amount": float(r.amount),
+                                        "effective_date": r.effective_date.isoformat(),
+                                    }
+                                    for r in conflicts
+                                ],
+                            },
+                        )
                 if round(want_rent, 2) != round(cur_rent, 2):
                     await RentRevisionService.schedule(
                         db,

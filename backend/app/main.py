@@ -972,7 +972,18 @@ async def _apply_column_migrations() -> None:
         async with engine.begin() as conn:
             # (Sérialisation assurée par le verrou d'init global au démarrage.)
             for sql in migrations:
-                await conn.execute(text(sql))
+                result = await conn.execute(text(sql))
+                # GARDE-FOU : un déploiement ne doit JAMAIS supprimer de données.
+                # On journalise toute instruction destructive qui a réellement
+                # supprimé des lignes (alerte immédiate en cas de régression, cf.
+                # l'ancien 'DELETE FROM lease_rent_revisions' inconditionnel).
+                u = sql.upper()
+                if ("DELETE FROM" in u or "TRUNCATE" in u) and (result.rowcount or 0) > 0:
+                    logger.warning(
+                        "[startup] ⚠ instruction destructive : %s ligne(s) supprimée(s) — %s",
+                        result.rowcount,
+                        " ".join(sql.split())[:160],
+                    )
         logger.info("Migrations colonnes appliquées ✓")
     except Exception as exc:
         logger.warning(f"Migration colonnes ignorée (non bloquant) : {exc}")

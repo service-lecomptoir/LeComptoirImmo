@@ -76,6 +76,9 @@ class LeaseUpdate(BaseModel):
     # Date d'effet d'une modification du loyer/charges (défaut : 1er du mois suivant).
     # Le mois en cours n'est pas impacté ; l'ancien montant est conservé en historique.
     rent_effective_date: date | None = None
+    # Confirmation explicite du remplacement d'une réévaluation déjà programmée
+    # pour ce champ (sinon l'API renvoie 409 avec le détail de l'existante).
+    confirm_revision_replace: bool | None = None
     deposit_amount: float | None = Field(None, ge=0)
     payment_day: int | None = Field(None, ge=1, le=28)
     payment_method: PaymentMethod | None = None

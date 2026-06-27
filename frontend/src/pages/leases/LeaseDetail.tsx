@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { BRAND } from '@/lib/brand'
 import { Button } from '@/components/ui'
 import { getErrorMessage } from '@/utils/errors'
+import { getRevisionConflict, revisionReplaceConfirmMessage } from '@/utils/revision'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, Edit, FileDown, XCircle,
@@ -224,11 +225,22 @@ export default function LeaseDetail() {
     if (!lease || !reval) return
     const val = parseFloat(revalAmount.replace(',', '.'))
     if (isNaN(val) || val < 0) { toast.error('Montant invalide'); return }
+    const body = (replace: boolean) => ({
+      ...(reval === 'rent' ? { rent_amount: val } : { charges_amount: val }),
+      rent_effective_date: revalEff,
+      ...(replace ? { confirm_revision_replace: true } : {}),
+    })
     setRevalBusy(true)
     try {
-      await leasesApi.update(lease.id, reval === 'rent'
-        ? { rent_amount: val, rent_effective_date: revalEff }
-        : { charges_amount: val, rent_effective_date: revalEff })
+      try {
+        await leasesApi.update(lease.id, body(false))
+      } catch (e: unknown) {
+        const conflict = getRevisionConflict(e)
+        if (conflict) {
+          if (!confirm(revisionReplaceConfirmMessage(conflict))) { setRevalBusy(false); return }
+          await leasesApi.update(lease.id, body(true))
+        } else { throw e }
+      }
       toast.success(`${reval === 'rent' ? 'Loyer' : 'Charges'} : nouvelle valeur programmée.`)
       setReval(null)
       await fetchLease()

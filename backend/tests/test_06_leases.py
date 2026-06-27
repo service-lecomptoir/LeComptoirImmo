@@ -561,3 +561,65 @@ class TestRentRevisionAudit:
         assert any(
             float(r.amount) == 1100.0 and r.effective_date == date(2027, 6, 1) for r in remaining
         )
+
+    async def test_existing_revision_requires_confirmation(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        """Réévaluer un champ qui en a déjà une programmée : 409 sans confirmation,
+        puis remplacement tracé (revision.replace) avec confirm_revision_replace."""
+        from sqlalchemy import select
+
+        from app.models.audit_log import AuditLog
+
+        lease_id = await self._create_lease(
+            client, gestionnaire_token, db, gestionnaire_user, date(2026, 1, 1)
+        )
+        r1 = await client.put(
+            f"/api/v1/leases/{lease_id}",
+            headers=auth(gestionnaire_token),
+            json={"rent_amount": 1050.00},
+        )
+        assert r1.status_code == 200, r1.text
+
+        # Sans confirmation → 409 revision_exists (pas d'écrasement).
+        r2 = await client.put(
+            f"/api/v1/leases/{lease_id}",
+            headers=auth(gestionnaire_token),
+            json={"rent_amount": 1080.00},
+        )
+        assert r2.status_code == 409, r2.text
+        detail = r2.json()["detail"]
+        assert detail["code"] == "revision_exists"
+        assert detail["existing"][0]["kind"] == "rent"
+        assert detail["existing"][0]["amount"] == 1050.0
+
+        # Le montant programmé n'a PAS changé tant qu'on n'a pas confirmé.
+        revs = (
+            await client.get(
+                f"/api/v1/leases/{lease_id}/rent-revisions", headers=auth(gestionnaire_token)
+            )
+        ).json()
+        rent_revs = [r for r in revs if r["kind"] == "rent"]
+        assert len(rent_revs) == 1 and rent_revs[0]["amount"] == 1050.0
+
+        # Avec confirmation → remplacement.
+        r3 = await client.put(
+            f"/api/v1/leases/{lease_id}",
+            headers=auth(gestionnaire_token),
+            json={"rent_amount": 1080.00, "confirm_revision_replace": True},
+        )
+        assert r3.status_code == 200, r3.text
+        revs2 = (
+            await client.get(
+                f"/api/v1/leases/{lease_id}/rent-revisions", headers=auth(gestionnaire_token)
+            )
+        ).json()
+        rent_revs2 = [r for r in revs2 if r["kind"] == "rent"]
+        assert len(rent_revs2) == 1 and rent_revs2[0]["amount"] == 1080.0
+
+        replaced = (
+            (await db.execute(select(AuditLog).where(AuditLog.action == "revision.replace")))
+            .scalars()
+            .all()
+        )
+        assert len(replaced) >= 1

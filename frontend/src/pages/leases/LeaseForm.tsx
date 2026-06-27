@@ -14,6 +14,7 @@ import type { Lease } from '@/types/lease'
 import type { PropertyListItem } from '@/types/property'
 import type { TenantListItem } from '@/types/tenant'
 import { getErrorMessage } from '@/utils/errors'
+import { getRevisionConflict, revisionReplaceConfirmMessage } from '@/utils/revision'
 
 const schema = z.object({
   property_id: z.string().min(1, 'Bien immobilier requis'),
@@ -229,7 +230,15 @@ export function LeaseForm({ lease, onClose, onSaved, prefill }: Props) {
         rent_effective_date: isEdit && rentChanged && !isFutureLease ? rentEffectiveDate : undefined,
       }
       if (isEdit) {
-        await leasesApi.update(lease.id, payload)
+        try {
+          await leasesApi.update(lease.id, payload)
+        } catch (e: unknown) {
+          const conflict = getRevisionConflict(e)
+          if (conflict) {
+            if (!confirm(revisionReplaceConfirmMessage(conflict))) return
+            await leasesApi.update(lease.id, { ...payload, confirm_revision_replace: true })
+          } else { throw e }
+        }
       } else {
         await leasesApi.create(payload)
       }
