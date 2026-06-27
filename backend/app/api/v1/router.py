@@ -4,6 +4,7 @@ from app.api.deps import enforce_comptable_readonly
 from app.api.v1 import (
     actualisation,
     apurement_plans,
+    audit,
     auth,
     automation,
     avis_echeances,
@@ -59,6 +60,7 @@ def _feat(key: str):
 
 
 api_router.include_router(auth.router)
+api_router.include_router(audit.router)
 api_router.include_router(users.router)
 api_router.include_router(tenants.router, dependencies=_feat("tenants"))
 api_router.include_router(owners.router)

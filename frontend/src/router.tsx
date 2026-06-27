@@ -44,6 +44,7 @@ const OwnerDetail = lazyPage(() => import('@/pages/owners/OwnerDetail'))
 const PropertyList = lazyPage(() => import('@/pages/properties/PropertyList'))
 const PropertyDetail = lazyPage(() => import('@/pages/properties/PropertyDetail'))
 const BoutiqueResidence = lazyPage(() => import('@/pages/boutique/BoutiqueResidence'))
+const AuditPage = lazyPage(() => import('@/pages/audit/AuditPage'))
 const LeaseList = lazyPage(() => import('@/pages/leases/LeaseList'))
 const LeaseDetail = lazyPage(() => import('@/pages/leases/LeaseDetail'))
 const PaymentList = lazyPage(() => import('@/pages/payments/PaymentList'))
@@ -258,6 +259,7 @@ export const router = createBrowserRouter([
       { path: 'guide', element: <GuideUtilisateur /> },
       { path: 'notifications', element: <NotificationList /> },
       { path: 'admin', element: <AdminUsers /> },
+      { path: 'audit', element: <AuditPage /> },
       { path: 'comptabilite', element: <ComptabiliteGestion /> },
       { path: 'comptabilite/mandant', element: <ComptaMandant /> },
       { path: 'coproprietes', element: <CoproList /> },

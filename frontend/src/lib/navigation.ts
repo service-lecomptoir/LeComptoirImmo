@@ -17,7 +17,7 @@ import {
   Home, Archive, BookUser, PenSquare, BarChart3,
   Calculator, MessageSquare, MessagesSquare, Send, Wrench, Wallet, FileCheck,
   KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
-  UserCheck, ClipboardCheck, ConciergeBell, BookText, HandCoins, Store,
+  UserCheck, ClipboardCheck, ConciergeBell, BookText, HandCoins, Store, ScrollText,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -56,6 +56,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/etats-des-lieux', icon: ClipboardCheck, label: 'État des lieux' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
+  { to: '/audit', icon: ScrollText, label: 'Audit' },
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/finances/revenus', icon: Wallet, label: 'Encaissements' },
   { to: '/comptabilite', icon: BookText, label: 'Comptabilité' },
@@ -128,6 +129,7 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/etats-des-lieux', icon: ClipboardCheck, label: 'État des lieux' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
+  { to: '/audit', icon: ScrollText, label: 'Audit' },
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Encaissements' },
   { to: '/comptabilite', icon: BookText, label: 'Comptabilité' },
@@ -171,6 +173,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   '/candidatures': 'Dossiers candidats centralisés : vérification des pièces, analyse et comparaison des profils, sélection du locataire le plus adapté.',
   '/etats-des-lieux': "États des lieux du logement, en deux temps. Onglet Arrivée : l'état des lieux d'entrée du locataire (par bail). Onglet Départ : le processus de sortie complet (préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture du dossier).",
   '/abonnement': 'Vos factures (PDF), votre formule et la gestion de votre abonnement.',
+  '/audit': "Journal des actions de votre agence : qui a fait quoi et quand (vous, vos comptables, vos propriétaires et vos locataires). Filtrable par type d'action et recherche par e-mail. Les autres agences ne sont jamais visibles.",
   // Espace propriétaire
   '/proprietaire/annonces': "Le statut de mise en location de vos biens (publiée, programmée, brouillon) et leurs performances (vues), en lecture seule.",
   '/proprietaire': "Vue d'ensemble : revenus, taux d'occupation et points d'attention sur vos biens.",

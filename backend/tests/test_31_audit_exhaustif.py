@@ -117,6 +117,63 @@ class TestAuditExhaustif:
         assert rows
         assert any(r.user_email == gestionnaire_user.email for r in rows)
 
+    async def test_agency_audit_endpoint_isolation(
+        self, client, gestionnaire_token, gestionnaire_user, db
+    ):
+        """L'endpoint applicatif /audit ne renvoie que les actions de l'agence du
+        gestionnaire ; jamais celles d'une autre agence."""
+        from datetime import date
+
+        from app.core.security import hash_password
+        from app.models.user import User
+        from tests.test_06_leases import _setup_lease_chain
+
+        # Compte d'une AUTRE agence (sa propre racine) + une action à son nom :
+        # ne doit jamais apparaître dans le journal du gestionnaire courant.
+        intrus = User(
+            email="intrus@autre-agence.fr",
+            hashed_password=hash_password("Xx123456!"),
+            full_name="Autre Agence",
+            role="gestionnaire",
+            is_active=True,
+        )
+        db.add(intrus)
+        await db.flush()
+        db.add(
+            AuditLog(
+                user_id=intrus.id,
+                user_email="intrus@autre-agence.fr",
+                action="db.create",
+                entity_type="properties",
+            )
+        )
+        await db.commit()
+
+        # Une action réelle du gestionnaire courant (création de bail via l'API).
+        prop, tenant = await _setup_lease_chain(db, gestionnaire_user)
+        resp = await client.post(
+            "/api/v1/leases",
+            headers=auth(gestionnaire_token),
+            json={
+                "tenant_id": str(tenant.id),
+                "property_id": str(prop.id),
+                "start_date": str(date(2026, 1, 1)),
+                "rent_amount": 800.00,
+                "charges_amount": 100.00,
+                "lease_type": "vide",
+                "payment_method": "virement",
+                "payment_day": 5,
+            },
+        )
+        assert resp.status_code == 201, resp.text
+
+        res = await client.get("/api/v1/audit?limit=500", headers=auth(gestionnaire_token))
+        assert res.status_code == 200, res.text
+        data = res.json()
+        emails = {r.get("user_email") for r in data}
+        assert "intrus@autre-agence.fr" not in emails
+        assert any(r["entity_type"] == "leases" for r in data)
+
     async def test_secret_columns_are_not_logged(self, db, gestionnaire_user):
         """Les colonnes sensibles (mot de passe…) ne fuitent pas dans l'audit."""
         created = (
