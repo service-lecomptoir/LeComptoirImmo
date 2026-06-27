@@ -21,7 +21,6 @@ from app.api.v1 import (
     message_templates,
     messages,
     notifications,
-    offers,
     online_payments,
     owners,
     payments,
@@ -67,7 +66,7 @@ api_router.include_router(coproprietes.router, dependencies=_feat("syndic"))
 api_router.include_router(properties.router, dependencies=_feat("properties"))
 api_router.include_router(documents.router)
 api_router.include_router(leases.router, dependencies=_feat("leases"))
-api_router.include_router(inspections.router)
+api_router.include_router(inspections.router, dependencies=_feat("etats_des_lieux"))
 api_router.include_router(payments.router, dependencies=_feat("payments"))
 api_router.include_router(letters.router)
 api_router.include_router(apurement_plans.router, dependencies=_feat("payments"))
@@ -85,7 +84,6 @@ api_router.include_router(entretiens.router, dependencies=_feat("entretiens"))
 api_router.include_router(scoring.router)
 api_router.include_router(telegram.router)
 api_router.include_router(messages.router)
-api_router.include_router(offers.router, dependencies=_feat("offres"))
 api_router.include_router(subscription.router)
 api_router.include_router(webhook.router)
 api_router.include_router(rgpd.router)
@@ -93,10 +91,10 @@ api_router.include_router(settings.router)
 api_router.include_router(public.router)
 api_router.include_router(publishing.router, dependencies=_feat("diffusion"))
 api_router.include_router(candidatures.router, dependencies=_feat("candidatures"))
-api_router.include_router(lease_exits.router, dependencies=_feat("sortie_locataire"))
+api_router.include_router(lease_exits.router, dependencies=_feat("etats_des_lieux"))
 api_router.include_router(caf.router, dependencies=_feat("documents_caf"))
 api_router.include_router(actualisation.router, dependencies=_feat("actualisation"))
 # Paiement en ligne du loyer par carte (config GM + checkout locataire + webhooks).
 # Pas de _feat : la config est transverse au profil et les webhooks sont publics.
 api_router.include_router(online_payments.router)
-api_router.include_router(residence_boutique.router)
+api_router.include_router(residence_boutique.router, dependencies=_feat("boutique_residence"))

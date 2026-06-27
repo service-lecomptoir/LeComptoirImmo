@@ -120,10 +120,10 @@ FEATURE_CATALOG: list[dict] = [
         "description": "Gardez sous la main vos artisans, prestataires et interlocuteurs de confiance, prêts à être sollicités.",
     },
     {
-        "key": "offres",
-        "label": "Offres & Services",
+        "key": "boutique_residence",
+        "label": "Commerces partenaires",
         "category": CATEGORY_GESTION,
-        "description": "Proposez à vos locataires des services partenaires (assurance, énergie, internet…) directement depuis leur espace.",
+        "description": "Rattachez des gérants Le Comptoir Market (le vôtre ou d'autres, autant que vous voulez) : leurs boutiques sont listées ici et vos locataires y ont accès. Un gérant rattaché qui n'a pas encore de compte le reçoit par e-mail.",
     },
     {
         "key": "documents_caf",
@@ -132,10 +132,10 @@ FEATURE_CATALOG: list[dict] = [
         "description": "Éditez l'attestation de loyer et le formulaire de tiers payant pré-remplis, et ne manquez plus la déclaration de loyer annuelle (de juillet à décembre).",
     },
     {
-        "key": "sortie_locataire",
-        "label": "Sortie du locataire",
+        "key": "etats_des_lieux",
+        "label": "État des lieux",
         "category": CATEGORY_GESTION,
-        "description": "Accompagnez chaque départ de bout en bout : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture administrative du dossier.",
+        "description": "Réalisez les états des lieux du logement en deux temps : à l'arrivée (état des lieux d'entrée du locataire, par bail) et au départ (processus de sortie complet : préavis, état des lieux de sortie comparé à l'entrée, décompte du dépôt de garantie et clôture du dossier).",
     },
     {
         "key": "admin",

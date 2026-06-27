@@ -6,7 +6,7 @@ import {
   ArrowRight, Check, Building2, Users, Calendar, CreditCard,
   FileCheck, TrendingUp, Zap, PenSquare, Calculator, Infinity as InfinityIcon,
   Menu, X, Info, Megaphone, UserCheck, BarChart3, FileText, Send, MessagesSquare,
-  Wrench, BookUser, ShoppingBag, Landmark, DoorOpen, Settings, Wallet, Bot, ListChecks,
+  Wrench, BookUser, Store, Landmark, ClipboardCheck, Settings, Wallet, Bot, ListChecks,
   Clock, LayoutGrid, ShieldCheck, Boxes, Quote, Plus as PlusIcon, Minus, MapPin,
 } from 'lucide-react'
 import SubscriptionModal from '@/pages/SubscriptionModal'
@@ -23,8 +23,8 @@ const ICON_BY_FEATURE: Record<string, ElementType> = {
   diffusion: Megaphone, candidatures: UserCheck, dashboard: BarChart3, properties: Building2,
   tenants: Users, leases: FileText, avis_echeances: Calendar, payments: CreditCard,
   quittances: FileCheck, actualisation: TrendingUp, automatisation: Send, templates: PenSquare,
-  incidents: MessagesSquare, entretiens: Wrench, contacts: BookUser, offres: ShoppingBag,
-  documents_caf: Landmark, sortie_locataire: DoorOpen, admin: Settings, finances: Wallet,
+  incidents: MessagesSquare, entretiens: Wrench, contacts: BookUser, boutique_residence: Store,
+  documents_caf: Landmark, etats_des_lieux: ClipboardCheck, admin: Settings, finances: Wallet,
   performance_biens: BarChart3, liasse_fiscale: Calculator, agents_ia: Bot,
 }
 
