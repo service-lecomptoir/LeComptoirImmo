@@ -158,7 +158,10 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
 
   const td = 'px-3 py-3 align-middle text-center'
   return (
-    <tr className="border-b border-gray-100 last:border-0">
+    <tr className={`border-b border-gray-100 last:border-0 ${rule.is_active ? '' : 'opacity-50'}`}>
+      <td className={td}>
+        <CellToggle on={rule.is_active} busy={busy} onToggle={() => patch({ is_active: !rule.is_active })} />
+      </td>
       <td className={td}>
         <div className="flex items-center justify-center gap-2">
           <Icon size={15} className="text-gray-400 shrink-0" />
@@ -195,8 +198,8 @@ function PlanningRow({ rule, onSaved }: { rule: Rule, onSaved: () => void }) {
       <td className={`${td} text-sm text-gray-600 whitespace-nowrap`}>{lastRun}</td>
       <td className={td}>
         {scheduled
-          ? <button type="button" onClick={runNow} disabled={busy}
-              title="Démarrer maintenant"
+          ? <button type="button" onClick={runNow} disabled={busy || !rule.is_active}
+              title={rule.is_active ? "Démarrer maintenant" : "Activez la règle pour pouvoir la lancer"}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50">
               <Play size={13} className={busy ? 'animate-pulse' : ''} fill="currentColor" />
               {busy ? '…' : 'Start'}
@@ -219,7 +222,9 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
         <h2 className="text-base font-bold text-gray-900">Tâche programmée</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
-        Pour chaque document, activez ou non : <strong>Générer</strong> (automatiser),
+        L'interrupteur <strong>Actif</strong> (1re colonne) allume ou éteint la règle : éteinte, elle
+        n'envoie rien (ligne grisée) et n'est pas comptée dans les « tâches actives ».
+        Pour chaque document, activez ensuite ou non : <strong>Générer</strong> (automatiser),
         <strong> Déposer</strong> (sur le compte du locataire), <strong>E-mail</strong> (avec le
         document en pièce jointe) et <strong>SMS</strong>. Réglez le délai et l'heure (hh:mm) pour
         les types planifiés ; les types « à l'événement » se déclenchent à l'action (paiement,
@@ -233,6 +238,7 @@ function AutomationPlanning({ rules, onSaved }: { rules: Rule[], onSaved: () => 
           <table className="w-full table-auto text-sm">
             <thead className="bg-gray-50 border-y border-gray-100">
               <tr>
+                <th className={th}>Actif</th>
                 <th className={th}>Document</th>
                 <th className={th}>Déclenchement</th>
                 <th className={th}>Heure</th>
