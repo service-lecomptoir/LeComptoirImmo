@@ -301,15 +301,21 @@ export default function Automatisation() {
         </div>
       </div>
 
-      {/* Bandeau : les tâches programmées pilotent les envois automatiques */}
+      {/* Bandeau : vue d'ensemble des onglets de la page */}
       <div className="mb-6 flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100 text-sm text-blue-800">
         <Zap size={16} className="text-blue-600 shrink-0 mt-0.5" />
-        <p>
-          Les <strong>tâches programmées</strong> pilotent tous les envois automatiques aux locataires (e-mail / SMS).
-          Les avis partent selon le délai <em>avant</em> l'échéance ; les rappels et relances, selon le délai
-          <em> après</em> l'échéance tant que le loyer reste impayé ; la quittance dès qu'un mois est soldé.
-          Le contrôle est automatique ; le bouton « Start » force un passage immédiat.
-        </p>
+        <div>
+          <p className="mb-1.5">
+            Cet espace regroupe toutes les communications aux locataires (e-mail / SMS), réparties par onglet :
+          </p>
+          <ul className="space-y-1 list-disc pl-5">
+            <li><strong>Communication</strong> : vos modèles de courrier (objet, corps, SMS), en plusieurs langues ; cochez « Utilisé » pour celui qui sera envoyé par type.</li>
+            <li><strong>Historique des envois</strong> : la trace de chaque message parti (type, destinataire, statut, date).</li>
+            <li><strong>Automatisation</strong> : la tâche programmée qui pilote les envois automatiques : avis <em>avant</em> l'échéance, rappels et relances <em>après</em> tant que le loyer reste impayé, quittance dès qu'un mois est soldé. Le bouton « Start » force un passage immédiat.</li>
+            <li><strong>Apparence des e-mails</strong> : le thème visuel (logo, couleurs, signature) appliqué à vos e-mails.</li>
+            <li><strong>Canaux &amp; tests</strong> : l'état des canaux (e-mail / SMS) et l'envoi d'un message de test.</li>
+          </ul>
+        </div>
       </div>
 
       {/* Stats */}
