@@ -325,8 +325,10 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {filteredItems.map((item, idx) => {
           if (item.isSeparator) {
+            const SepIcon = item.icon
             return (
-              <div key={`sep-${idx}`} className="px-3 pt-4 pb-1">
+              <div key={`sep-${idx}`} className="flex items-center gap-1.5 px-3 pt-4 pb-1">
+                {SepIcon && <SepIcon size={12} className="text-gray-500 shrink-0" />}
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{item.label}</p>
               </div>
             )

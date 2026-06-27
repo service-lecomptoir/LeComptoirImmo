@@ -69,7 +69,7 @@ export default function ProprietaireRevenus() {
             </div>
             <p className="text-sm text-gray-500">Total perçu (affiché)</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{fmtEuro(totalPercu)}</p>
+          <p className="text-2xl font-bold text-green-600">{fmtEuro(totalPercu)}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center gap-3 mb-2">

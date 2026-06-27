@@ -18,6 +18,7 @@ import {
   Calculator, MessageSquare, MessagesSquare, Send, Wrench, Wallet, FileCheck,
   KeyRound, TrendingUp, Landmark, ShieldCheck, Megaphone,
   UserCheck, ClipboardCheck, ConciergeBell, BookText, HandCoins, Store, ScrollText,
+  PocketKnife,
 } from 'lucide-react'
 import type { Role } from '@/types/auth'
 import { featureForPath, FEATURE_DESCRIPTIONS } from '@/lib/features'
@@ -56,6 +57,7 @@ export const navGestionnaire: NavItem[] = [
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/etats-des-lieux', icon: ClipboardCheck, label: 'État des lieux' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
+  { label: 'Outils', icon: PocketKnife, isSeparator: true },
   { to: '/audit', icon: ScrollText, label: 'Audit' },
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/finances/revenus', icon: Wallet, label: 'Encaissements' },
@@ -114,7 +116,6 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/properties', icon: Building2, label: 'Propriétés' },
   { to: '/tenants', icon: Users, label: 'Locataires' },
   { to: '/leases', icon: FileText, label: 'Contrats' },
-  { to: '/scoring', icon: ShieldCheck, label: 'Scoring locataires' },
   { to: '/avis-echeances', icon: Calendar, label: "Avis d'échéances" },
   { to: '/payments', icon: CreditCard, label: 'Paiements' },
   { to: '/quittances', icon: FileCheck, label: 'Quittances de loyer' },
@@ -129,6 +130,8 @@ export const navGestionnairePropio: NavItem[] = [
   { to: '/documents-caf', icon: Landmark, label: 'Espace CAF' },
   { to: '/etats-des-lieux', icon: ClipboardCheck, label: 'État des lieux' },
   { to: '/admin', icon: Settings, label: 'Gestion des utilisateurs' },
+  { label: 'Outils', icon: PocketKnife, isSeparator: true },
+  { to: '/scoring', icon: ShieldCheck, label: 'Scoring locataires' },
   { to: '/audit', icon: ScrollText, label: 'Audit' },
   { label: 'Finance et Comptabilité', isSeparator: true },
   { to: '/proprietaire/revenus', icon: CreditCard, label: 'Encaissements' },
