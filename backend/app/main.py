@@ -1028,6 +1028,7 @@ async def _audit_actor_middleware(request, call_next):
     finally:
         reset_actor()
 
+
 # ── Limitation de débit (anti brute-force, actif en production) ─────────────────
 from slowapi import _rate_limit_exceeded_handler  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402

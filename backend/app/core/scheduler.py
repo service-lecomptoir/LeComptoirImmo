@@ -48,9 +48,7 @@ async def _job_purge_audit_logs() -> None:
     async with AsyncSessionLocal() as db:
         try:
             res = await db.execute(
-                text(
-                    "DELETE FROM audit_logs WHERE created_at < now() - make_interval(days => :d)"
-                ),
+                text("DELETE FROM audit_logs WHERE created_at < now() - make_interval(days => :d)"),
                 {"d": days},
             )
             await db.commit()
