@@ -67,7 +67,7 @@ export default function ProprietaireRevenus() {
             <div className="w-9 h-9 bg-green-50 rounded-xl flex items-center justify-center">
               <CreditCard size={18} className="text-green-600" />
             </div>
-            <p className="text-sm text-gray-500">Total perçu (affiché)</p>
+            <p className="text-sm text-gray-500">Total perçu</p>
           </div>
           <p className="text-2xl font-bold text-green-600">{fmtEuro(totalPercu)}</p>
         </div>
