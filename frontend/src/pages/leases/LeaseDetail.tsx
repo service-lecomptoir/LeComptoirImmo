@@ -381,25 +381,25 @@ export default function LeaseDetail() {
             <CreditCard size={15} className="text-blue-500" /> Finances
           </h2>
           <InfoRow label="Loyer HC" value={
-            <span className="inline-flex items-center gap-2">
-              {fmtEuro(lease.rent_amount)}
+            <span className="inline-flex items-center justify-end gap-1.5">
               {lease.is_active && (
                 <button onClick={() => openReval('rent')} title="Revaloriser le loyer (programmé)"
-                  className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
+                  className="p-1 -my-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
                   <TrendingUp size={13} />
                 </button>
               )}
+              <span className="tabular-nums">{fmtEuro(lease.rent_amount)}</span>
             </span>
           } />
           <InfoRow label="Charges" value={
-            <span className="inline-flex items-center gap-2">
-              {fmtEuro(lease.charges_amount)}
+            <span className="inline-flex items-center justify-end gap-1.5">
               {lease.is_active && (
                 <button onClick={() => openReval('charges')} title="Revaloriser les charges (programmé)"
-                  className="p-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
+                  className="p-1 -my-1 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors">
                   <TrendingUp size={13} />
                 </button>
               )}
+              <span className="tabular-nums">{fmtEuro(lease.charges_amount)}</span>
             </span>
           } />
           <InfoRow label="Total CC" value={
