@@ -7,7 +7,9 @@ export interface PublicPlan {
   description: string | null
   property_limit: number | null
   monthly_price: number
-  /** Fonctionnalités incluses ; null = toutes. */
+  /** Type de gestionnaire ciblé : 'proprietaire' | 'mandataire' | null. */
+  manager_type: 'proprietaire' | 'mandataire' | null
+  /** Fonctionnalités incluses ; null = toutes (du périmètre du type). */
   features: string[] | null
 }
 

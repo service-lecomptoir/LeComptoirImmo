@@ -14,12 +14,16 @@ import { FEATURE_LABELS, FEATURE_DESCRIPTIONS } from '@/lib/features'
  * État initial = repli statique (FEATURE_LABELS / FEATURE_DESCRIPTIONS) : tout
  * fonctionne avant le chargement et même si l'API est injoignable.
  */
+export type Audience = 'all' | 'proprietaire' | 'mandataire'
+
 export interface CatalogItem {
   key: string
   label: string
   description: string
   category: string
   order: number
+  /** Profil ciblé ; défaut "all" (commune aux deux types de gestionnaire). */
+  audience?: Audience
 }
 
 interface CatalogState {
@@ -27,6 +31,8 @@ interface CatalogState {
   labels: Record<string, string>
   descriptions: Record<string, string>
   orderedKeys: string[]
+  /** Audience par clé (défaut "all") — pour filtrer par type de plan. */
+  audienceByKey: Record<string, Audience>
   loaded: boolean
   loading: boolean
   loadCatalog: () => Promise<void>
@@ -44,11 +50,13 @@ const FALLBACK_ITEMS: CatalogItem[] = Object.keys(FEATURE_LABELS).map((key, i) =
 function index(items: CatalogItem[]) {
   const labels: Record<string, string> = { ...FEATURE_LABELS }
   const descriptions: Record<string, string> = { ...FEATURE_DESCRIPTIONS }
+  const audienceByKey: Record<string, Audience> = {}
   for (const it of items) {
     labels[it.key] = it.label
     if (it.description) descriptions[it.key] = it.description
+    audienceByKey[it.key] = it.audience || 'all'
   }
-  return { labels, descriptions, orderedKeys: items.map(i => i.key) }
+  return { labels, descriptions, orderedKeys: items.map(i => i.key), audienceByKey }
 }
 
 export const useCatalogStore = create<CatalogState>((set, get) => ({

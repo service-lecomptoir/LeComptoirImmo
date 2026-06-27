@@ -31,6 +31,7 @@ class PublicPlanOut(BaseModel):
     description: str | None = None
     property_limit: int | None = None
     monthly_price: float
+    manager_type: str | None = None
     features: list[str] | None = None
 
 
@@ -62,6 +63,7 @@ async def list_public_plans():
             description=p.get("description"),
             property_limit=p.get("property_limit"),
             monthly_price=float(p.get("monthly_price") or 0),
+            manager_type=p.get("manager_type"),
             features=p.get("features") if isinstance(p.get("features"), list) else None,
         )
         for p in plans

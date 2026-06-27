@@ -397,14 +397,18 @@ function Features() {
   )
 }
 
-function FeatureItem({ featureKey }: { featureKey: string }) {
+function FeatureRow({ featureKey, included }: { featureKey: string; included: boolean }) {
   const labels = useCatalogStore(s => s.labels)
   const descriptions = useCatalogStore(s => s.descriptions)
   const desc = descriptions[featureKey]
   return (
-    <li className="flex items-start gap-2 text-sm text-gray-600">
-      <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
-      <span className="inline-flex items-center gap-1.5">
+    <li className={`flex items-start gap-2 text-sm ${included ? 'text-gray-600' : 'text-gray-400'}`}>
+      {included ? (
+        <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
+      ) : (
+        <X size={16} className="mt-0.5 shrink-0 text-gray-300" />
+      )}
+      <span className={`inline-flex items-center gap-1.5 ${included ? '' : 'line-through'}`}>
         {labels[featureKey] ?? featureKey}
         {desc && (
           <span className="group relative inline-flex items-center">
@@ -425,9 +429,16 @@ function FeatureItem({ featureKey }: { featureKey: string }) {
 
 function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: (planId?: string) => void; highlight: boolean }) {
   const orderedKeys = useCatalogStore(s => s.orderedKeys)
-  const included = plan.features === null ? orderedKeys : orderedKeys.filter(k => plan.features!.includes(k))
-  // « Toutes » dès que l'intégralité des modules est incluse (null OU tout coché).
-  const allFeatures = included.length === orderedKeys.length
+  const audienceByKey = useCatalogStore(s => s.audienceByKey)
+  const isMandataire = plan.manager_type === 'mandataire'
+  const type = plan.manager_type || 'proprietaire'
+  // Périmètre du plan = fonctionnalités communes + celles de son type.
+  const scope = orderedKeys.filter(k => {
+    const a = audienceByKey[k] || 'all'
+    return a === 'all' || a === type
+  })
+  // Incluse si la liste du plan est « toutes » (null) ou contient la clé.
+  const isIncluded = (k: string) => plan.features === null || plan.features.includes(k)
   return (
     <div
       className={`relative bg-white rounded-2xl border p-6 flex flex-col ${highlight ? 'shadow-xl' : 'border-gray-100 shadow-sm'}`}
@@ -440,10 +451,17 @@ function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: (plan
       )}
       <h3 className="text-lg font-bold text-gray-900">{plan.name}</h3>
       {plan.description && <p className="mt-1 text-sm text-gray-500 min-h-[40px]">{plan.description}</p>}
-      <div className="mt-4 flex items-end gap-1">
-        <span className="text-3xl font-extrabold" style={{ color: NAVY }}>{plan.monthly_price.toFixed(0)} €</span>
-        <span className="text-sm text-gray-400 mb-1">/ mois</span>
-      </div>
+      {isMandataire ? (
+        <div className="mt-4">
+          <span className="text-2xl font-extrabold" style={{ color: NAVY }}>Sur devis</span>
+          <p className="text-sm text-gray-400">Tarif sur mesure</p>
+        </div>
+      ) : (
+        <div className="mt-4 flex items-end gap-1">
+          <span className="text-3xl font-extrabold" style={{ color: NAVY }}>{plan.monthly_price.toFixed(0)} €</span>
+          <span className="text-sm text-gray-400 mb-1">/ mois</span>
+        </div>
+      )}
       <div className="mt-3 flex items-center gap-1.5 text-sm font-medium text-gray-700">
         {plan.property_limit === null ? (
           <><InfinityIcon size={15} style={{ color: ORANGE }} /> Biens illimités</>
@@ -453,21 +471,12 @@ function PlanCard({ plan, onDemo, highlight }: { plan: PublicPlan; onDemo: (plan
       </div>
 
       <div className="mt-5 pt-5 border-t border-gray-100 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
-          {allFeatures ? 'Toutes les fonctionnalités' : 'Fonctionnalités incluses'}
-        </p>
-        {allFeatures ? (
-          <p className="flex items-start gap-2 text-sm text-gray-600">
-            <Check size={16} className="mt-0.5 shrink-0" style={{ color: ORANGE }} />
-            Accès à l'ensemble des modules de la plateforme.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {included.map(k => (
-              <FeatureItem key={k} featureKey={k} />
-            ))}
-          </ul>
-        )}
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Fonctionnalités</p>
+        <ul className="space-y-2">
+          {scope.map(k => (
+            <FeatureRow key={k} featureKey={k} included={isIncluded(k)} />
+          ))}
+        </ul>
       </div>
 
       <button
@@ -491,6 +500,11 @@ function Pricing({ onDemo }: { onDemo: (planId?: string) => void }) {
       .catch(() => setError(true))
   }, [])
 
+  // On affiche la tarification des gestionnaires PROPRIÉTAIRES ; les offres
+  // mandataire sont « sur devis » (sans prix).
+  const proprio = (plans ?? []).filter(p => p.manager_type !== 'mandataire')
+  const mandataire = (plans ?? []).filter(p => p.manager_type === 'mandataire')
+
   return (
     <section id="tarification" className="py-20 sm:py-24 scroll-mt-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -511,11 +525,27 @@ function Pricing({ onDemo }: { onDemo: (planId?: string) => void }) {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: NAVY }} />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-            {plans.map((p, i) => (
-              <PlanCard key={p.id} plan={p} onDemo={onDemo} highlight={plans.length > 1 && i === Math.floor((plans.length - 1) / 2)} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+              {proprio.map((p, i) => (
+                <PlanCard key={p.id} plan={p} onDemo={onDemo} highlight={proprio.length > 1 && i === Math.floor((proprio.length - 1) / 2)} />
+              ))}
+            </div>
+
+            {mandataire.length > 0 && (
+              <div className="mt-16">
+                <div className="text-center max-w-2xl mx-auto mb-10">
+                  <h3 className="text-xl sm:text-2xl font-bold" style={{ color: NAVY }}>Gestion mandataire</h3>
+                  <p className="mt-2 text-gray-500">Pour la gestion pour le compte de tiers : tarif sur mesure, sur demande.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                  {mandataire.map(p => (
+                    <PlanCard key={p.id} plan={p} onDemo={onDemo} highlight={false} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>
