@@ -16,7 +16,11 @@ interface Props {
 /** Demande de souscription / démo — page d'accueil. Alimente Alice (lead à traiter). */
 export default function SubscriptionModal({ open, onClose, initialPlanId }: Props) {
   const [form, setForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company: '', siret: '', message: '' })
+  // Type de gestionnaire : propriétaire (gère son patrimoine, personne OU société)
+  // ou mandataire (gère pour le compte de tiers, société uniquement).
+  const [managerType, setManagerType] = useState<'proprietaire' | 'mandataire'>('proprietaire')
   // Type de demandeur : particulier (prénom/nom) ou société (raison sociale + SIRET).
+  // Le mandataire est toujours une société.
   const [kind, setKind] = useState<'personne' | 'entreprise'>('personne')
   const [plans, setPlans] = useState<PublicPlan[]>([])
   const [planId, setPlanId] = useState<string>('')
@@ -24,16 +28,32 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Charge les plans à l'ouverture ; pré-sélectionne celui d'où vient le clic.
+  // Charge les plans à l'ouverture ; pré-sélectionne celui d'où vient le clic
+  // (et aligne le type de gestionnaire sur celui du plan cliqué).
   useEffect(() => {
     if (!open) return
     setPlanId(initialPlanId ?? '')
-    publicPlansApi.list().then(r => setPlans(r.data)).catch(() => setPlans([]))
+    publicPlansApi.list().then(r => {
+      setPlans(r.data)
+      const pre = initialPlanId ? r.data.find(p => p.id === initialPlanId) : undefined
+      if (pre?.manager_type === 'mandataire') { setManagerType('mandataire'); setKind('entreprise') }
+    }).catch(() => setPlans([]))
   }, [open, initialPlanId])
 
   if (!open) return null
 
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }))
+  const isMandataire = managerType === 'mandataire'
+  // Plans du type choisi : propriétaire = plans tarifés (manager_type !== mandataire) ;
+  // mandataire = plans « sur devis ».
+  const visiblePlans = plans.filter(p =>
+    isMandataire ? p.manager_type === 'mandataire' : p.manager_type !== 'mandataire')
+  // Changer de type réinitialise la formule choisie ; le mandataire est une société.
+  const changeManagerType = (mt: 'proprietaire' | 'mandataire') => {
+    setManagerType(mt)
+    setPlanId('')
+    if (mt === 'mandataire') setKind('entreprise')
+  }
 
   const submit = async () => {
     const isCompany = kind === 'entreprise'
@@ -59,9 +79,15 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
       return
     }
     const chosen = plans.find(p => p.id === planId)
-    const planLabel = chosen ? `${chosen.name} (${chosen.monthly_price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €/mois)` : null
-    // Le SIRET (société) est joint au message pour être visible côté Demandes.
+    const planLabel = chosen
+      ? (chosen.manager_type === 'mandataire'
+          ? `${chosen.name} (sur devis)`
+          : `${chosen.name} (${chosen.monthly_price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €/mois)`)
+      : null
+    // Type de gestionnaire + SIRET (société) joints au message, visibles côté Demandes.
+    const typeLabel = `Type : Gestionnaire ${isMandataire ? 'mandataire' : 'propriétaire'} (${isCompany ? 'société' : 'particulier'})`
     const message = [
+      typeLabel,
       isCompany && form.siret.trim() ? `SIRET : ${form.siret.trim()}` : null,
       form.message.trim() || null,
     ].filter(Boolean).join('\n') || null
@@ -121,12 +147,32 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
               <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
             )}
 
+            {/* Type de gestionnaire : propriétaire (personne/société) ou mandataire (société) */}
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-gray-700">Vous êtes</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => changeManagerType('proprietaire')}
+                  className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${!isMandataire ? 'border-brand-navy bg-brand-navy/5 text-brand-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  Gestionnaire propriétaire
+                </button>
+                <button type="button" onClick={() => changeManagerType('mandataire')}
+                  className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${isMandataire ? 'border-brand-navy bg-brand-navy/5 text-brand-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                  Gestionnaire mandataire
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400">
+                {isMandataire
+                  ? 'Vous gérez pour le compte de tiers (société). Tarification sur devis.'
+                  : 'Vous gérez votre patrimoine (personne ou société).'}
+              </p>
+            </div>
+
             {/* Choix de la formule (description + prix) */}
-            {plans.length > 0 && (
+            {visiblePlans.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-medium text-gray-700">Formule souhaitée</p>
                 <div className="space-y-2">
-                  {plans.map(p => {
+                  {visiblePlans.map(p => {
                     const selected = p.id === planId
                     return (
                       <button
@@ -140,7 +186,11 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
                             {selected && <Check size={14} className="text-brand-navy shrink-0" />}
                             {p.name}
                           </span>
-                          <span className="text-sm font-bold text-brand-navy whitespace-nowrap">{p.monthly_price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €<span className="text-xs font-normal text-gray-500">/mois</span></span>
+                          {p.manager_type === 'mandataire' ? (
+                            <span className="text-sm font-bold text-brand-navy whitespace-nowrap">Sur devis</span>
+                          ) : (
+                            <span className="text-sm font-bold text-brand-navy whitespace-nowrap">{p.monthly_price.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €<span className="text-xs font-normal text-gray-500">/mois</span></span>
+                          )}
                         </div>
                         {p.description && <p className="mt-1 text-xs text-gray-500">{p.description}</p>}
                         <p className="mt-1 text-[11px] text-gray-400">
@@ -155,17 +205,19 @@ export default function SubscriptionModal({ open, onClose, initialPlanId }: Prop
             )}
 
             <div className="grid grid-cols-1 gap-3">
-              {/* Type de demandeur : particulier ou société */}
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setKind('personne')}
-                  className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${kind === 'personne' ? 'border-brand-navy bg-brand-navy/5 text-brand-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                  Particulier
-                </button>
-                <button type="button" onClick={() => setKind('entreprise')}
-                  className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${kind === 'entreprise' ? 'border-brand-navy bg-brand-navy/5 text-brand-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
-                  Société
-                </button>
-              </div>
+              {/* Type de demandeur : particulier ou société (mandataire = société uniquement) */}
+              {!isMandataire && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setKind('personne')}
+                    className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${kind === 'personne' ? 'border-brand-navy bg-brand-navy/5 text-brand-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                    Particulier
+                  </button>
+                  <button type="button" onClick={() => setKind('entreprise')}
+                    className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${kind === 'entreprise' ? 'border-brand-navy bg-brand-navy/5 text-brand-navy' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
+                    Société
+                  </button>
+                </div>
+              )}
               {kind === 'personne' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input className={inp} placeholder="Prénom *" value={form.first_name}
