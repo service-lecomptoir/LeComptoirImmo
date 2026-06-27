@@ -164,7 +164,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <LogOut size={15} className="text-red-400" />
-                  Déconnexion
+                  Logout
                 </button>
               </div>
             </div>
@@ -176,9 +176,9 @@ export function Header({ onMenuClick }: HeaderProps) {
         isOpen={confirmLogout}
         onClose={() => setConfirmLogout(false)}
         onConfirm={handleLogout}
-        title="Déconnexion"
+        title="Logout"
         message="Voulez-vous vraiment vous déconnecter de votre espace ?"
-        confirmLabel="Se déconnecter"
+        confirmLabel="Logout"
         confirmVariant="red"
       />
     </header>
