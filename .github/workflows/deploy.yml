@@ -119,5 +119,5 @@ jobs:
             # Garde-fou : l'image qui tourne DOIT porter le SHA, sinon echec visible.
             running=$(docker inspect locataire_backend --format '{{.Config.Image}}')
             case "$running" in *"${IMAGE_TAG}"*) echo "OK deploiement : $running" ;; *) echo "ECHEC : conteneur sur $running au lieu de ${IMAGE_TAG}"; exit 1 ;; esac
-            docker image prune -f
+            docker image prune -af --filter "until=72h"
             docker logout ghcr.io
